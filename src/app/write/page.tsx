@@ -1,4 +1,4 @@
-import ChatWindow from "@/app/_components/ChatWindow";
+import ChatWindow from "@/app/write/_components/ChatWindow";
 
 export default function Writer() {
   return (

@@ -16,10 +16,12 @@ import {
 } from "@headlessui/react";
 import { CheckIcon, ExclamationTriangleIcon } from "@heroicons/react/20/solid";
 import { EventSourceInput } from "@fullcalendar/core/index.js";
+import EventCreationModal from "./_components/EventCreationModal";
 
 interface Event {
   title: string;
   start: Date | string;
+  end?: Date | string;
   allDay: boolean;
   id: number;
 }
@@ -33,6 +35,7 @@ export default function Schedule() {
   const [newEvent, setNewEvent] = useState<Event>({
     title: "",
     start: "",
+    end: "",
     allDay: false,
     id: 0,
   });
@@ -41,7 +44,8 @@ export default function Schedule() {
     setNewEvent({
       ...newEvent,
       start: arg.date,
-      allDay: arg.allDay,
+      end: arg.date,
+      allDay: true,
       id: new Date().getTime(),
     });
     setShowModal(true);
@@ -51,6 +55,7 @@ export default function Schedule() {
     const event = {
       ...newEvent,
       start: data.date.toISOString(),
+      end: data.date.toISOString(),
       title: data.draggedEl.innerText,
       allDay: data.allDay,
       id: new Date().getTime(),
@@ -76,6 +81,7 @@ export default function Schedule() {
     setNewEvent({
       title: "",
       start: "",
+      end: "",
       allDay: false,
       id: 0,
     });
@@ -97,6 +103,7 @@ export default function Schedule() {
     setNewEvent({
       title: "",
       start: "",
+      end: "",
       allDay: false,
       id: 0,
     });
@@ -105,9 +112,21 @@ export default function Schedule() {
   return (
     <>
       <div className="flex items-center justify-center w-full p-4">
-        <div className="flex flex-col w-1/3 items-center justify-center h-full">
+        <div className="flex flex-col w-1/3 items-center justify-center">
           <h1>Enter schedule here</h1>
           <textarea className="text-black w-full h-full rounded-lg p-4 border-2"></textarea>
+          <EventCreationModal
+            onCreate={(event) => {
+              const newEvent = {
+                title: event.title,
+                start: event.startDate,
+                end: event.endDate || event.startDate, // Handle single-day events
+                allDay: event.allDay,
+                id: new Date().getTime(),
+              };
+              setAllEvents([...allEvents, newEvent]);
+            }}
+          />
         </div>
         <div className="w-2/3">
           <FullCalendar
