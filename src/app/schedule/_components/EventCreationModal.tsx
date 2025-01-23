@@ -1,95 +1,65 @@
 import React, { useState } from "react";
+import { Event } from "../page";
 
 export default function EventCreationModal({
-  onCreate,
+  newEvent,
+  setNewEvent,
+  setShowModal,
+  handleAddEvent,
 }: {
-  onCreate: (event: {
-    title: string;
-    startDate: string;
-    endDate: string;
-    allDay: boolean;
-  }) => void;
+  newEvent: Event;
+  setNewEvent: React.Dispatch<React.SetStateAction<Event>>;
+  setShowModal: React.Dispatch<React.SetStateAction<boolean>>;
+  handleAddEvent: () => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [allDay, setAllDay] = useState(false);
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (title && startDate) {
-      onCreate({ title, startDate, endDate, allDay });
-      setTitle("");
-      setStartDate("");
-      setEndDate("");
-      setAllDay(false);
-    } else {
-      alert("Title and Start Date are required!");
-    }
-  }
-
   return (
-    <div className="flex flex-col items-center justify-center text-center border-2 border-gray-200 bg-gray-300 rounded-lg p-4 mx-4 my-2">
-      <h2 className="text-xl mb-4">Create New Event</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="font-bold w-1/2">Event Title: </label>
-          <input
-            type="text"
-            placeholder="Enter event title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-1/2 text-center"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="font-bold w-1/2">Start: </label>
-          <input
-            type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-1/2 text-center"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="font-bold w-1/2">End: </label>
-          <input
-            type="datetime-local"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-1/2 text-center"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="font-bold w-1/2">All-Day: </label>
-          <input
-            type="checkbox"
-            checked={allDay}
-            onChange={(e) => setAllDay(e.target.checked)}
-            className="w-auto"
-          />
-        </div>
-        <div className="flex justify-center space-x-4">
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50"
+      onClick={() => setShowModal(false)}
+    >
+      <div
+        className="bg-white p-6 rounded-lg shadow-lg w-96 relative z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold mb-4">Add Event</h3>
+        <label className="block mb-2">Event Title</label>
+        <input
+          type="text"
+          className="w-full p-2 border rounded mb-4"
+          value={newEvent.title}
+          onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+        />
+        <label className="block mb-2">Start Date</label>
+        <input
+          type="datetime-local"
+          className="w-full p-2 border rounded mb-4"
+          onChange={(e) =>
+            setNewEvent({ ...newEvent, start: new Date(e.target.value) })
+          }
+        />
+        <label className="block mb-2">End Date</label>
+        <input
+          type="datetime-local"
+          className="w-full p-2 border rounded mb-4"
+          onChange={(e) =>
+            setNewEvent({ ...newEvent, end: new Date(e.target.value) })
+          }
+        />
+        <div className="flex justify-between">
           <button
-            type="button"
-            className="px-4 py-2 bg-red-500 rounded-lg hover:bg-red-600"
-            onClick={() => {
-              setTitle("");
-              setStartDate("");
-              setEndDate("");
-              setAllDay(false);
-            }}
+            className="bg-gray-500 text-white px-4 py-2 rounded"
+            onClick={() => setShowModal(false)}
           >
             Cancel
           </button>
           <button
-            type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="bg-blue-500 text-white px-4 py-2 rounded"
+            onClick={handleAddEvent}
           >
-            Create Event
+            Add Event
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

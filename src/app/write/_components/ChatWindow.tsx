@@ -34,7 +34,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="m-2 w-3/4 h-full flex flex-col items-center justify-center bg-gray-700 rounded-md">
+    <div className="m-2 w-3/4 h-full flex flex-col items-center justify-center bg-gray-100 rounded-md">
       <h1 className="p-2 rounded-md">AI Writing Assistant V0</h1>
       <div className="w-full h-full border-gray-200 p-2 flex items-center justify center flex-col">
         <p>paste your text below</p>
