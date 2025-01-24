@@ -68,6 +68,12 @@ export default function CalendarApp() {
             initialView="dayGridMonth"
             events={events}
             eventClick={handleEventClick}
+            height="80vh"
+            headerToolbar={{
+              start: "prev,next,today",
+              center: "title",
+              right: "timeGridWeek,timeGridDay,dayGridMonth",
+            }}
           />
         </div>
       </div>
