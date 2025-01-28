@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Event } from "../page";
 
 export default function EventCreationModal({

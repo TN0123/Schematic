@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import { EventClickArg } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -27,6 +27,8 @@ export default function CalendarApp() {
     start: new Date(),
     end: new Date(),
   });
+  const [inputText, setInputText] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleAddEvent = (): void => {
     if (newEvent.title && newEvent.start && newEvent.end) {
@@ -50,6 +52,38 @@ export default function CalendarApp() {
     }
   };
 
+  const handleSubmit = async () => {
+    if (!inputText.trim()) return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/generate-events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: inputText }),
+      });
+      const data = await response.json();
+      if (data.events) {
+        const formattedEvents = data.events.map((event: any) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }));
+
+        setEvents([...events, ...formattedEvents]);
+      }
+    } catch (error) {
+      console.error("Error generating events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log("Updated events:", events);
+  }, [events]);
+
   return (
     <div className="mt-4">
       <h2 className="text-xl font-bold mb-4 text-center">Schedule</h2>
@@ -58,10 +92,21 @@ export default function CalendarApp() {
           <h2 className="text-l font-bold text-center">
             Type your schedule below
           </h2>
-          <textarea className="w-3/4 h-3/4 border-2 resize-none"></textarea>
-          <button className="border-2 w-3/4 bg-green-200 p-2">Generate</button>
+          <textarea
+            className="w-3/4 h-3/4 border-2 resize-none"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+          ></textarea>
+          <button
+            className="border-2 w-3/4 bg-green-200 p-2"
+            disabled={loading}
+            type="submit"
+            onClick={handleSubmit}
+          >
+            Generate
+          </button>
+          {/* Add the onclick handleSubmit to this button, make it type submit*/}
         </div>
-        {/* New control panel component to the right of the above code*/}
         <div className="w-3/5 border-t-2">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
