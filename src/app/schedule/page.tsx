@@ -86,28 +86,27 @@ export default function CalendarApp() {
 
   return (
     <div className="mt-4">
-      <h2 className="text-xl font-bold mb-4 text-center">Schedule</h2>
       <div className="flex justify-between">
-        <div className="w-2/5 border-2 flex flex-col items-center">
-          <h2 className="text-l font-bold text-center">
+        <div className="w-1/5 bg-white border border-gray-300 shadow-lg rounded-2xl p-6 flex flex-col items-center space-y-4 mx-2">
+          <h2 className="text-xl font-semibold text-center text-gray-800">
             Type your schedule below
           </h2>
           <textarea
-            className="w-3/4 h-3/4 border-2 resize-none"
+            className="w-full h-full border border-gray-300 rounded-lg p-3 resize-none"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            placeholder="Enter your schedule here..."
           ></textarea>
           <button
-            className="border-2 w-3/4 bg-green-200 p-2"
+            className="w-3/4 bg-green-500 text-white font-medium py-2 rounded-lg transition-all duration-300 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
             disabled={loading}
             type="submit"
             onClick={handleSubmit}
           >
             Generate
           </button>
-          {/* Add the onclick handleSubmit to this button, make it type submit*/}
         </div>
-        <div className="w-3/5 border-t-2">
+        <div className="w-3/5 mx-auto bg-white border border-gray-200 shadow-xl rounded-3xl p-6 mx-2">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
@@ -115,11 +114,25 @@ export default function CalendarApp() {
             eventClick={handleEventClick}
             height="80vh"
             headerToolbar={{
-              start: "prev,next,today",
+              start: "prev,next today",
               center: "title",
-              right: "timeGridWeek,timeGridDay,dayGridMonth",
+              right: "dayGridMonth,timeGridWeek,timeGridDay",
             }}
+            buttonText={{
+              today: "Today",
+              month: "Month",
+              week: "Week",
+              day: "Day",
+            }}
+            dayMaxEventRows={3}
+            views={{
+              dayGridMonth: { titleFormat: { year: "numeric", month: "long" } },
+            }}
+            themeSystem="bootstrap5"
           />
+        </div>
+        <div className="w-1/5 bg-white border border-gray-300 shadow-lg rounded-2xl p-6 flex flex-col items-center space-y-4 mx-2">
+          <h1>More features later</h1>
         </div>
       </div>
 
@@ -129,7 +142,6 @@ export default function CalendarApp() {
       >
         +
       </button>
-
       {showModal && (
         <EventCreationModal
           newEvent={newEvent}

@@ -8,7 +8,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const result = await generate_events(text);
       const cleanedResult = result.replace(/```json|```/g, "").trim();
       const events = JSON.parse(cleanedResult);
-
       res.status(200).json({ events });
     } catch (error) {
       console.error("Error generating content:", error);

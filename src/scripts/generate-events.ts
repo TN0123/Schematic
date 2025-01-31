@@ -5,24 +5,74 @@ export async function generate_events(text: string) {
   
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const currentDate = new Date().toISOString().split("T")[0];
   
     const prompt = `
-      You are an AI that generates structured JSON. Convert the following text into a list of Event objects. 
-      Return ONLY return a valid JSON array, absolutely nothing else. If no date is given, assume that the date is 1/28/2025.
-
-      Each event must follow this format:
-      {
-        "id": "string",
-        "title": "string",
-        "start": "ISO8601 Date string",
-        "end": "ISO8601 Date string"
-      }
+      You are an AI that extracts structured event details from text. Your goal is to generate a JSON array of event objects.
       
-      Here is the input text: 
-      ` + text;
+      **Rules:**
+      1. Identify event names, dates, and times in the input.
+      2. If no date is mentioned, assume today's date: **${currentDate}**.
+      3. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
+      4. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
+      5. If an event has no end time, assume a default duration of **1 hour**.
+      
+      **Output Format (JSON array only, no extra text):**
+      [
+        {
+          "id": "unique-string",
+          "title": "Event Title",
+          "start": "ISO8601 DateTime",
+          "end": "ISO8601 DateTime"
+        }
+      ]
+      
+      **Example Input:**
+      3pm-4pm Lunch  
+      5pm-6pm Meeting  
+
+      **Expected Output:**
+      [
+        {
+          "id": "lunch",
+          "title": "Lunch",
+          "start": "${currentDate}T15:00:00",
+          "end": "${currentDate}T16:00:00"
+        },
+        {
+          "id": "meeting",
+          "title": "Meeting",
+          "start": "${currentDate}T17:00:00",
+          "end": "${currentDate}T18:00:00"
+        }
+      ]
+
+      **Here is the input text:**  
+      ${text}
+    `;
   
-    const result = await model.generateContent(prompt);
-  
-    return result.response.text();
-  }
+
+    //Multiple calls retry mechanism with exponential backoff
+    let retries = 3;
+    let delay = 1000;
+
+    for (let i = 0; i < retries; i++) {
+      try {
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(`Attempt ${i + 1} failed: ${error.message}`);
+        } else {
+          console.error(`Attempt ${i + 1} failed with unknown error:`, error);
+        }
+
+        if (i === retries - 1) {
+          throw new Error("Failed to generate content after multiple attempts.");
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= 2;
+      }
+    }
+}
   
