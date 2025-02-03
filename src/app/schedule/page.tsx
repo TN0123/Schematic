@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import { EventClickArg } from "@fullcalendar/core";
+import { EventImpl } from "@fullcalendar/core/internal";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import "tailwindcss/tailwind.css";
 import EventCreationModal from "./_components/EventCreationModal";
+import { DeleteEventModal } from "./_components/DeleteEventModal";
 
 export interface Event {
   id: string;
@@ -29,6 +31,8 @@ export default function CalendarApp() {
   });
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
 
   const handleAddEvent = (): void => {
     if (newEvent.title && newEvent.start && newEvent.end) {
@@ -47,8 +51,15 @@ export default function CalendarApp() {
   };
 
   const handleEventClick = (clickInfo: EventClickArg): void => {
-    if (confirm(`Delete event '${clickInfo.event.title}'?`)) {
-      setEvents(events.filter((event) => event.id !== clickInfo.event.id));
+    setEventToDelete(clickInfo.event);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (eventToDelete) {
+      setEvents(events.filter((event) => event.id !== eventToDelete.id));
+      setIsDeleteModalOpen(false);
+      setEventToDelete(null);
     }
   };
 
@@ -85,34 +96,34 @@ export default function CalendarApp() {
   }, [events]);
 
   return (
-    <div className="mt-4">
-      <div className="flex justify-between">
-        <div className="w-1/5 bg-white border border-gray-300 shadow-lg rounded-2xl p-6 flex flex-col items-center space-y-4 mx-2">
-          <h2 className="text-xl font-semibold text-center text-gray-800">
+    <div className="p-6 max-w-[1600px] mx-auto bg-gray-200">
+      <div className="flex gap-6">
+        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 flex flex-col gap-4 h-[calc(100vh-7rem)]">
+          <h2 className="text-xl font-semibold text-gray-800 text-center">
             Type your schedule below
           </h2>
+
           <textarea
-            className="w-full h-full border border-gray-300 rounded-lg p-3 resize-none"
+            className="flex-1 border border-gray-200 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Enter your schedule here..."
-          ></textarea>
+          />
           <button
-            className="w-3/4 bg-green-500 text-white font-medium py-2 rounded-lg transition-all duration-300 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             disabled={loading}
-            type="submit"
             onClick={handleSubmit}
           >
-            Generate
+            {loading ? "Generating..." : "Generate"}
           </button>
         </div>
-        <div className="w-3/5 mx-auto bg-white border border-gray-200 shadow-xl rounded-3xl p-6 mx-2">
+        <div className="flex-1 bg-white border border-gray-200 shadow-lg rounded-2xl p-6">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             events={events}
             eventClick={handleEventClick}
-            height="80vh"
+            height="calc(100vh - 10rem)"
             headerToolbar={{
               start: "prev,next today",
               center: "title",
@@ -126,22 +137,31 @@ export default function CalendarApp() {
             }}
             dayMaxEventRows={3}
             views={{
-              dayGridMonth: { titleFormat: { year: "numeric", month: "long" } },
+              dayGridMonth: {
+                titleFormat: { year: "numeric", month: "long" },
+                dayHeaderFormat: { weekday: "short" },
+              },
             }}
-            themeSystem="bootstrap5"
+            themeSystem="standard"
+            eventColor="#3b82f6"
+            eventClassNames="rounded-md shadow-sm"
+            dayCellClassNames="hover:bg-gray-50 transition-colors"
+            dayHeaderClassNames="text-gray-700 font-medium py-3"
           />
         </div>
-        <div className="w-1/5 bg-white border border-gray-300 shadow-lg rounded-2xl p-6 flex flex-col items-center space-y-4 mx-2">
-          <h1>More features later</h1>
+
+        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 h-[calc(100vh-7rem)]">
+          <h2 className="text-xl font-semibold text-gray-800">Coming Soon</h2>
         </div>
       </div>
 
       <button
-        className="fixed bottom-10 right-10 bg-blue-500 w-16 h-16 text-white p-4 rounded-full shadow-lg text-2xl z-50"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg text-2xl transition-colors duration-200 flex items-center justify-center"
         onClick={() => setShowModal(true)}
       >
         +
       </button>
+
       {showModal && (
         <EventCreationModal
           newEvent={newEvent}
@@ -150,6 +170,12 @@ export default function CalendarApp() {
           handleAddEvent={handleAddEvent}
         />
       )}
+      <DeleteEventModal
+        isOpen={isDeleteModalOpen}
+        event={eventToDelete}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

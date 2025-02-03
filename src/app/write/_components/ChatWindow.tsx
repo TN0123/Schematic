@@ -34,31 +34,51 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="w-3/5 h-full flex flex-col items-center bg-white shadow-lg p-6 border border-gray-200">
-      <h1 className="text-xl font-semibold text-gray-800">
-        AI Writing Assistant V0
-      </h1>
-      <div className="w-full flex flex-col items-center mt-4 space-y-4">
-        <p className="text-gray-600 text-sm">Paste your text below</p>
-        <textarea
-          className="w-full h-40 border border-gray-300 rounded-lg p-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent shadow-sm"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Start typing here..."
-        ></textarea>
+    <div className="w-3/5 h-full flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col justify-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            AI Writing Assistant
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Transform your ideas into polished content
+          </p>
+        </div>
         <button
           type="submit"
           onClick={handleSubmit}
-          className="bg-blue-500 text-white font-medium px-6 py-3 rounded-full shadow-md hover:bg-blue-600 transition duration-300"
+          className="self-center px-6 py-2.5 bg-white text-gray-800 font-medium rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 hover:translate-y-[-1px] active:translate-y-[1px] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-100"
         >
-          Generate
+          Generate Content
         </button>
-        <div className="w-full min-h-[100px] flex items-center justify-center border border-gray-300 bg-gray-50 text-gray-800 rounded-lg p-4 shadow-inner">
-          {error ? (
-            <span className="text-red-500">{error}</span>
-          ) : (
-            result || "Your generated text will appear here..."
-          )}
+      </div>
+
+      <div className="w-full flex flex-col gap-6">
+        <div className="relative">
+          <textarea
+            className="w-full overflow-visible bg-gray-50 h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed resize-none border-0 outline-none focus:ring-0 focus:bg-white transition-all duration-300"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Start typing here..."
+          ></textarea>
+          <div className="absolute bottom-4 right-4 text-xs text-gray-400">
+            {inputText.length} characters
+          </div>
+        </div>
+        <div
+          className={`w-full min-h-[160px] rounded-xl p-6 ${
+            error ? "bg-red-50" : result ? "bg-blue-50" : "bg-gray-50"
+          } transition-colors duration-200`}
+        >
+          <div className="h-full flex items-center justify-center">
+            {error ? (
+              <span className="text-red-500 font-medium">{error}</span>
+            ) : (
+              <span className="text-gray-700 leading-relaxed">
+                {result || "Your generated content will appear here..."}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
