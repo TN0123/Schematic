@@ -21,14 +21,16 @@ export default function Bulletin() {
   };
 
   const addItem = () => {
+    const newId = Date.now();
     setItems([
       ...items,
       {
-        id: Date.now(),
+        id: newId,
         title: "New Note",
         content: "",
       },
     ]);
+    setExpandedItemId(newId);
   };
 
   const deleteItem = (id: number) => {

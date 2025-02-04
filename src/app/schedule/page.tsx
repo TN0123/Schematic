@@ -10,6 +10,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import "tailwindcss/tailwind.css";
 import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 export interface Event {
   id: string;
@@ -19,6 +21,13 @@ export interface Event {
 }
 
 export default function CalendarApp() {
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      redirect("/api/auth/login");
+    },
+  });
+
   const [events, setEvents] = useState<Event[]>([
     { id: "1", title: "Sample Event", start: new Date(), end: new Date() },
   ]);
@@ -33,6 +42,7 @@ export default function CalendarApp() {
   const [loading, setLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
+  const [time, setTime] = useState(new Date());
 
   const handleAddEvent = (): void => {
     if (newEvent.title && newEvent.start && newEvent.end) {
@@ -95,6 +105,14 @@ export default function CalendarApp() {
     console.log("Updated events:", events);
   }, [events]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto bg-gray-200">
       <div className="flex gap-6">
@@ -151,7 +169,25 @@ export default function CalendarApp() {
         </div>
 
         <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 h-[calc(100vh-7rem)]">
-          <h2 className="text-xl font-semibold text-gray-800">Coming Soon</h2>
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className="text-4xl font-mono text-gray-700 mb-2">
+                {time.toLocaleTimeString()}
+              </div>
+              <div className="text-sm text-gray-500">
+                {time.toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+            </div>
+            <div className="border-t pt-6">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Coming Soon
+              </h2>
+            </div>
+          </div>
         </div>
       </div>
 
