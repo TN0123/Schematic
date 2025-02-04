@@ -24,7 +24,7 @@ export default function CalendarApp() {
   const { data: session, status } = useSession({
     required: true,
     onUnauthenticated() {
-      redirect("/api/auth/login");
+      redirect("/auth/login");
     },
   });
 
