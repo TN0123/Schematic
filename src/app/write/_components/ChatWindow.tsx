@@ -34,7 +34,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="w-3/5 h-full flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+    <div className="w-3/5 min-h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
       <div className="flex justify-between items-center mb-8">
         <div className="flex flex-col justify-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -56,9 +56,14 @@ export default function ChatWindow() {
       <div className="w-full flex flex-col gap-6">
         <div className="relative">
           <textarea
-            className="w-full overflow-visible bg-gray-50 h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed resize-none border-0 outline-none focus:ring-0 focus:bg-white transition-all duration-300"
+            className="w-full overflow-hidden bg-gray-50 min-h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed resize-none border-0 outline-none focus:ring-0 focus:bg-white transition-all duration-300"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = `${target.scrollHeight}px`;
+            }}
             placeholder="Start typing here..."
           ></textarea>
           <div className="absolute bottom-4 right-4 text-xs text-gray-400">
