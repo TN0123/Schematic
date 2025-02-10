@@ -3,9 +3,9 @@ import { generate } from "@/scripts/generate";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === "POST") {
-    const { text } = req.body; 
+    const { text, context } = req.body; 
     try {
-      const result = await generate(text);
+      const result = await generate(text, context);
       res.status(200).json({ result });
     } catch (error) {
       console.error("Error generating content:", error);

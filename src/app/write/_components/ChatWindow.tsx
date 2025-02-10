@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 
-export default function ChatWindow() {
+export default function ChatWindow({
+  selectedContext,
+}: {
+  selectedContext: string;
+}) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
@@ -19,6 +23,7 @@ export default function ChatWindow() {
         },
         body: JSON.stringify({
           text: `${inputText}`,
+          context: selectedContext,
         }),
       });
 
@@ -44,6 +49,7 @@ export default function ChatWindow() {
             Transform your ideas into polished content
           </p>
         </div>
+
         <button
           type="submit"
           onClick={handleSubmit}
@@ -70,6 +76,9 @@ export default function ChatWindow() {
             {inputText.length} characters
           </div>
         </div>
+        {selectedContext && (
+          <p className="text-gray-500 text-sm">Context: {selectedContext}</p>
+        )}
         <div
           className={`w-full min-h-[160px] rounded-xl p-6 ${
             error ? "bg-red-50" : result ? "bg-blue-50" : "bg-gray-50"
