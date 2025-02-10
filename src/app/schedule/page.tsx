@@ -44,8 +44,39 @@ export default function CalendarApp() {
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [time, setTime] = useState(new Date());
 
-  const handleAddEvent = (): void => {
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("/api/events");
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      }
+    };
+    fetchEvents();
+  });
+
+  const handleAddEvent = async (): Promise<void> => {
+    console.log("Adding event:", newEvent);
     if (newEvent.title && newEvent.start && newEvent.end) {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: newEvent.title,
+          start: newEvent.start,
+          end: newEvent.end,
+        }),
+      });
+      if (!res.ok) {
+        console.error("Failed to add event");
+      }
       setEvents([
         ...events,
         {
@@ -65,11 +96,21 @@ export default function CalendarApp() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (eventToDelete) {
-      setEvents(events.filter((event) => event.id !== eventToDelete.id));
-      setIsDeleteModalOpen(false);
-      setEventToDelete(null);
+      try {
+        const res = await fetch(`/api/events/${eventToDelete.id}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          throw new Error("Failed to delete event");
+        }
+        setEvents(events.filter((event) => event.id !== eventToDelete.id));
+        setIsDeleteModalOpen(false);
+        setEventToDelete(null);
+      } catch (error) {
+        console.error("Error deleting event:", error);
+      }
     }
   };
 
