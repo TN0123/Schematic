@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Switch from "react-switch";
@@ -46,7 +46,6 @@ const MenuButton = ({
   isToggled = false,
   onToggle,
 }: MenuButtonProps) => {
-  // Create a handler that matches react-switch's expected signature
   const handleChange = (
     checked: boolean,
     event: MouseEvent | React.SyntheticEvent<MouseEvent | KeyboardEvent, Event>,
@@ -90,13 +89,19 @@ const MenuButton = ({
 
 export default function SlidingMenu({
   onSelectContext,
+  setContinue,
 }: {
   onSelectContext: (context: string) => void;
+  setContinue: (enabled: boolean) => void;
 }) {
   const [history, setHistory] = useState<string[]>(["main"]);
   const [continueEnabled, setContinueEnabled] = useState(false);
   const currentMenu = history[history.length - 1];
   const [direction, setDirection] = useState(0);
+
+  useEffect(() => {
+    setContinue(continueEnabled);
+  }, [continueEnabled]);
 
   const handleNext = (
     submenu: string | null,
@@ -107,7 +112,6 @@ export default function SlidingMenu({
       setDirection(1);
       setHistory([...history, submenu]);
     } else if (!submenu && label) {
-      // If it's a final option, pass it to ChatWindow
       onSelectContext(label);
     }
   };

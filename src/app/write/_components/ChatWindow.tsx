@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ChatWindow({
   selectedContext,
+  continueEnabled,
 }: {
   selectedContext: string;
+  continueEnabled: boolean;
 }) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -24,6 +26,7 @@ export default function ChatWindow({
         body: JSON.stringify({
           text: `${inputText}`,
           context: selectedContext,
+          continueEnabled: continueEnabled,
         }),
       });
 
