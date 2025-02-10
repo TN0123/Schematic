@@ -5,9 +5,11 @@ import { useState, useEffect } from "react";
 export default function ChatWindow({
   selectedContext,
   continueEnabled,
+  setInput,
 }: {
   selectedContext: string;
   continueEnabled: boolean;
+  setInput: (input: string) => void;
 }) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -67,7 +69,10 @@ export default function ChatWindow({
           <textarea
             className="w-full overflow-hidden bg-gray-50 min-h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed resize-none border-0 outline-none focus:ring-0 focus:bg-white transition-all duration-300"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              setInput(e.target.value);
+            }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = "auto";

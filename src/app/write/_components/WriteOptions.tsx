@@ -56,33 +56,37 @@ const MenuButton = ({
 
   if (type === "toggle") {
     return (
-      <div className="w-full px-4 py-3 flex items-center justify-between text-gray-700">
+      <div className="w-full px-6 py-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors duration-200">
         <span className="font-medium">{children}</span>
         <Switch
           checked={isToggled}
           onChange={handleChange}
           onColor="#2563eb"
           offColor="#cbd5e1"
-          height={20}
-          width={40}
-          handleDiameter={16}
+          height={24}
+          width={48}
+          handleDiameter={20}
+          uncheckedIcon={false}
+          checkedIcon={false}
+          className="ml-4"
         />
       </div>
     );
   }
 
+  const buttonStyles =
+    type === "button"
+      ? "hover:bg-orange-600 hover:text-white"
+      : "hover:bg-blue-50 hover:text-blue-600";
+
   return (
     <button
       onClick={onClick}
-      className={`w-full px-4 py-3 flex items-center justify-between text-left transition-colors duration-200 text-gray-700 
-        ${
-          type === "button"
-            ? "hover:bg-blue-600 hover:text-white"
-            : "hover:bg-blue-50 hover:text-blue-600"
-        }`}
+      className={`w-full px-6 py-4 flex items-center justify-between text-left transition-all duration-200 text-gray-700 
+        ${buttonStyles} outline-none`}
     >
       <span className="font-medium">{children}</span>
-      {hasSubmenu && <ChevronRight className="w-4 h-4" />}
+      {hasSubmenu && <ChevronRight className="w-5 h-5" />}
     </button>
   );
 };
@@ -90,35 +94,45 @@ const MenuButton = ({
 export default function SlidingMenu({
   onSelectContext,
   setContinue,
+  input,
 }: {
   onSelectContext: (context: string) => void;
   setContinue: (enabled: boolean) => void;
+  input: string;
 }) {
   const [history, setHistory] = useState<string[]>(["main"]);
   const [continueEnabled, setContinueEnabled] = useState(false);
+  const [critiqueResult, setCritiqueResult] = useState<string | null>(null);
   const currentMenu = history[history.length - 1];
   const [direction, setDirection] = useState(0);
 
   useEffect(() => {
     setContinue(continueEnabled);
-  }, [continueEnabled]);
+  }, [continueEnabled, setContinue]);
 
-  const handleNext = (
+  const handleNext = async (
     submenu: string | null,
     type?: string,
     label?: string
   ) => {
-    if (submenu && type !== "toggle" && type !== "button") {
+    if (label === "Critique") {
+      const response = await fetch("/api/critique", {
+        method: "POST",
+        body: JSON.stringify({ text: input }),
+      });
+      const data = await response.json();
+      setCritiqueResult(data.result);
+    } else if (submenu && type !== "toggle" && type !== "button") {
       setDirection(1);
       setHistory([...history, submenu]);
-    } else if (!submenu && label) {
+    } else if (!submenu && label && label !== "Critique") {
       onSelectContext(label);
     }
   };
 
   return (
     <div className="w-3/4 mx-auto">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
         {history.length > 1 && (
           <div className="border-b border-gray-200">
             <button
@@ -126,9 +140,9 @@ export default function SlidingMenu({
                 setDirection(-1);
                 setHistory(history.slice(0, -1));
               }}
-              className="w-full px-4 py-3 flex items-center text-gray-600 hover:bg-gray-50 transition-colors duration-200"
+              className="w-full px-6 py-4 flex items-center text-gray-600 hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:bg-gray-100"
             >
-              <ChevronLeft className="w-4 h-4 mr-2" />
+              <ChevronLeft className="w-5 h-5 mr-3" />
               <span className="font-medium">Back</span>
             </button>
           </div>
@@ -159,7 +173,7 @@ export default function SlidingMenu({
               }}
               className="w-full"
             >
-              <div className="py-1">
+              <div className="divide-y divide-gray-100">
                 {menuItems[currentMenu].map((item, index) => (
                   <MenuButton
                     key={index}
@@ -187,6 +201,27 @@ export default function SlidingMenu({
           </AnimatePresence>
         </div>
       </div>
+
+      <AnimatePresence>
+        {critiqueResult && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{
+              duration: 0.5,
+              ease: [0.4, 0, 0.2, 1],
+              scale: { duration: 0.4 },
+            }}
+            className="mt-6 p-6 max-h-[300px] overflow-y-auto bg-white border border-gray-200 rounded-2xl shadow-lg"
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Critique Result
+            </h3>
+            <p className="text-gray-700 leading-relaxed">{critiqueResult}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
