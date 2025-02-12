@@ -10,8 +10,9 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   try {
+    const { id } = await params;
     const event = await prisma.event.delete({
-      where: { id: params.id, userId: session.user.id },
+      where: { id: id, userId: session.user.id },
     });
     return NextResponse.json(event, { status: 200 });
   } catch (error) {

@@ -20,6 +20,12 @@ export interface Event {
   end: Date;
 }
 
+interface GeneratedEvent {
+  title: string;
+  start: string;
+  end: string;
+}
+
 export default function CalendarApp() {
   const { data: session, status } = useSession({
     required: true,
@@ -58,7 +64,7 @@ export default function CalendarApp() {
       }
     };
     fetchEvents();
-  });
+  }, []);
 
   const handleAddEvent = async (): Promise<void> => {
     console.log("Adding event:", newEvent);
@@ -127,11 +133,30 @@ export default function CalendarApp() {
       });
       const data = await response.json();
       if (data.events) {
-        const formattedEvents = data.events.map((event: any) => ({
+        const formattedEvents = data.events.map((event: GeneratedEvent) => ({
           ...event,
           start: new Date(event.start),
           end: new Date(event.end),
         }));
+
+        await Promise.all(
+          formattedEvents.map(async (event: GeneratedEvent) => {
+            const res = await fetch("/api/events", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                title: event.title,
+                start: event.start,
+                end: event.end,
+              }),
+            });
+            if (!res.ok) {
+              console.error("Failed to save event to database");
+            }
+          })
+        );
 
         setEvents([...events, ...formattedEvents]);
       }
