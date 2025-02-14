@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BulletinItem from "./_components/BulletinItem";
-
+import { useSession } from "next-auth/react";
 interface BulletinItem {
   id: number;
   title: string;
@@ -11,30 +11,71 @@ interface BulletinItem {
 export default function Bulletin() {
   const [items, setItems] = useState<BulletinItem[]>([]);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const { data: session } = useSession();
 
-  const updateTitle = (id: number, newTitle: string) => {
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchBulletins();
+    }
+  }, [session]);
+
+  const fetchBulletins = async () => {
+    const response = await fetch("/api/bulletins");
+    const data = await response.json();
+    setItems(data);
+  };
+
+  const saveItem = async (
+    id: number,
+    updates: { title?: string; content?: string }
+  ) => {
+    const response = await fetch(`/api/bulletins/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    const updatedItem = await response.json();
     setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, title: newTitle } : item
-      )
+      items.map((item) => (item.id === id ? { ...item, ...updatedItem } : item))
     );
   };
 
-  const addItem = () => {
-    const newId = Date.now();
-    setItems([
-      ...items,
-      {
-        id: newId,
+  const addItem = async () => {
+    const response = await fetch("/api/bulletins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         title: "New Note",
         content: "",
-      },
-    ]);
-    setExpandedItemId(newId);
+      }),
+    });
+
+    const newBulletin = await response.json();
+    setItems([...items, newBulletin]);
+    setExpandedItemId(newBulletin.id);
   };
 
-  const deleteItem = (id: number) => {
+  const deleteItem = async (id: number) => {
+    await fetch(`/api/bulletins/${id}`, {
+      method: "DELETE",
+    });
+
     setItems(items.filter((item) => item.id !== id));
+  };
+
+  const saveContent = async (id: number, newContent: string) => {
+    await fetch(`/api/bulletins/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: newContent }),
+    });
+
+    setItems(
+      items.map((item) =>
+        item.id === id ? { ...item, content: newContent } : item
+      )
+    );
   };
 
   return (
@@ -106,20 +147,10 @@ export default function Bulletin() {
                     item.id === expandedItemId && (
                       <BulletinItem
                         key={item.id}
-                        title={item.title}
+                        id={item.id}
+                        initialTitle={item.title}
                         initialContent={item.content}
-                        onTitleChange={(newTitle) =>
-                          updateTitle(item.id, newTitle)
-                        }
-                        onContentChange={(newContent) => {
-                          setItems(
-                            items.map((i) =>
-                              i.id === item.id
-                                ? { ...i, content: newContent }
-                                : i
-                            )
-                          );
-                        }}
+                        onSave={saveItem}
                         onDelete={() => {
                           deleteItem(item.id);
                           setExpandedItemId(null);
@@ -143,16 +174,10 @@ export default function Bulletin() {
                 items.map((item) => (
                   <BulletinItem
                     key={item.id}
-                    title={item.title}
+                    id={item.id}
+                    initialTitle={item.title}
                     initialContent={item.content}
-                    onTitleChange={(newTitle) => updateTitle(item.id, newTitle)}
-                    onContentChange={(newContent) => {
-                      setItems(
-                        items.map((i) =>
-                          i.id === item.id ? { ...i, content: newContent } : i
-                        )
-                      );
-                    }}
+                    onSave={saveItem}
                     onDelete={() => deleteItem(item.id)}
                     isExpanded={false}
                     onExpand={() => setExpandedItemId(item.id)}

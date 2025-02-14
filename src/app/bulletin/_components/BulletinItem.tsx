@@ -9,6 +9,7 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Type,
+  Save,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -17,10 +18,13 @@ import TextStyle from "@tiptap/extension-text-style";
 import { FontSize } from "@tiptap/extension-font-size";
 
 interface BulletinItemProps {
-  title: string;
+  id: number;
+  initialTitle: string;
   initialContent?: string;
-  onContentChange?: (content: string) => void;
-  onTitleChange?: (title: string) => void;
+  onSave: (
+    id: number,
+    updates: { title?: string; content?: string }
+  ) => Promise<void>;
   onDelete?: () => void;
   isExpanded: boolean;
   onExpand?: () => void;
@@ -28,15 +32,20 @@ interface BulletinItemProps {
 }
 
 export default function BulletinItem({
-  title,
+  id,
+  initialTitle,
   initialContent = "",
-  onContentChange,
-  onTitleChange,
+  onSave,
   onDelete,
   isExpanded,
   onExpand,
   onCollapse,
 }: BulletinItemProps) {
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -49,7 +58,8 @@ export default function BulletinItem({
     content: initialContent,
     onUpdate: ({ editor }) => {
       const cleanContent = editor.getHTML().replace(/<[^>]*>/g, "");
-      onContentChange?.(cleanContent);
+      setContent(cleanContent);
+      setHasUnsavedChanges(true);
     },
     editable: true,
     editorProps: {
@@ -67,7 +77,8 @@ export default function BulletinItem({
   }, [isExpanded, editor]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onTitleChange?.(e.target.value);
+    setTitle(e.target.value);
+    setHasUnsavedChanges(true);
   };
 
   const MenuBar = () => {
@@ -135,6 +146,20 @@ export default function BulletinItem({
     );
   };
 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updates: { title?: string; content?: string } = {};
+      if (title !== initialTitle) updates.title = title;
+      if (content !== initialContent) updates.content = content;
+
+      await onSave(id, updates);
+      setHasUnsavedChanges(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div
       className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 ${
@@ -152,6 +177,18 @@ export default function BulletinItem({
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
+            {isExpanded && hasUnsavedChanges && (
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`p-2 text-gray-500 rounded-lg transition-colors
+                  hover:text-blue-500 hover:bg-blue-50
+                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                aria-label="Save changes"
+              >
+                <Save className="h-5 w-5" />
+              </button>
+            )}
             <button
               onClick={isExpanded ? onCollapse : onExpand}
               className={`p-2 text-gray-500 rounded-lg transition-colors ${
