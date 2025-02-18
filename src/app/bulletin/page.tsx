@@ -1,16 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import BulletinItem from "./_components/BulletinItem";
 import { useSession } from "next-auth/react";
 interface BulletinItem {
-  id: number;
+  id: string;
   title: string;
   content: string;
 }
 
 export default function Bulletin() {
   const [items, setItems] = useState<BulletinItem[]>([]);
-  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -26,19 +26,29 @@ export default function Bulletin() {
   };
 
   const saveItem = async (
-    id: number,
+    id: string,
     updates: { title?: string; content?: string }
   ) => {
-    const response = await fetch(`/api/bulletins/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    try {
+      const response = await fetch(`/api/bulletins/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
 
-    const updatedItem = await response.json();
-    setItems(
-      items.map((item) => (item.id === id ? { ...item, ...updatedItem } : item))
-    );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const updatedItem = await response.json();
+      setItems(
+        items.map((item) =>
+          item.id === id ? { ...item, ...updatedItem } : item
+        )
+      );
+    } catch (error) {
+      console.error("Failed to save item:", error);
+    }
   };
 
   const addItem = async () => {
@@ -56,7 +66,7 @@ export default function Bulletin() {
     setExpandedItemId(newBulletin.id);
   };
 
-  const deleteItem = async (id: number) => {
+  const deleteItem = async (id: string) => {
     await fetch(`/api/bulletins/${id}`, {
       method: "DELETE",
     });
@@ -64,18 +74,8 @@ export default function Bulletin() {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  const saveContent = async (id: number, newContent: string) => {
-    await fetch(`/api/bulletins/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newContent }),
-    });
-
-    setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, content: newContent } : item
-      )
-    );
+  const stripHtml = (html: string) => {
+    return html.replace(/<[^>]+>/g, " ");
   };
 
   return (
@@ -135,7 +135,7 @@ export default function Bulletin() {
                         {item.title || "Untitled"}
                       </h3>
                       <p className="text-sm text-gray-500 truncate mt-1">
-                        {item.content || "No content"}
+                        {stripHtml(item.content) || "No content"}
                       </p>
                     </div>
                   ))}

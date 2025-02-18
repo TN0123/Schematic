@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Trash2,
   Minimize2,
@@ -18,11 +18,11 @@ import TextStyle from "@tiptap/extension-text-style";
 import { FontSize } from "@tiptap/extension-font-size";
 
 interface BulletinItemProps {
-  id: number;
+  id: string;
   initialTitle: string;
   initialContent?: string;
   onSave: (
-    id: number,
+    id: string,
     updates: { title?: string; content?: string }
   ) => Promise<void>;
   onDelete?: () => void;
@@ -45,10 +45,17 @@ export default function BulletinItem({
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const lastSavedState = useRef({
+    title: initialTitle,
+    content: initialContent,
+  });
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: false,
+        orderedList: false,
+      }),
       Underline,
       TextStyle,
       FontSize.configure({
@@ -57,9 +64,12 @@ export default function BulletinItem({
     ],
     content: initialContent,
     onUpdate: ({ editor }) => {
-      const cleanContent = editor.getHTML().replace(/<[^>]*>/g, "");
-      setContent(cleanContent);
-      setHasUnsavedChanges(true);
+      const htmlContent = editor.getHTML();
+      setContent(htmlContent);
+      const hasChanges =
+        title != lastSavedState.current.title ||
+        htmlContent != lastSavedState.current.content;
+      setHasUnsavedChanges(hasChanges);
     },
     editable: true,
     editorProps: {
@@ -67,7 +77,17 @@ export default function BulletinItem({
         class: "h-full min-h-[100px] w-full outline-none",
       },
     },
+    immediatelyRender: false,
   });
+
+  useEffect(() => {
+    if (
+      lastSavedState.current.title !== title &&
+      lastSavedState.current.content !== content
+    ) {
+      setHasUnsavedChanges(true);
+    }
+  }, [isExpanded]);
 
   useEffect(() => {
     if (editor) {
@@ -146,19 +166,47 @@ export default function BulletinItem({
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const updates: { title?: string; content?: string } = {};
-      if (title !== initialTitle) updates.title = title;
-      if (content !== initialContent) updates.content = content;
+      if (title !== lastSavedState.current.title) updates.title = title;
+      if (content !== lastSavedState.current.content) updates.content = content;
 
-      await onSave(id, updates);
-      setHasUnsavedChanges(false);
+      if (Object.keys(updates).length > 0) {
+        await onSave(id, updates);
+
+        lastSavedState.current = {
+          title,
+          content,
+        };
+
+        setHasUnsavedChanges(false);
+      }
+    } catch (error) {
+      console.error("Failed to save:", error);
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [content, id, onSave, title]);
+
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === "s" && isExpanded) {
+        event.preventDefault();
+        handleSave();
+        console.log("item saved");
+      }
+    },
+    [handleSave, isExpanded]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyPress);
+    return () => {
+      document.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleKeyPress]);
 
   return (
     <div
