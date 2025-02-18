@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import {
   Trash2,
-  Pencil,
   Minimize2,
   Bold,
   Italic,
   Underline as UnderlineIcon,
   Type,
   Save,
+  Maximize2,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -201,7 +201,7 @@ export default function BulletinItem({
               {isExpanded ? (
                 <Minimize2 className="h-5 w-5" />
               ) : (
-                <Pencil className="h-5 w-5" />
+                <Maximize2 className="h-5 w-5" />
               )}
             </button>
             <button

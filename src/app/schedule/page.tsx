@@ -12,6 +12,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
+import { Sparkle } from "lucide-react";
 
 export interface Event {
   id: string;
@@ -248,10 +249,13 @@ export default function CalendarApp() {
                 })}
               </div>
             </div>
-            <div className="border-t pt-6">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Coming Soon
-              </h2>
+            <div className="border-t pt-6 flex flex-col items-center justify-center">
+              <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-full transition-colors duration-200 shadow-sm">
+                <div className="flex items-center justify-center gap-2">
+                  <Sparkle />
+                  <span>Suggest</span>
+                </div>
+              </button>
             </div>
           </div>
         </div>
