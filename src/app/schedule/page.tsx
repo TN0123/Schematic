@@ -34,6 +34,7 @@ export default function CalendarApp() {
       redirect("/auth/login");
     },
   });
+  const userId = session?.user?.id;
 
   const [events, setEvents] = useState<Event[]>([
     { id: "1", title: "Sample Event", start: new Date(), end: new Date() },
@@ -180,6 +181,33 @@ export default function CalendarApp() {
     return () => clearInterval(timer);
   }, []);
 
+  const handleSuggestClick = async () => {
+    if (!userId) {
+      console.error("unable to get userId");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/generate-events/suggest`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ existingEvents: events, userId: userId }),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch suggestions");
+
+      const data = await response.json();
+      console.log("Suggested Events:", data.events);
+    } catch (error) {
+      console.error("Error suggesting events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto bg-gray-200">
       <div className="flex gap-6">
@@ -250,7 +278,11 @@ export default function CalendarApp() {
               </div>
             </div>
             <div className="border-t pt-6 flex flex-col items-center justify-center">
-              <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-full transition-colors duration-200 shadow-sm">
+              <button
+                className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-full transition-colors duration-200 shadow-sm"
+                onClick={handleSuggestClick}
+                disabled={loading}
+              >
                 <div className="flex items-center justify-center gap-2">
                   <Sparkle />
                   <span>Suggest</span>
