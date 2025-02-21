@@ -10,7 +10,7 @@ export default function Writer() {
   const [input, setInput] = useState<string>("");
 
   return (
-    <div className="flex w-full min-h-screen h-auto h-full p-2 bg-gray-200">
+    <div className="flex w-full min-h-[125vh] h-auto h-full p-2 bg-gray-200">
       <div className="w-1/5">
         <h1></h1>
       </div>

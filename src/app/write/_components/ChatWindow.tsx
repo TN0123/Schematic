@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function ChatWindow({
   selectedContext,
@@ -14,6 +14,24 @@ export default function ChatWindow({
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const updateTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
+  useEffect(() => {
+    updateTextareaHeight();
+  }, [inputText, result]);
 
   const handleSubmit = async () => {
     try {
@@ -43,6 +61,8 @@ export default function ChatWindow({
     }
   };
 
+  const combinedText = inputText + (result ? result : "");
+
   return (
     <div className="w-3/5 min-h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
       <div className="flex justify-between items-center mb-8">
@@ -64,44 +84,41 @@ export default function ChatWindow({
         </button>
       </div>
 
-      <div className="w-full flex flex-col gap-6">
+      <div className="w-full flex flex-col gap-6 px-2">
         <div className="relative">
-          <textarea
-            className="w-full overflow-hidden bg-gray-50 min-h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed resize-none border-0 outline-none focus:ring-0 focus:bg-white transition-all duration-300"
-            value={inputText}
-            onChange={(e) => {
-              setInputText(e.target.value);
-              setInput(e.target.value);
-            }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = "auto";
-              target.style.height = `${target.scrollHeight}px`;
-            }}
-            placeholder="Start typing here..."
-          ></textarea>
-          <div className="absolute bottom-4 right-4 text-xs text-gray-400">
-            {inputText.length} characters
+          <div className="w-full overflow-hidden min-h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed">
+            <div className="whitespace-pre-wrap text-white">
+              {inputText}
+              {result && (
+                <span className="bg-green-100 text-gray-800">{result}</span>
+              )}
+            </div>
+            <textarea
+              ref={textareaRef}
+              className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
+              value={combinedText}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                if (newValue.length < inputText.length) {
+                  setInputText(newValue);
+                  setResult("");
+                } else if (newValue.length < combinedText.length) {
+                  setResult(newValue.slice(inputText.length));
+                } else {
+                  setInputText(newValue);
+                  setResult("");
+                }
+                setInput(newValue);
+                updateTextareaHeight();
+              }}
+              onInput={updateTextareaHeight}
+              placeholder="Start typing here..."
+            />
           </div>
         </div>
         {selectedContext && (
           <p className="text-gray-500 text-sm">Context: {selectedContext}</p>
         )}
-        <div
-          className={`w-full min-h-[160px] rounded-xl p-6 ${
-            error ? "bg-red-50" : result ? "bg-blue-50" : "bg-gray-50"
-          } transition-colors duration-200`}
-        >
-          <div className="h-full flex items-center justify-center">
-            {error ? (
-              <span className="text-red-500 font-medium">{error}</span>
-            ) : (
-              <span className="text-gray-700 leading-relaxed">
-                {result || "Your generated content will appear here..."}
-              </span>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
