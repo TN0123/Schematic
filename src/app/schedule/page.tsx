@@ -209,7 +209,7 @@ export default function CalendarApp() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto bg-gray-200">
+    <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
       <div className="flex gap-6">
         <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 flex flex-col gap-4 h-[calc(100vh-7rem)]">
           <h2 className="text-xl font-semibold text-gray-800 text-center">
@@ -306,7 +306,7 @@ export default function CalendarApp() {
       </div>
 
       <button
-        className="fixed bottom-8 right-8 w-14 h-14 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg text-2xl transition-colors duration-200 flex items-center justify-center"
+        className="fixed bottom-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg text-2xl transition-colors duration-200 flex items-center justify-center"
         onClick={() => setShowModal(true)}
       >
         +
