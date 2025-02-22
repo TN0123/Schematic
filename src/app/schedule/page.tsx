@@ -13,6 +13,7 @@ import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { Sparkle } from "lucide-react";
+import EventSuggestion from "./_components/EventSuggestion";
 
 export interface Event {
   id: string;
@@ -36,9 +37,8 @@ export default function CalendarApp() {
   });
   const userId = session?.user?.id;
 
-  const [events, setEvents] = useState<Event[]>([
-    { id: "1", title: "Sample Event", start: new Date(), end: new Date() },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
   const [showModal, setShowModal] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({
     id: "",
@@ -200,7 +200,7 @@ export default function CalendarApp() {
       if (!response.ok) throw new Error("Failed to fetch suggestions");
 
       const data = await response.json();
-      console.log("Suggested Events:", data.events);
+      setSuggestedEvents(data.events);
     } catch (error) {
       console.error("Error suggesting events:", error);
     } finally {
@@ -263,8 +263,8 @@ export default function CalendarApp() {
           />
         </div>
 
-        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 h-[calc(100vh-7rem)]">
-          <div className="space-y-6">
+        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
+          <div className="flex flex-col h-full justify-between space-y-6">
             <div className="text-center">
               <div className="text-4xl font-mono text-gray-700 mb-2">
                 {time.toLocaleTimeString()}
@@ -277,9 +277,21 @@ export default function CalendarApp() {
                 })}
               </div>
             </div>
-            <div className="border-t pt-6 flex flex-col items-center justify-center">
+            <div>
+              {suggestedEvents.length > 0 && (
+                <div>
+                  {suggestedEvents.map((suggestedEvent) => (
+                    <EventSuggestion
+                      suggestedEvent={suggestedEvent}
+                      key={suggestedEvent.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="pt-6 flex flex-col items-center justify-center">
               <button
-                className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-full transition-colors duration-200 shadow-sm"
+                className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 shadow-sm"
                 onClick={handleSuggestClick}
                 disabled={loading}
               >
