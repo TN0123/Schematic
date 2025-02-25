@@ -208,6 +208,38 @@ export default function CalendarApp() {
     }
   };
 
+  const handleAcceptSuggestion = async (event: Event) => {
+    try {
+      const res = await fetch("api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: event.title,
+          start: event.start,
+          end: event.end,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to add suggested event");
+      }
+
+      // Add to local events
+      setEvents([...events, event]);
+
+      // Remove from suggestions
+      setSuggestedEvents(suggestedEvents.filter((e) => e.id !== event.id));
+    } catch (error) {
+      console.error("Error accepting suggestion:", error);
+    }
+  };
+
+  const handleRejectSuggestion = (eventId: string) => {
+    setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
+  };
+
   return (
     <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
       <div className="flex gap-6">
@@ -264,7 +296,7 @@ export default function CalendarApp() {
         </div>
 
         <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
-          <div className="flex flex-col h-full justify-between space-y-6">
+          <div className="flex flex-col h-full justify-between">
             <div className="text-center">
               <div className="text-4xl font-mono text-gray-700 mb-2">
                 {time.toLocaleTimeString()}
@@ -284,12 +316,14 @@ export default function CalendarApp() {
                     <EventSuggestion
                       suggestedEvent={suggestedEvent}
                       key={suggestedEvent.id}
+                      onAccept={handleAcceptSuggestion}
+                      onReject={handleRejectSuggestion}
                     />
                   ))}
                 </div>
               )}
             </div>
-            <div className="pt-6 flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center">
               <button
                 className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 shadow-sm"
                 onClick={handleSuggestClick}
