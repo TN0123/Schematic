@@ -12,7 +12,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Sparkle } from "lucide-react";
+import { Sparkle, Type, FileUp, Plus } from "lucide-react";
 import EventSuggestion from "./_components/EventSuggestion";
 
 export interface Event {
@@ -50,7 +50,6 @@ export default function CalendarApp() {
   const [loading, setLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
-  const [time, setTime] = useState(new Date());
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -173,14 +172,6 @@ export default function CalendarApp() {
     console.log("Updated events:", events);
   }, [events]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
   const handleSuggestClick = async () => {
     if (!userId) {
       console.error("unable to get userId");
@@ -243,26 +234,7 @@ export default function CalendarApp() {
   return (
     <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
       <div className="flex gap-6">
-        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl p-6 flex flex-col gap-4 h-[calc(100vh-7rem)]">
-          <h2 className="text-xl font-semibold text-gray-800 text-center">
-            Type your schedule below
-          </h2>
-
-          <textarea
-            className="flex-1 border border-gray-200 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Enter your schedule here..."
-          />
-          <button
-            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            disabled={loading}
-            onClick={handleSubmit}
-          >
-            {loading ? "Generating..." : "Generate"}
-          </button>
-        </div>
-        <div className="flex-1 bg-white border border-gray-200 shadow-lg rounded-2xl p-6">
+        <div className="flex-1 bg-white shadow-lg rounded-2xl p-6">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
@@ -295,23 +267,38 @@ export default function CalendarApp() {
           />
         </div>
 
-        <div className="w-1/5 bg-white border border-gray-200 shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
-          <div className="flex flex-col h-full justify-between">
-            <div className="text-center">
-              <div className="text-4xl font-mono text-gray-700 mb-2">
-                {time.toLocaleTimeString()}
+        <div className="w-1/3 bg-white border border-gray shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
+          <div className="flex flex-col h-full justify-between items-center">
+            <div className="flex flex-col w-full">
+              <div className="border">
+                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                  <Plus size={20} />
+                </button>
+                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                  <Type size={20} />
+                </button>
+                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                  <FileUp size={20} />
+                </button>
               </div>
-              <div className="text-sm text-gray-500">
-                {time.toLocaleDateString(undefined, {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
+              <textarea
+                className="flex p-4 resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Enter your schedule here..."
+              />
+              <button
+                className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                disabled={loading}
+                onClick={handleSubmit}
+              >
+                {loading ? "Generating..." : "Generate"}
+              </button>
             </div>
-            <div>
+            <div className="w-full">
               {suggestedEvents.length > 0 && (
-                <div>
+                <div className="w-full flex flex-col justify-center items-center">
+                  <h1 className="text-2xl pb-2">Suggested Tasks</h1>
                   {suggestedEvents.map((suggestedEvent) => (
                     <EventSuggestion
                       suggestedEvent={suggestedEvent}
@@ -323,7 +310,7 @@ export default function CalendarApp() {
                 </div>
               )}
             </div>
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center w-full">
               <button
                 className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 shadow-sm"
                 onClick={handleSuggestClick}
