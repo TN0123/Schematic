@@ -23,6 +23,7 @@ export default function Bulletin() {
     const response = await fetch("/api/bulletins");
     const data = await response.json();
     setItems(data);
+    setExpandedItemId(data.length > 0 ? data[0].id : null);
   };
 
   const saveItem = async (

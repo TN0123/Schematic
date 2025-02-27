@@ -271,7 +271,10 @@ export default function CalendarApp() {
           <div className="flex flex-col h-full justify-between items-center">
             <div className="flex flex-col w-full">
               <div className="border">
-                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                <button
+                  className="hover:bg-gray-100 transition-colors duration-200 p-2"
+                  onClick={() => setShowModal(true)}
+                >
                   <Plus size={20} />
                 </button>
                 <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
@@ -325,13 +328,6 @@ export default function CalendarApp() {
           </div>
         </div>
       </div>
-
-      <button
-        className="fixed bottom-2 right-2 w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg text-2xl transition-colors duration-200 flex items-center justify-center"
-        onClick={() => setShowModal(true)}
-      >
-        +
-      </button>
 
       {showModal && (
         <EventCreationModal
