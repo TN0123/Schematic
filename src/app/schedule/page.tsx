@@ -12,7 +12,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Sparkle, Type, FileUp, Plus } from "lucide-react";
+import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
 import EventSuggestion from "./_components/EventSuggestion";
 
 export interface Event {
@@ -50,6 +50,8 @@ export default function CalendarApp() {
   const [loading, setLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
+  const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
+    useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -172,13 +174,19 @@ export default function CalendarApp() {
     console.log("Updated events:", events);
   }, [events]);
 
-  const handleSuggestClick = async () => {
+  useEffect(() => {
+    if (!hasFetchedInitialSuggestions && userId) {
+      fetchSuggestions();
+      setHasFetchedInitialSuggestions(true);
+    }
+  }, [hasFetchedInitialSuggestions, userId]);
+
+  const fetchSuggestions = async () => {
     if (!userId) {
       console.error("unable to get userId");
       return;
     }
 
-    setLoading(true);
     try {
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
@@ -194,8 +202,6 @@ export default function CalendarApp() {
       setSuggestedEvents(data.events);
     } catch (error) {
       console.error("Error suggesting events:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -298,10 +304,20 @@ export default function CalendarApp() {
                 {loading ? "Generating..." : "Generate"}
               </button>
             </div>
-            <div className="w-full">
+            <div className="w-full border-t">
               {suggestedEvents.length > 0 && (
                 <div className="w-full flex flex-col justify-center items-center">
-                  <h1 className="text-2xl pb-2">Suggested Tasks</h1>
+                  <div className="flex items-center justify-between px-2 w-full">
+                    <h1 className="text-md py-2">Suggested</h1>
+                    <button className="px-2" onClick={fetchSuggestions}>
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCcw
+                          className="hover:text-blue-500 transition-all duration-200"
+                          size={16}
+                        />
+                      </div>
+                    </button>
+                  </div>
                   {suggestedEvents.map((suggestedEvent) => (
                     <EventSuggestion
                       suggestedEvent={suggestedEvent}
@@ -312,18 +328,6 @@ export default function CalendarApp() {
                   ))}
                 </div>
               )}
-            </div>
-            <div className="flex flex-col items-center justify-center w-full">
-              <button
-                className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors duration-200 shadow-sm"
-                onClick={handleSuggestClick}
-                disabled={loading}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Sparkle />
-                  <span>Suggest</span>
-                </div>
-              </button>
             </div>
           </div>
         </div>
