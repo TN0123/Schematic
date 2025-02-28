@@ -247,7 +247,7 @@ export default function BulletinItem({
           <EditorContent
             editor={editor}
             className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto ${
-              isExpanded ? "" : "max-h-[150px]"
+              isExpanded ? "max-h-[230px]" : "max-h-[150px]"
             }`}
           />
         </div>
