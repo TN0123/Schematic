@@ -10,7 +10,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import "tailwindcss/tailwind.css";
 import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
-import { useSession } from "next-auth/react";
+import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
 import EventSuggestion from "./_components/EventSuggestion";
@@ -238,115 +238,117 @@ export default function CalendarApp() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
-      <div className="flex gap-6">
-        <div className="flex-1 bg-white shadow-lg rounded-2xl p-6">
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            events={events}
-            eventClick={handleEventClick}
-            height="calc(100vh - 10rem)"
-            headerToolbar={{
-              start: "prev,next today",
-              center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
-            }}
-            buttonText={{
-              today: "Today",
-              month: "Month",
-              week: "Week",
-              day: "Day",
-            }}
-            dayMaxEventRows={3}
-            views={{
-              dayGridMonth: {
-                titleFormat: { year: "numeric", month: "long" },
-                dayHeaderFormat: { weekday: "short" },
-              },
-            }}
-            themeSystem="standard"
-            eventColor="#3b82f6"
-            eventClassNames="rounded-md shadow-sm"
-            dayCellClassNames="hover:bg-gray-50 transition-colors"
-            dayHeaderClassNames="text-gray-700 font-medium py-3"
-          />
-        </div>
+    <SessionProvider>
+      <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
+        <div className="flex gap-6">
+          <div className="flex-1 bg-white shadow-lg rounded-2xl p-6">
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              events={events}
+              eventClick={handleEventClick}
+              height="calc(100vh - 10rem)"
+              headerToolbar={{
+                start: "prev,next today",
+                center: "title",
+                right: "dayGridMonth,timeGridWeek,timeGridDay",
+              }}
+              buttonText={{
+                today: "Today",
+                month: "Month",
+                week: "Week",
+                day: "Day",
+              }}
+              dayMaxEventRows={3}
+              views={{
+                dayGridMonth: {
+                  titleFormat: { year: "numeric", month: "long" },
+                  dayHeaderFormat: { weekday: "short" },
+                },
+              }}
+              themeSystem="standard"
+              eventColor="#3b82f6"
+              eventClassNames="rounded-md shadow-sm"
+              dayCellClassNames="hover:bg-gray-50 transition-colors"
+              dayHeaderClassNames="text-gray-700 font-medium py-3"
+            />
+          </div>
 
-        <div className="w-1/3 bg-white border border-gray shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
-          <div className="flex flex-col h-full justify-between items-center">
-            <div className="flex flex-col w-full">
-              <div className="border">
+          <div className="w-1/3 bg-white border border-gray shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
+            <div className="flex flex-col h-full justify-between items-center">
+              <div className="flex flex-col w-full">
+                <div className="border">
+                  <button
+                    className="hover:bg-gray-100 transition-colors duration-200 p-2"
+                    onClick={() => setShowModal(true)}
+                  >
+                    <Plus size={20} />
+                  </button>
+                  <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                    <Type size={20} />
+                  </button>
+                  <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                    <FileUp size={20} />
+                  </button>
+                </div>
+                <textarea
+                  className="flex p-4 resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Enter your schedule here..."
+                />
                 <button
-                  className="hover:bg-gray-100 transition-colors duration-200 p-2"
-                  onClick={() => setShowModal(true)}
+                  className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  disabled={loading}
+                  onClick={handleSubmit}
                 >
-                  <Plus size={20} />
-                </button>
-                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                  <Type size={20} />
-                </button>
-                <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                  <FileUp size={20} />
+                  {loading ? "Generating..." : "Generate"}
                 </button>
               </div>
-              <textarea
-                className="flex p-4 resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Enter your schedule here..."
-              />
-              <button
-                className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                disabled={loading}
-                onClick={handleSubmit}
-              >
-                {loading ? "Generating..." : "Generate"}
-              </button>
-            </div>
-            <div className="w-full border-t">
-              {suggestedEvents.length > 0 && (
-                <div className="w-full flex flex-col justify-center items-center">
-                  <div className="flex items-center justify-between px-2 w-full">
-                    <h1 className="text-md py-2">Suggested</h1>
-                    <button className="px-2" onClick={fetchSuggestions}>
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCcw
-                          className="hover:text-blue-500 transition-all duration-200"
-                          size={16}
-                        />
-                      </div>
-                    </button>
+              <div className="w-full border-t">
+                {suggestedEvents.length > 0 && (
+                  <div className="w-full flex flex-col justify-center items-center">
+                    <div className="flex items-center justify-between px-2 w-full">
+                      <h1 className="text-md py-2">Suggested</h1>
+                      <button className="px-2" onClick={fetchSuggestions}>
+                        <div className="flex items-center justify-center gap-2">
+                          <RefreshCcw
+                            className="hover:text-blue-500 transition-all duration-200"
+                            size={16}
+                          />
+                        </div>
+                      </button>
+                    </div>
+                    {suggestedEvents.map((suggestedEvent) => (
+                      <EventSuggestion
+                        suggestedEvent={suggestedEvent}
+                        key={suggestedEvent.id}
+                        onAccept={handleAcceptSuggestion}
+                        onReject={handleRejectSuggestion}
+                      />
+                    ))}
                   </div>
-                  {suggestedEvents.map((suggestedEvent) => (
-                    <EventSuggestion
-                      suggestedEvent={suggestedEvent}
-                      key={suggestedEvent.id}
-                      onAccept={handleAcceptSuggestion}
-                      onReject={handleRejectSuggestion}
-                    />
-                  ))}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {showModal && (
-        <EventCreationModal
-          newEvent={newEvent}
-          setNewEvent={setNewEvent}
-          setShowModal={setShowModal}
-          handleAddEvent={handleAddEvent}
+        {showModal && (
+          <EventCreationModal
+            newEvent={newEvent}
+            setNewEvent={setNewEvent}
+            setShowModal={setShowModal}
+            handleAddEvent={handleAddEvent}
+          />
+        )}
+        <DeleteEventModal
+          isOpen={isDeleteModalOpen}
+          event={eventToDelete}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDeleteConfirm}
         />
-      )}
-      <DeleteEventModal
-        isOpen={isDeleteModalOpen}
-        event={eventToDelete}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-      />
-    </div>
+      </div>
+    </SessionProvider>
   );
 }

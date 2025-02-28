@@ -10,7 +10,7 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/" });
+      await signIn("google", { callbackUrl: "/bulletin" });
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {

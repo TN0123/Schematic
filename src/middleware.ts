@@ -15,27 +15,15 @@ export default withAuth(
       signIn: "/auth/login",
     },
     callbacks: {
-      authorized: ({ token, req }) => {
-        // Allow access to homepage without auth
-        if (req.nextUrl.pathname === "/") {
-          return true
-        }
-        // Require auth for all other routes
+      authorized: ({ token }) => {
         return !!token
-      }
+      }      
     }
   }
 )
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (auth endpoints)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|auth/login).*)",
   ],
-}
+};
