@@ -15,7 +15,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
-import { FontSize } from "@tiptap/extension-font-size";
+//import { FontSize } from "@tiptap/extension-font-size";
 
 interface BulletinItemProps {
   id: string;
@@ -58,9 +58,6 @@ export default function BulletinItem({
       }),
       Underline,
       TextStyle,
-      FontSize.configure({
-        types: ["textStyle"],
-      }),
     ],
     content: initialContent,
     onUpdate: ({ editor }) => {
@@ -146,22 +143,6 @@ export default function BulletinItem({
         >
           <UnderlineIcon className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-1 ml-2">
-          <Type className="h-4 w-4 text-gray-500" />
-          <select
-            onChange={(e) =>
-              editor.chain().focus().setFontSize(e.target.value).run()
-            }
-            className="border rounded p-1 text-sm"
-            value={editor.getAttributes("textStyle").fontSize || "16px"}
-          >
-            {fontSizes.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
     );
   };
