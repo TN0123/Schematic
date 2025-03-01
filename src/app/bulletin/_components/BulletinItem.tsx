@@ -196,7 +196,7 @@ export default function BulletinItem({
       }`}
     >
       <div className="p-4 h-full flex flex-col">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center">
           <input
             type="text"
             value={title}

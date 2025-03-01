@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import BulletinItem from "./_components/BulletinItem";
 import { useSession } from "next-auth/react";
+import { Plus } from "lucide-react";
 interface BulletinItem {
   id: string;
   title: string;
@@ -80,47 +81,23 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-[92.3vh] bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto h-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 min-h-[90vh]">
-          <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center">
-            Bulletin
-          </h1>
-
-          <div className="mb-8 flex justify-between items-center">
-            <button
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105"
-              onClick={addItem}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-            </button>
-
-            {items.length > 0 && (
-              <p className="text-gray-500">
-                {items.length} note{items.length !== 1 ? "s" : ""}
-              </p>
-            )}
-          </div>
-
+        <div className="bg-white rounded-2xl shadow-xl p-8 h-full">
           {expandedItemId ? (
-            <div className="flex gap-6 h-[calc(100vh-300px)]">
+            <div className="flex gap-6 h-full">
               <div className="w-1/4 bg-gray-50 rounded-xl p-4 overflow-y-auto">
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                  All Notes
-                </h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold text-gray-700">
+                    All Notes
+                  </h2>
+                  <button
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105"
+                    onClick={addItem}
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
                 <div className="space-y-3">
                   {items.map((item) => (
                     <div
@@ -142,7 +119,7 @@ export default function Bulletin() {
                   ))}
                 </div>
               </div>
-              <div className="w-3/4 bg-white rounded-xl">
+              <div className="w-3/4 rounded-xl">
                 {items.map(
                   (item) =>
                     item.id === expandedItemId && (
@@ -164,27 +141,37 @@ export default function Bulletin() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-6">
-              {items.length === 0 ? (
-                <div className="col-span-3 text-center py-16">
-                  <p className="text-gray-500 text-lg">
-                    No notes yet. Click "Add New Note" to get started!
-                  </p>
-                </div>
-              ) : (
-                items.map((item) => (
-                  <BulletinItem
-                    key={item.id}
-                    id={item.id}
-                    initialTitle={item.title}
-                    initialContent={item.content}
-                    onSave={saveItem}
-                    onDelete={() => deleteItem(item.id)}
-                    isExpanded={false}
-                    onExpand={() => setExpandedItemId(item.id)}
-                  />
-                ))
-              )}
+            <div>
+              <div className="mb-4 flex justify-between items-center">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105"
+                  onClick={addItem}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-6">
+                {items.length === 0 ? (
+                  <div className="col-span-3 text-center py-16">
+                    <p className="text-gray-500 text-lg">
+                      No notes yet. Click "Add New Note" to get started!
+                    </p>
+                  </div>
+                ) : (
+                  items.map((item) => (
+                    <BulletinItem
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialContent={item.content}
+                      onSave={saveItem}
+                      onDelete={() => deleteItem(item.id)}
+                      isExpanded={false}
+                      onExpand={() => setExpandedItemId(item.id)}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>
