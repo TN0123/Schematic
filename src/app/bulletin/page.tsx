@@ -82,11 +82,15 @@ export default function Bulletin() {
 
   return (
     <div className="min-h-[92.3vh] bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto h-full">
-        <div className="bg-white rounded-2xl shadow-xl p-8 h-full">
+      <div className="max-w-7xl mx-auto h-[80vh]">
+        <div
+          className={`bg-white rounded-2xl shadow-xl p-8 h-full ${
+            expandedItemId ? "" : "overflow-y-scroll"
+          }`}
+        >
           {expandedItemId ? (
             <div className="flex gap-6 h-full">
-              <div className="w-1/4 bg-gray-50 rounded-xl p-4 overflow-y-auto">
+              <div className="w-1/4 bg-gray-50 overflow-y-scroll rounded-xl p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold text-gray-700">
                     All Notes

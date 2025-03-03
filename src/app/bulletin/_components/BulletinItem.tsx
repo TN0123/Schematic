@@ -202,7 +202,7 @@ export default function BulletinItem({
             value={title}
             onChange={handleTitleChange}
             disabled={!isExpanded}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 text-center"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 mb-2 text-center"
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
@@ -247,7 +247,7 @@ export default function BulletinItem({
           <EditorContent
             editor={editor}
             className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto ${
-              isExpanded ? "max-h-[230px]" : "max-h-[150px]"
+              isExpanded ? "max-h-[340px]" : "max-h-[150px]"
             }`}
           />
         </div>
