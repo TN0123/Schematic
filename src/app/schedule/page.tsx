@@ -237,6 +237,17 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
+  useEffect(() => {
+    setTimeout(() => {
+      const timeGridScroller = document.querySelector(".fc-timegrid-body");
+
+      if (timeGridScroller && timeGridScroller.parentElement) {
+        timeGridScroller.parentElement.style.scrollBehavior = "smooth";
+        timeGridScroller.parentElement.scrollTop = 400;
+      }
+    }, 50);
+  }, []);
+
   return (
     <SessionProvider>
       <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
@@ -244,7 +255,7 @@ export default function CalendarApp() {
           <div className="flex-1 bg-white shadow-lg rounded-2xl p-6">
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
+              initialView="timeGridWeek"
               events={events}
               eventClick={handleEventClick}
               height="calc(100vh - 10rem)"
