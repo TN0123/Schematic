@@ -292,9 +292,17 @@ export default function CalendarApp() {
                   </button>
                 </div>
                 <textarea
-                  className="flex p-4 resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+                  className="flex p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
+                  onInput={(e) => {
+                    const textarea = e.target as HTMLTextAreaElement;
+                    textarea.style.height = "auto";
+                    textarea.style.height = `${Math.min(
+                      textarea.scrollHeight,
+                      140
+                    )}px`;
+                  }}
                   placeholder="Enter your schedule here..."
                 />
                 <button
