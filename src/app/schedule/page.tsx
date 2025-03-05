@@ -252,7 +252,8 @@ export default function CalendarApp() {
     <SessionProvider>
       <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
         <div className="flex gap-6">
-          <div className="flex-1 bg-white shadow-lg rounded-2xl p-6">
+          {/* Calendar */}
+          <div className="flex-1 bg-white shadow-lg rounded-2xl p-6 transition-all duration-200">
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
@@ -279,13 +280,18 @@ export default function CalendarApp() {
               }}
               themeSystem="standard"
               eventColor="#3b82f6"
-              eventClassNames="rounded-md shadow-sm"
-              dayCellClassNames="hover:bg-gray-50 transition-colors"
-              dayHeaderClassNames="text-gray-700 font-medium py-3"
+              eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
+              dayCellClassNames="hover:bg-gray-100 transition-colors duration-200"
+              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b"
+              allDayClassNames="bg-gray-100 text-gray-700 font-medium"
+              nowIndicator={true}
+              nowIndicatorClassNames="border-red-500"
+              scrollTimeReset={false}
             />
           </div>
 
-          <div className="w-1/3 bg-white border border-gray shadow-lg rounded-2xl py-6 px-4 h-[calc(100vh-7rem)]">
+          {/* Side Panel */}
+          <div className="w-1/4 bg-white border border-gray shadow-lg p-4 rounded-2xl h-[calc(100vh-7rem)]">
             <div className="flex flex-col h-full justify-between items-center">
               <div className="flex flex-col w-full">
                 <div className="border">

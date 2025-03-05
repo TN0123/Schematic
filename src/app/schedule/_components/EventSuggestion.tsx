@@ -11,7 +11,7 @@ export default function EventSuggestion({
   onReject: (eventId: string) => void;
 }) {
   return (
-    <div className="flex w-full h-full border rounded-md items-center justify-between p-4 mb-2 hover:shadow-md hover:border-gray-300 hover:translate-y-[-1px] transition-all duration-200">
+    <div className="flex w-full h-full border rounded-md items-center justify-between p-2 mb-2 hover:shadow-md hover:border-gray-300 hover:translate-y-[-1px] transition-all duration-200">
       <div
         className="flex justify-center items-center rounded-xl hover:bg-red-300 p-2 transition cursor-pointer"
         onClick={() => onReject(suggestedEvent.id)}

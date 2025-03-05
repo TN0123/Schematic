@@ -15,3 +15,10 @@
       }
     }
 }
+
+.fc-day-today {
+    background-color: #f7fafc !important;
+    }  
+.fc-day-today:hover {
+    background-color: #edf2f7 !important;
+    }  
