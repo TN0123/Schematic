@@ -1,6 +1,19 @@
 import { Event } from "../page";
 import { Check, X } from "lucide-react";
 
+function formatTime(time: string): string {
+  const date = new Date(time);
+
+  let hours: number = date.getHours();
+  let minutes: number = date.getMinutes();
+  let amPm: string = hours >= 12 ? "pm" : "am";
+
+  hours = hours % 12 || 12;
+  let minutesStr: string = minutes === 0 ? "" : `:${minutes}`;
+
+  return `${hours}${minutesStr} ${amPm}`;
+}
+
 export default function EventSuggestion({
   suggestedEvent,
   onAccept,
@@ -21,8 +34,8 @@ export default function EventSuggestion({
       <div className="flex flex-col px-4 justify-center items-center text-center">
         <span className="font-bold text-sm">{suggestedEvent.title}</span>
         <span className="text-sm">
-          {suggestedEvent.start.toString().substring(0, 10)} to{" "}
-          {suggestedEvent.end.toString().substring(0, 10)}
+          {formatTime(suggestedEvent.start.toString())} to{" "}
+          {formatTime(suggestedEvent.end.toString())}
         </span>
       </div>
       <div
