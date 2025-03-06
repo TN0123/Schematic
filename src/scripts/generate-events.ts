@@ -1,11 +1,11 @@
-export async function generate_events(text: string) {
+export async function generate_events(text: string, timezone: string) {
     const { GoogleGenerativeAI } = require("@google/generative-ai");
     require('dotenv').config();
     const geminiKey = process.env.GEMINI_API_KEY;
   
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const currentDate = new Date().toISOString().split("T")[0];
+    const currentDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
   
     const prompt = `
       You are an AI that extracts structured event details from text. Your goal is to generate a JSON array of event objects.
@@ -16,6 +16,7 @@ export async function generate_events(text: string) {
       3. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
       4. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
       5. If an event has no end time, assume a default duration of **1 hour**.
+      6. If the input does not specify am or pm, decide which one the user means based on the name of the event (for example breakfast is more likely at 9am than 9pm).
       
       **Output Format (JSON array only, no extra text):**
       [

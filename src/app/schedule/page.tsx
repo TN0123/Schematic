@@ -36,6 +36,7 @@ export default function CalendarApp() {
     },
   });
   const userId = session?.user?.id;
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const [events, setEvents] = useState<Event[]>([]);
   const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
@@ -132,7 +133,7 @@ export default function CalendarApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText }),
+        body: JSON.stringify({ text: inputText, timezone: userTimezone }),
       });
       const data = await response.json();
       if (data.events) {
@@ -181,6 +182,16 @@ export default function CalendarApp() {
     }
   }, [hasFetchedInitialSuggestions, userId]);
 
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(currentDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const todaysEvents = events.filter((event) => {
+    const eventStart = new Date(event.start);
+    return eventStart >= currentDate && eventStart <= endOfDay;
+  });
+
   const fetchSuggestions = async () => {
     if (!userId) {
       console.error("unable to get userId");
@@ -193,7 +204,11 @@ export default function CalendarApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ existingEvents: events, userId: userId }),
+        body: JSON.stringify({
+          existingEvents: todaysEvents,
+          userId: userId,
+          timezone: userTimezone,
+        }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch suggestions");

@@ -3,11 +3,11 @@ import { Event } from '@/app/schedule/page';
 
 const prisma = new PrismaClient();
 
-export async function suggest_events(userId: string, existingEvents: Event[]){
+export async function suggest_events(userId: string, existingEvents: Event[], timezone: string) {
     const { GoogleGenerativeAI } = require("@google/generative-ai");
     require('dotenv').config();
     const geminiKey = process.env.GEMINI_API_KEY;
-    const currentDate = new Date().toISOString().split("T")[0];
+    const currentDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
 
     const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -25,32 +25,43 @@ export async function suggest_events(userId: string, existingEvents: Event[]){
     const prompt = `
         You are a helpful AI that suggests a person tasks for the day to help
         them be more productive. Your goal is to generate a JSON array of task objects.
-
         The person you are helping has a calendar on which they might already have some
-        events. Do not suggest tasks that conflict with existing events.
+        events. The current date is ${currentDate}.
 
-        The current date is ${currentDate}.
 
-        The person you are helping also has a bulletin board of general things that are on their
-        mind. Use this to help you figure out what to suggest.
+        **Rules:**
+        1. Suggest tasks that are not conflicting with existing events.
+        2. STRICTLY ENFORCE: All suggested tasks MUST start at or after 6:00 AM and MUST end at or before 11:00 PM local time. NO EXCEPTIONS.
+        3. Double-check all start and end times before returning them to ensure they are within this time window (6:00 AM - 11:00 PM).
+        4. Suggest tasks that are relevant to the person's bulletin board.
+        5. Suggest exactly three tasks for the day.
         
-        Suggest three tasks for the day.
         
         **Output Format (JSON array only, no extra text):**
-      [
-        {
-          "id": "unique-string",
-          "title": "Event Title",
-          "start": "ISO8601 DateTime",
-          "end": "ISO8601 DateTime"
-        }
-      ]
+        [
+            {
+            "id": "unique-string",
+            "title": "Event Title",
+            "start": "ISO8601 DateTime",
+            "end": "ISO8601 DateTime"
+            }
+        ]
 
-    **Existing Events (Do NOT suggest conflicting times):**
-        ${JSON.stringify(existingEvents, null, 2)}
-    
-    **Bulletin Items:**
-    ${JSON.stringify(bulletinDict, null, 2)}
+        **Valid time range for today:**
+        - Earliest start time: ${currentDate.split('T')[0]}T06:00:00${currentDate.includes('Z') ? 'Z' : ''}
+        - Latest end time: ${currentDate.split('T')[0]}T23:00:00${currentDate.includes('Z') ? 'Z' : ''}
+
+        **Existing Events (Do NOT suggest conflicting times):**
+            ${JSON.stringify(existingEvents, null, 2)}
+        
+        **Bulletin Items:**
+        ${JSON.stringify(bulletinDict, null, 2)}
+
+        **IMPORTANT FINAL CHECK:**
+        Before returning your response, verify that ALL suggested tasks:
+        - Start at or after 6:00 AM
+        - End at or before 11:00 PM
+        - Do not conflict with existing events
     `;
 
     let retries = 3;
