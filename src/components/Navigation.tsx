@@ -25,18 +25,18 @@ export default function Navigation() {
                 </li>
                 <li>
                   <Link
-                    href="/schedule"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium"
-                  >
-                    Schedule
-                  </Link>
-                </li>
-                <li>
-                  <Link
                     href="/bulletin"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium"
                   >
                     Bulletin
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/schedule"
+                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium"
+                  >
+                    Schedule
                   </Link>
                 </li>
                 <li>
