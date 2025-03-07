@@ -302,6 +302,7 @@ export default function CalendarApp() {
               nowIndicator={true}
               nowIndicatorClassNames="border-red-500"
               scrollTimeReset={false}
+              allDaySlot={false}
             />
           </div>
 
