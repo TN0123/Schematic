@@ -4,11 +4,12 @@ import { NextResponse } from "next/server"
 export default withAuth(
   // Augment the basic withAuth function
   function middleware(req) {
-    // If authenticated user tries to access homepage, redirect to /bulletin
-    if (req.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL("/bulletin", req.url))
+    const { pathname } = req.nextUrl;
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/bulletin", req.url));
     }
-    return NextResponse.next()
+
+    return NextResponse.next();
   },
   {
     pages: {

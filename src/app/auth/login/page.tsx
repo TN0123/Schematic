@@ -1,11 +1,17 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useState } from "react";
-import { BrainCircuit, ClipboardList, Zap } from "lucide-react";
+import { BrainCircuit, ClipboardList, Router, Zap } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const { data: session, status } = useSession();
+
+  if (status === "authenticated") {
+    redirect("/bulletin");
+  }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
