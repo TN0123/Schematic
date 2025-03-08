@@ -265,16 +265,16 @@ export default function CalendarApp() {
 
   return (
     <SessionProvider>
-      <div className="p-6 max-w-[1600px] h-[92.25vh] mx-auto bg-gray-200">
-        <div className="flex gap-6">
+      <div className="h-[92.25vh] flex flex-col bg-gray-100">
+        <div className="flex flex-1 h-full">
           {/* Calendar */}
-          <div className="flex-1 bg-white shadow-lg rounded-2xl p-6 transition-all duration-200">
+          <div className="flex-1 p-4 h-full transition-all duration-200">
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
               events={events}
               eventClick={handleEventClick}
-              height="calc(100vh - 10rem)"
+              height="calc(100vh - 6rem)"
               headerToolbar={{
                 start: "prev,next today",
                 center: "title",
@@ -298,7 +298,6 @@ export default function CalendarApp() {
               eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
               dayCellClassNames="hover:bg-gray-100 transition-colors duration-200"
               dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b"
-              allDayClassNames="bg-gray-100 text-gray-700 font-medium"
               nowIndicator={true}
               nowIndicatorClassNames="border-red-500"
               scrollTimeReset={false}
@@ -307,72 +306,71 @@ export default function CalendarApp() {
           </div>
 
           {/* Side Panel */}
-          <div className="w-1/4 bg-white border border-gray shadow-lg p-4 rounded-2xl h-[calc(100vh-7rem)]">
-            <div className="flex flex-col h-full justify-between items-center">
-              <div className="flex flex-col w-full">
-                <div className="border">
-                  <button
-                    className="hover:bg-gray-100 transition-colors duration-200 p-2"
-                    onClick={() => setShowModal(true)}
-                  >
-                    <Plus size={20} />
-                  </button>
-                  <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                    <Type size={20} />
-                  </button>
-                  <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                    <FileUp size={20} />
-                  </button>
-                </div>
-                <textarea
-                  className="flex p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onInput={(e) => {
-                    const textarea = e.target as HTMLTextAreaElement;
-                    textarea.style.height = "auto";
-                    textarea.style.height = `${Math.min(
-                      textarea.scrollHeight,
-                      140
-                    )}px`;
-                  }}
-                  placeholder="Enter your schedule here..."
-                />
-                <button
-                  className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                  disabled={loading}
-                  onClick={handleSubmit}
-                >
-                  {loading ? "Generating..." : "Generate"}
-                </button>
-              </div>
-              <div className="w-full border-t">
-                {suggestedEvents.length > 0 && (
-                  <div className="w-full flex flex-col justify-center items-center">
-                    <div className="flex items-center justify-between px-2 w-full">
-                      <h1 className="text-md py-2">Suggested</h1>
-                      <button className="px-2" onClick={fetchSuggestions}>
-                        <div className="flex items-center justify-center gap-2">
-                          <RefreshCcw
-                            className="hover:text-blue-500 transition-all duration-200"
-                            size={16}
-                          />
-                        </div>
-                      </button>
-                    </div>
-                    {suggestedEvents.map((suggestedEvent) => (
-                      <EventSuggestion
-                        suggestedEvent={suggestedEvent}
-                        key={suggestedEvent.id}
-                        onAccept={handleAcceptSuggestion}
-                        onReject={handleRejectSuggestion}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+          <aside className="w-96 bg-white border-l p-6 flex flex-col gap-4">
+            {/* Menu Bar */}
+            <div className="flex gap-2">
+              <button
+                className="hover:bg-gray-100 transition-colors duration-200 p-2"
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={20} />
+              </button>
+              <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                <Type size={20} />
+              </button>
+              <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+                <FileUp size={20} />
+              </button>
             </div>
-          </div>
+
+            {/* Input Field */}
+            <textarea
+              className="flex p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onInput={(e) => {
+                const textarea = e.target as HTMLTextAreaElement;
+                textarea.style.height = "auto";
+                textarea.style.height = `${Math.min(
+                  textarea.scrollHeight,
+                  140
+                )}px`;
+              }}
+              placeholder="Enter your schedule here..."
+            />
+            <button
+              className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              disabled={loading}
+              onClick={handleSubmit}
+            >
+              {loading ? "Generating..." : "Generate"}
+            </button>
+            <div className="w-full border-t">
+              {suggestedEvents.length > 0 && (
+                <div className="w-full flex flex-col justify-center items-center">
+                  <div className="flex items-center justify-between px-2 w-full">
+                    <h1 className="text-md py-2">Suggested</h1>
+                    <button className="px-2" onClick={fetchSuggestions}>
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCcw
+                          className="hover:text-blue-500 transition-all duration-200"
+                          size={16}
+                        />
+                      </div>
+                    </button>
+                  </div>
+                  {suggestedEvents.map((suggestedEvent) => (
+                    <EventSuggestion
+                      suggestedEvent={suggestedEvent}
+                      key={suggestedEvent.id}
+                      onAccept={handleAcceptSuggestion}
+                      onReject={handleRejectSuggestion}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
 
         {showModal && (
