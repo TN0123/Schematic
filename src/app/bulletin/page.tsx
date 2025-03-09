@@ -89,7 +89,8 @@ export default function Bulletin() {
           }`}
         >
           {expandedItemId ? (
-            <div className="flex gap-6 h-full">
+            <div className="flex gap-2 h-full">
+              {/* Sidebar */}
               <div className="w-1/4 bg-gray-50 overflow-y-scroll rounded-xl p-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold text-gray-700">
@@ -123,6 +124,7 @@ export default function Bulletin() {
                   ))}
                 </div>
               </div>
+              {/* Main content */}
               <div className="w-3/4 rounded-xl">
                 {items.map(
                   (item) =>

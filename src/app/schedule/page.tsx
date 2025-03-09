@@ -265,7 +265,7 @@ export default function CalendarApp() {
 
   return (
     <SessionProvider>
-      <div className="h-[92.25vh] flex flex-col bg-gray-100">
+      <div className="h-[92.25vh] flex flex-col bg-white">
         <div className="flex flex-1 h-full">
           {/* Calendar */}
           <div className="flex-1 p-4 h-full transition-all duration-200">
@@ -306,9 +306,9 @@ export default function CalendarApp() {
           </div>
 
           {/* Side Panel */}
-          <aside className="w-96 bg-white border-l p-6 flex flex-col gap-4">
+          <aside className="w-96 bg-white border-l px-6 py-4 flex flex-col gap-4">
             {/* Menu Bar */}
-            <div className="flex gap-2">
+            <div className="flex">
               <button
                 className="hover:bg-gray-100 transition-colors duration-200 p-2"
                 onClick={() => setShowModal(true)}
