@@ -87,13 +87,16 @@ export default function CalendarApp() {
       if (!res.ok) {
         console.error("Failed to add event");
       }
+
+      const createdEvent = await res.json();
+
       setEvents([
         ...events,
         {
-          id: Date.now().toString(),
+          id: createdEvent.id,
           title: newEvent.title,
-          start: newEvent.start,
-          end: newEvent.end,
+          start: new Date(createdEvent.start),
+          end: new Date(createdEvent.end),
         },
       ]);
       setShowModal(false);
@@ -143,26 +146,36 @@ export default function CalendarApp() {
           end: new Date(event.end),
         }));
 
-        await Promise.all(
-          formattedEvents.map(async (event: GeneratedEvent) => {
-            const res = await fetch("/api/events", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                title: event.title,
-                start: event.start,
-                end: event.end,
-              }),
-            });
-            if (!res.ok) {
-              console.error("Failed to save event to database");
-            }
-          })
-        );
+        const createdEvents = [];
 
-        setEvents([...events, ...formattedEvents]);
+        for (const event of formattedEvents) {
+          const res = await fetch("/api/events", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: event.title,
+              start: event.start,
+              end: event.end,
+            }),
+          });
+
+          if (!res.ok) {
+            console.error("Failed to save event to database");
+            continue;
+          }
+
+          const createdEvent = await res.json();
+          createdEvents.push({
+            id: createdEvent.id,
+            title: createdEvent.title,
+            start: new Date(createdEvent.start),
+            end: new Date(createdEvent.end),
+          });
+        }
+
+        setEvents([...events, ...createdEvents]);
       }
     } catch (error) {
       console.error("Error generating events:", error);
@@ -238,10 +251,18 @@ export default function CalendarApp() {
         throw new Error("Failed to add suggested event");
       }
 
-      // Add to local events
-      setEvents([...events, event]);
+      const createdEvent = await res.json();
 
-      // Remove from suggestions
+      setEvents([
+        ...events,
+        {
+          id: createdEvent.id,
+          title: createdEvent.title,
+          start: new Date(createdEvent.start),
+          end: new Date(createdEvent.end),
+        },
+      ]);
+
       setSuggestedEvents(suggestedEvents.filter((e) => e.id !== event.id));
     } catch (error) {
       console.error("Error accepting suggestion:", error);
