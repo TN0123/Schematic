@@ -7,10 +7,19 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
     const { GoogleGenerativeAI } = require("@google/generative-ai");
     require('dotenv').config();
     const geminiKey = process.env.GEMINI_API_KEY;
-    const currentDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
-
+    const currentDateTime = new Intl.DateTimeFormat('en-CA', { 
+        timeZone: timezone, 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false
+    }).format(new Date());
+    
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const bulletins = await prisma.bulletin.findMany({
         where: { userId },
@@ -22,19 +31,27 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         bulletinDict[b.title] = b.content;
     });
 
+    console.log("Current Date Time:", currentDateTime);
+
     const prompt = `
-        You are a helpful AI that suggests a person tasks for the day to help
+        You are a helpful AI that suggests a person tasks for a single day to help
         them be more productive. Your goal is to generate a JSON array of task objects.
         The person you are helping has a calendar on which they might already have some
-        events. The current date is ${currentDate}.
+        events. The current date and time is ${currentDateTime}. 
+        
 
-
-        **Rules:**
-        1. Suggest tasks that are not conflicting with existing events.
-        2. STRICTLY ENFORCE: All suggested tasks MUST start at or after 6:00 AM and MUST end at or before 11:00 PM local time. NO EXCEPTIONS.
-        3. Double-check all start and end times before returning them to ensure they are within this time window (6:00 AM - 11:00 PM).
-        4. Suggest tasks that are relevant to the person's bulletin board.
-        5. Suggest exactly three tasks for the day.
+        **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
+        1. **ONLY SUGGEST TASKS WITH START TIMES STRICTLY AFTER THE CURRENT TIME (${currentDateTime}).**  
+           - If a task would start before this time, **DO NOT SUGGEST IT**.  
+           - If no valid time slots exist, return an empty array.
+        2. **DO NOT SUGGEST TASKS THAT CONFLICT WITH EXISTING EVENTS.**  
+        3. **ALL TASKS MUST START AT OR AFTER 6:00 AM AND END AT OR BEFORE 11:00 PM LOCAL TIME.**  
+        4. **DOUBLE-CHECK ALL TIMES BEFORE RETURNING THEM** to ensure they are:  
+           - After the current time.  
+           - Within the allowed time range (6:00 AM - 11:00 PM).  
+           - Not conflicting with any existing events.  
+        5. Only suggest tasks that are relevant to the person's bulletin board.  
+        6. Suggest **AT MOST three tasks**, unless valid time slots are unavailable.
         
         
         **Output Format (JSON array only, no extra text):**
@@ -48,20 +65,20 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         ]
 
         **Valid time range for today:**
-        - Earliest start time: ${currentDate.split('T')[0]}T06:00:00${currentDate.includes('Z') ? 'Z' : ''}
-        - Latest end time: ${currentDate.split('T')[0]}T23:00:00${currentDate.includes('Z') ? 'Z' : ''}
+        - **Earliest possible start time:** The **later** of 6:00 AM or the current time (${currentDateTime})
+        - **Latest end time:** ${currentDateTime.split('T')[0]}T23:00:00${currentDateTime.includes('Z') ? 'Z' : ''}
 
-        **Existing Events (Do NOT suggest conflicting times):**
+        **Existing Events (DO NOT suggest conflicting times):**
             ${JSON.stringify(existingEvents, null, 2)}
         
         **Bulletin Items:**
         ${JSON.stringify(bulletinDict, null, 2)}
 
-        **IMPORTANT FINAL CHECK:**
-        Before returning your response, verify that ALL suggested tasks:
-        - Start at or after 6:00 AM
-        - End at or before 11:00 PM
-        - Do not conflict with existing events
+        **FINAL VERIFICATION BEFORE RETURNING RESPONSE:**  
+        - Ensure ALL suggested tasks start **strictly after the current time** (${currentDateTime}).  
+        - Ensure ALL tasks fall within 6:00 AM - 11:00 PM.  
+        - Ensure NO tasks conflict with existing events.  
+        - If no valid time slots exist, return an empty array.
     `;
 
     let retries = 3;
@@ -70,6 +87,7 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
     for (let i = 0; i < retries; i++){
         try {
             const result = await model.generateContent(prompt);
+            //console.log(result.response.text());
             return result.response.text();
         } catch (error) {
             if (error instanceof Error) {

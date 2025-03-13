@@ -4,7 +4,7 @@ export async function generate_events(text: string, timezone: string) {
     const geminiKey = process.env.GEMINI_API_KEY;
   
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const currentDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
   
     const prompt = `
