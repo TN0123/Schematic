@@ -3,13 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Trash2,
-  Minimize2,
   Bold,
   Italic,
   Underline as UnderlineIcon,
-  Type,
   Save,
-  Maximize2,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -26,7 +23,6 @@ interface BulletinItemProps {
     updates: { title?: string; content?: string }
   ) => Promise<void>;
   onDelete?: () => void;
-  isExpanded: boolean;
   onExpand?: () => void;
   onCollapse?: () => void;
 }
@@ -37,7 +33,6 @@ export default function BulletinItem({
   initialContent = "",
   onSave,
   onDelete,
-  isExpanded,
   onExpand,
   onCollapse,
 }: BulletinItemProps) {
@@ -77,22 +72,6 @@ export default function BulletinItem({
     immediatelyRender: false,
   });
 
-  useEffect(() => {
-    if (
-      lastSavedState.current.title !== title &&
-      lastSavedState.current.content !== content
-    ) {
-      setHasUnsavedChanges(true);
-    }
-  }, [isExpanded]);
-
-  useEffect(() => {
-    if (editor) {
-      editor.setEditable(isExpanded);
-      editor.setOptions({ editable: isExpanded });
-    }
-  }, [isExpanded, editor]);
-
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
     setHasUnsavedChanges(true);
@@ -102,8 +81,6 @@ export default function BulletinItem({
     if (!editor) {
       return null;
     }
-
-    const fontSizes = ["12px", "14px", "16px", "18px", "20px", "24px"];
 
     return (
       <div className="border-b border-gray-200 pb-2 mb-2 flex gap-1 flex-wrap items-center">
@@ -173,13 +150,13 @@ export default function BulletinItem({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "s" && isExpanded) {
+      if (event.ctrlKey && event.key === "s") {
         event.preventDefault();
         handleSave();
         console.log("item saved");
       }
     },
-    [handleSave, isExpanded]
+    [handleSave]
   );
 
   useEffect(() => {
@@ -191,9 +168,7 @@ export default function BulletinItem({
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 ${
-        isExpanded ? "w-full h-full" : ""
-      }`}
+      className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 w-full h-full`}
     >
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
@@ -201,12 +176,11 @@ export default function BulletinItem({
             type="text"
             value={title}
             onChange={handleTitleChange}
-            disabled={!isExpanded}
             className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 mb-2 text-center"
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
-            {isExpanded && hasUnsavedChanges && (
+            {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -219,21 +193,6 @@ export default function BulletinItem({
               </button>
             )}
             <button
-              onClick={isExpanded ? onCollapse : onExpand}
-              className={`p-2 text-gray-500 rounded-lg transition-colors ${
-                isExpanded
-                  ? "hover:text-green-500 hover:bg-green-50"
-                  : "hover:text-blue-500 hover:bg-blue-50"
-              }`}
-              aria-label={isExpanded ? "Minimize" : "Edit"}
-            >
-              {isExpanded ? (
-                <Minimize2 className="h-5 w-5" />
-              ) : (
-                <Maximize2 className="h-5 w-5" />
-              )}
-            </button>
-            <button
               onClick={onDelete}
               className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               aria-label="Delete item"
@@ -243,12 +202,10 @@ export default function BulletinItem({
           </div>
         </div>
         <div className="relative border rounded-lg p-3 flex-grow flex flex-col">
-          {isExpanded && <MenuBar />}
+          <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto ${
-              isExpanded ? "max-h-[340px]" : "max-h-[150px]"
-            }`}
+            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[340px]`}
           />
         </div>
       </div>
