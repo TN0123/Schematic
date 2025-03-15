@@ -167,9 +167,7 @@ export default function BulletinItem({
   }, [handleKeyPress]);
 
   return (
-    <div
-      className={`bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 w-full h-full`}
-    >
+    <div className="bg-white border border-gray-200 shadow-sm w-full h-full">
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
           <input
