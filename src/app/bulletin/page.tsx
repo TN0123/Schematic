@@ -81,7 +81,7 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="min-h-[92.3vh] flex bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="h-[92.3vh] flex bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Sidebar */}
       <aside className="w-1/4 bg-gray-50 overflow-y-scroll p-4">
         <div className="flex justify-between items-center mb-4">
@@ -132,6 +132,16 @@ export default function Bulletin() {
                 onCollapse={() => setExpandedItemId(null)}
               />
             )
+        )}
+        {expandedItemId === null && (
+          <div className="flex flex-col items-center justify-center w-full h-full bg-gray-50 border border-gray-200 shadow-inner">
+            <p className="text-gray-600 text-lg font-medium">
+              No note selected
+            </p>
+            <p className="text-gray-500 text-sm mt-2">
+              Click on a note from the sidebar or create a new note
+            </p>
+          </div>
         )}
       </div>
     </div>

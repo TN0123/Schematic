@@ -203,7 +203,7 @@ export default function BulletinItem({
           <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[340px]`}
+            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[480px]`}
           />
         </div>
       </div>
