@@ -49,6 +49,7 @@ export default function CalendarApp() {
   });
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
@@ -212,6 +213,7 @@ export default function CalendarApp() {
     }
 
     try {
+      setSuggestionsLoading(true);
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
         headers: {
@@ -230,6 +232,8 @@ export default function CalendarApp() {
       setSuggestedEvents(data.events);
     } catch (error) {
       console.error("Error suggesting events:", error);
+    } finally {
+      setSuggestionsLoading(false);
     }
   };
 
@@ -367,19 +371,19 @@ export default function CalendarApp() {
               {loading ? "Generating..." : "Generate"}
             </button>
             <div className="w-full border-t">
+              <div className="flex items-center justify-between px-2 w-full">
+                <h1 className="text-md py-2">Suggested</h1>
+                <button className="px-2" onClick={fetchSuggestions}>
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCcw
+                      className="hover:text-blue-500 transition-all duration-200"
+                      size={16}
+                    />
+                  </div>
+                </button>
+              </div>
               {suggestedEvents.length > 0 && (
                 <div className="w-full flex flex-col justify-center items-center">
-                  <div className="flex items-center justify-between px-2 w-full">
-                    <h1 className="text-md py-2">Suggested</h1>
-                    <button className="px-2" onClick={fetchSuggestions}>
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCcw
-                          className="hover:text-blue-500 transition-all duration-200"
-                          size={16}
-                        />
-                      </div>
-                    </button>
-                  </div>
                   {suggestedEvents.map((suggestedEvent) => (
                     <EventSuggestion
                       suggestedEvent={suggestedEvent}
@@ -388,6 +392,11 @@ export default function CalendarApp() {
                       onReject={handleRejectSuggestion}
                     />
                   ))}
+                </div>
+              )}
+              {suggestionsLoading && (
+                <div className="w-full flex justify-center items-center">
+                  <RefreshCcw size={24} className="animate-spin" />
                 </div>
               )}
             </div>
