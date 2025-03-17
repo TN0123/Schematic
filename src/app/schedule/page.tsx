@@ -14,6 +14,7 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
 import EventSuggestion from "./_components/EventSuggestion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface Event {
   id: string;
@@ -49,6 +50,8 @@ export default function CalendarApp() {
   });
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
@@ -56,6 +59,7 @@ export default function CalendarApp() {
 
   useEffect(() => {
     const fetchEvents = async () => {
+      setCalendarLoading(true);
       try {
         const response = await fetch("/api/events");
         if (!response.ok) {
@@ -65,6 +69,8 @@ export default function CalendarApp() {
         setEvents(data);
       } catch (error) {
         console.error("Error fetching events:", error);
+      } finally {
+        setCalendarLoading(false);
       }
     };
     fetchEvents();
@@ -212,6 +218,7 @@ export default function CalendarApp() {
     }
 
     try {
+      setSuggestionsLoading(true);
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
         headers: {
@@ -230,6 +237,8 @@ export default function CalendarApp() {
       setSuggestedEvents(data.events);
     } catch (error) {
       console.error("Error suggesting events:", error);
+    } finally {
+      setSuggestionsLoading(false);
     }
   };
 
@@ -289,7 +298,23 @@ export default function CalendarApp() {
       <div className="h-[92.25vh] flex flex-col bg-white">
         <div className="flex flex-1 h-full">
           {/* Calendar */}
-          <div className="flex-1 p-4 h-full transition-all duration-200">
+          <div className="flex-1 p-4 h-full transition-all duration-200 relative">
+            <AnimatePresence>
+              {calendarLoading && (
+                <motion.div
+                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                >
+                  <RefreshCcw
+                    size={32}
+                    className="animate-spin text-gray-600"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
@@ -367,19 +392,19 @@ export default function CalendarApp() {
               {loading ? "Generating..." : "Generate"}
             </button>
             <div className="w-full border-t">
+              <div className="flex items-center justify-between px-2 w-full">
+                <h1 className="text-md py-2">Suggested</h1>
+                <button className="px-2" onClick={fetchSuggestions}>
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCcw
+                      className="hover:text-blue-500 transition-all duration-200"
+                      size={16}
+                    />
+                  </div>
+                </button>
+              </div>
               {suggestedEvents.length > 0 && (
                 <div className="w-full flex flex-col justify-center items-center">
-                  <div className="flex items-center justify-between px-2 w-full">
-                    <h1 className="text-md py-2">Suggested</h1>
-                    <button className="px-2" onClick={fetchSuggestions}>
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCcw
-                          className="hover:text-blue-500 transition-all duration-200"
-                          size={16}
-                        />
-                      </div>
-                    </button>
-                  </div>
                   {suggestedEvents.map((suggestedEvent) => (
                     <EventSuggestion
                       suggestedEvent={suggestedEvent}
@@ -388,6 +413,11 @@ export default function CalendarApp() {
                       onReject={handleRejectSuggestion}
                     />
                   ))}
+                </div>
+              )}
+              {suggestionsLoading && (
+                <div className="w-full flex justify-center items-center">
+                  <RefreshCcw size={24} className="animate-spin" />
                 </div>
               )}
             </div>
