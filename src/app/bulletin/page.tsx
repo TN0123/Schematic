@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import BulletinItem from "./_components/BulletinItem";
 import { useSession } from "next-auth/react";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
 interface BulletinItem {
   id: string;
   title: string;
@@ -13,6 +15,7 @@ export default function Bulletin() {
   const [items, setItems] = useState<BulletinItem[]>([]);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const { data: session } = useSession();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -21,10 +24,12 @@ export default function Bulletin() {
   }, [session]);
 
   const fetchBulletins = async () => {
+    setLoading(true);
     const response = await fetch("/api/bulletins");
     const data = await response.json();
     setItems(data);
     setExpandedItemId(data.length > 0 ? data[0].id : null);
+    setLoading(false);
   };
 
   const saveItem = async (
@@ -115,35 +120,54 @@ export default function Bulletin() {
         </div>
       </aside>
       {/* Main content */}
-      <div className="w-3/4">
-        {items.map(
-          (item) =>
-            item.id === expandedItemId && (
-              <BulletinItem
-                key={item.id}
-                id={item.id}
-                initialTitle={item.title}
-                initialContent={item.content}
-                onSave={saveItem}
-                onDelete={() => {
-                  deleteItem(item.id);
-                  setExpandedItemId(null);
-                }}
-                onCollapse={() => setExpandedItemId(null)}
-              />
-            )
-        )}
-        {expandedItemId === null && (
-          <div className="flex flex-col items-center justify-center w-full h-full bg-gray-50 border border-gray-200 shadow-inner">
-            <p className="text-gray-600 text-lg font-medium">
-              No note selected
-            </p>
-            <p className="text-gray-500 text-sm mt-2">
-              Click on a note from the sidebar or create a new note
-            </p>
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <AnimatePresence>
+          {loading && (
+            <motion.div
+              className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-gray-100 to-gray-200 bg-opacity-90"
+              initial={{ opacity: 0, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+              <Loader2 className="animate-spin text-gray-600" size={48} />
+              <p className="mt-4 text-gray-600 font-medium text-lg">
+                Loading notes...
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ) : (
+        <div className="w-3/4">
+          {items.map(
+            (item) =>
+              item.id === expandedItemId && (
+                <BulletinItem
+                  key={item.id}
+                  id={item.id}
+                  initialTitle={item.title}
+                  initialContent={item.content}
+                  onSave={saveItem}
+                  onDelete={() => {
+                    deleteItem(item.id);
+                    setExpandedItemId(null);
+                  }}
+                  onCollapse={() => setExpandedItemId(null)}
+                />
+              )
+          )}
+          {expandedItemId === null && (
+            <div className="flex flex-col items-center justify-center w-full h-full bg-gray-50 border border-gray-200 shadow-inner">
+              <p className="text-gray-600 text-lg font-medium">
+                No note selected
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                Click on a note from the sidebar or create a new note
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
