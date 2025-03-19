@@ -282,17 +282,6 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
-  useEffect(() => {
-    setTimeout(() => {
-      const timeGridScroller = document.querySelector(".fc-timegrid-body");
-
-      if (timeGridScroller && timeGridScroller.parentElement) {
-        timeGridScroller.parentElement.style.scrollBehavior = "smooth";
-        timeGridScroller.parentElement.scrollTop = 400;
-      }
-    }, 50);
-  }, []);
-
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -348,6 +337,7 @@ export default function CalendarApp() {
               nowIndicatorClassNames="border-red-500"
               scrollTimeReset={false}
               allDaySlot={false}
+              scrollTime={`${new Date().getHours()}:00:00`}
             />
           </div>
 
