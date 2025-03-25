@@ -23,7 +23,7 @@ export async function generate_events(text: string, timezone: string) {
       **Rules:**
       1. Identify event names, dates, and times in the input.
       2. If no date is mentioned, assume today's date: **${currentDate}**.
-      3. If am/pm is not specified, assume that the event's start time is past this time: **${currentDateTime}**.
+      3. If am/pm is not specified, assume that the event's start time is past this datetime: **${currentDateTime}**.
       4. If am/pm is not specified, decide which one the user means based on the name of the event and with common sense (for example breakfast is more likely at 9am than 9pm).
       5. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
       6. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
@@ -67,7 +67,7 @@ export async function generate_events(text: string, timezone: string) {
     `;
   
 
-    console.log("PROMPT", prompt);
+    console.log("PROMPT: ", prompt);
 
     //Multiple calls retry mechanism with exponential backoff
     let retries = 3;

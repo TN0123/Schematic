@@ -76,6 +76,17 @@ export default function CalendarApp() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    console.log("Updated events:", events);
+  }, [events]);
+
+  useEffect(() => {
+    if (!hasFetchedInitialSuggestions && userId) {
+      fetchSuggestions();
+      setHasFetchedInitialSuggestions(true);
+    }
+  }, [hasFetchedInitialSuggestions, userId]);
+
   const handleAddEvent = async (): Promise<void> => {
     console.log("Adding event:", newEvent);
     if (newEvent.title && newEvent.start && newEvent.end) {
@@ -113,6 +124,32 @@ export default function CalendarApp() {
   const handleEventClick = (clickInfo: EventClickArg): void => {
     setEventToDelete(clickInfo.event);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleEventDrop = async (dropInfo: any) => {
+    const { id } = dropInfo.event;
+    const start = dropInfo.event.start;
+    const end = dropInfo.event.end;
+
+    try {
+      const res = await fetch(`/api/events/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          start: start?.toISOString(),
+          end: end?.toISOString(),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update event");
+      }
+
+      console.log("Event updated successfully");
+    } catch (error) {
+      console.error("Error updating event:", error);
+      dropInfo.revert();
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -189,17 +226,6 @@ export default function CalendarApp() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    console.log("Updated events:", events);
-  }, [events]);
-
-  useEffect(() => {
-    if (!hasFetchedInitialSuggestions && userId) {
-      fetchSuggestions();
-      setHasFetchedInitialSuggestions(true);
-    }
-  }, [hasFetchedInitialSuggestions, userId]);
 
   const currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
@@ -338,6 +364,33 @@ export default function CalendarApp() {
               scrollTimeReset={false}
               allDaySlot={false}
               scrollTime={`${new Date().getHours()}:00:00`}
+              editable={true}
+              selectable={true}
+              eventResize={async (resizeInfo) => {
+                try {
+                  const updatedEvent = {
+                    id: resizeInfo.event.id,
+                    start: resizeInfo.event.start,
+                    end: resizeInfo.event.end,
+                  };
+
+                  const res = await fetch(`/api/events/${updatedEvent.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updatedEvent),
+                  });
+
+                  if (!res.ok) {
+                    throw new Error("Failed to update event duration");
+                  }
+
+                  console.log("Event resized and updated successfully");
+                } catch (error) {
+                  console.error("Error updating event duration:", error);
+                  resizeInfo.revert();
+                }
+              }}
+              eventDrop={handleEventDrop}
             />
           </div>
 
