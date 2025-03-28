@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
 import EventSuggestion from "./_components/EventSuggestion";
 import { motion, AnimatePresence } from "framer-motion";
+import EventGenerationPanel from "./_components/EventGenerationPanel";
 
 export interface Event {
   id: string;
@@ -312,6 +313,13 @@ export default function CalendarApp() {
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
         <div className="flex flex-1 h-full">
+          {/* Goals Panel */}
+          {/* <aside className="w-80 bg-white border-r px-6 py-4 flex flex-col gap-4">
+            <div className="flex flex-col w-full h-full items-center text-center bg-blue-100 justify-between">
+              <h1 className="w-full bg-red-100 font-bold text-2xl">Goals</h1>
+              <div className="w-full h-full bg-green-100">goal cards</div>
+            </div>
+          </aside> */}
           {/* Calendar */}
           <div className="flex-1 p-4 h-full transition-all duration-200 relative">
             <AnimatePresence>
@@ -395,76 +403,18 @@ export default function CalendarApp() {
           </div>
 
           {/* Side Panel */}
-          <aside className="w-96 bg-white border-l px-6 py-4 flex flex-col gap-4">
-            {/* Menu Bar */}
-            <div className="flex">
-              <button
-                className="hover:bg-gray-100 transition-colors duration-200 p-2"
-                onClick={() => setShowModal(true)}
-              >
-                <Plus size={20} />
-              </button>
-              <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                <Type size={20} />
-              </button>
-              <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
-                <FileUp size={20} />
-              </button>
-            </div>
-
-            {/* Input Field */}
-            <textarea
-              className="flex p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onInput={(e) => {
-                const textarea = e.target as HTMLTextAreaElement;
-                textarea.style.height = "auto";
-                textarea.style.height = `${Math.min(
-                  textarea.scrollHeight,
-                  140
-                )}px`;
-              }}
-              placeholder="Enter your schedule here..."
-            />
-            <button
-              className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-              disabled={loading}
-              onClick={handleSubmit}
-            >
-              {loading ? "Generating..." : "Generate"}
-            </button>
-            <div className="w-full border-t">
-              <div className="flex items-center justify-between px-2 w-full">
-                <h1 className="text-md py-2">Suggested</h1>
-                <button className="px-2" onClick={fetchSuggestions}>
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCcw
-                      className="hover:text-blue-500 transition-all duration-200"
-                      size={16}
-                    />
-                  </div>
-                </button>
-              </div>
-              {suggestedEvents.length > 0 && (
-                <div className="w-full flex flex-col justify-center items-center">
-                  {suggestedEvents.map((suggestedEvent) => (
-                    <EventSuggestion
-                      suggestedEvent={suggestedEvent}
-                      key={suggestedEvent.id}
-                      onAccept={handleAcceptSuggestion}
-                      onReject={handleRejectSuggestion}
-                    />
-                  ))}
-                </div>
-              )}
-              {suggestionsLoading && (
-                <div className="w-full flex justify-center items-center">
-                  <RefreshCcw size={24} className="animate-spin" />
-                </div>
-              )}
-            </div>
-          </aside>
+          <EventGenerationPanel
+            inputText={inputText}
+            setInputText={setInputText}
+            loading={loading}
+            handleSubmit={handleSubmit}
+            suggestedEvents={suggestedEvents}
+            handleAcceptSuggestion={handleAcceptSuggestion}
+            handleRejectSuggestion={handleRejectSuggestion}
+            suggestionsLoading={suggestionsLoading}
+            setShowModal={setShowModal}
+            fetchSuggestions={fetchSuggestions}
+          />
         </div>
 
         {showModal && (
