@@ -13,9 +13,9 @@ import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
-import EventSuggestion from "./_components/EventSuggestion";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
+import GoalsPanel from "./_components/GoalsPanel";
 
 export interface Event {
   id: string;
@@ -314,12 +314,7 @@ export default function CalendarApp() {
       <div className="h-[92.25vh] flex flex-col bg-white">
         <div className="flex flex-1 h-full">
           {/* Goals Panel */}
-          {/* <aside className="w-80 bg-white border-r px-6 py-4 flex flex-col gap-4">
-            <div className="flex flex-col w-full h-full items-center text-center bg-blue-100 justify-between">
-              <h1 className="w-full bg-red-100 font-bold text-2xl">Goals</h1>
-              <div className="w-full h-full bg-green-100">goal cards</div>
-            </div>
-          </aside> */}
+          <GoalsPanel />
           {/* Calendar */}
           <div className="flex-1 p-4 h-full transition-all duration-200 relative">
             <AnimatePresence>
