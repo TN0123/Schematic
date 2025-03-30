@@ -3,6 +3,7 @@ import { Goal, GoalDuration } from "./GoalsPanel";
 
 interface GoalCardProps {
   goal: Goal;
+  handleGoalClick: (goalId: string) => void;
 }
 
 const durationColors: Record<GoalDuration, string> = {
@@ -12,7 +13,7 @@ const durationColors: Record<GoalDuration, string> = {
   YEARLY: "bg-yellow-100 border-yellow-500",
 };
 
-export default function GoalCard({ goal }: GoalCardProps) {
+export default function GoalCard({ goal, handleGoalClick }: GoalCardProps) {
   return (
     <div
       className={`flex w-full border-l-4 rounded-md items-center justify-between transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-1 ${
@@ -20,7 +21,14 @@ export default function GoalCard({ goal }: GoalCardProps) {
       }`}
     >
       <div className="flex flex-col w-full px-4 py-2 text-center justify-center">
-        <span className="font-semibold text-sm">{goal.title}</span>
+        <button
+          onClick={() => {
+            handleGoalClick(goal.id);
+          }}
+          className="font-semibold text-sm"
+        >
+          {goal.title}
+        </button>
       </div>
     </div>
   );
