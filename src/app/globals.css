@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Width of the scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #f4f4f4; /* Light neutral background for a clean look */
+    border-radius: 10px; /* Rounded edges for a modern feel */
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #c0c0c0; /* Neutral gray for a subtle appearance */
+    border-radius: 10px; /* Rounded edges for smoothness */
+    border: 2px solid #f4f4f4; /* Creates a subtle padding effect */
+    transition: background 0.3s ease, border 0.3s ease; /* Smooth transition for hover effects */
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0; /* Slightly darker gray for hover effect */
+    border: 2px solid #e0e0e0; /* Subtle contrast on hover */
+}
+
 @layer utilities {
     @layer utilities {
         /* Hide scrollbar for Chrome, Safari and Opera */
