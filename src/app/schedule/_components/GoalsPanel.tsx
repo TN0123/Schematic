@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { PanelLeftOpen, PanelLeftClose } from "lucide-react";
 import GoalCard from "./GoalCard";
 
@@ -12,7 +13,7 @@ export enum GoalDuration {
 export interface Goal {
   id: string;
   title: string;
-  duration: GoalDuration;
+  type: GoalDuration;
 }
 
 export default function GoalsPanel() {
@@ -23,14 +24,14 @@ export default function GoalsPanel() {
   );
   const [goals, setGoals] = useState<Goal[]>([]);
   const [filters, setFilters] = useState<GoalDuration[]>([GoalDuration.DAILY]);
+  const [removingGoals, setRemovingGoals] = useState<string[]>([]);
+  const { data: session } = useSession();
 
-  const handleAddGoal = (newGoal: Goal) => {
-    setGoals((prevGoals) => [...prevGoals, newGoal]);
-  };
-
-  const handleGoalClick = (goalId: string) => {
-    setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== goalId));
-  };
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchGoals();
+    }
+  }, [session]);
 
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
@@ -38,6 +39,39 @@ export default function GoalsPanel() {
         ? prevFilters.filter((filter) => filter !== duration)
         : [...prevFilters, duration]
     );
+  };
+
+  const fetchGoals = async () => {
+    const response = await fetch("/api/goals");
+    const data = await response.json();
+    setGoals(data);
+  };
+
+  const addGoal = async () => {
+    const response = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: goalToAdd,
+        type: currentDuration,
+      }),
+    });
+
+    const newGoal = await response.json();
+    setGoals([...goals, newGoal]);
+  };
+
+  const deleteGoal = async (id: string) => {
+    await fetch(`/api/goals/${id}`, {
+      method: "DELETE",
+    });
+
+    setRemovingGoals((prev) => [...prev, id]);
+
+    setTimeout(() => {
+      setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
+      setRemovingGoals((prev) => prev.filter((id) => id !== id));
+    }, 1000);
   };
 
   return (
@@ -49,7 +83,7 @@ export default function GoalsPanel() {
       <div className="w-full flex flex-col items-center justify-between">
         <div className="flex w-full justify-between">
           {!isCollapsed && (
-            <h1 className="font-bold text-2xl w-full text-gray-900 tracking-wide transition-opacity duration-300">
+            <h1 className="font-bold text-2xl w-full text-gray-900 tracking-wide transition-all duration-300">
               Goals
             </h1>
           )}
@@ -88,11 +122,12 @@ export default function GoalsPanel() {
           <div className="flex flex-col gap-4 py-4 overflow-y-auto h-3/4 w-full">
             {goals.map(
               (goal) =>
-                (filters.length === 0 || filters.includes(goal.duration)) && (
+                (filters.length === 0 || filters.includes(goal.type)) && (
                   <GoalCard
                     key={goal.id}
                     goal={goal}
-                    handleGoalClick={handleGoalClick}
+                    handleGoalClick={deleteGoal}
+                    removing={removingGoals.includes(goal.id)}
                   />
                 )
             )}
@@ -105,6 +140,9 @@ export default function GoalsPanel() {
               value={currentDuration}
               onChange={(e) => {
                 setCurrentDuration(
+                  e.target.value.toUpperCase() as GoalDuration
+                );
+                handleFilterChange(
                   e.target.value.toUpperCase() as GoalDuration
                 );
               }}
@@ -124,11 +162,7 @@ export default function GoalsPanel() {
               placeholder="Add a new goal..."
               onKeyDown={(e) => {
                 if (e.key === "Enter" && goalToAdd.trim() !== "") {
-                  handleAddGoal({
-                    id: Date.now().toString(),
-                    title: goalToAdd,
-                    duration: currentDuration,
-                  });
+                  addGoal();
                   setGoalToAdd("");
                 }
               }}
