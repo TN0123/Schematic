@@ -17,6 +17,7 @@ model User {
   sessions      Session[]
   events        Event[]
   bulletins     Bulletin[]
+  goals         Goal[]
 }
 
 model Account {
@@ -63,4 +64,20 @@ model Bulletin {
   updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  title     String
+  type      GoalType @default(DAILY)
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum GoalType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }

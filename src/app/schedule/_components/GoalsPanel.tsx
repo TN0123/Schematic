@@ -13,7 +13,6 @@ export interface Goal {
   id: string;
   title: string;
   duration: GoalDuration;
-  createdAt: string;
 }
 
 export default function GoalsPanel() {
@@ -129,7 +128,6 @@ export default function GoalsPanel() {
                     id: Date.now().toString(),
                     title: goalToAdd,
                     duration: currentDuration,
-                    createdAt: new Date().toISOString(),
                   });
                   setGoalToAdd("");
                 }
