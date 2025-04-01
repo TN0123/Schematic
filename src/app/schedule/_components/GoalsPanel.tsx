@@ -142,9 +142,6 @@ export default function GoalsPanel() {
                 setCurrentDuration(
                   e.target.value.toUpperCase() as GoalDuration
                 );
-                handleFilterChange(
-                  e.target.value.toUpperCase() as GoalDuration
-                );
               }}
             >
               {Object.values(GoalDuration).map((duration) => (
