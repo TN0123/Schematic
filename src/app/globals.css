@@ -41,9 +41,29 @@
     }
 }
 
+
+/* Custom styles for FullCalendar */
 .fc-day-today {
     background-color: #f7fafc !important;
     }  
 .fc-day-today:hover {
     background-color: #edf2f7 !important;
-    }  
+    }
+    
+.fc-dayGridMonth-button, .fc-timeGridWeek-button, .fc-timeGridDay-button {
+    background-color: #f0f0f0 !important;
+    color: black !important;
+    border: 1px solid #f0f0f0 !important;
+    padding: 5px 10px !important;
+    font-weight: normal !important;
+    box-shadow: none !important;
+    border-width: 3px !important;
+}
+
+.fc-dayGridMonth-button:hover, .fc-timeGridWeek-button:hover, .fc-timeGridDay-button:hover {
+    background-color: white !important;
+}
+
+.fc-button-active {
+    background-color: white !important;
+}
