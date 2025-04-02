@@ -23,15 +23,13 @@ export default function GoalsPanel() {
     GoalDuration.DAILY
   );
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [filters, setFilters] = useState<GoalDuration[]>([GoalDuration.DAILY]);
+  const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchGoals();
-    }
-  }, [session]);
+    fetchGoals();
+  }, []);
 
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
@@ -42,9 +40,16 @@ export default function GoalsPanel() {
   };
 
   const fetchGoals = async () => {
-    const response = await fetch("/api/goals");
-    const data = await response.json();
-    setGoals(data);
+    try {
+      const response = await fetch("/api/goals");
+      if (!response.ok) {
+        throw new Error("Failed to fetch goals");
+      }
+      const data = await response.json();
+      setGoals(data);
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+    }
   };
 
   const addGoal = async () => {
