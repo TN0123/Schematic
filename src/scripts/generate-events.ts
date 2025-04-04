@@ -67,7 +67,7 @@ export async function generate_events(text: string, timezone: string) {
     `;
   
 
-    console.log("PROMPT: ", prompt);
+    // console.log("PROMPT: ", prompt);
 
     //Multiple calls retry mechanism with exponential backoff
     let retries = 3;

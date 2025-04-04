@@ -113,3 +113,11 @@
     font-size: 1rem !important;
     color: gray !important;
 }
+
+.fc-timegrid-slot-minor{
+    border-top: none !important;
+}
+
+.fc-timegrid-slot-label-frame{
+    text-align: left !important;
+}
