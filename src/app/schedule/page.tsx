@@ -146,6 +146,15 @@ export default function CalendarApp() {
         throw new Error("Failed to update event");
       }
 
+      // Update the local state
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === id
+            ? { ...event, start: start || event.start, end: end || event.end }
+            : event
+        )
+      );
+
       console.log("Event updated successfully");
     } catch (error) {
       console.error("Error updating event:", error);
@@ -354,6 +363,9 @@ export default function CalendarApp() {
               views={{
                 dayGridMonth: {
                   titleFormat: { year: "numeric", month: "long" },
+                  dayHeaderFormat: { weekday: "short" },
+                },
+                timeGridWeek: {
                   dayHeaderFormat: { weekday: "short" },
                 },
               }}

@@ -41,9 +41,83 @@
     }
 }
 
+
+/* Custom styles for FullCalendar */
 .fc-day-today {
     background-color: #f7fafc !important;
     }  
 .fc-day-today:hover {
     background-color: #edf2f7 !important;
-    }  
+    }
+    
+.fc-dayGridMonth-button, .fc-timeGridWeek-button, .fc-timeGridDay-button {
+    background-color: #f0f0f0 !important;
+    color: black !important;
+    border: 3px solid #f0f0f0 !important;
+    padding: 5px 10px !important;
+    font-weight: normal !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.fc-dayGridMonth-button:hover, .fc-timeGridWeek-button:hover, .fc-timeGridDay-button:hover {
+    background-color: white !important;
+}
+
+.fc-button-active {
+    background-color: white !important;
+}
+
+.fc-toolbar-title {
+    font-weight: 600 !important;
+    font-size: 1.5rem !important;
+}
+
+.fc-today-button {
+    background-color: white !important;
+    color: black !important;
+    border: none !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.fc-today-button:hover {
+    background-color: #f0f0f0 !important;
+}
+
+.fc-prev-button, .fc-next-button {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important; 
+    background-color: white !important;
+    border: 1px solid lightgray !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    color: black !important;
+    margin: 0 5px !important;
+}
+
+.fc-prev-button:hover, .fc-next-button:hover {
+    background-color: #f0f0f0 !important;
+}
+
+.fc-daygrid-day-top {
+    display: flex !important;
+    justify-content: left !important;
+}
+
+.fc-col-header-cell{
+    border-left: none !important;
+    border-right: none !important;
+    font-size: 1rem !important;
+    color: gray !important;
+}
+
+.fc-timegrid-slot-minor{
+    border-top: none !important;
+}
+
+.fc-timegrid-slot-label-frame{
+    text-align: left !important;
+}
