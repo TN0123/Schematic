@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 
-export default function ChatWindow({
+export default function WriteEditor({
   selectedContext,
   continueEnabled,
   setInput,
@@ -64,7 +64,7 @@ export default function ChatWindow({
   const combinedText = inputText + (result ? result : "");
 
   return (
-    <div className="w-3/5 min-h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+    <div className="w-5/6 min-h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
       <div className="flex justify-between items-center mb-8">
         <div className="flex flex-col justify-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">

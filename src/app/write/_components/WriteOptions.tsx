@@ -56,8 +56,8 @@ const MenuButton = ({
 
   if (type === "toggle") {
     return (
-      <div className="w-full px-6 py-4 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-        <span className="font-medium">{children}</span>
+      <div className="w-full px-6 py-3 flex items-center justify-between text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+        <span className="text-sm font-semibold">{children}</span>
         <Switch
           checked={isToggled}
           onChange={handleChange}
@@ -74,18 +74,15 @@ const MenuButton = ({
     );
   }
 
-  const buttonStyles =
-    type === "button"
-      ? "hover:bg-orange-600 hover:text-white"
-      : "hover:bg-blue-50 hover:text-blue-600";
+  const buttonStyles = "hover:bg-gray-50 hover:text-gray-600";
 
   return (
     <button
       onClick={onClick}
-      className={`w-full px-6 py-4 flex items-center justify-between text-left transition-all duration-200 text-gray-700 
+      className={`w-full px-6 py-3 flex items-center justify-between text-left transition-all duration-200 text-gray-700 
         ${buttonStyles} outline-none`}
     >
-      <span className="font-medium">{children}</span>
+      <span className="text-sm font-semibold">{children}</span>
       {hasSubmenu && <ChevronRight className="w-5 h-5" />}
     </button>
   );
@@ -131,19 +128,19 @@ export default function SlidingMenu({
   };
 
   return (
-    <div className="w-3/4 mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+    <div className="w-full mx-auto">
+      <div className="bg-gray-100 overflow-hidden">
         {history.length > 1 && (
-          <div className="border-b border-gray-200">
+          <div>
             <button
               onClick={() => {
                 setDirection(-1);
                 setHistory(history.slice(0, -1));
               }}
-              className="w-full px-6 py-4 flex items-center text-gray-600 hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:bg-gray-100"
+              className="w-full px-6 py-3 flex items-center text-gray-600 hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:bg-gray-100"
             >
               <ChevronLeft className="w-5 h-5 mr-3" />
-              <span className="font-medium">Back</span>
+              <span className="text-sm font-semibold">Back</span>
             </button>
           </div>
         )}
@@ -173,7 +170,7 @@ export default function SlidingMenu({
               }}
               className="w-full"
             >
-              <div className="divide-y divide-gray-100">
+              <div>
                 {menuItems[currentMenu].map((item, index) => (
                   <MenuButton
                     key={index}
@@ -213,7 +210,7 @@ export default function SlidingMenu({
               ease: [0.4, 0, 0.2, 1],
               scale: { duration: 0.4 },
             }}
-            className="mt-6 p-6 max-h-[300px] overflow-y-auto bg-white border border-gray-200 rounded-2xl shadow-lg"
+            className="mt-6 p-6 max-h-[300px] overflow-y-auto bg-white rounded-2xl shadow-lg"
           >
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
               Critique Result
