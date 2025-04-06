@@ -55,6 +55,7 @@ export default function EventGenerationPanel({
         }}
         placeholder="Enter your schedule here..."
       />
+      <div></div>
       <button
         className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         disabled={loading}
