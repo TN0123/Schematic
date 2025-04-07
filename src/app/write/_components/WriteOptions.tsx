@@ -128,8 +128,8 @@ export default function SlidingMenu({
   };
 
   return (
-    <div className="w-full mx-auto">
-      <div className="bg-gray-100 overflow-hidden">
+    <div className="w-full">
+      <div className="bg-white overflow-hidden">
         {history.length > 1 && (
           <div>
             <button
