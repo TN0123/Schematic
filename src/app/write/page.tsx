@@ -6,24 +6,14 @@ import WritePanel from "@/app/write/_components/WritePanel";
 import { FileText } from "lucide-react";
 
 export default function Writer() {
-  const [selectedContext, setSelectedContext] = useState<string>("");
-  const [continueEnabled, setContinueEnabled] = useState(false);
   const [input, setInput] = useState<string>("");
 
   return (
     <div className="flex w-full h-[125vh] bg-gray-200">
       <div className="flex w-full overflow-auto justify-center">
-        <WriteEditor
-          selectedContext={selectedContext}
-          continueEnabled={continueEnabled}
-          setInput={setInput}
-        />
+        <WriteEditor setInput={setInput} />
       </div>
-      <WritePanel
-        onSelectContext={setSelectedContext}
-        setContinue={setContinueEnabled}
-        input={input}
-      />
+      <WritePanel input={input} />
     </div>
   );
 }

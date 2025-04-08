@@ -1,15 +1,11 @@
 "use client";
 
 import { FileText } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 export default function WriteEditor({
-  selectedContext,
-  continueEnabled,
   setInput,
 }: {
-  selectedContext: string;
-  continueEnabled: boolean;
   setInput: (input: string) => void;
 }) {
   const [result, setResult] = useState("");
@@ -34,7 +30,9 @@ export default function WriteEditor({
     updateTextareaHeight();
   }, [inputText, result]);
 
-  const handleSubmit = async () => {
+  const combinedText = inputText + (result ? result : "");
+
+  const handleContinue = async () => {
     try {
       setError("");
       setResult("Generating...");
@@ -46,8 +44,6 @@ export default function WriteEditor({
         },
         body: JSON.stringify({
           text: `${inputText}`,
-          context: selectedContext,
-          continueEnabled: continueEnabled,
         }),
       });
 
@@ -62,7 +58,23 @@ export default function WriteEditor({
     }
   };
 
-  const combinedText = inputText + (result ? result : "");
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === "Enter") {
+        event.preventDefault();
+        handleContinue();
+        console.log("continuing writing...");
+      }
+    },
+    [handleContinue]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyPress);
+    return () => {
+      document.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleKeyPress]);
 
   return (
     <div className="w-full h-full flex flex-col items-center p-4">
@@ -99,9 +111,6 @@ export default function WriteEditor({
               />
             </div>
           </div>
-          {selectedContext && (
-            <p className="text-gray-500 text-sm">Context: {selectedContext}</p>
-          )}
         </div>
       </div>
     </div>

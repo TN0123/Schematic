@@ -8,18 +8,13 @@ import {
   Sparkles,
   MoreVertical,
 } from "lucide-react";
-import WriteOptions from "./WriteOptions";
 import { useState } from "react";
 
-export default function WritePanel({
-  onSelectContext,
-  setContinue,
-  input,
-}: {
-  onSelectContext: (context: string) => void;
-  setContinue: (enabled: boolean) => void;
-  input: string;
-}) {
+export default function WritePanel({ input }: { input: string }) {
+  const handleSubmit = async () => {
+    console.log("Submit clicked");
+  };
+
   return (
     <aside className="w-1/3 h-full border-l-2 border-gray-300 bg-white flex flex-col">
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200">
@@ -31,7 +26,7 @@ export default function WritePanel({
             <h2 className="font-semibold text-gray-900">
               AI Writing Assistant
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 text-center mt-1">
               <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50">
                 ctrl
               </kbd>{" "}
@@ -39,7 +34,11 @@ export default function WritePanel({
               <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50">
                 enter
               </kbd>{" "}
-              to continue writing
+              to continue writing,{" "}
+              <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50">
+                space
+              </kbd>{" "}
+              to accept
             </p>
           </div>
         </div>
@@ -59,16 +58,14 @@ export default function WritePanel({
             placeholder="Ask anything"
           />
           <div className="flex w-full justify-end items-center px-4 py-1">
-            <button className="rounded-full hover:bg-gray-300 transition-colors duration-200 p-2">
+            <button
+              className="rounded-full hover:bg-gray-300 transition-colors duration-200 p-2"
+              onClick={handleSubmit}
+            >
               <SendHorizonal size={20} />
             </button>
           </div>
         </div>
-        <WriteOptions
-          onSelectContext={onSelectContext}
-          setContinue={setContinue}
-          input={input}
-        />
       </div>
     </aside>
   );
