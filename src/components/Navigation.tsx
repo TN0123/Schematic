@@ -6,7 +6,7 @@ export default function Navigation() {
   const { data: session } = useSession();
 
   return (
-    <nav className="w-screen bg-white shadow-sm border-b border-gray-100">
+    <nav className="w-[99%] bg-white shadow-sm border-b border-gray-100">
       <div className="w-full px-4 py-3">
         <div className="flex w-full justify-between items-center">
           <Link href="/" className="text-xl font-bold text-black">

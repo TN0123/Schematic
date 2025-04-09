@@ -1,16 +1,22 @@
 "use client";
 
-import { FileText } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ChangeHandler } from "./ChangeHandler";
+
+export type ChangeMap = Record<string, string>;
 
 export default function WriteEditor({
   setInput,
+  changes,
 }: {
   setInput: (input: string) => void;
+  changes: any;
 }) {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
+  const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
+  const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const updateTextareaHeight = () => {
@@ -29,6 +35,16 @@ export default function WriteEditor({
   useEffect(() => {
     updateTextareaHeight();
   }, [inputText, result]);
+
+  useEffect(() => {
+    if (changes && Object.keys(changes).length > 0) {
+      setPendingChanges(changes);
+    }
+    if (!changes) {
+      setPendingChanges({});
+      setActiveHighlight(null);
+    }
+  }, [changes]);
 
   const combinedText = inputText + (result ? result : "");
 
@@ -69,6 +85,44 @@ export default function WriteEditor({
     [handleContinue]
   );
 
+  const applyChange = (original: string, replacement: string) => {
+    const updated = inputText.replace(original, replacement);
+    setInputText(updated);
+    setInput(updated);
+    const updatedChanges = { ...pendingChanges };
+    delete updatedChanges[original];
+    setPendingChanges(updatedChanges);
+  };
+
+  const rejectChange = (original: string) => {
+    const updatedChanges = { ...pendingChanges };
+    delete updatedChanges[original];
+    setPendingChanges(updatedChanges);
+  };
+
+  const acceptAllChanges = () => {
+    let updatedText = inputText;
+    for (const [original, replacement] of Object.entries(pendingChanges)) {
+      updatedText = updatedText.replace(original, replacement);
+    }
+    setInputText(updatedText);
+    setInput(updatedText);
+    setPendingChanges({});
+  };
+
+  const getHighlightedHTML = (
+    text: string,
+    highlight: string | null
+  ): string => {
+    if (!highlight) return text;
+    const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "g");
+    return text.replace(
+      regex,
+      `<mark class="bg-yellow-200">${highlight}</mark>`
+    );
+  };
+
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
     return () => {
@@ -76,12 +130,29 @@ export default function WriteEditor({
     };
   }, [handleKeyPress]);
 
+  useEffect(() => {
+    console.log("Pending changes:", pendingChanges);
+  }, [pendingChanges]);
+
   return (
-    <div className="w-full h-full flex flex-col items-center p-4">
-      <div className="w-5/6 min-h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+    <div
+      className={`w-full h-[125vh] flex items-center p-4 gap-2 ${
+        Object.keys(pendingChanges).length != 0
+          ? "justify-start"
+          : "justify-center"
+      }`}
+    >
+      <div className="w-5/6 h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
         <div className="w-full flex flex-col gap-6 px-2">
           <div className="relative">
-            <div className="w-full overflow-hidden min-h-48 rounded-xl p-6 text-gray-800 text-base leading-relaxed">
+            <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 text-base leading-relaxed">
+              <div
+                className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{
+                  __html: getHighlightedHTML(inputText, activeHighlight),
+                }}
+              />
               <div className="whitespace-pre-wrap text-white">
                 {inputText}
                 {result && (
@@ -113,6 +184,17 @@ export default function WriteEditor({
           </div>
         </div>
       </div>
+      {Object.keys(pendingChanges).length != 0 && activeHighlight == null && (
+        <div className="w-2/6 h-3/4">
+          <ChangeHandler
+            changes={pendingChanges}
+            applyChange={applyChange}
+            rejectChange={rejectChange}
+            acceptAllChanges={acceptAllChanges}
+            setActiveHighlight={setActiveHighlight}
+          />
+        </div>
+      )}
     </div>
   );
 }
