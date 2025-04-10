@@ -20,8 +20,10 @@ export async function chat(currentText: string, instructions: string) {
         - each key is a snippet or section from the original text that you think should be replaced with new text
         - each value is the new text that should replace the original text
         - only include parts of the text that need to be changed, do not include any text that does not need to be changed
+        - if you want to add text to the end of the original text, use the key "!ADD_TO_END!" and have the value as the text to add
 
         If the text is long, break up the suggested changes into multiple changes, try to not make a single change be too long.
+        However, never use more than one key "!ADD_TO_END!" in the JSON object.
 
         Here is the current text:
         """
@@ -36,8 +38,11 @@ export async function chat(currentText: string, instructions: string) {
         Please generate the array of the string of text and the JSON object as described above.
         Do not include any other text in your response, only the array of two items.
 
-        Do not ever mention the JSON object in your response to the user. Do not generate markdown style text, they are only writing 
-        plain text.
+        Do not ever mention the JSON object in your response to the user. Your response must be 
+        written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
     `;
   
     const result = await model.generateContent(prompt);

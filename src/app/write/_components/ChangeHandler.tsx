@@ -6,12 +6,14 @@ export function ChangeHandler({
   changes,
   applyChange,
   rejectChange,
+  appendChange,
   acceptAllChanges,
   setActiveHighlight,
 }: {
   changes: ChangeMap;
   applyChange: (original: string, replacement: string) => void;
   rejectChange: (original: string) => void;
+  appendChange: (newText: string) => void;
   acceptAllChanges: () => void;
   setActiveHighlight: (text: string | null) => void;
 }) {
@@ -20,22 +22,24 @@ export function ChangeHandler({
     changeKeys[0] ?? null
   );
 
-  // Sync currentKey with latest change keys
   useEffect(() => {
     if (!currentKey || !changes[currentKey]) {
       setCurrentKey(changeKeys[0] ?? null);
     }
   }, [changes, currentKey]);
 
-  // Highlight update
   useEffect(() => {
     setActiveHighlight(currentKey ?? null);
   }, [currentKey, setActiveHighlight]);
 
   const handleAccept = () => {
     if (currentKey) {
-      const replacement = changes[currentKey];
-      applyChange(currentKey, replacement);
+      if (currentKey == "!ADD_TO_END!") {
+        appendChange(changes[currentKey]);
+      } else {
+        const replacement = changes[currentKey];
+        applyChange(currentKey, replacement);
+      }
     }
   };
 
@@ -64,7 +68,7 @@ export function ChangeHandler({
         </h3>
       </div>
 
-      <div className="h-3/4 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-4">
+      <div className="h-3/4 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-2">
         <div>
           <span className="text-sm text-gray-500">Suggestion:</span>
           <div className="text-green-700 font-medium whitespace-pre-wrap">

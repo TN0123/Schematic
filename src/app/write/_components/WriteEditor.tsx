@@ -40,11 +40,13 @@ export default function WriteEditor({
     if (changes && Object.keys(changes).length > 0) {
       setPendingChanges(changes);
     }
-    if (!changes) {
-      setPendingChanges({});
+  }, [changes]);
+
+  useEffect(() => {
+    if (Object.keys(pendingChanges).length === 0) {
       setActiveHighlight(null);
     }
-  }, [changes]);
+  }, [pendingChanges]);
 
   const combinedText = inputText + (result ? result : "");
 
@@ -108,6 +110,15 @@ export default function WriteEditor({
     setInputText(updatedText);
     setInput(updatedText);
     setPendingChanges({});
+  };
+
+  const appendChange = (newText: string) => {
+    const updatedText = inputText + newText;
+    setInputText(updatedText);
+    setInput(updatedText);
+    const updatedChanges = { ...pendingChanges };
+    delete updatedChanges["!ADD_TO_END!"];
+    setPendingChanges(updatedChanges);
   };
 
   const getHighlightedHTML = (
@@ -184,12 +195,13 @@ export default function WriteEditor({
           </div>
         </div>
       </div>
-      {Object.keys(pendingChanges).length != 0 && activeHighlight == null && (
+      {Object.keys(pendingChanges).length != 0 && (
         <div className="w-2/6 h-3/4">
           <ChangeHandler
             changes={pendingChanges}
             applyChange={applyChange}
             rejectChange={rejectChange}
+            appendChange={appendChange}
             acceptAllChanges={acceptAllChanges}
             setActiveHighlight={setActiveHighlight}
           />

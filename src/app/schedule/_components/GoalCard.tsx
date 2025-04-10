@@ -54,7 +54,7 @@ export default function GoalCard({
         </span>
         <button
           onClick={() => handleGoalClick(goal.id)}
-          className="font-semibold text-sm flex items-center justify-center"
+          className="font-semibold text-sm flex w-full h-full items-center justify-center"
           disabled={removing}
         >
           {goal.title}
