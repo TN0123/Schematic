@@ -17,7 +17,7 @@ export interface Goal {
 }
 
 export default function GoalsPanel() {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [goalToAdd, setGoalToAdd] = useState<string>("");
   const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
     GoalDuration.DAILY
