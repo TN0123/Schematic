@@ -61,39 +61,40 @@ export function ChangeHandler({
   const suggestion = changes[currentKey];
 
   return (
-    <div className="w-full h-full flex flex-col p-4 border gap-1 bg-white rounded-xl">
-      <div className="flex flex-col justify-between items-center py-2 gap-2 border-b border-gray-200 mb-4">
-        <h3 className="text-md font-semibold text-center text-gray-700">
-          {totalChanges} change(s) remaining
+    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 gap-4 bg-white rounded-2xl shadow-lg max-h-[calc(100vh-120px)]">
+      <div className="flex flex-col justify-center items-center py-3 gap-2 border-b border-gray-300 mb-3">
+        <h3 className="text-lg font-semibold text-gray-800 text-center">
+          {totalChanges} Change(s) Remaining
         </h3>
       </div>
 
-      <div className="h-3/4 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col gap-2">
+      <div className="flex-grow overflow-y-auto bg-gray-100 border border-gray-300 rounded-xl p-5 flex flex-col gap-4">
         <div>
-          <span className="text-sm text-gray-500">Suggestion:</span>
-          <div className="text-green-700 font-medium whitespace-pre-wrap">
+          <span className="text-sm text-gray-600 font-medium">Suggested:</span>
+          <div className="text-sm text-gray-900 font-normal whitespace-pre-wrap mt-2">
             {suggestion}
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex w-full justify-between gap-4">
         <button
           onClick={handleAccept}
-          className="text-sm text-green-700 font-semibold hover:underline inline-flex items-center gap-1"
+          className="w-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-xl text-sm hover:bg-green-200 transition-colors duration-200 flex items-center justify-center gap-2 border border-green-200 shadow-sm"
         >
-          <Check size={16} /> Accept
+          <Check size={16} className="text-green-700" /> Accept
         </button>
         <button
           onClick={handleReject}
-          className="text-sm text-red-600 font-semibold hover:underline inline-flex items-center gap-1"
+          className="w-1/2 bg-red-100 text-red-800 px-4 py-2 rounded-xl text-sm hover:bg-red-200 transition-colors duration-200 flex items-center justify-center gap-2 border border-red-200 shadow-sm"
         >
-          <X size={16} /> Reject
+          <X size={16} className="text-red-700" /> Reject
         </button>
       </div>
+
       <button
         onClick={handleAcceptAll}
-        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-blue-700 transition"
+        className="w-full mt-4 bg-indigo-100 text-indigo-800 px-4 py-2 rounded-xl text-sm hover:bg-indigo-200 transition-colors duration-200 border border-indigo-200 shadow-sm"
       >
         Accept All
       </button>

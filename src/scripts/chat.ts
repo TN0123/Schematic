@@ -25,6 +25,9 @@ export async function chat(currentText: string, instructions: string) {
         If the text is long, break up the suggested changes into multiple changes, try to not make a single change be too long.
         However, never use more than one key "!ADD_TO_END!" in the JSON object.
 
+        If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
+        to the end of the text.
+
         Here is the current text:
         """
         ${currentText}

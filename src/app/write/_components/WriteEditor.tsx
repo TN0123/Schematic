@@ -105,7 +105,11 @@ export default function WriteEditor({
   const acceptAllChanges = () => {
     let updatedText = inputText;
     for (const [original, replacement] of Object.entries(pendingChanges)) {
-      updatedText = updatedText.replace(original, replacement);
+      if (original === "!ADD_TO_END!") {
+        updatedText += replacement;
+      } else {
+        updatedText = updatedText.replace(original, replacement);
+      }
     }
     setInputText(updatedText);
     setInput(updatedText);
@@ -147,13 +151,13 @@ export default function WriteEditor({
 
   return (
     <div
-      className={`w-full h-[125vh] flex items-center p-4 gap-2 ${
+      className={`w-full h-[92.25vh] flex items-center p-4 pb-0 gap-2 ${
         Object.keys(pendingChanges).length != 0
           ? "justify-start"
           : "justify-center"
       }`}
     >
-      <div className="w-5/6 h-full h-auto flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+      <div className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white shadow-xl p-8 border border-gray-100">
         <div className="w-full flex flex-col gap-6 px-2">
           <div className="relative">
             <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 text-base leading-relaxed">
@@ -195,18 +199,19 @@ export default function WriteEditor({
           </div>
         </div>
       </div>
-      {Object.keys(pendingChanges).length != 0 && (
-        <div className="w-2/6 h-3/4">
-          <ChangeHandler
-            changes={pendingChanges}
-            applyChange={applyChange}
-            rejectChange={rejectChange}
-            appendChange={appendChange}
-            acceptAllChanges={acceptAllChanges}
-            setActiveHighlight={setActiveHighlight}
-          />
-        </div>
-      )}
+      {Object.keys(pendingChanges).length != 0 &&
+        Object.keys(pendingChanges)[0] != "" && (
+          <div className="w-2/6 h-3/4 self-start">
+            <ChangeHandler
+              changes={pendingChanges}
+              applyChange={applyChange}
+              rejectChange={rejectChange}
+              appendChange={appendChange}
+              acceptAllChanges={acceptAllChanges}
+              setActiveHighlight={setActiveHighlight}
+            />
+          </div>
+        )}
     </div>
   );
 }
