@@ -1,6 +1,7 @@
 import { PanelRightClose, RefreshCw, SendHorizonal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChangeMap } from "./WriteEditor";
+import { motion } from "framer-motion";
 
 interface MessageProps {
   message: string;
@@ -14,13 +15,16 @@ export function Message({ message, role }: MessageProps) {
         role === "user" ? "justify-end" : "justify-start"
       }`}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         className={`max-w-[85%] p-3 rounded-xl my-2 ${
           role === "user" ? "bg-blue-50 text-right" : "bg-gray-50 text-left"
         }`}
       >
         <p className="text-gray-900 text-xs">{message}</p>
-      </div>
+      </motion.div>
     </div>
   );
 }

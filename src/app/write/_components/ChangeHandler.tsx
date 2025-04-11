@@ -61,7 +61,7 @@ export function ChangeHandler({
   const suggestion = changes[currentKey];
 
   return (
-    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 gap-4 bg-white rounded-2xl shadow-lg max-h-[calc(100vh-120px)]">
+    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 gap-4 bg-white rounded-2xl max-h-[calc(100vh-120px)]">
       <div className="flex flex-col justify-center items-center py-3 gap-2 border-b border-gray-300 mb-3">
         <h3 className="text-lg font-semibold text-gray-800 text-center">
           {totalChanges} Change(s) Remaining

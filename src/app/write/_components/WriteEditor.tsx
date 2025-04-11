@@ -199,19 +199,23 @@ export default function WriteEditor({
           </div>
         </div>
       </div>
-      {Object.keys(pendingChanges).length != 0 &&
-        Object.keys(pendingChanges)[0] != "" && (
-          <div className="w-2/6 h-3/4 self-start">
-            <ChangeHandler
-              changes={pendingChanges}
-              applyChange={applyChange}
-              rejectChange={rejectChange}
-              appendChange={appendChange}
-              acceptAllChanges={acceptAllChanges}
-              setActiveHighlight={setActiveHighlight}
-            />
-          </div>
-        )}
+      <div
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          Object.keys(pendingChanges).length !== 0 &&
+          Object.keys(pendingChanges)[0] !== ""
+            ? "w-2/6 opacity-100 translate-x-0"
+            : "w-0 opacity-0 -translate-x-10"
+        } h-3/4 self-start`}
+      >
+        <ChangeHandler
+          changes={pendingChanges}
+          applyChange={applyChange}
+          rejectChange={rejectChange}
+          appendChange={appendChange}
+          acceptAllChanges={acceptAllChanges}
+          setActiveHighlight={setActiveHighlight}
+        />
+      </div>
     </div>
   );
 }
