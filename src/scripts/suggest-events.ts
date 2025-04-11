@@ -31,13 +31,20 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         bulletinDict[b.title] = b.content;
     });
 
-    console.log("Current Date Time:", currentDateTime);
+    const goals = await prisma.goal.findMany({
+        where: { userId },
+        select: { title: true, type: true }
+    });
+
+    // console.log(goals);    
 
     const prompt = `
         You are a helpful AI that suggests a person tasks for a single day to help
         them be more productive. Your goal is to generate a JSON array of task objects.
         The person you are helping has a calendar on which they might already have some
-        events. The current date and time is ${currentDateTime}. 
+        events. The person you are helping also may also have some notes and a list of daily goals.
+        
+        The current date and time is ${currentDateTime}. 
         
 
         **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
@@ -50,8 +57,8 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
            - After the current time.  
            - Within the allowed time range (6:00 AM - 11:00 PM).  
            - Not conflicting with any existing events.  
-        5. Only suggest tasks that are relevant to the person's bulletin board.  
-        6. Suggest **AT MOST three tasks**, unless valid time slots are unavailable.
+        5. When possible, only suggest tasks that are relevant to the person's bulletin board or daily goals.  
+        6. Suggest **AT MOST three tasks**
         
         
         **Output Format (JSON array only, no extra text):**
@@ -71,8 +78,11 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         **Existing Events (DO NOT suggest conflicting times):**
             ${JSON.stringify(existingEvents, null, 2)}
         
-        **Bulletin Items:**
+        **Bulletin Items(Might be empty):**
         ${JSON.stringify(bulletinDict, null, 2)}
+
+        **Daily Goals (Might be empty):**
+        ${JSON.stringify(goals, null, 2)}
 
         **FINAL VERIFICATION BEFORE RETURNING RESPONSE:**  
         - Ensure ALL suggested tasks start **strictly after the current time** (${currentDateTime}).  
@@ -80,6 +90,8 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         - Ensure NO tasks conflict with existing events.  
         - If no valid time slots exist, return an empty array.
     `;
+
+    // console.log(prompt);
 
     let retries = 3;
     let delay = 1000;
