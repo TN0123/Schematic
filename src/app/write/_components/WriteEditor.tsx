@@ -12,12 +12,15 @@ export default function WriteEditor({
   setInput: (input: string) => void;
   changes: any;
 }) {
-  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+  const [generatedStart, setGeneratedStart] = useState<number | null>(null);
+  const [generatedEnd, setGeneratedEnd] = useState<number | null>(null);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -34,7 +37,7 @@ export default function WriteEditor({
 
   useEffect(() => {
     updateTextareaHeight();
-  }, [inputText, result]);
+  }, [inputText]);
 
   useEffect(() => {
     if (changes && Object.keys(changes).length > 0) {
@@ -48,12 +51,18 @@ export default function WriteEditor({
     }
   }, [pendingChanges]);
 
-  const combinedText = inputText + (result ? result : "");
+  useEffect(() => {
+    if (loading) {
+      setInputText(inputText + " Generating...");
+    }
+  }, [loading]);
 
   const handleContinue = async () => {
     try {
       setError("");
-      setResult("Generating...");
+      setLoading(true);
+
+      const textBeforeCursor = inputText.slice(0, cursorPosition);
 
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -61,7 +70,8 @@ export default function WriteEditor({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: `${inputText}`,
+          startText: `${textBeforeCursor}`,
+          endText: `${inputText.slice(cursorPosition)}`,
         }),
       });
 
@@ -69,7 +79,19 @@ export default function WriteEditor({
         throw new Error("Failed to generate content");
       }
       const data = await response.json();
-      setResult(data.result || "No result generated.");
+      const generatedText = data.result || "";
+
+      const before = inputText.slice(0, cursorPosition);
+      const after = inputText.slice(cursorPosition);
+      const updated = before + generatedText + after;
+
+      const start = before.length;
+      const end = start + generatedText.length;
+
+      setGeneratedStart(start);
+      setGeneratedEnd(end);
+      setInputText(updated);
+      setLoading(false);
     } catch (error) {
       console.error(error);
       setError("An error occurred while generating content.");
@@ -138,6 +160,24 @@ export default function WriteEditor({
     );
   };
 
+  const getHighlightedHTMLWithRange = (
+    text: string,
+    start: number | null,
+    end: number | null
+  ): string => {
+    if (start === null || end === null) return text;
+
+    const before = text.slice(0, start);
+    const highlight = text.slice(start, end);
+    const after = text.slice(end);
+
+    return (
+      before +
+      `<mark class="bg-green-100 text-gray-800">${highlight}</mark>` +
+      after
+    );
+  };
+
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
     return () => {
@@ -165,32 +205,32 @@ export default function WriteEditor({
                 className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
                 aria-hidden="true"
                 dangerouslySetInnerHTML={{
-                  __html: getHighlightedHTML(inputText, activeHighlight),
+                  __html:
+                    activeHighlight !== null
+                      ? getHighlightedHTML(inputText, activeHighlight)
+                      : getHighlightedHTMLWithRange(
+                          inputText,
+                          generatedStart,
+                          generatedEnd
+                        ),
                 }}
               />
-              <div className="whitespace-pre-wrap text-white">
-                {inputText}
-                {result && (
-                  <span className="bg-green-100 text-gray-800">{result}</span>
-                )}
-              </div>
               <textarea
                 ref={textareaRef}
                 className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
-                value={combinedText}
+                value={inputText}
                 onChange={(e) => {
                   const newValue = e.target.value;
-                  if (newValue.length < inputText.length) {
-                    setInputText(newValue);
-                    setResult("");
-                  } else if (newValue.length < combinedText.length) {
-                    setResult(newValue.slice(inputText.length));
-                  } else {
-                    setInputText(newValue);
-                    setResult("");
-                  }
+                  const selectionStart = e.target.selectionStart ?? 0;
+                  setCursorPosition(selectionStart);
                   setInput(newValue);
+                  setInputText(newValue);
+                  setGeneratedStart(null);
+                  setGeneratedEnd(null);
                   updateTextareaHeight();
+                }}
+                onSelect={(e) => {
+                  setCursorPosition(e.currentTarget.selectionStart ?? 0);
                 }}
                 onInput={updateTextareaHeight}
                 placeholder="Start typing here..."
