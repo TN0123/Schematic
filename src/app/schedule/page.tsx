@@ -365,9 +365,6 @@ export default function CalendarApp() {
                   titleFormat: { year: "numeric", month: "long" },
                   dayHeaderFormat: { weekday: "short" },
                 },
-                timeGridWeek: {
-                  dayHeaderFormat: { weekday: "short" },
-                },
               }}
               themeSystem="standard"
               eventColor="#3b82f6"

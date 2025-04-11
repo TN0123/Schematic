@@ -26,7 +26,7 @@ export async function chat(currentText: string, instructions: string) {
         However, never use more than one key "!ADD_TO_END!" in the JSON object.
 
         If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
-        to the end of the text.
+        to the end of the text. Never put output text in the string of text, only in the JSON object.
 
         Here is the current text:
         """
