@@ -52,6 +52,7 @@ export default function CalendarApp() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
@@ -318,6 +319,7 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
+  
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -421,6 +423,11 @@ export default function CalendarApp() {
             suggestionsLoading={suggestionsLoading}
             setShowModal={setShowModal}
             fetchSuggestions={fetchSuggestions}
+            isRefreshing={isRefreshing}
+            setIsRefreshing={setIsRefreshing}
+            
+            
+            
           />
         </div>
 
