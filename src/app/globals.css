@@ -18,7 +18,6 @@
     background: #c0c0c0; /* Neutral gray for a subtle appearance */
     border-radius: 10px; /* Rounded edges for smoothness */
     border: 2px solid #f4f4f4; /* Creates a subtle padding effect */
-    transition: background 0.3s ease, border 0.3s ease; /* Smooth transition for hover effects */
 }
 
 /* Handle on hover */
@@ -138,4 +137,74 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 .fc-timegrid-slot-label-frame{
     text-align: left !important;
+}
+
+
+/* Dark theme for FullCalendar */
+html.dark .fc-day-today {
+    background-color: #374151 !important; /* Darker background for today */
+}
+
+html.dark .fc-day-today:hover {
+    background-color: #4b5563 !important; /* Slightly lighter on hover */
+}
+
+html.dark .fc-dayGridMonth-button, 
+html.dark .fc-timeGridWeek-button, 
+html.dark .fc-timeGridDay-button {
+    background-color: #374151 !important; /* Dark button background */
+    color: white !important; /* White text for contrast */
+    border: 3px solid #374151 !important; /* Match button background */
+}
+
+html.dark .fc-dayGridMonth-button:hover, 
+html.dark .fc-timeGridWeek-button:hover, 
+html.dark .fc-timeGridDay-button:hover {
+    background-color: #4b5563 !important; /* Slightly lighter on hover */
+    transition : all 0.2s ease-in-out !important; /* Smooth transition */
+}
+
+html.dark .fc-button-active {
+    background-color: #4b5563 !important; /* Active button background */
+}
+
+
+html.dark .fc-toolbar-title {
+    color: white !important; /* White text for toolbar title */
+}
+
+html.dark .fc-today-button {
+    background-color: #374151 !important; /* Dark background for today button */
+    color: white !important; /* White text */
+}
+html.dark .fc-today-button:hover {
+    background-color: #4b5563 !important; /* Slightly lighter on hover */
+}
+
+html.dark .fc-prev-button, 
+html.dark .fc-next-button {
+    background-color: #374151 !important; /* Dark background for navigation buttons */
+    border: 1px solid #4b5563 !important; /* Border matching dark theme */
+    color: white !important; /* White text */
+}
+html.dark .fc-prev-button:hover, 
+html.dark .fc-next-button:hover {
+    background-color: #4b5563 !important; /* Slightly lighter on hover */
+}
+
+html.dark .fc-daygrid-day-top {
+    color: white !important; /* White text for day headers */
+}
+
+html.dark .fc-col-header-cell {
+    color: #9ca3af !important; /* Lighter gray for column headers */
+}
+
+html.dark .fc-popover {
+    background-color: #374151 !important; /* Dark background for popover */
+    color: white !important; /* White text */
+}
+
+html.dark .fc-popover:hover {
+    background-color: #4b5563 !important; /* Slightly lighter on hover */
 }

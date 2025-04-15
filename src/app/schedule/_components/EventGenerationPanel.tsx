@@ -26,26 +26,26 @@ export default function EventGenerationPanel({
   suggestionsLoading: boolean;
 }) {
   return (
-    <aside className="w-96 bg-white border-l px-6 py-4 flex flex-col gap-4">
+    <aside className="w-96 bg-white dark:bg-gray-800 border-l dark:border-gray-700 px-6 py-4 flex flex-col gap-4">
       {/* Menu Bar */}
       <div className="flex">
         <button
-          className="hover:bg-gray-100 transition-colors duration-200 p-2"
+          className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2"
           onClick={() => setShowModal(true)}
         >
           <Plus size={20} />
         </button>
-        <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+        <button className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2">
           <Type size={20} />
         </button>
-        <button className="hover:bg-gray-100 transition-colors duration-200 p-2">
+        <button className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2">
           <FileUp size={20} />
         </button>
       </div>
 
       {/* Input Field */}
       <textarea
-        className="flex p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+        className="flex p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 focus:outline-none border dark:border-gray-600 rounded-br-md rounded-bl-md text-black dark:text-white"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
         onInput={(e) => {
@@ -56,19 +56,19 @@ export default function EventGenerationPanel({
         placeholder="Enter your schedule here..."
       />
       <button
-        className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        className="w-full py-3 mt-2 rounded-md bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         disabled={loading}
         onClick={handleSubmit}
       >
         {loading ? "Generating..." : "Generate"}
       </button>
-      <div className="w-full border-t">
+      <div className="w-full border-t dark:border-gray-700">
         <div className="flex items-center justify-between px-2 w-full">
-          <h1 className="text-md py-2">Suggested</h1>
+          <h1 className="text-md py-2 text-black dark:text-white">Suggested</h1>
           <button className="px-2" onClick={fetchSuggestions}>
             <div className="flex items-center justify-center gap-2">
               <RefreshCcw
-                className="hover:text-blue-500 transition-all duration-200"
+                className="hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-200"
                 size={16}
               />
             </div>
@@ -88,7 +88,10 @@ export default function EventGenerationPanel({
         )}
         {suggestionsLoading && (
           <div className="w-full flex justify-center items-center">
-            <RefreshCcw size={24} className="animate-spin" />
+            <RefreshCcw
+              size={24}
+              className="animate-spin text-black dark:text-white"
+            />
           </div>
         )}
       </div>
