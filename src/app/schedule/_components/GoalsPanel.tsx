@@ -67,40 +67,46 @@ export default function GoalsPanel() {
   };
 
   const deleteGoal = async (id: string) => {
+    setRemovingGoals((prev) => [...prev, id]);
+
     await fetch(`/api/goals/${id}`, {
       method: "DELETE",
     });
 
-    setRemovingGoals((prev) => [...prev, id]);
-
-    setTimeout(() => {
-      setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
-      setRemovingGoals((prev) => prev.filter((id) => id !== id));
-    }, 1000);
+    setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
+    setRemovingGoals((prev) => prev.filter((id) => id !== id));
   };
 
   return (
     <aside
-      className={`relative ${isCollapsed ? "w-14" : "w-80"} bg-white border-r ${
+      className={`relative ${
+        isCollapsed ? "w-14" : "w-80"
+      } bg-white dark:bg-gray-800 border-r dark:border-gray-700 ${
         isCollapsed ? "px-2 py-6" : "px-4 py-6"
       } flex flex-col transition-all duration-300 items-center`}
     >
       <div className="w-full flex flex-col items-center justify-between">
         <div className="flex w-full justify-between">
           {!isCollapsed && (
-            <h1 className="font-bold text-2xl w-full text-gray-900 tracking-wide transition-all duration-300">
+            <h1 className="font-bold text-2xl w-full text-gray-900 dark:text-white tracking-wide transition-all duration-300">
               Goals
             </h1>
           )}
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-full hover:bg-gray-200 transition-all duration-200"
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
           >
             {isCollapsed ? (
-              <PanelLeftOpen size={24} className="text-gray-700" />
+              <PanelLeftOpen
+                size={24}
+                className="text-gray-700 dark:text-gray-300"
+              />
             ) : (
-              <PanelLeftClose size={24} className="text-gray-700" />
+              <PanelLeftClose
+                size={24}
+                className="text-gray-700 dark:text-gray-300"
+              />
             )}
           </button>
         </div>
@@ -109,8 +115,10 @@ export default function GoalsPanel() {
             {Object.values(GoalDuration).map((duration) => (
               <button
                 key={duration}
-                className={`text-gray-900 text-xs font-medium px-2 py-2 shadow-sm rounded-md border border-gray-300 hover:bg-gray-900 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-all duration-200 ${
-                  filters.includes(duration) ? "bg-gray-900 text-white" : ""
+                className={`text-gray-900 dark:text-gray-300 text-xs font-medium px-2 py-2 shadow-sm rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-900 dark:hover:bg-gray-600 hover:text-white focus:outline-none transition-all duration-200 ${
+                  filters.includes(duration)
+                    ? "bg-gray-900 dark:bg-gray-600 text-white"
+                    : ""
                 }`}
                 onClick={() => handleFilterChange(duration)}
               >
@@ -141,7 +149,7 @@ export default function GoalsPanel() {
           <div className="flex gap-2 mt-2 text-sm justify-center items-center">
             <select
               id="goalType"
-              className="border border-gray-300 rounded-md px-2 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+              className="border border-gray-300 dark:border-gray-600 rounded-md px-2 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-offset-gray-800 focus:border-blue-400 transition-all duration-200"
               value={currentDuration}
               onChange={(e) => {
                 setCurrentDuration(
@@ -158,7 +166,7 @@ export default function GoalsPanel() {
             </select>
             <input
               type="text"
-              className="border border-gray-300 px-2 py-2 rounded-md text-center text-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+              className="border border-gray-300 dark:border-gray-600 px-2 py-2 rounded-md text-center text-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-offset-gray-800 focus:border-blue-400 transition-all duration-200"
               onChange={(e) => setGoalToAdd(e.target.value)}
               value={goalToAdd}
               placeholder="Add a new goal..."

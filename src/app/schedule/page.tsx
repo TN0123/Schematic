@@ -325,11 +325,11 @@ export default function CalendarApp() {
           {/* Goals Panel */}
           <GoalsPanel />
           {/* Calendar */}
-          <div className="flex-1 p-4 h-full transition-all duration-200 relative">
+          <div className="flex-1 p-4 h-full transition-all duration-200 relative dark:bg-gray-900 dark:text-gray-100">
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div
-                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10"
+                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10 dark:bg-gray-800 dark:bg-opacity-70"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -337,7 +337,7 @@ export default function CalendarApp() {
                 >
                   <RefreshCcw
                     size={32}
-                    className="animate-spin text-gray-600"
+                    className="animate-spin text-gray-600 dark:text-gray-300"
                   />
                 </motion.div>
               )}
@@ -368,11 +368,11 @@ export default function CalendarApp() {
               }}
               themeSystem="standard"
               eventColor="#3b82f6"
-              eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
-              dayCellClassNames="hover:bg-gray-100 transition-colors duration-200"
-              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b"
+              eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-all duration-200 dark:bg-blue-800 dark:hover:bg-blue-700"
+              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-gray-800"
+              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-gray-300 dark:border-gray-700"
               nowIndicator={true}
-              nowIndicatorClassNames="border-red-500"
+              nowIndicatorClassNames="border-red-500 dark:border-red-400"
               scrollTimeReset={false}
               allDaySlot={false}
               scrollTime={`${new Date().getHours()}:00:00`}

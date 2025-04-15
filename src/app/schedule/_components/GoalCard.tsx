@@ -41,25 +41,27 @@ export default function GoalCard({
   return (
     <div
       className={`flex w-full rounded-md border-l-4 items-center justify-between transition-all duration-500 shadow-sm hover:shadow-md hover:-translate-y-1 
-    ${durationColors[goal.type].border} ${durationColors[goal.type].bg} 
+    ${durationColors[goal.type].border} ${
+        durationColors[goal.type].bg
+      } dark:bg-gray-700 
     ${removing ? "-translate-x-full opacity-0" : "translate-x-0 opacity-100"}`}
     >
       <div className="flex w-full px-4 py-2 text-center justify-center items-center">
         <span
           className={`absolute left-2 ${
             durationColors[goal.type].text
-          } text-xs font-semibold`}
+          } dark:text-gray-300 text-xs font-semibold`}
         >
           {goal.type.charAt(0).toUpperCase()}
         </span>
         <button
           onClick={() => handleGoalClick(goal.id)}
-          className="font-semibold text-sm flex w-3/4 h-full items-center justify-center"
+          className="font-semibold text-sm flex w-3/4 h-full items-center justify-center text-gray-900 dark:text-gray-100"
           disabled={removing}
         >
           {goal.title}
           {removing ? (
-            <Loader2 className="animate-spin text-gray-600 w-4 h-4" />
+            <Loader2 className="animate-spin text-gray-600 dark:text-gray-400 w-4 h-4" />
           ) : (
             <></>
           )}
