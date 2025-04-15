@@ -156,7 +156,7 @@ export default function WriteEditor({
     const regex = new RegExp(escaped, "g");
     return text.replace(
       regex,
-      `<mark class="bg-yellow-200">${highlight}</mark>`
+      `<mark class="bg-yellow-200 dark:bg-yellow-900 dark:text-gray-200">${highlight}</mark>`
     );
   };
 
@@ -173,7 +173,7 @@ export default function WriteEditor({
 
     return (
       before +
-      `<mark class="bg-green-100 text-gray-800">${highlight}</mark>` +
+      `<mark class="bg-green-100 text-gray-800 dark:text-gray-200 dark:bg-green-900">${highlight}</mark>` +
       after
     );
   };
@@ -197,10 +197,10 @@ export default function WriteEditor({
           : "justify-center"
       }`}
     >
-      <div className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white shadow-xl p-8 border border-gray-100">
+      <div className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-gray-900 shadow-xl p-8 border border-gray-100 dark:border-gray-700 transition-all duration-200">
         <div className="w-full flex flex-col gap-6 px-2">
           <div className="relative">
-            <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 text-base leading-relaxed">
+            <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-gray-200 text-base leading-relaxed">
               <div
                 className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
                 aria-hidden="true"
@@ -217,7 +217,7 @@ export default function WriteEditor({
               />
               <textarea
                 ref={textareaRef}
-                className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
+                className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-gray-200 text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
                 value={inputText}
                 onChange={(e) => {
                   const newValue = e.target.value;
