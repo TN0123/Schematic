@@ -166,6 +166,19 @@ export default function BulletinItem({
     };
   }, [handleKeyPress]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasUnsavedChanges) {
+        handleSave();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [hasUnsavedChanges, handleSave]);
+
   return (
     <div className="bg-white border border-gray-200 shadow-sm w-full h-full">
       <div className="p-4 h-full flex flex-col">
