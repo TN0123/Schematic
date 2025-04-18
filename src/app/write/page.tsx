@@ -1,31 +1,21 @@
 "use client";
 
-import ChatWindow from "@/app/write/_components/ChatWindow";
-import WriteOptions from "@/app/write/_components/WriteOptions";
+import WriteEditor from "@/app/write/_components/WriteEditor";
 import { useState } from "react";
+import WritePanel from "@/app/write/_components/WritePanel";
+import { FileText } from "lucide-react";
+import { ChangeMap } from "@/app/write/_components/WriteEditor";
 
 export default function Writer() {
-  const [selectedContext, setSelectedContext] = useState<string>("");
-  const [continueEnabled, setContinueEnabled] = useState(false);
   const [input, setInput] = useState<string>("");
+  const [changes, setChanges] = useState<ChangeMap>({});
 
   return (
-    <div className="flex w-full min-h-[125vh] h-auto h-full p-2 bg-gray-200">
-      <div className="w-1/5">
-        <h1></h1>
+    <div className="flex w-full h-full bg-gray-200 dark:bg-gray-800 transition-all duration-200">
+      <div className="flex w-full overflow-auto justify-center">
+        <WriteEditor setInput={setInput} changes={changes} />
       </div>
-      <ChatWindow
-        selectedContext={selectedContext}
-        continueEnabled={continueEnabled}
-        setInput={setInput}
-      />
-      <div className="flex w-1/5 justify-center items-center">
-        <WriteOptions
-          onSelectContext={setSelectedContext}
-          setContinue={setContinueEnabled}
-          input={input}
-        />
-      </div>
+      <WritePanel inputText={input} setChanges={setChanges} />
     </div>
   );
 }

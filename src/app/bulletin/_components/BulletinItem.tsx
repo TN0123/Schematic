@@ -66,7 +66,8 @@ export default function BulletinItem({
     editable: true,
     editorProps: {
       attributes: {
-        class: "h-full min-h-[100px] w-full outline-none",
+        class:
+          "h-full min-h-[100px] w-full outline-none dark:bg-gray-800 dark:text-gray-100",
       },
     },
     immediatelyRender: false,
@@ -166,15 +167,36 @@ export default function BulletinItem({
     };
   }, [handleKeyPress]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasUnsavedChanges) {
+        handleSave();
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        handleSave();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, handleSave]);
+
   return (
-    <div className="bg-white border border-gray-200 shadow-sm w-full h-full">
+    <div className="bg-white border border-gray-200 shadow-sm w-full h-full dark:bg-gray-900 dark:border-gray-700">
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
           <input
             type="text"
             value={title}
             onChange={handleTitleChange}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 mb-2 text-center"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 mb-2 text-center dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-blue-500"
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
@@ -183,7 +205,7 @@ export default function BulletinItem({
                 onClick={handleSave}
                 disabled={isSaving}
                 className={`p-2 text-gray-500 rounded-lg transition-colors
-                  hover:text-blue-500 hover:bg-blue-50
+                  hover:text-blue-500 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-900
                   ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
                 aria-label="Save changes"
               >
@@ -192,18 +214,18 @@ export default function BulletinItem({
             )}
             <button
               onClick={onDelete}
-              className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-900"
               aria-label="Delete item"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
-        <div className="relative border rounded-lg p-3 flex-grow flex flex-col">
+        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-gray-700 dark:bg-gray-800">
           <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[480px]`}
+            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[480px] dark:prose-invert`}
           />
         </div>
       </div>
