@@ -318,6 +318,7 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
+  
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -418,6 +419,10 @@ export default function CalendarApp() {
             suggestionsLoading={suggestionsLoading}
             setShowModal={setShowModal}
             fetchSuggestions={fetchSuggestions}
+            
+            
+            
+            
           />
         </div>
 
