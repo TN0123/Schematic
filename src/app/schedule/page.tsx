@@ -52,7 +52,6 @@ export default function CalendarApp() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
@@ -423,8 +422,7 @@ export default function CalendarApp() {
             suggestionsLoading={suggestionsLoading}
             setShowModal={setShowModal}
             fetchSuggestions={fetchSuggestions}
-            isRefreshing={isRefreshing}
-            setIsRefreshing={setIsRefreshing}
+            
             
             
             

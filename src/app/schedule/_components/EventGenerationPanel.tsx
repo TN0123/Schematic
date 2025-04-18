@@ -1,6 +1,7 @@
 import { Plus, Type, FileUp, RefreshCcw, RefreshCcwDot } from "lucide-react";
 import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
+import { useState } from "react";
 
 export default function EventGenerationPanel({
   setShowModal,
@@ -13,8 +14,7 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion,
   handleRejectSuggestion,
   suggestionsLoading,
-  isRefreshing,
-  setIsRefreshing
+  
   
   
 }: {
@@ -28,10 +28,11 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion: (event: Event) => void;
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
-  isRefreshing: boolean;
-  setIsRefreshing: (refreshing: boolean) => void;
+  
  
+
 }) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   return (
     <aside className="w-96 bg-white border-l px-6 py-4 flex flex-col gap-4">
       {/* Menu Bar */}
@@ -52,9 +53,9 @@ export default function EventGenerationPanel({
 
       {/* Input Field */}
     
-      <div className="flex items-start space-x-1">
+      <div className="flex flex-col bg bg-gray-100  rounded-br-md rounded-bl-md">
         <textarea
-          className="flex-1 p-4 h-auto resize-none bg-gray-100 focus:outline-none border rounded-br-md rounded-bl-md"
+          className="flex-1 p-4 h-auto resize-none bg-gray-100 focus:outline-none"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onInput={(e) => {
@@ -64,7 +65,8 @@ export default function EventGenerationPanel({
           }}
           placeholder="Enter your schedule here..."
         />
-         <button
+        <div className = "flex justify-end">
+         <button className = "p-2"
            onClick={() => {
             setIsRefreshing(true);
         
@@ -79,15 +81,17 @@ export default function EventGenerationPanel({
             }, 400);
           }}
             
-           title="Clear text"
+           title="Clear text" 
   >
-     <RefreshCcwDot
+     <RefreshCcw
       size={20}
-      className={`transition-all duration-200 hover:text-blue-500 ${
+      className={`transition-all duration-200 text-gray-600 hover:text-blue-500 ${
         isRefreshing ? "animate-spin" : ""
       }`}
+      style={isRefreshing ? { animationDirection: "reverse" } : {}}
     />
   </button>
+  </div>
 </div>
 
       <button
@@ -105,6 +109,7 @@ export default function EventGenerationPanel({
               <RefreshCcw
                 className="hover:text-blue-500 transition-all duration-200"
                 size={16}
+               
               />
             </div>
           </button>
@@ -123,7 +128,8 @@ export default function EventGenerationPanel({
         )}
         {suggestionsLoading && (
           <div className="w-full flex justify-center items-center">
-            <RefreshCcw size={24} className="animate-spin" />
+            <RefreshCcw size={24} className="animate-spin"
+            style={suggestionsLoading ? { animationDirection: "reverse" } : {}} />
           </div>
         )}
       </div>
