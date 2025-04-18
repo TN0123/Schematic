@@ -14,9 +14,6 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion,
   handleRejectSuggestion,
   suggestionsLoading,
-  
-  
-  
 }: {
   setShowModal: (show: boolean) => void;
   inputText: string;
@@ -28,9 +25,6 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion: (event: Event) => void;
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
-  
- 
-
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   return (
@@ -52,7 +46,7 @@ export default function EventGenerationPanel({
       </div>
 
       {/* Input Field */}
-    
+
       <div className="flex flex-col bg bg-gray-100  rounded-br-md rounded-bl-md">
         <textarea
           className="flex-1 p-4 h-auto resize-none bg-gray-100 focus:outline-none"
@@ -65,34 +59,32 @@ export default function EventGenerationPanel({
           }}
           placeholder="Enter your schedule here..."
         />
-        <div className = "flex justify-end">
-         <button className = "p-2"
-           onClick={() => {
-            setIsRefreshing(true);
-        
-          
-            setTimeout(() => {
-              setInputText("");
-            }, 200);
-        
-            
-            setTimeout(() => {
-              setIsRefreshing(false);
-            }, 400);
-          }}
-            
-           title="Clear text" 
-  >
-     <RefreshCcw
-      size={20}
-      className={`transition-all duration-200 text-gray-600 hover:text-blue-500 ${
-        isRefreshing ? "animate-spin" : ""
-      }`}
-      style={isRefreshing ? { animationDirection: "reverse" } : {}}
-    />
-  </button>
-  </div>
-</div>
+        <div className="flex justify-end">
+          <button
+            className="p-2"
+            onClick={() => {
+              setIsRefreshing(true);
+
+              setTimeout(() => {
+                setInputText("");
+              }, 200);
+
+              setTimeout(() => {
+                setIsRefreshing(false);
+              }, 400);
+            }}
+            title="Clear text"
+          >
+            <RefreshCcw
+              size={20}
+              className={`transition-all duration-200 text-gray-600 hover:text-blue-500 ${
+                isRefreshing ? "animate-spin" : ""
+              }`}
+              style={isRefreshing ? { animationDirection: "reverse" } : {}}
+            />
+          </button>
+        </div>
+      </div>
 
       <button
         className="w-full py-3 mt-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
@@ -109,7 +101,6 @@ export default function EventGenerationPanel({
               <RefreshCcw
                 className="hover:text-blue-500 transition-all duration-200"
                 size={16}
-               
               />
             </div>
           </button>
@@ -128,8 +119,13 @@ export default function EventGenerationPanel({
         )}
         {suggestionsLoading && (
           <div className="w-full flex justify-center items-center">
-            <RefreshCcw size={24} className="animate-spin"
-            style={suggestionsLoading ? { animationDirection: "reverse" } : {}} />
+            <RefreshCcw
+              size={24}
+              className="animate-spin"
+              style={
+                suggestionsLoading ? { animationDirection: "reverse" } : {}
+              }
+            />
           </div>
         )}
       </div>
