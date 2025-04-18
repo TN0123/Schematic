@@ -57,25 +57,10 @@ export default function CalendarApp() {
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
     useState(false);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setCalendarLoading(true);
-      try {
-        const response = await fetch("/api/events");
-        if (!response.ok) {
-          throw new Error("Failed to fetch events");
-        }
-        const data = await response.json();
-        setEvents(data);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setCalendarLoading(false);
-      }
-    };
-    fetchEvents();
-  }, []);
+  const [fetchedRange, setFetchedRange] = useState<{
+    start: Date;
+    end: Date;
+  } | null>(null);
 
   useEffect(() => {
     console.log("Updated events:", events);
@@ -87,6 +72,29 @@ export default function CalendarApp() {
       setHasFetchedInitialSuggestions(true);
     }
   }, [hasFetchedInitialSuggestions, userId]);
+
+  const fetchEvents = async (startStr: string, endStr: string) => {
+    setCalendarLoading(true);
+    try {
+      const response = await fetch(
+        `/api/events?start=${startStr}&end=${endStr}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+      const data = await response.json();
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const isRangeInsideFetched = (start: Date, end: Date) => {
+    if (!fetchedRange) return false;
+    return start >= fetchedRange.start && end <= fetchedRange.end;
+  };
 
   const handleAddEvent = async (): Promise<void> => {
     console.log("Adding event:", newEvent);
@@ -403,6 +411,29 @@ export default function CalendarApp() {
                 }
               }}
               eventDrop={handleEventDrop}
+              datesSet={(dateInfo) => {
+                const visibleStart = new Date(dateInfo.startStr);
+                const visibleEnd = new Date(dateInfo.endStr);
+
+                const bufferStart = new Date(visibleStart);
+                bufferStart.setMonth(bufferStart.getMonth() - 2);
+
+                const bufferEnd = new Date(visibleEnd);
+                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
+
+                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                  console.log(
+                    "Fetching events for range:",
+                    bufferStart,
+                    bufferEnd
+                  );
+                  fetchEvents(
+                    bufferStart.toISOString(),
+                    bufferEnd.toISOString()
+                  );
+                  setFetchedRange({ start: bufferStart, end: bufferEnd });
+                }
+              }}
             />
           </div>
 
