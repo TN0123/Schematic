@@ -47,7 +47,7 @@ export default function EventGenerationPanel({
 
       {/* Input Field */}
 
-      <div className="flex flex-col bg bg-gray-100  rounded-br-md rounded-bl-md">
+      <div className="flex flex-col bg bg-gray-100 dark:bg-gray-700 rounded-br-md rounded-bl-md">
         <textarea
           className="flex-1 p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 dark:border-gray-600 text-black dark:text-white focus:outline-none"
           value={inputText}
@@ -77,7 +77,7 @@ export default function EventGenerationPanel({
           >
             <RefreshCcw
               size={20}
-              className={`transition-all duration-200 text-gray-600 hover:text-blue-500 ${
+              className={`transition-all duration-200 text-gray-600  dark:text-white hover:text-blue-500 ${
                 isRefreshing ? "animate-spin" : ""
               }`}
               style={isRefreshing ? { animationDirection: "reverse" } : {}}
