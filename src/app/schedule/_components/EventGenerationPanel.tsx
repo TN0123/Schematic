@@ -26,7 +26,6 @@ export default function EventGenerationPanel({
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
 }) {
-  const [isRefreshing, setIsRefreshing] = useState(false);
   return (
     <aside className="w-96 bg-white dark:bg-gray-800 border-l dark:border-gray-700 px-6 py-4 flex flex-col gap-4">
       {/* Menu Bar */}
@@ -45,11 +44,9 @@ export default function EventGenerationPanel({
         </button>
       </div>
 
-      {/* Input Field */}
-
-      <div className="flex flex-col bg bg-gray-100 dark:bg-gray-700 rounded-br-md rounded-bl-md">
+      <div className="relative">
         <textarea
-          className="flex-1 p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 dark:border-gray-600 text-black dark:text-white focus:outline-none"
+          className="flex p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 focus:outline-none border dark:border-gray-600 rounded-br-md rounded-bl-md text-black dark:text-white w-full"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onInput={(e) => {
@@ -59,31 +56,12 @@ export default function EventGenerationPanel({
           }}
           placeholder="Enter your schedule here..."
         />
-        <div className="flex justify-end">
-          <button
-            className="p-2"
-            onClick={() => {
-              setIsRefreshing(true);
-
-              setTimeout(() => {
-                setInputText("");
-              }, 200);
-
-              setTimeout(() => {
-                setIsRefreshing(false);
-              }, 400);
-            }}
-            title="Clear text"
-          >
-            <RefreshCcw
-              size={20}
-              className={`transition-all duration-200 text-gray-600  dark:text-white hover:text-blue-500 ${
-                isRefreshing ? "animate-spin" : ""
-              }`}
-              style={isRefreshing ? { animationDirection: "reverse" } : {}}
-            />
-          </button>
-        </div>
+        <button
+          className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-full transition-colors duration-200"
+          onClick={() => setInputText("")}
+        >
+          <RefreshCcw size={16} className="text-black dark:text-white" />
+        </button>
       </div>
 
       <button
