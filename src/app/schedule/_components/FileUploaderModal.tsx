@@ -12,10 +12,11 @@ export default function FileUploaderModal({
   if (!isOpen) return null;
 
   const [file, setFile] = useState<File | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select a file first.");
+      setStatusMessage("Please select a file first.");
       return;
     }
 
@@ -28,16 +29,15 @@ export default function FileUploaderModal({
         body: formData,
       });
 
-      const result = await response.json();
+      const data = await response.json();
       if (response.ok) {
-        alert("File uploaded successfully: " + result.message);
-        onClose(); // optionally close the modal
+        setStatusMessage("File uploaded successfully: " + data.result);
       } else {
-        alert("Upload failed: " + result.message);
+        setStatusMessage("Upload failed: " + data.result);
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert("An error occurred while uploading.");
+      setStatusMessage("An error occurred while uploading.");
     }
   };
 
@@ -61,6 +61,11 @@ export default function FileUploaderModal({
                        dark:hover:file:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           />
         </div>
+        {statusMessage && (
+          <p className="text-sm text-center mb-4 text-gray-700 dark:text-gray-300">
+            {statusMessage}
+          </p>
+        )}
         <div className="flex justify-end space-x-4">
           <button
             onClick={handleUpload}

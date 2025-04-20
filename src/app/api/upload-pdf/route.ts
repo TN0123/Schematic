@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pdfUpload } from "@/scripts/pdf-upload";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -10,18 +11,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const result = await pdfUpload(arrayBuffer);
 
-    return NextResponse.json({
-      message: "PDF received successfully",
-      name: file.name,
-      size: buffer.length,
-      type: file.type,
-    });
+    return NextResponse.json({ result }, { status: 200 });
   } catch (error) {
-    console.error("Error processing file:", error);
+    console.error("Error processing PDF:", error);
     return NextResponse.json(
-      { message: "Error processing file", error: String(error) },
+      { message: "Failed to process PDF", error: (error as Error).message },
       { status: 500 }
     );
   }
