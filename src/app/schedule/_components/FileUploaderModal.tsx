@@ -13,8 +13,32 @@ export default function FileUploaderModal({
 
   const [file, setFile] = useState<File | null>(null);
 
-  const handleUpload = () => {
-    console.log("File uploaded:", file);
+  const handleUpload = async () => {
+    if (!file) {
+      alert("Please select a file first.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        alert("File uploaded successfully: " + result.message);
+        onClose(); // optionally close the modal
+      } else {
+        alert("Upload failed: " + result.message);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("An error occurred while uploading.");
+    }
   };
 
   return (
