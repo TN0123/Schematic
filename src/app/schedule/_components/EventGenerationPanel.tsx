@@ -1,6 +1,7 @@
-import { Plus, Type, FileUp, RefreshCcw } from "lucide-react";
+import { Plus, Type, FileUp, RefreshCcw, RefreshCcwDot } from "lucide-react";
 import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
+import { useState } from "react";
 
 export default function EventGenerationPanel({
   setShowModal,
@@ -43,18 +44,26 @@ export default function EventGenerationPanel({
         </button>
       </div>
 
-      {/* Input Field */}
-      <textarea
-        className="flex p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 focus:outline-none border dark:border-gray-600 rounded-br-md rounded-bl-md text-black dark:text-white"
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        onInput={(e) => {
-          const textarea = e.target as HTMLTextAreaElement;
-          textarea.style.height = "auto";
-          textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
-        }}
-        placeholder="Enter your schedule here..."
-      />
+      <div className="relative">
+        <textarea
+          className="flex p-4 h-auto resize-none bg-gray-100 dark:bg-gray-700 focus:outline-none border dark:border-gray-600 rounded-br-md rounded-bl-md text-black dark:text-white w-full"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onInput={(e) => {
+            const textarea = e.target as HTMLTextAreaElement;
+            textarea.style.height = "auto";
+            textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
+          }}
+          placeholder="Enter your schedule here..."
+        />
+        <button
+          className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-full transition-colors duration-200"
+          onClick={() => setInputText("")}
+        >
+          <RefreshCcw size={16} className="text-black dark:text-white" />
+        </button>
+      </div>
+
       <button
         className="w-full py-3 mt-2 rounded-md bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
         disabled={loading}
@@ -91,6 +100,9 @@ export default function EventGenerationPanel({
             <RefreshCcw
               size={24}
               className="animate-spin text-black dark:text-white"
+              style={
+                suggestionsLoading ? { animationDirection: "reverse" } : {}
+              }
             />
           </div>
         )}
