@@ -12,10 +12,11 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
+import { RefreshCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
+import FileUploaderModal from "./_components/FileUploaderModal";
 
 export interface Event {
   id: string;
@@ -54,6 +55,7 @@ export default function CalendarApp() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
     useState(false);
@@ -326,7 +328,6 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
-  
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -449,11 +450,8 @@ export default function CalendarApp() {
             handleRejectSuggestion={handleRejectSuggestion}
             suggestionsLoading={suggestionsLoading}
             setShowModal={setShowModal}
+            setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             fetchSuggestions={fetchSuggestions}
-            
-            
-            
-            
           />
         </div>
 
@@ -470,6 +468,10 @@ export default function CalendarApp() {
           event={eventToDelete}
           onClose={() => setIsDeleteModalOpen(false)}
           onConfirm={handleDeleteConfirm}
+        />
+        <FileUploaderModal
+          isOpen={isFileUploaderModalOpen}
+          onClose={() => setIsFileUploaderModalOpen(false)}
         />
       </div>
     </SessionProvider>

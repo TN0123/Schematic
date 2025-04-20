@@ -3,19 +3,9 @@ import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
 import { useState } from "react";
 
-export default function EventGenerationPanel({
-  setShowModal,
-  inputText,
-  setInputText,
-  loading,
-  handleSubmit,
-  fetchSuggestions,
-  suggestedEvents,
-  handleAcceptSuggestion,
-  handleRejectSuggestion,
-  suggestionsLoading,
-}: {
+interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
+  setIsFileUploaderModalOpen: (open: boolean) => void;
   inputText: string;
   setInputText: (text: string) => void;
   loading: boolean;
@@ -25,7 +15,21 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion: (event: Event) => void;
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
-}) {
+}
+
+export default function EventGenerationPanel({
+  setShowModal,
+  setIsFileUploaderModalOpen,
+  inputText,
+  setInputText,
+  loading,
+  handleSubmit,
+  fetchSuggestions,
+  suggestedEvents,
+  handleAcceptSuggestion,
+  handleRejectSuggestion,
+  suggestionsLoading,
+}: EventGenerationPanelProps) {
   return (
     <aside className="w-96 bg-white dark:bg-gray-800 border-l dark:border-gray-700 px-6 py-4 flex flex-col gap-4">
       {/* Menu Bar */}
@@ -39,7 +43,10 @@ export default function EventGenerationPanel({
         <button className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2">
           <Type size={20} />
         </button>
-        <button className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2">
+        <button
+          className="hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 p-2"
+          onClick={() => setIsFileUploaderModalOpen(true)}
+        >
           <FileUp size={20} />
         </button>
       </div>
