@@ -12,8 +12,11 @@ export async function POST(req: NextRequest) {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const result = await pdfUpload(arrayBuffer);
+    const cleanedResult = result.replace(/```json|```/g, "").trim();
+    const events = JSON.parse(cleanedResult);
+    console.log("Extracted events:", events);
 
-    return NextResponse.json({ result }, { status: 200 });
+    return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
     console.error("Error processing PDF:", error);
     return NextResponse.json(
