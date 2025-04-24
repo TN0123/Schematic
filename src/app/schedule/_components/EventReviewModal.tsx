@@ -12,14 +12,12 @@ export interface ExtractedEvent {
 interface EventReviewModalProps {
   events: ExtractedEvent[];
   onBack: () => void;
-  onAddEvent: (event: ExtractedEvent) => void;
   onAddAll: (selectedEvents: ExtractedEvent[]) => void;
 }
 
 export default function EventReviewModal({
   events,
   onBack,
-  onAddEvent,
   onAddAll,
 }: EventReviewModalProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(

@@ -6,6 +6,8 @@ export async function pdfUpload(arrayBuffer: ArrayBuffer) {
   const genAI = new GoogleGenerativeAI(geminiKey!);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+  const currentDate = new Date().toISOString().split("T")[0];
+
   const filePart = {
     inlineData: {
       mimeType: "application/pdf",
@@ -17,6 +19,8 @@ export async function pdfUpload(arrayBuffer: ArrayBuffer) {
     You are a helpful assistant helping a user extract information from a PDF file and turning it into
     events that can be added to their calendar. You will be provided with a PDF file and your task is to
     extract things that can be turned into calendar events and return them as an array of GeneratedEvent objects.
+
+    The current date is ${currentDate}.
 
     You must return an array of Event objects.
     **Output Format (JSON array only, no extra text):**
@@ -30,7 +34,7 @@ export async function pdfUpload(arrayBuffer: ArrayBuffer) {
       ]
 
     The PDF file has been provided to you, generate the events from it. If you cannot find any events, return an empty array.
-    Respond with only the array of events, nothing else.
+    Respond with only the array of events, nothing else. Double check to make sure the ids are unique.
   `;
 
   const prompt = {

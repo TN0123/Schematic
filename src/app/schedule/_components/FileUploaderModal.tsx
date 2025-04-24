@@ -2,15 +2,18 @@ import { useState, useEffect } from "react";
 import { UploadIcon } from "lucide-react";
 import EventReviewModal from "./EventReviewModal";
 import { ExtractedEvent } from "./EventReviewModal";
+import { Event } from "../page";
 
 interface FileUploaderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  setEvents: (events: Event[]) => void;
 }
 
 export default function FileUploaderModal({
   isOpen,
   onClose,
+  setEvents,
 }: FileUploaderModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -20,7 +23,9 @@ export default function FileUploaderModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setFile(null); // Reset file when modal is closed
+      setFile(null);
+      setStatusMessage(null);
+      setExtractedEvents(null);
     }
   }, [isOpen]);
 
@@ -41,7 +46,11 @@ export default function FileUploaderModal({
 
       const data = await response.json();
       if (response.ok) {
-        setExtractedEvents(data.events);
+        if (data.events.length === 0) {
+          setStatusMessage("No events found in the PDF.");
+        } else {
+          setExtractedEvents(data.events);
+        }
       } else {
         setStatusMessage("Upload failed: " + data.events);
       }
@@ -53,8 +62,21 @@ export default function FileUploaderModal({
 
   const handleBack = () => {
     setFile(null);
-    setExtractedEvents(null); // Go back to upload screen
+    setExtractedEvents(null);
     setStatusMessage(null);
+  };
+
+  const onAddAll = (selectedEvents: ExtractedEvent[]) => {
+    const formattedEvents = selectedEvents.map((event) => ({
+      id: event.id,
+      title: event.title,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    }));
+    setEvents(formattedEvents);
+    setFile(null);
+    setStatusMessage(null);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -66,8 +88,7 @@ export default function FileUploaderModal({
           <EventReviewModal
             events={extractedEvents}
             onBack={handleBack}
-            onAddEvent={() => {}}
-            onAddAll={() => {}}
+            onAddAll={onAddAll}
           />
         ) : (
           <>

@@ -63,6 +63,7 @@ export default function CalendarApp() {
     start: Date;
     end: Date;
   } | null>(null);
+  const [extractedEvents, setExtractedEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     console.log("Updated events:", events);
@@ -156,7 +157,6 @@ export default function CalendarApp() {
         throw new Error("Failed to update event");
       }
 
-      // Update the local state
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.id === id
@@ -328,6 +328,45 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
+  useEffect(() => {
+    if (extractedEvents.length > 0) {
+      const saveEvents = async () => {
+        const createdEvents: Event[] = [];
+
+        for (const event of extractedEvents) {
+          const res = await fetch("/api/events", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: event.title,
+              start: event.start,
+              end: event.end,
+            }),
+          });
+
+          if (!res.ok) {
+            console.error("Failed to save event to database");
+            continue;
+          }
+
+          const createdEvent = await res.json();
+          createdEvents.push({
+            id: createdEvent.id,
+            title: createdEvent.title,
+            start: new Date(createdEvent.start),
+            end: new Date(createdEvent.end),
+          });
+        }
+
+        setEvents((prevEvents) => [...prevEvents, ...createdEvents]);
+      };
+
+      saveEvents();
+    }
+  }, [extractedEvents]);
+
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -472,6 +511,7 @@ export default function CalendarApp() {
         <FileUploaderModal
           isOpen={isFileUploaderModalOpen}
           onClose={() => setIsFileUploaderModalOpen(false)}
+          setEvents={setExtractedEvents}
         />
       </div>
     </SessionProvider>
