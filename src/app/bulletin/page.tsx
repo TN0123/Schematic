@@ -86,18 +86,18 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="h-[92.3vh] flex bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+    <div className="h-[92.3vh] flex bg-gradient-to-br from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
-      <aside className="w-1/4 bg-gray-50 overflow-y-scroll p-4 dark:bg-gray-900 dark:text-gray-100">
+      <aside className="w-1/4 bg-light-primary overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+          <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
             All Notes
           </h2>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 dark:shadow-none"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
             onClick={addItem}
           >
-            <Plus size={12} />
+            <Plus size={16} className="stroke-current" />
           </button>
         </div>
         <div className="space-y-3">
@@ -106,15 +106,15 @@ export default function Bulletin() {
               key={item.id}
               className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
                 item.id === expandedItemId
-                  ? "bg-blue-50 border-2 border-blue-200 dark:bg-blue-900 dark:border-blue-700"
-                  : "hover:bg-gray-100 border border-gray-200 dark:hover:bg-gray-800 dark:border-gray-700"
+                  ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
+                  : "hover:bg-light-hover border border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
               }`}
               onClick={() => setExpandedItemId(item.id)}
             >
-              <h3 className="font-semibold truncate text-gray-800 dark:text-gray-100">
+              <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
                 {item.title || "Untitled"}
               </h3>
-              <p className="text-sm text-gray-500 truncate mt-1 dark:text-gray-400">
+              <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
                 {stripHtml(item.content) || "No content"}
               </p>
             </div>
@@ -126,17 +126,17 @@ export default function Bulletin() {
         <AnimatePresence>
           {loading && (
             <motion.div
-              className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-gray-100 to-gray-200 bg-opacity-90 dark:from-gray-800 dark:to-gray-900"
+              className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-light-secondary to-light-tertiary bg-opacity-90 dark:from-dark-primary dark:to-dark-secondary"
               initial={{ opacity: 0, scale: 1 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             >
               <Loader2
-                className="animate-spin text-gray-600 dark:text-gray-300"
+                className="animate-spin text-light-icon dark:text-dark-textSecondary"
                 size={48}
               />
-              <p className="mt-4 text-gray-600 font-medium text-lg dark:text-gray-300">
+              <p className="mt-4 text-light-heading font-medium text-lg dark:text-dark-textSecondary">
                 Loading notes...
               </p>
             </motion.div>
@@ -162,11 +162,11 @@ export default function Bulletin() {
               )
           )}
           {expandedItemId === null && (
-            <div className="flex flex-col items-center justify-center w-full h-full bg-gray-50 border border-gray-200 shadow-inner dark:bg-gray-900 dark:border-gray-700">
-              <p className="text-gray-600 text-lg font-medium dark:text-gray-300">
+            <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
+              <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
                 No note selected
               </p>
-              <p className="text-gray-500 text-sm mt-2 dark:text-gray-400">
+              <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
                 Click on a note from the sidebar or create a new note
               </p>
             </div>

@@ -32,6 +32,12 @@ export default {
           divider: "rgba(255, 255, 255, 0.12)",
         },
       },
+      backgroundColor: {
+        "light-hover": "rgba(0, 0, 0, 0.04)",
+        "light-active": "rgba(0, 0, 0, 0.12)",
+        "dark-hover": "rgba(255, 255, 255, 0.08)",
+        "dark-active": "rgba(255, 255, 255, 0.16)",
+      },
     },
   },
   plugins: [],
