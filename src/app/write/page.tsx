@@ -11,7 +11,7 @@ export default function Writer() {
   const [changes, setChanges] = useState<ChangeMap>({});
 
   return (
-    <div className="flex w-full h-full bg-gray-200 dark:bg-gray-800 transition-all duration-200">
+    <div className="flex w-full h-full bg-gray-200 dark:bg-dark-secondary transition-all duration-200">
       <div className="flex w-full overflow-auto justify-center">
         <WriteEditor setInput={setInput} changes={changes} />
       </div>
