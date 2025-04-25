@@ -12,7 +12,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCcw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
@@ -384,7 +384,7 @@ export default function CalendarApp() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
-                  <RefreshCcw
+                  <RefreshCw
                     size={32}
                     className="animate-spin text-gray-600 dark:text-gray-300"
                   />

@@ -1,4 +1,4 @@
-import { Plus, Type, FileUp, RefreshCcw, RefreshCcwDot } from "lucide-react";
+import { Plus, Type, FileUp, RefreshCw } from "lucide-react";
 import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
 import { useState } from "react";
@@ -67,7 +67,7 @@ export default function EventGenerationPanel({
           className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-full transition-colors duration-200"
           onClick={() => setInputText("")}
         >
-          <RefreshCcw size={16} className="text-black dark:text-white" />
+          <RefreshCw size={16} className="text-black dark:text-white" />
         </button>
       </div>
 
@@ -83,7 +83,7 @@ export default function EventGenerationPanel({
           <h1 className="text-md py-2 text-black dark:text-white">Suggested</h1>
           <button className="px-2" onClick={fetchSuggestions}>
             <div className="flex items-center justify-center gap-2">
-              <RefreshCcw
+              <RefreshCw
                 className="hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-200"
                 size={16}
               />
@@ -104,12 +104,9 @@ export default function EventGenerationPanel({
         )}
         {suggestionsLoading && (
           <div className="w-full flex justify-center items-center">
-            <RefreshCcw
+            <RefreshCw
               size={24}
               className="animate-spin text-black dark:text-white"
-              style={
-                suggestionsLoading ? { animationDirection: "reverse" } : {}
-              }
             />
           </div>
         )}
