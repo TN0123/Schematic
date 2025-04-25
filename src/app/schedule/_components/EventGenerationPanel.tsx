@@ -1,4 +1,4 @@
-import { Plus, Type, FileUp, RefreshCw } from "lucide-react";
+import { Plus, FileUp, RefreshCw } from "lucide-react";
 import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
 import { useState } from "react";
@@ -39,9 +39,6 @@ export default function EventGenerationPanel({
           onClick={() => setShowModal(true)}
         >
           <Plus size={20} />
-        </button>
-        <button className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2">
-          <Type size={20} />
         </button>
         <button
           className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"

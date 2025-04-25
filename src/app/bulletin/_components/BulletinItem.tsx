@@ -202,7 +202,7 @@ export default function BulletinItem({
             type="text"
             value={title}
             onChange={handleTitleChange}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:bg-dark-inputBackground dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
@@ -220,14 +220,14 @@ export default function BulletinItem({
             )}
             <button
               onClick={onDelete}
-              className="p-2 text-light-icon hover:text-light-danger hover:bg-light-dangerHover rounded-lg transition-colors dark:text-dark-icon dark:hover:text-dark-danger dark:hover:bg-dark-dangerHover"
+              className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
               aria-label="Delete item"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
-        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider dark:bg-dark-secondary">
+        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider">
           <MenuBar />
           <EditorContent
             editor={editor}

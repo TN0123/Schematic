@@ -18,7 +18,7 @@ export default function EventCreationModal({
       onClick={() => setShowModal(false)}
     >
       <div
-        className="bg-white dark:bg-dark-paper p-6 rounded-lg shadow-lg w-96 relative z-50"
+        className="bg-white dark:bg-dark-secondary p-6 rounded-lg shadow-lg w-96 relative z-50"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-textPrimary">
