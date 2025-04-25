@@ -61,19 +61,19 @@ export function ChangeHandler({
   const suggestion = changes[currentKey];
 
   return (
-    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-gray-700 gap-4 bg-white dark:bg-gray-900 rounded-2xl h-full transition-all duration-200">
-      <div className="flex flex-col justify-center items-center py-3 gap-2 border-b border-gray-300 dark:border-gray-700 mb-3">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 text-center">
+    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
+      <div className="flex flex-col justify-center items-center py-3 gap-2 border-b border-gray-300 dark:border-dark-divider mb-3">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary text-center">
           {totalChanges} Change(s) Remaining
         </h3>
       </div>
 
-      <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4">
         <div>
-          <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+          <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
             Suggested:
           </span>
-          <div className="text-sm text-gray-900 dark:text-gray-100 font-normal whitespace-pre-wrap mt-2">
+          <div className="text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap mt-2">
             {suggestion}
           </div>
         </div>

@@ -1,44 +1,48 @@
-import { PrismaClient } from '@prisma/client';
-import { Event } from '@/app/schedule/page';
+import { PrismaClient } from "@prisma/client";
+import { Event } from "@/app/schedule/page";
 
 const prisma = new PrismaClient();
 
-export async function suggest_events(userId: string, existingEvents: Event[], timezone: string) {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-    require('dotenv').config();
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const currentDateTime = new Intl.DateTimeFormat('en-CA', { 
-        timeZone: timezone, 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit',
-        hour12: false
-    }).format(new Date());
-    
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+export async function suggest_events(
+  userId: string,
+  existingEvents: Event[],
+  timezone: string
+) {
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  require("dotenv").config();
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const currentDateTime = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
 
-    const bulletins = await prisma.bulletin.findMany({
-        where: { userId },
-        select: { title: true, content: true }
-    });
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const bulletinDict: Record<string, string> = {};
-    bulletins.forEach(b => {
-        bulletinDict[b.title] = b.content;
-    });
+  const bulletins = await prisma.bulletin.findMany({
+    where: { userId },
+    select: { title: true, content: true },
+  });
 
-    const goals = await prisma.goal.findMany({
-        where: { userId },
-        select: { title: true, type: true }
-    });
+  const bulletinDict: Record<string, string> = {};
+  bulletins.forEach((b) => {
+    bulletinDict[b.title] = b.content;
+  });
 
-    // console.log(goals);    
+  const goals = await prisma.goal.findMany({
+    where: { userId },
+    select: { title: true, type: true },
+  });
 
-    const prompt = `
+  // console.log(goals);
+
+  const prompt = `
         You are a helpful AI that suggests a person tasks for a single day to help
         them be more productive. Your goal is to generate a JSON array of task objects.
         The person you are helping has a calendar on which they might already have some
@@ -59,6 +63,7 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
            - Not conflicting with any existing events.  
         5. When possible, only suggest tasks that are relevant to the person's bulletin board or daily goals.  
         6. Suggest **AT MOST three tasks**
+        7. Suggest **AT LEAST one task**
         
         
         **Output Format (JSON array only, no extra text):**
@@ -73,7 +78,9 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
 
         **Valid time range for today:**
         - **Earliest possible start time:** The **later** of 6:00 AM or the current time (${currentDateTime})
-        - **Latest end time:** ${currentDateTime.split('T')[0]}T23:00:00${currentDateTime.includes('Z') ? 'Z' : ''}
+        - **Latest end time:** ${currentDateTime.split("T")[0]}T23:00:00${
+    currentDateTime.includes("Z") ? "Z" : ""
+  }
 
         **Existing Events (DO NOT suggest conflicting times):**
             ${JSON.stringify(existingEvents, null, 2)}
@@ -91,28 +98,28 @@ export async function suggest_events(userId: string, existingEvents: Event[], ti
         - If no valid time slots exist, return an empty array.
     `;
 
-    // console.log(prompt);
+  // console.log(prompt);
 
-    let retries = 3;
-    let delay = 1000;
+  let retries = 3;
+  let delay = 1000;
 
-    for (let i = 0; i < retries; i++){
-        try {
-            const result = await model.generateContent(prompt);
-            //console.log(result.response.text());
-            return result.response.text();
-        } catch (error) {
-            if (error instanceof Error) {
-                console.error(`Attempt ${i + 1} failed: ${error.message}`);
-            } else {
-                console.error(`Attempt ${i + 1} failed with unknown error:`, error);
-            }
-    
-            if (i === retries - 1) {
-                throw new Error("Failed to suggest events after multiple attempts.");
-            }
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            delay *= 2;
-        }
+  for (let i = 0; i < retries; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      //console.log(result.response.text());
+      return result.response.text();
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(`Attempt ${i + 1} failed: ${error.message}`);
+      } else {
+        console.error(`Attempt ${i + 1} failed with unknown error:`, error);
+      }
+
+      if (i === retries - 1) {
+        throw new Error("Failed to suggest events after multiple attempts.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2;
     }
+  }
 }

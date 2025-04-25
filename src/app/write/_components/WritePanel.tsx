@@ -21,11 +21,13 @@ export function Message({ message, role }: MessageProps) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className={`max-w-[85%] p-3 rounded-xl my-2 ${
           role === "user"
-            ? "bg-blue-50 dark:bg-blue-900 text-right"
-            : "bg-gray-50 dark:bg-gray-800 text-left"
+            ? "bg-blue-50 dark:bg-dark-secondary text-right"
+            : "bg-gray-50 dark:bg-dark-paper text-left"
         }`}
       >
-        <p className="text-gray-900 dark:text-gray-200 text-xs">{message}</p>
+        <p className="text-gray-900 dark:text-dark-textPrimary text-xs">
+          {message}
+        </p>
       </motion.div>
     </div>
   );
@@ -78,17 +80,17 @@ export default function WritePanel({
   };
 
   return (
-    <aside className="w-1/3 h-[92.25vh] border-l-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col transition-all duration-200">
-      <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+    <aside className="w-1/3 h-[92.25vh] border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200">
+      <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider">
         <div className="flex w-full items-center justify-between">
-          <button className="rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors duration-200 p-2">
+          <button className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 p-2">
             <PanelRightClose />
           </button>{" "}
           <div className="flex flex-col items-end justify-center">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-200">
+            <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
               AI Writing Assistant
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-1">
+            <p className="text-xs text-gray-500 dark:text-dark-textSecondary text-center mt-1">
               <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-800">
                 ctrl
               </kbd>{" "}
@@ -102,9 +104,9 @@ export default function WritePanel({
         </div>
       </div>
       <div className="flex flex-col w-full h-full overflow-y-auto py-2 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 mx-4">
+        <div className="bg-white dark:bg-dark-paper rounded-xl border-2 border-gray-200 dark:border-dark-divider mx-4">
           <textarea
-            className="flex w-full p-4 h-auto resize-none placeholder-gray-500 dark:placeholder-gray-400 rounded-xl focus:outline-none bg-transparent dark:text-gray-200"
+            className="flex w-full p-4 h-auto resize-none placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary"
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             onInput={(e) => {
@@ -119,17 +121,17 @@ export default function WritePanel({
           />
           <div className="flex w-full justify-end items-center px-4 py-1">
             <button
-              className="rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors duration-200 p-2"
+              className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 p-2"
               onClick={handleSubmit}
             >
               <SendHorizonal size={20} />
             </button>
           </div>
         </div>
-        <div className="flex flex-col w-full max-h-[600px] overflow-auto px-2 py-1 gap-1 border-t dark:border-gray-700">
+        <div className="flex flex-col w-full max-h-[600px] overflow-auto px-2 py-1 gap-1 border-t dark:border-dark-divider">
           <div className="flex w-full items-center justify-between">
             <button
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 focus:outline-none aspect-square"
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
               aria-label="Clear messages"
               onClick={() => {
                 const button = document.activeElement as HTMLButtonElement;
@@ -140,10 +142,10 @@ export default function WritePanel({
             >
               <RefreshCw
                 size={18}
-                className="text-gray-800 dark:text-gray-200"
+                className="text-gray-800 dark:text-dark-textPrimary"
               />
             </button>
-            <p className="text-xs italic text-gray-500 dark:text-gray-400 text-center">
+            <p className="text-xs italic text-gray-500 dark:text-dark-textSecondary text-center">
               This is a temporary chat, your work will not be saved.
             </p>
           </div>

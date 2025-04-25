@@ -7,13 +7,13 @@ export default function Navigation() {
   const { data: session } = useSession();
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white shadow-sm border-b border-gray-100 dark:bg-gray-900 dark:border-gray-700">
+    <nav className="sticky top-0 z-50 w-full bg-white shadow-sm border-b border-gray-100 dark:bg-dark-background dark:border-dark-divider">
       <div className="w-full px-4 py-3">
         <div className="flex w-full justify-between items-center">
           <div className="flex items-center justify-center gap-4">
             <Link
               href="/"
-              className="text-xl font-bold text-black dark:text-white"
+              className="text-xl font-bold text-black dark:text-dark-textPrimary"
             >
               Schematic
             </Link>
@@ -25,7 +25,7 @@ export default function Navigation() {
                 <li>
                   <Link
                     href="/write"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-gray-300 dark:hover:text-white"
+                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
                     Write
                   </Link>
@@ -33,7 +33,7 @@ export default function Navigation() {
                 <li>
                   <Link
                     href="/bulletin"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-gray-300 dark:hover:text-white"
+                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
                     Bulletin
                   </Link>
@@ -41,7 +41,7 @@ export default function Navigation() {
                 <li>
                   <Link
                     href="/schedule"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-gray-300 dark:hover:text-white"
+                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
                     Schedule
                   </Link>
@@ -49,7 +49,7 @@ export default function Navigation() {
                 <li>
                   <button
                     onClick={() => signOut({ callbackUrl: "/auth/login" })}
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-gray-300 dark:hover:text-white"
+                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
                     Sign Out
                   </button>
@@ -59,7 +59,7 @@ export default function Navigation() {
               <li>
                 <Link
                   href="/auth/login"
-                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-gray-300 dark:hover:text-white"
+                  className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                 >
                   Sign In
                 </Link>

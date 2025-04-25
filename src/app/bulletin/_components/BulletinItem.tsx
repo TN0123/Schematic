@@ -67,7 +67,7 @@ export default function BulletinItem({
     editorProps: {
       attributes: {
         class:
-          "h-full min-h-[100px] w-full outline-none dark:bg-gray-800 dark:text-gray-100",
+          "h-full min-h-[100px] w-full outline-none dark:bg-dark-editorBackground dark:text-dark-textPrimary",
       },
     },
     immediatelyRender: false,
@@ -84,7 +84,7 @@ export default function BulletinItem({
     }
 
     return (
-      <div className="border-b border-gray-200 pb-2 mb-2 flex gap-1 flex-wrap items-center">
+      <div className="border-b border-light-border pb-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
@@ -92,7 +92,9 @@ export default function BulletinItem({
             editor.chain().focus().toggleBold().run();
           }}
           className={`p-2 rounded ${
-            editor.isActive("bold") ? "bg-gray-200" : "hover:bg-gray-100"
+            editor.isActive("bold")
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
           }`}
         >
           <Bold className="h-4 w-4" />
@@ -104,7 +106,9 @@ export default function BulletinItem({
             editor.chain().focus().toggleItalic().run();
           }}
           className={`p-2 rounded ${
-            editor.isActive("italic") ? "bg-gray-200" : "hover:bg-gray-100"
+            editor.isActive("italic")
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
           }`}
         >
           <Italic className="h-4 w-4" />
@@ -116,7 +120,9 @@ export default function BulletinItem({
             editor.chain().focus().toggleUnderline().run();
           }}
           className={`p-2 rounded ${
-            editor.isActive("underline") ? "bg-gray-200" : "hover:bg-gray-100"
+            editor.isActive("underline")
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
           }`}
         >
           <UnderlineIcon className="h-4 w-4" />
@@ -189,14 +195,14 @@ export default function BulletinItem({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="bg-white border border-gray-200 shadow-sm w-full h-full dark:bg-gray-900 dark:border-gray-700">
+    <div className="bg-light-background border border-light-border shadow-sm w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
           <input
             type="text"
             value={title}
             onChange={handleTitleChange}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-200 rounded-lg p-2 mb-2 text-center dark:bg-gray-800 dark:text-gray-100 dark:focus:ring-blue-500"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:bg-dark-inputBackground dark:text-dark-textPrimary dark:focus:ring-dark-accent"
             placeholder="Enter title..."
           />
           <div className="flex gap-2 ml-2">
@@ -204,8 +210,8 @@ export default function BulletinItem({
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`p-2 text-gray-500 rounded-lg transition-colors
-                  hover:text-blue-500 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-blue-900
+                className={`p-2 text-light-icon rounded-lg transition-colors
+                  hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
                   ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
                 aria-label="Save changes"
               >
@@ -214,14 +220,14 @@ export default function BulletinItem({
             )}
             <button
               onClick={onDelete}
-              className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-900"
+              className="p-2 text-light-icon hover:text-light-danger hover:bg-light-dangerHover rounded-lg transition-colors dark:text-dark-icon dark:hover:text-dark-danger dark:hover:bg-dark-dangerHover"
               aria-label="Delete item"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
-        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-gray-700 dark:bg-gray-800">
+        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider dark:bg-dark-secondary">
           <MenuBar />
           <EditorContent
             editor={editor}

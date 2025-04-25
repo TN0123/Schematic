@@ -28,21 +28,21 @@
 
 /* Dark theme scrollbar */
 html.dark ::-webkit-scrollbar {
-    background: #1f2937; /* Dark background for scrollbar track */
+    background: #1e1e1e; /* dark.secondary */
 }
 
 html.dark ::-webkit-scrollbar-track {
-    background: #1f2937; /* Darker track for contrast */
+    background: #1e1e1e; /* dark.secondary */
 }
 
 html.dark ::-webkit-scrollbar-thumb {
-    background: #4b5563; /* Neutral dark gray for thumb */
-    border: 2px solid #1f2937; /* Matches track background */
+    background: rgba(255, 255, 255, 0.24); /* dark.divider */
+    border: 2px solid #1e1e1e; /* dark.secondary */
 }
 
 html.dark ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280; /* Lighter gray for hover effect */
-    border: 2px solid #374151; /* Subtle contrast on hover */
+    background: rgba(255, 255, 255, 0.38); /* dark.actionHover */
+    border: 2px solid rgba(255, 255, 255, 0.12); /* dark.divider */
 }
 
 @layer utilities {
@@ -142,69 +142,70 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 /* Dark theme for FullCalendar */
 html.dark .fc-day-today {
-    background-color: #374151 !important; /* Darker background for today */
+    background-color: #1e1e1e !important; /* dark.secondary */
 }
 
 html.dark .fc-day-today:hover {
-    background-color: #4b5563 !important; /* Slightly lighter on hover */
+    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
 }
 
 html.dark .fc-dayGridMonth-button, 
 html.dark .fc-timeGridWeek-button, 
 html.dark .fc-timeGridDay-button {
-    background-color: #374151 !important; /* Dark button background */
-    color: white !important; /* White text for contrast */
-    border: 3px solid #374151 !important; /* Match button background */
+    background-color: #1e1e1e !important; /* dark.secondary */
+    color: #ffffff !important; /* dark.textPrimary */
+    border: 3px solid #1e1e1e !important; /* dark.secondary */
 }
 
 html.dark .fc-dayGridMonth-button:hover, 
 html.dark .fc-timeGridWeek-button:hover, 
 html.dark .fc-timeGridDay-button:hover {
-    background-color: #4b5563 !important; /* Slightly lighter on hover */
-    transition : all 0.2s ease-in-out !important; /* Smooth transition */
+    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    transition: all 0.2s ease-in-out !important;
 }
 
 html.dark .fc-button-active {
-    background-color: #4b5563 !important; /* Active button background */
+    background-color: rgba(255, 255, 255, 0.16) !important; /* dark.actionSelected */
 }
 
-
 html.dark .fc-toolbar-title {
-    color: white !important; /* White text for toolbar title */
+    color: #ffffff !important; /* dark.textPrimary */
 }
 
 html.dark .fc-today-button {
-    background-color: #374151 !important; /* Dark background for today button */
-    color: white !important; /* White text */
+    background-color: #1e1e1e !important; /* dark.secondary */
+    color: #ffffff !important; /* dark.textPrimary */
 }
+
 html.dark .fc-today-button:hover {
-    background-color: #4b5563 !important; /* Slightly lighter on hover */
+    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
 }
 
 html.dark .fc-prev-button, 
 html.dark .fc-next-button {
-    background-color: #374151 !important; /* Dark background for navigation buttons */
-    border: 1px solid #4b5563 !important; /* Border matching dark theme */
-    color: white !important; /* White text */
+    background-color: #1e1e1e !important; /* dark.secondary */
+    border: 1px solid rgba(255, 255, 255, 0.12) !important; /* dark.divider */
+    color: #ffffff !important; /* dark.textPrimary */
 }
+
 html.dark .fc-prev-button:hover, 
 html.dark .fc-next-button:hover {
-    background-color: #4b5563 !important; /* Slightly lighter on hover */
+    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
 }
 
 html.dark .fc-daygrid-day-top {
-    color: white !important; /* White text for day headers */
+    color: #ffffff !important; /* dark.textPrimary */
 }
 
 html.dark .fc-col-header-cell {
-    color: #9ca3af !important; /* Lighter gray for column headers */
+    color: rgba(255, 255, 255, 0.7) !important; /* dark.textSecondary */
 }
 
 html.dark .fc-popover {
-    background-color: #374151 !important; /* Dark background for popover */
-    color: white !important; /* White text */
+    background-color: #1e1e1e !important; /* dark.secondary */
+    color: #ffffff !important; /* dark.textPrimary */
 }
 
 html.dark .fc-popover:hover {
-    background-color: #4b5563 !important; /* Slightly lighter on hover */
+    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
 }

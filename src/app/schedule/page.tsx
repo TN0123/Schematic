@@ -12,10 +12,11 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCcw, Type, FileUp, Plus } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
+import FileUploaderModal from "./_components/FileUploaderModal";
 
 export interface Event {
   id: string;
@@ -54,28 +55,15 @@ export default function CalendarApp() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
     useState(false);
-
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setCalendarLoading(true);
-      try {
-        const response = await fetch("/api/events");
-        if (!response.ok) {
-          throw new Error("Failed to fetch events");
-        }
-        const data = await response.json();
-        setEvents(data);
-      } catch (error) {
-        console.error("Error fetching events:", error);
-      } finally {
-        setCalendarLoading(false);
-      }
-    };
-    fetchEvents();
-  }, []);
+  const [fetchedRange, setFetchedRange] = useState<{
+    start: Date;
+    end: Date;
+  } | null>(null);
+  const [extractedEvents, setExtractedEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     console.log("Updated events:", events);
@@ -87,6 +75,29 @@ export default function CalendarApp() {
       setHasFetchedInitialSuggestions(true);
     }
   }, [hasFetchedInitialSuggestions, userId]);
+
+  const fetchEvents = async (startStr: string, endStr: string) => {
+    setCalendarLoading(true);
+    try {
+      const response = await fetch(
+        `/api/events?start=${startStr}&end=${endStr}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+      const data = await response.json();
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const isRangeInsideFetched = (start: Date, end: Date) => {
+    if (!fetchedRange) return false;
+    return start >= fetchedRange.start && end <= fetchedRange.end;
+  };
 
   const handleAddEvent = async (): Promise<void> => {
     console.log("Adding event:", newEvent);
@@ -146,7 +157,6 @@ export default function CalendarApp() {
         throw new Error("Failed to update event");
       }
 
-      // Update the local state
       setEvents((prevEvents) =>
         prevEvents.map((event) =>
           event.id === id
@@ -318,7 +328,45 @@ export default function CalendarApp() {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
 
-  
+  useEffect(() => {
+    if (extractedEvents.length > 0) {
+      const saveEvents = async () => {
+        const createdEvents: Event[] = [];
+
+        for (const event of extractedEvents) {
+          const res = await fetch("/api/events", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: event.title,
+              start: event.start,
+              end: event.end,
+            }),
+          });
+
+          if (!res.ok) {
+            console.error("Failed to save event to database");
+            continue;
+          }
+
+          const createdEvent = await res.json();
+          createdEvents.push({
+            id: createdEvent.id,
+            title: createdEvent.title,
+            start: new Date(createdEvent.start),
+            end: new Date(createdEvent.end),
+          });
+        }
+
+        setEvents((prevEvents) => [...prevEvents, ...createdEvents]);
+      };
+
+      saveEvents();
+    }
+  }, [extractedEvents]);
+
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -326,19 +374,19 @@ export default function CalendarApp() {
           {/* Goals Panel */}
           <GoalsPanel />
           {/* Calendar */}
-          <div className="flex-1 p-4 h-full transition-all duration-200 relative dark:bg-gray-900 dark:text-gray-100">
+          <div className="flex-1 p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary">
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div
-                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10 dark:bg-gray-800 dark:bg-opacity-70"
+                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10 dark:bg-dark-paper dark:bg-opacity-70"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
-                  <RefreshCcw
+                  <RefreshCw
                     size={32}
-                    className="animate-spin text-gray-600 dark:text-gray-300"
+                    className="animate-spin text-gray-600 dark:text-dark-textSecondary"
                   />
                 </motion.div>
               )}
@@ -370,9 +418,8 @@ export default function CalendarApp() {
               themeSystem="standard"
               eventColor="#3b82f6"
               eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-all duration-200 dark:bg-blue-800 dark:hover:bg-blue-700"
-              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-gray-800"
-              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-gray-300 dark:border-gray-700"
-              nowIndicator={true}
+              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
               nowIndicatorClassNames="border-red-500 dark:border-red-400"
               scrollTimeReset={false}
               allDaySlot={false}
@@ -404,6 +451,29 @@ export default function CalendarApp() {
                 }
               }}
               eventDrop={handleEventDrop}
+              datesSet={(dateInfo) => {
+                const visibleStart = new Date(dateInfo.startStr);
+                const visibleEnd = new Date(dateInfo.endStr);
+
+                const bufferStart = new Date(visibleStart);
+                bufferStart.setMonth(bufferStart.getMonth() - 2);
+
+                const bufferEnd = new Date(visibleEnd);
+                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
+
+                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                  console.log(
+                    "Fetching events for range:",
+                    bufferStart,
+                    bufferEnd
+                  );
+                  fetchEvents(
+                    bufferStart.toISOString(),
+                    bufferEnd.toISOString()
+                  );
+                  setFetchedRange({ start: bufferStart, end: bufferEnd });
+                }
+              }}
             />
           </div>
 
@@ -418,11 +488,8 @@ export default function CalendarApp() {
             handleRejectSuggestion={handleRejectSuggestion}
             suggestionsLoading={suggestionsLoading}
             setShowModal={setShowModal}
+            setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             fetchSuggestions={fetchSuggestions}
-            
-            
-            
-            
           />
         </div>
 
@@ -439,6 +506,11 @@ export default function CalendarApp() {
           event={eventToDelete}
           onClose={() => setIsDeleteModalOpen(false)}
           onConfirm={handleDeleteConfirm}
+        />
+        <FileUploaderModal
+          isOpen={isFileUploaderModalOpen}
+          onClose={() => setIsFileUploaderModalOpen(false)}
+          setEvents={setExtractedEvents}
         />
       </div>
     </SessionProvider>
