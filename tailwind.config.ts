@@ -10,8 +10,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        dark: {
+          // Backgrounds
+          background: "#121212",
+          paper: "#121212",
+          secondary: "#1e1e1e",
+
+          // Text
+          textPrimary: "#ffffff",
+          textSecondary: "rgba(255, 255, 255, 0.7)",
+          textDisabled: "rgba(255, 255, 255, 0.5)",
+
+          // Buttons & Actions
+          actionActive: "#ffffff",
+          actionHover: "rgba(255, 255, 255, 0.08)",
+          actionSelected: "rgba(255, 255, 255, 0.16)",
+          actionDisabled: "rgba(255, 255, 255, 0.3)",
+          actionDisabledBackground: "rgba(255, 255, 255, 0.12)",
+
+          // Dividers
+          divider: "rgba(255, 255, 255, 0.12)",
+        },
       },
     },
   },
