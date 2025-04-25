@@ -76,9 +76,6 @@ export default function EventReviewModal({
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-        Review Extracted Events
-      </h2>
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
         Select the events you want to add to your calendar.
       </p>
@@ -224,7 +221,12 @@ export default function EventReviewModal({
         </button>
         <button
           onClick={() => onAddAll(selectedEvents)}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          disabled={selectedEvents.length === 0}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            selectedEvents.length === 0
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500"
+          }`}
         >
           <CalendarIcon className="w-5 h-5" />
           Add {selectedEvents.length} Events
