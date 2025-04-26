@@ -139,6 +139,39 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     text-align: left !important;
 }
 
+.fc-event {
+    font-size: 0.85rem !important;
+    padding: 0.1rem 0.2rem !important;
+    background-color: #bedbff !important;
+    border: 1px solid #bedbff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #1447e6 !important;
+}
+
+
+.fc-event::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background-color: #1447e6;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+}
+
+.fc-event-main {
+    color: #1447e6 !important;
+}
+
+.fc-event-title {
+    font-weight: 500 !important;
+}
+
 
 /* Dark theme for FullCalendar */
 html.dark .fc-day-today {

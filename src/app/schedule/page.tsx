@@ -416,11 +416,10 @@ export default function CalendarApp() {
                 },
               }}
               themeSystem="standard"
-              eventColor="#3b82f6"
-              eventClassNames="rounded-lg shadow-md bg-blue-100 hover:bg-blue-200 transition-all duration-200 dark:bg-blue-800 dark:hover:bg-blue-700"
               dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
               dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
-              nowIndicatorClassNames="border-red-500 dark:border-red-400"
+              nowIndicator={true}
+              nowIndicatorClassNames="border-red-500 dark:border-red-900"
               scrollTimeReset={false}
               allDaySlot={false}
               scrollTime={`${new Date().getHours()}:00:00`}
