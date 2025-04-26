@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
-import { EventClickArg } from "@fullcalendar/core";
+import { EventClickArg, DateSelectArg } from "@fullcalendar/core";
 import { EventImpl } from "@fullcalendar/core/internal";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -64,17 +64,9 @@ export default function CalendarApp() {
     end: Date;
   } | null>(null);
   const [extractedEvents, setExtractedEvents] = useState<Event[]>([]);
-
-  useEffect(() => {
-    console.log("Updated events:", events);
-  }, [events]);
-
-  useEffect(() => {
-    if (!hasFetchedInitialSuggestions && userId) {
-      fetchSuggestions();
-      setHasFetchedInitialSuggestions(true);
-    }
-  }, [hasFetchedInitialSuggestions, userId]);
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -172,7 +164,7 @@ export default function CalendarApp() {
     }
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDelete = async () => {
     if (eventToDelete) {
       try {
         const res = await fetch(`/api/events/${eventToDelete.id}`, {
@@ -188,6 +180,42 @@ export default function CalendarApp() {
         console.error("Error deleting event:", error);
       }
     }
+  };
+
+  const handleDeleteMany = async () => {
+    const idsToDelete = Array.from(selectedEventIds);
+    if (idsToDelete.length === 0) return;
+    try {
+      await fetch(`/api/event/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+      setEvents((prev) => prev.filter((e) => !idsToDelete.includes(e.id)));
+      setSelectedEventIds(new Set());
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting multiple events:", error);
+    }
+  };
+
+  const handleBackspaceDelete = () => {
+    if (selectedEventIds.size > 0) {
+      setEventToDelete(null);
+      setIsDeleteModalOpen(true);
+    }
+  };
+  const handleSelect = (selectInfo: DateSelectArg) => {
+    const selectedStart = new Date(selectInfo.start);
+    const selectedEnd = new Date(selectInfo.end);
+
+    const eventsInRange = events.filter((event) => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      return eventStart < selectedEnd && eventEnd > selectedStart;
+    });
+
+    setSelectedEventIds(new Set(eventsInRange.map((e) => e.id)));
   };
 
   const handleSubmit = async () => {
@@ -329,6 +357,13 @@ export default function CalendarApp() {
   };
 
   useEffect(() => {
+    if (!hasFetchedInitialSuggestions && userId) {
+      fetchSuggestions();
+      setHasFetchedInitialSuggestions(true);
+    }
+  }, [hasFetchedInitialSuggestions, userId]);
+
+  useEffect(() => {
     if (extractedEvents.length > 0) {
       const saveEvents = async () => {
         const createdEvents: Event[] = [];
@@ -366,6 +401,16 @@ export default function CalendarApp() {
       saveEvents();
     }
   }, [extractedEvents]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Backspace" && selectedEventIds.size > 0) {
+        handleBackspaceDelete();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedEventIds]);
 
   return (
     <SessionProvider>
@@ -503,8 +548,13 @@ export default function CalendarApp() {
         <DeleteEventModal
           isOpen={isDeleteModalOpen}
           event={eventToDelete}
-          onClose={() => setIsDeleteModalOpen(false)}
-          onConfirm={handleDeleteConfirm}
+          selectedCount={selectedEventIds.size}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setEventToDelete(null);
+            setSelectedEventIds(new Set());
+          }}
+          onDelete={eventToDelete ? handleDelete : handleDeleteMany}
         />
         <FileUploaderModal
           isOpen={isFileUploaderModalOpen}
