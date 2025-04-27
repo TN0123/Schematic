@@ -141,7 +141,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 .fc-event {
     font-size: 0.85rem !important;
-    padding: 0.1rem 0.2rem !important;
+    padding: 0.1rem 0.3rem !important;
     background-color: #bedbff !important;
     border: 1px solid #bedbff !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
@@ -157,7 +157,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     position: absolute;
     top: 0;
     left: 0;
-    width: 2px;
+    width: 3px;
     height: 100%;
     background-color: #1447e6;
     border-top-left-radius: 4px;

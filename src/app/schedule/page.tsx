@@ -186,7 +186,7 @@ export default function CalendarApp() {
     const idsToDelete = Array.from(selectedEventIds);
     if (idsToDelete.length === 0) return;
     try {
-      await fetch(`/api/event/bulk`, {
+      await fetch(`/api/events/bulk`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: idsToDelete }),
@@ -206,6 +206,7 @@ export default function CalendarApp() {
     }
   };
   const handleSelect = (selectInfo: DateSelectArg) => {
+    console.log("Called!");
     const selectedStart = new Date(selectInfo.start);
     const selectedEnd = new Date(selectInfo.end);
 
@@ -469,6 +470,8 @@ export default function CalendarApp() {
               allDaySlot={false}
               scrollTime={`${new Date().getHours()}:00:00`}
               editable={true}
+              select={handleSelect}
+              unselectAuto={false}
               selectable={true}
               eventResize={async (resizeInfo) => {
                 try {
