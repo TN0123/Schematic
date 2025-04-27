@@ -172,7 +172,6 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     font-weight: 500 !important;
 }
 
-
 /* Dark theme for FullCalendar */
 html.dark .fc-day-today {
     background-color: #1e1e1e !important; /* dark.secondary */
@@ -241,4 +240,23 @@ html.dark .fc-popover {
 
 html.dark .fc-popover:hover {
     background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+}
+
+html.dark .fc-event {
+    background-color: #23395d !important; /* darker blue for background */
+    border: 1px solid #355c7d !important;  /* softer border */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important; /* stronger shadow */
+    color: #a8c4ff !important; /* lighter text color */
+}
+
+html.dark .fc-event::before {
+    background-color: #6699ff; /* softer, light blue bar */
+}
+
+html.dark .fc-event-main {
+    color: #a8c4ff !important;
+}
+
+html.dark .fc-event-title {
+    font-weight: 500 !important;
 }
