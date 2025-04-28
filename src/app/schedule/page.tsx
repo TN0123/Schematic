@@ -170,8 +170,13 @@ export default function CalendarApp() {
   };
 
   const handleEventClick = (clickInfo: EventClickArg): void => {
-    setEventToEdit(clickInfo.event);
-    setShowEditModal(true);
+    if (clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
+      setEventToDelete(clickInfo.event);
+      setIsDeleteModalOpen(true);
+    } else {
+      setEventToEdit(clickInfo.event);
+      setShowEditModal(true);
+    }
   };
 
   const handleEventDrop = async (dropInfo: any) => {

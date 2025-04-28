@@ -87,7 +87,7 @@ export default function FileUploaderModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-dark-secondary rounded-xl p-6 w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-start mb-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">

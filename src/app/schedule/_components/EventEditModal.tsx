@@ -22,7 +22,7 @@ export default function EventEditModal({
   handleDeleteEvent: () => void;
 }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-dark-background dark:bg-opacity-70 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 z-50">
       <div
         className="bg-white dark:bg-dark-secondary p-6 rounded-lg shadow-lg w-96 relative z-50"
         onClick={(e) => e.stopPropagation()}

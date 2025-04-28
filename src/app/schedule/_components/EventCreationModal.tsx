@@ -14,7 +14,7 @@ export default function EventCreationModal({
 }) {
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-dark-background dark:bg-opacity-70 z-50"
+      className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 z-50"
       onClick={() => setShowModal(false)}
     >
       <div
