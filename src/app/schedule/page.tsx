@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
+import EventEditModal from "./_components/EventEditModal";
 
 export interface Event {
   id: string;
@@ -43,7 +44,8 @@ export default function CalendarApp() {
 
   const [events, setEvents] = useState<Event[]>([]);
   const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
-  const [showModal, setShowModal] = useState<boolean>(false);
+  const [showCreationModal, setShowCreationModal] = useState<boolean>(false);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({
     id: "",
     title: "",
@@ -57,6 +59,7 @@ export default function CalendarApp() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<EventImpl>();
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
     useState(false);
   const [fetchedRange, setFetchedRange] = useState<{
@@ -120,14 +123,55 @@ export default function CalendarApp() {
           end: new Date(createdEvent.end),
         },
       ]);
-      setShowModal(false);
+      setShowCreationModal(false);
       setNewEvent({ id: "", title: "", start: new Date(), end: new Date() });
     }
   };
 
+  const handleEditEvent = async () => {
+    console.log("Editing event:", eventToEdit);
+    console.log("New event data:", newEvent);
+
+    if (!eventToEdit) return;
+    try {
+      const res = await fetch(`/api/events/${eventToEdit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newEvent.title,
+          start: newEvent.start,
+          end: newEvent.end,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update event");
+      }
+
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.id === eventToEdit.id
+            ? {
+                ...event,
+                title: newEvent.title,
+                start: newEvent.start,
+                end: newEvent.end,
+              }
+            : event
+        )
+      );
+
+      console.log("Event updated successfully");
+      setNewEvent({ id: "", title: "", start: new Date(), end: new Date() });
+      setShowEditModal(false);
+    } catch (error) {
+      console.error("Error editing event:", error);
+    }
+  };
+
   const handleEventClick = (clickInfo: EventClickArg): void => {
-    setEventToDelete(clickInfo.event);
-    setIsDeleteModalOpen(true);
+    setEventToEdit(clickInfo.event);
+    setShowEditModal(true);
   };
 
   const handleEventDrop = async (dropInfo: any) => {
@@ -176,6 +220,7 @@ export default function CalendarApp() {
         setEvents(events.filter((event) => event.id !== eventToDelete.id));
         setIsDeleteModalOpen(false);
         setEventToDelete(null);
+        setShowEditModal(false);
       } catch (error) {
         console.error("Error deleting event:", error);
       }
@@ -413,6 +458,17 @@ export default function CalendarApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedEventIds]);
 
+  useEffect(() => {
+    if (eventToEdit) {
+      setNewEvent({
+        id: eventToEdit.id,
+        title: eventToEdit.title,
+        start: eventToEdit.start!,
+        end: eventToEdit.end!,
+      });
+      setEventToDelete(eventToEdit);
+    }
+  }, [eventToEdit]);
   return (
     <SessionProvider>
       <div className="h-[92.25vh] flex flex-col bg-white">
@@ -534,20 +590,39 @@ export default function CalendarApp() {
             handleAcceptSuggestion={handleAcceptSuggestion}
             handleRejectSuggestion={handleRejectSuggestion}
             suggestionsLoading={suggestionsLoading}
-            setShowModal={setShowModal}
+            setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             fetchSuggestions={fetchSuggestions}
           />
         </div>
 
-        {showModal && (
+        {showCreationModal && (
           <EventCreationModal
             newEvent={newEvent}
             setNewEvent={setNewEvent}
-            setShowModal={setShowModal}
+            setShowModal={setShowCreationModal}
             handleAddEvent={handleAddEvent}
           />
         )}
+
+        {showEditModal && (
+          <EventEditModal
+            newEvent={newEvent}
+            setNewEvent={setNewEvent}
+            onClose={() => {
+              setShowEditModal(false);
+              setNewEvent({
+                id: "",
+                title: "",
+                start: new Date(),
+                end: new Date(),
+              });
+            }}
+            handleEditEvent={handleEditEvent}
+            handleDeleteEvent={handleDelete}
+          />
+        )}
+
         <DeleteEventModal
           isOpen={isDeleteModalOpen}
           event={eventToDelete}
