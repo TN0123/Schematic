@@ -147,9 +147,9 @@ export default function WritePanel({
               }}
               placeholder="Ask anything"
             />
-            <div className="flex w-full justify-end items-center px-4 py-1">
+            <div className="flex w-full justify-end items-center px-2 py-1">
               <button
-                className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 p-2"
+                className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
               >
                 <SendHorizonal size={20} />

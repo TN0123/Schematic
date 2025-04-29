@@ -1,14 +1,9 @@
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
+import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
 export default withAuth(
   // Augment the basic withAuth function
   function middleware(req) {
-    const { pathname } = req.nextUrl;
-    if (pathname === "/") {
-      return NextResponse.redirect(new URL("/bulletin", req.url));
-    }
-
     return NextResponse.next();
   },
   {
@@ -17,11 +12,11 @@ export default withAuth(
     },
     callbacks: {
       authorized: ({ token }) => {
-        return !!token
-      }      
-    }
+        return !!token;
+      },
+    },
   }
-)
+);
 
 export const config = {
   matcher: [
