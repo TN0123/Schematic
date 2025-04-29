@@ -283,39 +283,33 @@ export default function CalendarApp() {
       const data = await response.json();
       if (data.events) {
         const formattedEvents = data.events.map((event: GeneratedEvent) => ({
-          ...event,
+          title: event.title,
           start: new Date(event.start),
           end: new Date(event.end),
         }));
 
-        const createdEvents = [];
+        const res = await fetch("/api/events/bulkAdd", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ events: formattedEvents }),
+        });
 
-        for (const event of formattedEvents) {
-          const res = await fetch("/api/events", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
+        if (!res.ok) {
+          throw new Error("Failed to save events to database");
+        }
+
+        const createdEvents = formattedEvents.map(
+          (event: Event, index: number) => {
+            return {
+              id: `${Date.now()}-${index}`,
               title: event.title,
               start: event.start,
               end: event.end,
-            }),
-          });
-
-          if (!res.ok) {
-            console.error("Failed to save event to database");
-            continue;
+            };
           }
-
-          const createdEvent = await res.json();
-          createdEvents.push({
-            id: createdEvent.id,
-            title: createdEvent.title,
-            start: new Date(createdEvent.start),
-            end: new Date(createdEvent.end),
-          });
-        }
+        );
 
         setEvents([...events, ...createdEvents]);
       }
@@ -417,36 +411,28 @@ export default function CalendarApp() {
   useEffect(() => {
     if (extractedEvents.length > 0) {
       const saveEvents = async () => {
-        const createdEvents: Event[] = [];
-
-        for (const event of extractedEvents) {
-          const res = await fetch("/api/events", {
+        try {
+          const res = await fetch("/api/events/bulkAdd", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              title: event.title,
-              start: event.start,
-              end: event.end,
-            }),
+            body: JSON.stringify({ events: extractedEvents }),
           });
 
           if (!res.ok) {
-            console.error("Failed to save event to database");
-            continue;
+            throw new Error("Failed to save events to database");
           }
 
-          const createdEvent = await res.json();
-          createdEvents.push({
-            id: createdEvent.id,
-            title: createdEvent.title,
-            start: new Date(createdEvent.start),
-            end: new Date(createdEvent.end),
-          });
-        }
+          const createdEvents = extractedEvents.map((event, index) => ({
+            ...event,
+            id: `${Date.now()}-${index}`,
+          }));
 
-        setEvents((prevEvents) => [...prevEvents, ...createdEvents]);
+          setEvents((prevEvents) => [...prevEvents, ...createdEvents]);
+        } catch (error) {
+          console.error("Error saving events:", error);
+        }
       };
 
       saveEvents();

@@ -55,7 +55,7 @@ export default function FileUploaderModal({
           setExtractedEvents(data.events);
         }
       } else {
-        setStatusMessage("Upload failed: " + data.events);
+        setStatusMessage("Upload failed, service is down");
       }
     } catch (error) {
       console.error("Upload error:", error);
