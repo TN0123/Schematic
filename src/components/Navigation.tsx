@@ -13,8 +13,13 @@ export default function Navigation() {
           <div className="flex items-center justify-center gap-4">
             <Link
               href="/"
-              className="text-xl font-bold text-black dark:text-dark-textPrimary"
+              className="flex items-center justify-center text-xl font-bold text-black dark:text-dark-textPrimary"
             >
+              <img
+                src="/favicon.ico"
+                alt="Logo"
+                className="w-6 h-6 mr-2 mt-[0.1rem]"
+              />
               Schematic
             </Link>
             <ThemeToggle />
