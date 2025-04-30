@@ -15,13 +15,15 @@ export default function Bulletin() {
   const [items, setItems] = useState<BulletinItem[]>([]);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const { data: session } = useSession();
+  const userId = session?.user?.id;
   const [loading, setLoading] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (!hasFetched && userId) {
       fetchBulletins();
     }
-  }, [session]);
+  }, [hasFetched, userId]);
 
   const fetchBulletins = async () => {
     setLoading(true);
