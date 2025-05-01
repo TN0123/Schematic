@@ -18,6 +18,7 @@ import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
+import { useNextStep } from "nextstepjs";
 
 export interface Event {
   id: string;
@@ -70,6 +71,7 @@ export default function CalendarApp() {
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(
     new Set()
   );
+  const { startNextStep } = useNextStep();
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -400,6 +402,10 @@ export default function CalendarApp() {
   const handleRejectSuggestion = (eventId: string) => {
     setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
   };
+
+  useEffect(() => {
+    startNextStep("scheduleTour");
+  }, [startNextStep]);
 
   useEffect(() => {
     if (!hasFetchedInitialSuggestions && userId) {

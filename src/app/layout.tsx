@@ -4,6 +4,9 @@ import AuthProvider from "@/components/AuthProvider";
 import Navigation from "@/components/Navigation";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import { NextStepProvider, NextStep } from "nextstepjs";
+import { steps } from "@/lib/nextstep-steps";
+import CustomCard from "@/components/OnboardingCard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +34,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <AuthProvider>
-            <Navigation />
-            {children}
-          </AuthProvider>
+          <NextStepProvider>
+            <NextStep steps={steps} cardComponent={CustomCard}>
+              <AuthProvider>
+                <Navigation />
+                {children}
+              </AuthProvider>
+            </NextStep>
+          </NextStepProvider>
         </ThemeProvider>
       </body>
     </html>

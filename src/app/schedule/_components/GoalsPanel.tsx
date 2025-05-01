@@ -84,6 +84,7 @@ export default function GoalsPanel() {
       } bg-white dark:bg-dark-background border-r dark:border-dark-divider ${
         isCollapsed ? "px-2 py-6" : "px-4 py-6"
       } flex flex-col transition-all duration-300 items-center`}
+      id="goals-panel"
     >
       <div className="w-full flex flex-col items-center justify-between">
         <div className="flex w-full justify-between">
