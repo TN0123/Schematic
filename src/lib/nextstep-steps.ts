@@ -55,30 +55,35 @@ export const steps: Tour[] = [
     ],
   },
   {
-    tour: "bulletinTour",
-    steps: [
-      {
-        icon: "",
-        title: "Bulletin Board",
-        content:
-          "Easily access and manage all your bulletins in one convenient place.",
-        selector: "#bulletin-title",
-        side: "bottom",
-        showControls: true,
-        showSkip: true,
-      },
-    ],
-  },
-  {
     tour: "writeTour",
     steps: [
       {
         icon: "",
-        title: "Write Mode",
+        title: "Welcome to Write!",
+        content: "Here's a quick overview of the features.",
+        showControls: true,
+        showSkip: true,
+      },
+      {
+        icon: "",
+        title: "Editor",
         content:
-          "Seamlessly focus on writing notes or articles in a distraction-free environment.",
+          "An AI-powered editor built for writing. Ctrl+Enter at any time when writing to continue where you left off.",
         selector: "#write-editor",
-        side: "bottom",
+        side: "right",
+        pointerRadius: 0,
+        pointerPadding: 0,
+        showControls: true,
+        showSkip: true,
+      },
+      {
+        icon: "",
+        title: "Chat",
+        content: "Chat with an AI assistant to help you write.",
+        selector: "#write-panel",
+        side: "left",
+        pointerRadius: 0,
+        pointerPadding: 0,
         showControls: true,
         showSkip: true,
       },

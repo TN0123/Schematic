@@ -197,7 +197,10 @@ export default function WriteEditor({
           : "justify-center"
       }`}
     >
-      <div className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider transition-all duration-200">
+      <div
+        className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider transition-all duration-200"
+        id="write-editor"
+      >
         <div className="w-full flex flex-col gap-6 px-2">
           <div className="relative">
             <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
