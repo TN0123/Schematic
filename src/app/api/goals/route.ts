@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import prisma from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.email) {
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -15,21 +15,29 @@ export async function GET() {
   });
 
   if (!user) {
-    return new NextResponse('User not found', { status: 404 });
+    return new NextResponse("User not found", { status: 404 });
   }
 
   const goals = await prisma.goal.findMany({
     where: { userId: user.id },
   });
-    
-  return NextResponse.json(goals);
+
+  const orderedGoals = goals.sort((a, b) => {
+    const order = { daily: 1, weekly: 2, monthly: 3, yearly: 4 };
+    return (
+      order[a.type.toLowerCase() as keyof typeof order] -
+      order[b.type.toLowerCase() as keyof typeof order]
+    );
+  });
+
+  return NextResponse.json(orderedGoals);
 }
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.email) {
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -37,7 +45,7 @@ export async function POST(request: Request) {
   });
 
   if (!user) {
-    return new NextResponse('User not found', { status: 404 });
+    return new NextResponse("User not found", { status: 404 });
   }
 
   const { title, type } = await request.json();
@@ -48,7 +56,7 @@ export async function POST(request: Request) {
       type,
       userId: user.id,
     },
-  })
+  });
 
   return NextResponse.json(goal);
 }
