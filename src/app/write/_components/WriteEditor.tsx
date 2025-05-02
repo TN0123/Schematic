@@ -191,7 +191,7 @@ export default function WriteEditor({
 
   return (
     <div
-      className={`w-full h-[92.25vh] flex items-center p-4 pb-0 gap-2 ${
+      className={`w-full flex items-center p-4 pb-0 gap-2 ${
         Object.keys(pendingChanges).length != 0
           ? "justify-start"
           : "justify-center"

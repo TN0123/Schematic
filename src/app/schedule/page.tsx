@@ -481,7 +481,7 @@ export default function CalendarApp() {
   }, [eventToEdit]);
   return (
     <SessionProvider>
-      <div className="h-[92.25vh] flex flex-col bg-white">
+      <div className="h-[90dvh] flex flex-col bg-white">
         <div className="flex flex-1 h-full">
           {/* Goals Panel */}
           <GoalsPanel />

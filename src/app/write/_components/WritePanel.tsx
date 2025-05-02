@@ -94,7 +94,7 @@ export default function WritePanel({
     <aside
       className={`${
         isCollapsed ? "w-14" : "w-1/3"
-      } h-[92.25vh] border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
+      } h-[90dvh] border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
       id="write-panel"
     >
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">

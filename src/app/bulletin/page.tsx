@@ -88,7 +88,7 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="h-[92.3vh] flex bg-gradient-to-br from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary transition-all">
+    <div className="h-[90dvh] flex bg-gradient-to-br from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside className="w-1/4 bg-light-primary overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary">
         <div className="flex justify-between items-center mb-4">
