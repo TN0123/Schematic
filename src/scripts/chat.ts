@@ -1,12 +1,16 @@
-export async function chat(currentText: string, instructions: string) {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-    require('dotenv').config();
-    const geminiKey = process.env.GEMINI_API_KEY;
-  
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  
-    const prompt = `
+export async function chat(
+  currentText: string,
+  instructions: string,
+  history: any[]
+) {
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  require("dotenv").config();
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you
 
         Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
@@ -28,16 +32,6 @@ export async function chat(currentText: string, instructions: string) {
         If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
         to the end of the text. Never put output text in the string of text, only in the JSON object.
 
-        Here is the current text:
-        """
-        ${currentText}
-        """
-
-        Here is what the user asked for:
-        """
-        ${instructions}
-        """
-
         Please generate the array of the string of text and the JSON object as described above.
         Do not include any other text in your response, only the array of two items.
 
@@ -47,9 +41,45 @@ export async function chat(currentText: string, instructions: string) {
         or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
     `;
-  
-    const result = await model.generateContent(prompt);
-  
-    return result.response.text();
-  }
-  
+
+  const formattedHistory = history.map((entry) => ({
+    role: entry.role,
+    parts: Array.isArray(entry.parts)
+      ? entry.parts.map((p: string | { text: string }) =>
+          typeof p === "string" ? { text: p } : p
+        )
+      : [{ text: entry.parts }],
+  }));
+
+  const chatSession = model.startChat({
+    history: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      ...formattedHistory,
+    ],
+  });
+
+  const userPrompt = `
+    Here is the current text:
+    """
+    ${currentText}
+    """
+
+    Here is what the user asked for:
+    """
+    ${instructions}
+    """
+  `;
+
+  const result = await chatSession.sendMessage(userPrompt);
+  const response = await result.response.text();
+
+  const updatedHistory = [
+    ...formattedHistory,
+    { role: "user", parts: [{ text: userPrompt }] },
+    { role: "model", parts: [{ text: response }] },
+  ];
+
+  console.log("Updated history: ", updatedHistory);
+
+  return { response, updatedHistory };
+}

@@ -48,14 +48,17 @@ export default function WritePanel({
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [history, setHistory] = useState<
+    { role: "user" | "model"; parts: string }[]
+  >([]);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
 
-    try {
-      const userMessage = { message: instructions, role: "user" as const };
-      setMessages((prev) => [...prev, userMessage]);
+    const userMessage = { message: instructions, role: "user" as const };
+    setMessages((prev) => [...prev, userMessage]);
 
+    try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -64,6 +67,7 @@ export default function WritePanel({
         body: JSON.stringify({
           currentText: `${inputText}`,
           instructions: `${instructions}`,
+          history,
         }),
       });
 
@@ -80,6 +84,7 @@ export default function WritePanel({
       setMessages((prev) => [...prev, assistantMessage]);
       setChanges(data.result[1]);
       setInstructions("");
+      setHistory(data.history);
     } catch (error) {
       console.error(error);
     }
@@ -170,6 +175,7 @@ export default function WritePanel({
                     500
                   );
                   setMessages([]);
+                  setHistory([]);
                 }}
               >
                 <RefreshCw

@@ -23,7 +23,7 @@ export default function ThemeToggle() {
       <div className="w-11 h-6 bg-gray-200 dark:bg-dark-secondary rounded-full peer peer-checked:bg-dark-hover transition-all duration-200"></div>
       <span
         className={`absolute left-1 top-1 w-4 h-4 bg-white dark:bg-gray-300 rounded-full transition-transform duration-200 ${
-          theme === "dark" ? "translate-x-5" : ""
+          theme === "light" ? "translate-x-5" : ""
         }`}
       ></span>
     </label>
