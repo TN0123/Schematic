@@ -404,7 +404,20 @@ export default function CalendarApp() {
   };
 
   useEffect(() => {
-    startNextStep("scheduleTour");
+    async function checkAndStartTour() {
+      try {
+        const res = await fetch("/api/user/onboarding-status");
+        const data = await res.json();
+
+        if (!data.hasCompletedScheduleTour) {
+          startNextStep("scheduleTour");
+        }
+      } catch (error) {
+        console.error("Failed to fetch onboarding status:", error);
+      }
+    }
+
+    checkAndStartTour();
   }, [startNextStep]);
 
   useEffect(() => {
