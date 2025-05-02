@@ -2,9 +2,12 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 
 export default function Navigation() {
   const { data: session } = useSession();
+  const { theme, resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === "dark";
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white shadow-sm border-b border-gray-100 dark:bg-dark-background dark:border-dark-divider">
@@ -16,9 +19,9 @@ export default function Navigation() {
               className="flex items-center justify-center text-xl font-bold text-black dark:text-dark-textPrimary"
             >
               <img
-                src="/favicon.ico"
+                src={isDarkMode ? "/darkicon.ico" : "/lighticon.ico"}
                 alt="Logo"
-                className="w-6 h-6 mr-2 mt-[0.1rem]"
+                className="w-6 h-6 mr-2 mt-[0.1rem] transition-all duration-300"
               />
               Schematic
             </Link>
