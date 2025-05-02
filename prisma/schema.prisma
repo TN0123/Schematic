@@ -18,6 +18,8 @@ model User {
   events        Event[]
   bulletins     Bulletin[]
   goals         Goal[]
+  hasCompletedScheduleTour Boolean @default(false)
+  hasCompletedWriteTour    Boolean @default(false)
 }
 
 model Account {

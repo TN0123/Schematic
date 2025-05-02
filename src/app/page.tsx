@@ -41,7 +41,7 @@ export default function Home() {
                   <Zap className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                 )}
                 {section.title === "Bulletin" && (
-                  <ClipboardList className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  <ClipboardList className="h-8 w-8 text-green-400 dark:text-green-400" />
                 )}
                 {section.title === "Schedule" && (
                   <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
