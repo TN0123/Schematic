@@ -35,7 +35,7 @@ export const steps: Tour[] = [
       {
         icon: "",
         title: "Add Goals",
-        content: "Keep track of what's really important.",
+        content: "Keep track of what's important.",
         selector: "#goals-panel",
         side: "right",
         pointerRadius: 0,

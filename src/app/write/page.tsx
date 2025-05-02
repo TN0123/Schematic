@@ -13,7 +13,20 @@ export default function Writer() {
   const { startNextStep } = useNextStep();
 
   useEffect(() => {
-    startNextStep("writeTour");
+    async function checkAndStartTour() {
+      try {
+        const res = await fetch("/api/user/onboarding-status");
+        const data = await res.json();
+
+        if (!data.hasCompletedWriteTour) {
+          startNextStep("writeTour");
+        }
+      } catch (error) {
+        console.error("Failed to fetch onboarding status:", error);
+      }
+    }
+
+    checkAndStartTour();
   }, [startNextStep]);
 
   return (

@@ -4,9 +4,8 @@ import AuthProvider from "@/components/AuthProvider";
 import Navigation from "@/components/Navigation";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { NextStepProvider, NextStep } from "nextstepjs";
-import { steps } from "@/lib/nextstep-steps";
-import CustomCard from "@/components/OnboardingCard";
+import { NextStepProvider } from "nextstepjs";
+import NextStepWrapper from "@/components/NextStepWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +27,29 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const handleTourComplete = async (tourName: string | null) => {
+    if (!tourName) return;
+
+    const tourKeyMap: Record<string, string> = {
+      scheduleTour: "schedule",
+      bulletinTour: "bulletin",
+      writeTour: "write",
+    };
+
+    const tourKey = tourKeyMap[tourName];
+    if (!tourKey) return;
+
+    try {
+      await fetch("/api/user/complete-tour", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tourKey }),
+      });
+    } catch (error) {
+      console.error(`Failed to mark ${tourKey} tour as complete:`, error);
+    }
+  };
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -35,12 +57,12 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextStepProvider>
-            <NextStep steps={steps} cardComponent={CustomCard}>
+            <NextStepWrapper>
               <AuthProvider>
                 <Navigation />
                 {children}
               </AuthProvider>
-            </NextStep>
+            </NextStepWrapper>
           </NextStepProvider>
         </ThemeProvider>
       </body>
