@@ -1,7 +1,7 @@
 "use client";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import ThemeToggle from "./ThemeToggle";
+import Image from "next/image";
 
 export default function Navigation() {
   const { data: session } = useSession();
@@ -22,7 +22,6 @@ export default function Navigation() {
               />
               Schematic
             </Link>
-            <ThemeToggle />
           </div>
           <ul className="flex items-center gap-8">
             {session ? (
@@ -52,12 +51,18 @@ export default function Navigation() {
                   </Link>
                 </li>
                 <li>
-                  <button
-                    onClick={() => signOut({ callbackUrl: "/auth/login" })}
+                  <Link
+                    href="/settings"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
-                    Sign Out
-                  </button>
+                    <Image
+                      width={32}
+                      height={32}
+                      src={session.user?.image || "/default-avatar.png"}
+                      alt="Profile"
+                      className="rounded-full border border-gray-300 dark:border-dark-divider"
+                    />
+                  </Link>
                 </li>
               </>
             ) : (
