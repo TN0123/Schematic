@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, JSX } from "react";
 import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
+import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
 import { useSession } from "next-auth/react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, ListTodo, NotepadText, Logs } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface BulletinItem {
@@ -23,11 +24,32 @@ export default function Bulletin() {
   const [hasFetched, setHasFetched] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const typeIcons: Record<string, JSX.Element> = {
+    text: (
+      <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+    todo: <ListTodo className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
+    "priority-queue": (
+      <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+  };
+
   useEffect(() => {
     if (!hasFetched && userId) {
       fetchBulletins();
     }
   }, [hasFetched, userId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".relative.inline-block")) {
+        setShowDropdown(false);
+      }
+    };
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const fetchBulletins = async () => {
     setLoading(true);
@@ -72,7 +94,12 @@ export default function Bulletin() {
         title: "New Note",
         content: "",
         type,
-        data: type === "todo" ? { items: [] } : {},
+        data:
+          type === "todo"
+            ? { items: [] }
+            : type === "priority-queue"
+            ? { items: [] }
+            : {},
       }),
     });
 
@@ -118,18 +145,30 @@ export default function Bulletin() {
                       addItem("text");
                       setShowDropdown(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
                   >
-                    ✍️ Text Note
+                    <NotepadText />
+                    Text Note
                   </button>
                   <button
                     onClick={() => {
                       addItem("todo");
                       setShowDropdown(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
                   >
-                    ✅ Todo List
+                    <ListTodo />
+                    To-Do List
+                  </button>
+                  <button
+                    onClick={() => {
+                      addItem("priority-queue");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <Logs />
+                    Priority Queue
                   </button>
                 </div>
               </div>
@@ -147,9 +186,15 @@ export default function Bulletin() {
               }`}
               onClick={() => setExpandedItemId(item.id)}
             >
-              <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
-                {item.title || "Untitled"}
-              </h3>
+              <div className="flex items-center gap-2">
+                {typeIcons[item.type] || (
+                  <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+                )}
+                <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
+                  {item.title || "Untitled"}
+                </h3>
+              </div>
+
               <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
                 {stripHtml(item.content) || "No content"}
               </p>
@@ -187,6 +232,20 @@ export default function Bulletin() {
               case "todo":
                 return (
                   <BulletinTodo
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    data={item.data}
+                    onSave={saveItem}
+                    onDelete={() => {
+                      deleteItem(item.id);
+                      setExpandedItemId(null);
+                    }}
+                  />
+                );
+              case "priority-queue":
+                return (
+                  <BulletinPriorityQueue
                     key={item.id}
                     id={item.id}
                     title={item.title}

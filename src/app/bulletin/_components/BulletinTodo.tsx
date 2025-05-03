@@ -107,7 +107,7 @@ export default function BulletinTodo({
               setTitle(e.target.value);
               setHasUnsavedChanges(true);
             }}
-            placeholder="Untitled Todo List"
+            placeholder="Untitled To Do List"
             aria-label="Todo list title"
           />
           <div className="flex gap-2 ml-2">
