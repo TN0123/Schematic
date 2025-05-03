@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  events        Event[]
-  bulletins     Bulletin[]
-  goals         Goal[]
-  hasCompletedScheduleTour Boolean @default(false)
-  hasCompletedWriteTour    Boolean @default(false)
+  id                       String     @id @default(cuid())
+  name                     String?
+  email                    String?    @unique
+  emailVerified            DateTime?
+  image                    String?
+  hasCompletedScheduleTour Boolean    @default(false)
+  hasCompletedWriteTour    Boolean    @default(false)
+  accounts                 Account[]
+  bulletins                Bulletin[]
+  events                   Event[]
+  goals                    Goal[]
+  sessions                 Session[]
 }
 
 model Account {
@@ -28,15 +28,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -50,19 +49,19 @@ model Session {
 }
 
 model Event {
-  id        String   @id @default(cuid())
-  title     String
-  start     DateTime
-  end       DateTime
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String   @id @default(cuid())
+  title  String
+  start  DateTime
+  end    DateTime
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Bulletin {
   id        String   @id @default(cuid())
   title     String
   content   String
-  type      String
+  type      String   @default("text")
   data      Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
