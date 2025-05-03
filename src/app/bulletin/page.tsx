@@ -1,14 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
-import BulletinItem from "./_components/BulletinItem";
+import { useEffect, useState, JSX } from "react";
+import BulletinNote from "./_components/BulletinNote";
+import BulletinTodo from "./_components/BulletinTodo";
+import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
 import { useSession } from "next-auth/react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, ListTodo, NotepadText, Logs } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface BulletinItem {
   id: string;
   title: string;
   content: string;
+  type: string;
+  data?: any;
 }
 
 export default function Bulletin() {
@@ -18,12 +22,34 @@ export default function Bulletin() {
   const userId = session?.user?.id;
   const [loading, setLoading] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const typeIcons: Record<string, JSX.Element> = {
+    text: (
+      <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+    todo: <ListTodo className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
+    "priority-queue": (
+      <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+  };
 
   useEffect(() => {
     if (!hasFetched && userId) {
       fetchBulletins();
     }
   }, [hasFetched, userId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".relative.inline-block")) {
+        setShowDropdown(false);
+      }
+    };
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const fetchBulletins = async () => {
     setLoading(true);
@@ -60,13 +86,20 @@ export default function Bulletin() {
     }
   };
 
-  const addItem = async () => {
+  const addItem = async (type = "text") => {
     const response = await fetch("/api/bulletins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: "New Note",
         content: "",
+        type,
+        data:
+          type === "todo"
+            ? { items: [] }
+            : type === "priority-queue"
+            ? { items: [] }
+            : {},
       }),
     });
 
@@ -95,12 +128,52 @@ export default function Bulletin() {
           <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
             All Notes
           </h2>
-          <button
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
-            onClick={addItem}
-          >
-            <Plus size={16} className="stroke-current" />
-          </button>
+          <div className="relative inline-block text-left">
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
+              onClick={() => setShowDropdown((prev) => !prev)}
+            >
+              <Plus size={16} className="stroke-current" />
+              New Note
+            </button>
+
+            {showDropdown && (
+              <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      addItem("text");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <NotepadText />
+                    Text Note
+                  </button>
+                  <button
+                    onClick={() => {
+                      addItem("todo");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <ListTodo />
+                    To-Do List
+                  </button>
+                  <button
+                    onClick={() => {
+                      addItem("priority-queue");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <Logs />
+                    Priority Queue
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="space-y-3">
           {items.map((item) => (
@@ -109,13 +182,19 @@ export default function Bulletin() {
               className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
                 item.id === expandedItemId
                   ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
-                  : "hover:bg-light-hover border border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
+                  : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
               }`}
               onClick={() => setExpandedItemId(item.id)}
             >
-              <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
-                {item.title || "Untitled"}
-              </h3>
+              <div className="flex items-center gap-2">
+                {typeIcons[item.type] || (
+                  <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+                )}
+                <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
+                  {item.title || "Untitled"}
+                </h3>
+              </div>
+
               <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
                 {stripHtml(item.content) || "No content"}
               </p>
@@ -146,23 +225,56 @@ export default function Bulletin() {
         </AnimatePresence>
       ) : (
         <div className="w-3/4">
-          {items.map(
-            (item) =>
-              item.id === expandedItemId && (
-                <BulletinItem
-                  key={item.id}
-                  id={item.id}
-                  initialTitle={item.title}
-                  initialContent={item.content}
-                  onSave={saveItem}
-                  onDelete={() => {
-                    deleteItem(item.id);
-                    setExpandedItemId(null);
-                  }}
-                  onCollapse={() => setExpandedItemId(null)}
-                />
-              )
-          )}
+          {items.map((item) => {
+            if (item.id !== expandedItemId) return null;
+
+            switch (item.type) {
+              case "todo":
+                return (
+                  <BulletinTodo
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    data={item.data}
+                    onSave={saveItem}
+                    onDelete={() => {
+                      deleteItem(item.id);
+                      setExpandedItemId(null);
+                    }}
+                  />
+                );
+              case "priority-queue":
+                return (
+                  <BulletinPriorityQueue
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    data={item.data}
+                    onSave={saveItem}
+                    onDelete={() => {
+                      deleteItem(item.id);
+                      setExpandedItemId(null);
+                    }}
+                  />
+                );
+              case "text":
+              default:
+                return (
+                  <BulletinNote
+                    key={item.id}
+                    id={item.id}
+                    initialTitle={item.title}
+                    initialContent={item.content}
+                    onSave={saveItem}
+                    onDelete={() => {
+                      deleteItem(item.id);
+                      setExpandedItemId(null);
+                    }}
+                  />
+                );
+            }
+          })}
+
           {expandedItemId === null && (
             <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
               <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">

@@ -7,6 +7,7 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Save,
+  Loader2,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -14,7 +15,7 @@ import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 //import { FontSize } from "@tiptap/extension-font-size";
 
-interface BulletinItemProps {
+interface BulletinNoteProps {
   id: string;
   initialTitle: string;
   initialContent?: string;
@@ -23,19 +24,15 @@ interface BulletinItemProps {
     updates: { title?: string; content?: string }
   ) => Promise<void>;
   onDelete?: () => void;
-  onExpand?: () => void;
-  onCollapse?: () => void;
 }
 
-export default function BulletinItem({
+export default function BulletinNote({
   id,
   initialTitle,
   initialContent = "",
   onSave,
   onDelete,
-  onExpand,
-  onCollapse,
-}: BulletinItemProps) {
+}: BulletinNoteProps) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,18 +70,13 @@ export default function BulletinItem({
     immediatelyRender: false,
   });
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
-    setHasUnsavedChanges(true);
-  };
-
   const MenuBar = () => {
     if (!editor) {
       return null;
     }
 
     return (
-      <div className="border-b border-light-border pb-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
+      <div className="border-b pb-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
@@ -195,13 +187,16 @@ export default function BulletinItem({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="bg-light-background border border-light-border shadow-sm w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
+    <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
           <input
             type="text"
             value={title}
-            onChange={handleTitleChange}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
             className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
             placeholder="Enter title..."
           />
@@ -210,12 +205,17 @@ export default function BulletinItem({
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`p-2 text-light-icon rounded-lg transition-colors
-                  hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
+                className={`p-2 rounded-lg transition-colors
+                  text-light-icon hover:text-light-accent hover:bg-light-hover
+                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
                   ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
                 aria-label="Save changes"
               >
-                <Save className="h-5 w-5" />
+                {isSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
               </button>
             )}
             <button
