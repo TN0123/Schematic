@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, Save, CheckCircle, Circle } from "lucide-react";
+import {
+  Plus,
+  X,
+  Save,
+  CheckCircle,
+  Circle,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 
 interface TodoItem {
   id: string;
@@ -31,12 +39,16 @@ export default function BulletinTodo({
   const [items, setItems] = useState<TodoItem[]>(data?.items || []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const lastSaved = useRef({ title: initialTitle, items: data?.items || [] });
 
   const addItem = () => {
     setItems([...items, { id: crypto.randomUUID(), text: "", checked: false }]);
     setHasUnsavedChanges(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const updateItem = (id: string, updates: Partial<TodoItem>) => {
@@ -74,77 +86,128 @@ export default function BulletinTodo({
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, [handleKeyPress]);
 
+  const handleInputKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Enter" && index === items.length - 1) {
+      addItem();
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-4 p-4 bg-white dark:bg-dark-background rounded-lg shadow-md">
-      <div className="flex justify-between items-center">
-        <input
-          className="text-xl font-semibold w-full px-2 py-1 rounded dark:bg-dark-background dark:text-dark-textPrimary"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            setHasUnsavedChanges(true);
-          }}
-          placeholder="Untitled Todo List"
-        />
-        <div className="flex gap-2 ml-2">
-          {hasUnsavedChanges && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="p-2 rounded text-light-icon dark:text-dark-icon hover:bg-light-hover dark:hover:bg-dark-hover"
-            >
-              <Save className="w-5 h-5" />
-            </button>
-          )}
-          {onDelete && (
+    <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
+      <div className="p-4 h-full flex flex-col items-center">
+        {/* Title & Actions */}
+        <div className="flex justify-between items-center w-full">
+          <input
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setHasUnsavedChanges(true);
+            }}
+            placeholder="Untitled Todo List"
+            aria-label="Todo list title"
+          />
+          <div className="flex gap-2 ml-2">
+            {hasUnsavedChanges && (
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`p-2 rounded-lg transition-colors
+                  text-light-icon hover:text-light-accent hover:bg-light-hover
+                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
+                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                aria-label="Save changes"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+              </button>
+            )}
             <button
               onClick={onDelete}
-              className="p-2 rounded text-red-500 hover:bg-red-200 dark:hover:bg-red-900"
+              className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
+              aria-label="Delete list"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="h-5 w-5" />
             </button>
-          )}
+          </div>
         </div>
-      </div>
 
-      <ul className="flex flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-2">
-            <button
-              onClick={() => updateItem(item.id, { checked: !item.checked })}
-              className="text-gray-500 dark:text-dark-icon"
+        {/* Todo Items */}
+        <div className="flex flex-col w-full md:w-1/2 border rounded-lg px-4 py-3 gap-3 dark:border-dark-divider">
+          {items.length === 0 ? (
+            <div className="text-center text-gray-500 italic dark:text-dark-textSecondary">
+              No tasks yet. Start by adding one below 👇
+            </div>
+          ) : (
+            <ul
+              className={`flex flex-col gap-3 ${
+                items.length > 7 ? "overflow-y-scroll max-h-[60dvh]" : ""
+              }`}
             >
-              {item.checked ? (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              ) : (
-                <Circle className="w-5 h-5" />
-              )}
-            </button>
-            <input
-              type="text"
-              className="flex-grow border-b px-1 py-0.5 text-sm dark:bg-transparent dark:text-dark-textPrimary focus:outline-none"
-              value={item.text}
-              onChange={(e) => updateItem(item.id, { text: e.target.value })}
-              placeholder="Todo item..."
-            />
-            <button
-              onClick={() => removeItem(item.id)}
-              className="text-red-400 hover:text-red-600"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </li>
-        ))}
-      </ul>
+              {items.map((item, index) => (
+                <li
+                  key={item.id}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 dark:border-dark-divider ${
+                    item.checked ? "bg-green-50 dark:bg-green-900" : ""
+                  }`}
+                >
+                  <button
+                    onClick={() =>
+                      updateItem(item.id, { checked: !item.checked })
+                    }
+                    aria-label={item.checked ? "Uncheck task" : "Check task"}
+                    className="text-gray-500 dark:text-dark-icon"
+                  >
+                    {item.checked ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Circle className="w-5 h-5" />
+                    )}
+                  </button>
+                  <input
+                    ref={index === items.length - 1 ? inputRef : null}
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      updateItem(item.id, { text: e.target.value })
+                    }
+                    onKeyDown={(e) => handleInputKeyDown(e, index)}
+                    placeholder="Todo item..."
+                    className={`flex-grow bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary ${
+                      item.checked
+                        ? "line-through text-gray-400 dark:text-gray-500"
+                        : ""
+                    }`}
+                    aria-label="Todo item text"
+                  />
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="text-red-400 hover:text-red-600"
+                    aria-label="Delete item"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-      <div className="pt-2 flex gap-2">
-        <button
-          onClick={addItem}
-          className="flex items-center gap-1 px-3 py-1 text-sm text-white bg-green-500 hover:bg-green-600 rounded-md shadow"
-        >
-          <Plus className="w-4 h-4" />
-          Add Item
-        </button>
+          {/* Add Item Button */}
+          <button
+            onClick={addItem}
+            className="self-end mt-2 flex items-center gap-1 px-3 py-1 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 text-sm rounded transition"
+            aria-label="Add new todo item"
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );

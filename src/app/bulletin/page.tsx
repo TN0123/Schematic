@@ -143,7 +143,7 @@ export default function Bulletin() {
               className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
                 item.id === expandedItemId
                   ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
-                  : "hover:bg-light-hover border border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
+                  : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
               }`}
               onClick={() => setExpandedItemId(item.id)}
             >
