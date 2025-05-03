@@ -14,7 +14,7 @@ import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 //import { FontSize } from "@tiptap/extension-font-size";
 
-interface BulletinItemProps {
+interface BulletinNoteProps {
   id: string;
   initialTitle: string;
   initialContent?: string;
@@ -23,19 +23,15 @@ interface BulletinItemProps {
     updates: { title?: string; content?: string }
   ) => Promise<void>;
   onDelete?: () => void;
-  onExpand?: () => void;
-  onCollapse?: () => void;
 }
 
-export default function BulletinItem({
+export default function BulletinNote({
   id,
   initialTitle,
   initialContent = "",
   onSave,
   onDelete,
-  onExpand,
-  onCollapse,
-}: BulletinItemProps) {
+}: BulletinNoteProps) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);

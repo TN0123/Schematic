@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import prisma from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.email) {
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -15,12 +15,12 @@ export async function GET() {
   });
 
   if (!user) {
-    return new NextResponse('User not found', { status: 404 });
+    return new NextResponse("User not found", { status: 404 });
   }
 
   const bulletins = await prisma.bulletin.findMany({
     where: { userId: user.id },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { updatedAt: "desc" },
   });
 
   return NextResponse.json(bulletins);
@@ -28,9 +28,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session?.user?.email) {
-    return new NextResponse('Unauthorized', { status: 401 });
+    return new NextResponse("Unauthorized", { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -38,15 +38,17 @@ export async function POST(request: Request) {
   });
 
   if (!user) {
-    return new NextResponse('User not found', { status: 404 });
+    return new NextResponse("User not found", { status: 404 });
   }
 
-  const { title, content } = await request.json();
+  const { title, content, type = "text", data = null } = await request.json();
 
   const bulletin = await prisma.bulletin.create({
     data: {
       title,
       content,
+      type,
+      data,
       userId: user.id,
     },
   });

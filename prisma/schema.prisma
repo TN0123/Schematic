@@ -62,6 +62,8 @@ model Bulletin {
   id        String   @id @default(cuid())
   title     String
   content   String
+  type      String
+  data      Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
