@@ -482,7 +482,7 @@ export default function CalendarApp() {
   return (
     <SessionProvider>
       <div className="h-[90dvh] flex flex-col bg-white">
-        <div className="flex flex-1 h-full">
+        <div className="flex flex-col md:flex-row flex-1 h-full">
           {/* Goals Panel */}
           <GoalsPanel />
           {/* Calendar */}

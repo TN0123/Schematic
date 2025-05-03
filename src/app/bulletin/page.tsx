@@ -123,7 +123,7 @@ export default function Bulletin() {
   return (
     <div className="h-[90dvh] flex bg-gradient-to-br from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
-      <aside className="w-1/4 bg-light-primary overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary">
+      <aside className="w-full md:w-1/4 bg-light-primary overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
             All Notes
@@ -224,7 +224,7 @@ export default function Bulletin() {
           )}
         </AnimatePresence>
       ) : (
-        <div className="w-3/4">
+        <div className="w-full md:w-3/4">
           {items.map((item) => {
             if (item.id !== expandedItemId) return null;
 

@@ -2,9 +2,12 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
+import { Menu } from "lucide-react";
 
 export default function Navigation() {
   const { data: session } = useSession();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white shadow-sm border-b border-gray-100 dark:bg-dark-background dark:border-dark-divider">
@@ -23,10 +26,21 @@ export default function Navigation() {
               Schematic
             </Link>
           </div>
-          <ul className="flex items-center gap-8">
+          <button
+            className="md:hidden text-gray-600 dark:text-dark-textSecondary focus:outline-none"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle Menu"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <ul
+            className={`${
+              isMenuOpen ? "block" : "hidden"
+            } absolute top-16 right-0 w-1/4 rounded-xl bg-white dark:bg-dark-background md:static md:flex md:items-center md:gap-8 md:w-auto md:bg-transparent dark:md:bg-transparent z-40 transition-all duration-300`}
+          >
             {session ? (
               <>
-                <li>
+                <li className="block md:inline-block px-4 py-2 md:p-0 text-right">
                   <Link
                     href="/write"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
@@ -34,7 +48,7 @@ export default function Navigation() {
                     Write
                   </Link>
                 </li>
-                <li>
+                <li className="block md:inline-block px-4 py-2 md:p-0 text-right">
                   <Link
                     href="/bulletin"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
@@ -42,7 +56,7 @@ export default function Navigation() {
                     Bulletin
                   </Link>
                 </li>
-                <li>
+                <li className="block md:inline-block px-4 py-2 md:p-0 text-right">
                   <Link
                     href="/schedule"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
@@ -50,10 +64,10 @@ export default function Navigation() {
                     Schedule
                   </Link>
                 </li>
-                <li>
+                <li className="block md:inline-block px-4 py-2 md:p-0">
                   <Link
                     href="/settings"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
+                    className="flex items-center justify-end text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
                   >
                     <Image
                       width={32}
@@ -66,7 +80,7 @@ export default function Navigation() {
                 </li>
               </>
             ) : (
-              <li>
+              <li className="block md:inline-block px-4 py-2 md:p-0">
                 <Link
                   href="/auth/login"
                   className="text-gray-600 hover:text-gray-900 transition-colors duration-200 font-medium dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
