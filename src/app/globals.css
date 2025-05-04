@@ -28,21 +28,21 @@
 
 /* Dark theme scrollbar */
 html.dark ::-webkit-scrollbar {
-    background: #1e1e1e; /* dark.secondary */
+    background: #1e1e1e;
 }
 
 html.dark ::-webkit-scrollbar-track {
-    background: #1e1e1e; /* dark.secondary */
+    background: #1e1e1e;
 }
 
 html.dark ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.24); /* dark.divider */
-    border: 2px solid #1e1e1e; /* dark.secondary */
+    background: rgba(255, 255, 255, 0.24);
+    border: 2px solid #1e1e1e;
 }
 
 html.dark ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.38); /* dark.actionHover */
-    border: 2px solid rgba(255, 255, 255, 0.12); /* dark.divider */
+    background: rgba(255, 255, 255, 0.38); 
+    border: 2px solid rgba(255, 255, 255, 0.12);
 }
 
 @layer utilities {
@@ -174,59 +174,59 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 /* Dark theme for FullCalendar */
 html.dark .fc-day-today {
-    background-color: #1e1e1e !important; /* dark.secondary */
+    background-color: #1e1e1e !important;
 }
 
 html.dark .fc-day-today:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    background-color: rgba(255, 255, 255, 0.08) !important; 
 }
 
 html.dark .fc-dayGridMonth-button, 
 html.dark .fc-timeGridWeek-button, 
 html.dark .fc-timeGridDay-button {
-    background-color: #1e1e1e !important; /* dark.secondary */
-    color: #ffffff !important; /* dark.textPrimary */
-    border: 3px solid #1e1e1e !important; /* dark.secondary */
+    background-color: #1e1e1e !important;
+    color: #ffffff !important; 
+    border: 3px solid #1e1e1e !important;
 }
 
 html.dark .fc-dayGridMonth-button:hover, 
 html.dark .fc-timeGridWeek-button:hover, 
 html.dark .fc-timeGridDay-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    background-color: rgba(255, 255, 255, 0.08) !important; 
     transition: all 0.2s ease-in-out !important;
 }
 
 html.dark .fc-button-active {
-    background-color: rgba(255, 255, 255, 0.16) !important; /* dark.actionSelected */
+    background-color: rgba(255, 255, 255, 0.16) !important; 
 }
 
 html.dark .fc-toolbar-title {
-    color: #ffffff !important; /* dark.textPrimary */
+    color: #ffffff !important; 
 }
 
 html.dark .fc-today-button {
-    background-color: #1e1e1e !important; /* dark.secondary */
-    color: #ffffff !important; /* dark.textPrimary */
+    background-color: #1e1e1e !important;
+    color: #ffffff !important; 
 }
 
 html.dark .fc-today-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    background-color: rgba(255, 255, 255, 0.08) !important; 
 }
 
 html.dark .fc-prev-button, 
 html.dark .fc-next-button {
-    background-color: #1e1e1e !important; /* dark.secondary */
-    border: 1px solid rgba(255, 255, 255, 0.12) !important; /* dark.divider */
-    color: #ffffff !important; /* dark.textPrimary */
+    background-color: #1e1e1e !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important; 
 }
 
 html.dark .fc-prev-button:hover, 
 html.dark .fc-next-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    background-color: rgba(255, 255, 255, 0.08) !important; 
 }
 
 html.dark .fc-daygrid-day-top {
-    color: #ffffff !important; /* dark.textPrimary */
+    color: rgba(255, 255, 255, 0.7) !important;
 }
 
 html.dark .fc-col-header-cell {
@@ -234,12 +234,12 @@ html.dark .fc-col-header-cell {
 }
 
 html.dark .fc-popover {
-    background-color: #1e1e1e !important; /* dark.secondary */
-    color: #ffffff !important; /* dark.textPrimary */
+    background-color: #1e1e1e !important;
+    color: #ffffff !important; 
 }
 
 html.dark .fc-popover:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; /* dark.actionHover */
+    background-color: rgba(255, 255, 255, 0.08) !important; 
 }
 
 html.dark .fc-event {
@@ -259,4 +259,11 @@ html.dark .fc-event-main {
 
 html.dark .fc-event-title {
     font-weight: 500 !important;
+}
+
+/* html.dark .fc-border-color {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+} */
+html.dark {
+    --fc-border-color: rgba(255, 255, 255, 0.12);
 }

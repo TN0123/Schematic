@@ -150,7 +150,7 @@ export default function GoalsPanel() {
           <div className="flex gap-2 mt-2 text-sm justify-center items-center">
             <select
               id="goalType"
-              className="border rounded-md px-2 py-2 dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-dark-accent transition-all duration-200"
+              className="border rounded-md px-2 py-2 dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider focus:outline-none transition-all duration-200"
               value={currentDuration}
               onChange={(e) => {
                 setCurrentDuration(
