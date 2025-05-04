@@ -235,6 +235,27 @@ export default function WriteEditor({
                 onSelect={(e) => {
                   setCursorPosition(e.currentTarget.selectionStart ?? 0);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab") {
+                    e.preventDefault();
+                    const textarea = textareaRef.current;
+                    if (textarea) {
+                      const start = textarea.selectionStart;
+                      const end = textarea.selectionEnd;
+                      const newValue =
+                        inputText.substring(0, start) +
+                        "\t" +
+                        inputText.substring(end);
+                      setInputText(newValue);
+                      setInput(newValue);
+                      setCursorPosition(start + 1);
+                      setTimeout(() => {
+                        textarea.selectionStart = textarea.selectionEnd =
+                          start + 1;
+                      }, 0);
+                    }
+                  }
+                }}
                 onInput={updateTextareaHeight}
                 placeholder="Start typing here..."
               />
