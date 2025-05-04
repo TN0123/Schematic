@@ -53,7 +53,9 @@ export default function WriteEditor({
 
   useEffect(() => {
     if (loading) {
-      setInputText(inputText + " Generating...");
+      const beforeCursor = inputText.slice(0, cursorPosition);
+      const afterCursor = inputText.slice(cursorPosition);
+      setInputText(beforeCursor + " Generating..." + afterCursor);
     }
   }, [loading]);
 
@@ -62,7 +64,8 @@ export default function WriteEditor({
       setError("");
       setLoading(true);
 
-      const textBeforeCursor = inputText.slice(0, cursorPosition);
+      const before = inputText.slice(0, cursorPosition);
+      const after = inputText.slice(cursorPosition);
 
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -70,8 +73,8 @@ export default function WriteEditor({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          startText: `${textBeforeCursor}`,
-          endText: `${inputText.slice(cursorPosition)}`,
+          startText: `${before}`,
+          endText: `${after}`,
         }),
       });
 
@@ -81,8 +84,6 @@ export default function WriteEditor({
       const data = await response.json();
       const generatedText = data.result || "";
 
-      const before = inputText.slice(0, cursorPosition);
-      const after = inputText.slice(cursorPosition);
       const updated = before + generatedText + after;
 
       const start = before.length;
@@ -91,6 +92,9 @@ export default function WriteEditor({
       setGeneratedStart(start);
       setGeneratedEnd(end);
       setInputText(updated);
+
+      setCursorPosition(end);
+
       setLoading(false);
     } catch (error) {
       console.error(error);
@@ -186,8 +190,16 @@ export default function WriteEditor({
   }, [handleKeyPress]);
 
   useEffect(() => {
-    console.log("Pending changes:", pendingChanges);
-  }, [pendingChanges]);
+    if (
+      textareaRef.current &&
+      generatedStart !== null &&
+      generatedEnd !== null
+    ) {
+      textareaRef.current.selectionStart = generatedEnd;
+      textareaRef.current.selectionEnd = generatedEnd;
+      textareaRef.current.focus();
+    }
+  }, [inputText, generatedStart, generatedEnd]);
 
   return (
     <div
