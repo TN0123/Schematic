@@ -21,6 +21,7 @@ export default function WriteEditor({
   const [cursorPosition, setCursorPosition] = useState<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
   const [generatedEnd, setGeneratedEnd] = useState<number | null>(null);
+  const [undoStack, setUndoStack] = useState<string[]>([]);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -61,6 +62,10 @@ export default function WriteEditor({
 
   const handleContinue = async () => {
     try {
+      setUndoStack((prev) => {
+        const newStack = [...prev, inputText];
+        return newStack.length > 10 ? newStack.slice(-10) : newStack;
+      });
       setError("");
       setLoading(true);
 
@@ -109,8 +114,21 @@ export default function WriteEditor({
         handleContinue();
         console.log("continuing writing...");
       }
+
+      if (event.ctrlKey && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (undoStack.length > 0) {
+          const last = undoStack[undoStack.length - 1];
+          setInputText(last);
+          setInput(last);
+          setUndoStack((prev) => prev.slice(0, prev.length - 1));
+          setGeneratedStart(null);
+          setGeneratedEnd(null);
+          console.log("undo last generation");
+        }
+      }
     },
-    [handleContinue]
+    [handleContinue, undoStack, setInput]
   );
 
   const applyChange = (original: string, replacement: string) => {
@@ -167,12 +185,13 @@ export default function WriteEditor({
   const getHighlightedHTMLWithRange = (
     text: string,
     start: number | null,
-    end: number | null
+    end: number | null,
+    loading: boolean = false
   ): string => {
     if (start === null || end === null) return text;
 
     const before = text.slice(0, start);
-    const highlight = text.slice(start, end);
+    const highlight = loading ? "Generating..." : text.slice(start, end);
     const after = text.slice(end);
 
     return (
@@ -226,7 +245,8 @@ export default function WriteEditor({
                       : getHighlightedHTMLWithRange(
                           inputText,
                           generatedStart,
-                          generatedEnd
+                          generatedEnd,
+                          loading
                         ),
                 }}
               />
