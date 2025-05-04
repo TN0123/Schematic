@@ -42,7 +42,10 @@ export default function FileUploaderModal({
     formData.append("file", file);
 
     try {
-      const response = await fetch("/api/upload-pdf", {
+      const isPdf = file.type === "application/pdf";
+      const uploadUrl = isPdf ? "/api/upload-pdf" : "/api/upload-image";
+
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
@@ -109,12 +112,12 @@ export default function FileUploaderModal({
         ) : (
           <>
             <p className="text-sm text-gray-600 dark:text-dark-textSecondary mb-4">
-              Upload a PDF document to extract events for your calendar.
+              Upload a PDF or image to extract events for your calendar.
             </p>
 
             <div
               className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 dark:border-dark-divider rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 dark:hover:border-dark-actionHover mb-6"
-              onClick={() => document.getElementById("pdfInput")?.click()}
+              onClick={() => document.getElementById("fileInput")?.click()}
             >
               <UploadIcon className="w-8 h-8 text-gray-500 dark:text-dark-textSecondary mb-2" />
               {file ? (
@@ -123,13 +126,13 @@ export default function FileUploaderModal({
                 </p>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
-                  Click to select a PDF file
+                  Click to select a file
                 </p>
               )}
               <input
-                id="pdfInput"
+                id="fileInput"
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf, image/jpeg, image/png"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="hidden"
               />
