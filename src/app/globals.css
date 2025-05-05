@@ -267,3 +267,9 @@ html.dark .fc-event-title {
 html.dark {
     --fc-border-color: rgba(255, 255, 255, 0.12);
 }
+
+#write-editor textarea::selection {
+    background: #e9d5ff; /* Light purple background */
+    color: #4c1d95;      /* Dark purple text */
+  }
+  

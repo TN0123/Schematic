@@ -66,13 +66,13 @@ export default function WriteEditor({
       const liveCursor =
         textareaRef.current?.selectionStart ?? inputText.length;
 
+      cursorPositionRef.current = liveCursor;
+
       const before = inputText.slice(0, cursorPositionRef.current);
       const after = inputText.slice(cursorPositionRef.current);
-      setInputText(before + " Generating..." + after);
-      setInput(before + " Generating..." + after);
+
       cursorPositionRef.current = liveCursor;
       setLoading(true);
-
       setSelectionStart(null);
       setSelectionEnd(null);
 
@@ -91,6 +91,8 @@ export default function WriteEditor({
         throw new Error("Failed to generate content");
       }
       const data = await response.json();
+      // setInputText(before + after);
+
       const generatedText = data.result || "";
 
       const updated = before + generatedText + after;
@@ -101,16 +103,8 @@ export default function WriteEditor({
       setInputText(updated);
       cursorPositionRef.current = end;
 
-      setTimeout(() => {
-        setGeneratedStart(start);
-        setGeneratedEnd(end);
-      }, 0);
-
-      console.log({
-        generatedStart,
-        generatedEnd,
-        highlight: inputText.slice(generatedStart ?? 0, generatedEnd ?? 0),
-      });
+      setGeneratedStart(start);
+      setGeneratedEnd(end);
 
       setLoading(false);
     } catch (error) {
@@ -185,7 +179,6 @@ export default function WriteEditor({
     text: string,
     start: number | null,
     end: number | null,
-    loading: boolean = false,
     variant: "selection" | "generated" | "ai" = "generated",
     highlightText?: string
   ): string => {
@@ -197,19 +190,10 @@ export default function WriteEditor({
         ? "bg-purple-100 dark:bg-purple-900 dark:text-dark-textPrimary"
         : variant === "ai"
         ? "bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary"
-        : "bg-green-300 dark:bg-green-600 dark:text-white";
-
-    if (highlightText) {
-      const escaped = highlightText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "g");
-      return text.replace(
-        regex,
-        `<mark class="${highlightClass}">${highlightText}</mark>`
-      );
-    }
+        : "bg-green-100 text-gray-800 dark:text-dark-textPrimary dark:bg-green-900";
 
     const before = text.slice(0, start!);
-    const highlight = loading ? "Generating..." : text.slice(start!, end!);
+    const highlight = text.slice(start!, end!);
     const after = text.slice(end!);
 
     return (
@@ -261,7 +245,6 @@ export default function WriteEditor({
                           inputText,
                           null,
                           null,
-                          false,
                           "ai",
                           activeHighlight
                         )
@@ -270,26 +253,30 @@ export default function WriteEditor({
                           inputText,
                           selectionStart,
                           selectionEnd,
-                          false,
                           "selection"
                         )
                       : getHighlightedHTMLWithRange(
                           inputText,
                           generatedStart,
                           generatedEnd,
-                          loading,
                           "generated"
                         ),
                 }}
               />
+              {loading && (
+                <div className="absolute top-3 right-4 text-sm text-gray-500 dark:text-gray-400 z-10">
+                  Generating...
+                </div>
+              )}
               <textarea
                 ref={textareaRef}
+                id="write-editor"
                 className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
                 value={inputText}
                 onChange={(e) => {
                   const newValue = e.target.value;
-                  const selectionStart = e.target.selectionStart ?? 0;
-                  cursorPositionRef.current = selectionStart;
+                  const cursorPos = e.target.selectionStart ?? 0;
+                  cursorPositionRef.current = cursorPos;
                   setInput(newValue);
                   setInputText(newValue);
                   setGeneratedStart(null);
