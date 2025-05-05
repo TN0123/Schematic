@@ -6,6 +6,7 @@ import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { NextStepProvider } from "nextstepjs";
 import NextStepWrapper from "@/components/NextStepWrapper";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,31 +28,23 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const handleTourComplete = async (tourName: string | null) => {
-    if (!tourName) return;
-
-    const tourKeyMap: Record<string, string> = {
-      scheduleTour: "schedule",
-      bulletinTour: "bulletin",
-      writeTour: "write",
-    };
-
-    const tourKey = tourKeyMap[tourName];
-    if (!tourKey) return;
-
-    try {
-      await fetch("/api/user/complete-tour", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tourKey }),
-      });
-    } catch (error) {
-      console.error(`Failed to mark ${tourKey} tour as complete:`, error);
-    }
-  };
-
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-VZSDFYLZ9M"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-VZSDFYLZ9M');
+          `}
+        </Script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
