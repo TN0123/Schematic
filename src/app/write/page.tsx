@@ -10,6 +10,7 @@ import { useNextStep } from "nextstepjs";
 export default function Writer() {
   const [input, setInput] = useState<string>("");
   const [changes, setChanges] = useState<ChangeMap>({});
+  const [selected, setSelected] = useState<string>("");
   const { startNextStep } = useNextStep();
 
   useEffect(() => {
@@ -32,9 +33,17 @@ export default function Writer() {
   return (
     <div className="flex w-full h-full bg-gray-200 dark:bg-dark-secondary transition-all duration-200">
       <div className="flex w-full overflow-auto justify-center">
-        <WriteEditor setInput={setInput} changes={changes} />
+        <WriteEditor
+          setInput={setInput}
+          changes={changes}
+          setSelected={setSelected}
+        />
       </div>
-      <WritePanel inputText={input} setChanges={setChanges} />
+      <WritePanel
+        inputText={input}
+        setChanges={setChanges}
+        selected={selected}
+      />
     </div>
   );
 }

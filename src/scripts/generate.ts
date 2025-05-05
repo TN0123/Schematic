@@ -1,6 +1,6 @@
 export async function generate(startText: string, endText: string) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
-  require('dotenv').config();
+  require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
   const genAI = new GoogleGenerativeAI(geminiKey);
@@ -19,9 +19,11 @@ export async function generate(startText: string, endText: string) {
   only generate the continuation of their text. Try to match the user's tone as closely as possible. 
   
   Here is the text so far: ${startText} CONTINUE WRITING HERE ${endText}
-  `
+  `;
 
   const result = await model.generateContent(prompt);
+
+  // console.log("Prompt: ", prompt);
 
   return result.response.text();
 }

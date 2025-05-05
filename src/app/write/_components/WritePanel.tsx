@@ -41,9 +41,11 @@ export function Message({ message, role }: MessageProps) {
 export default function WritePanel({
   inputText,
   setChanges,
+  selected,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
+  selected: string;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -65,7 +67,7 @@ export default function WritePanel({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          currentText: `${inputText}`,
+          currentText: selected || inputText,
           instructions: `${instructions}`,
           history,
         }),
@@ -186,6 +188,18 @@ export default function WritePanel({
               <p className="text-xs italic text-gray-500 dark:text-dark-textSecondary text-center">
                 This is a temporary chat, your work will not be saved.
               </p>
+              {selected && (
+                <p className="text-xs text-gray-400 italic px-4 pb-1">
+                  Using selected text from{" "}
+                  <span className="font-medium text-gray-500">
+                    {selected.trim().split(/\s+/)[0]}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-medium text-gray-500">
+                    {selected.trim().split(/\s+/).slice(-1)[0]}
+                  </span>
+                </p>
+              )}
             </div>
             {messages.map((msg, index) => (
               <Message key={index} message={msg.message} role={msg.role} />

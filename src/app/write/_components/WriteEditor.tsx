@@ -8,9 +8,11 @@ export type ChangeMap = Record<string, string>;
 export default function WriteEditor({
   setInput,
   changes,
+  setSelected,
 }: {
   setInput: (input: string) => void;
   changes: any;
+  setSelected: (selected: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -265,7 +267,15 @@ export default function WriteEditor({
                   updateTextareaHeight();
                 }}
                 onSelect={(e) => {
-                  setCursorPosition(e.currentTarget.selectionStart ?? 0);
+                  const textarea = e.currentTarget;
+                  const selectionStart = textarea.selectionStart;
+                  const selectionEnd = textarea.selectionEnd;
+                  const selectedText = textarea.value.substring(
+                    selectionStart,
+                    selectionEnd
+                  );
+                  setSelected(selectedText);
+                  setCursorPosition(selectionStart);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Tab") {
