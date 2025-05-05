@@ -79,7 +79,5 @@ export async function chat(
     { role: "model", parts: [{ text: response }] },
   ];
 
-  console.log("Updated history: ", updatedHistory);
-
   return { response, updatedHistory };
 }

@@ -156,6 +156,18 @@ export default function WritePanel({
               placeholder="Ask anything"
             />
             <div className="flex w-full justify-end items-center px-2 py-1">
+              {selected && (
+                <p className="text-xs text-gray-400 italic px-4 pb-1">
+                  Using selected text from{" "}
+                  <span className="font-medium text-gray-500">
+                    {selected.trim().split(/\s+/)[0]}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-medium text-gray-500">
+                    {selected.trim().split(/\s+/).slice(-1)[0]}
+                  </span>
+                </p>
+              )}
               <button
                 className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
@@ -188,18 +200,6 @@ export default function WritePanel({
               <p className="text-xs italic text-gray-500 dark:text-dark-textSecondary text-center">
                 This is a temporary chat, your work will not be saved.
               </p>
-              {selected && (
-                <p className="text-xs text-gray-400 italic px-4 pb-1">
-                  Using selected text from{" "}
-                  <span className="font-medium text-gray-500">
-                    {selected.trim().split(/\s+/)[0]}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium text-gray-500">
-                    {selected.trim().split(/\s+/).slice(-1)[0]}
-                  </span>
-                </p>
-              )}
             </div>
             {messages.map((msg, index) => (
               <Message key={index} message={msg.message} role={msg.role} />
