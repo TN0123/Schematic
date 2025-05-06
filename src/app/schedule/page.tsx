@@ -481,12 +481,12 @@ export default function CalendarApp() {
   }, [eventToEdit]);
   return (
     <SessionProvider>
-      <div className="h-[90dvh] flex flex-col bg-white">
+      <div className="h-[90dvh] flex flex-col bg-white dark:bg-dark-background">
         <div className="flex flex-col md:flex-row flex-1 h-full">
           {/* Goals Panel */}
           <GoalsPanel />
           {/* Calendar */}
-          <div className="flex-1 p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary">
+          <div className="flex-1 p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary">
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div

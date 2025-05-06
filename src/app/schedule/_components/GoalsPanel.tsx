@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Menu, X } from "lucide-react";
 import GoalCard from "./GoalCard";
 
 export enum GoalDuration {
@@ -26,10 +26,26 @@ export default function GoalsPanel() {
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
   const { data: session } = useSession();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     fetchGoals();
   }, []);
+
+  useEffect(() => {
+    // Close mobile panel when clicking outside
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (isMobileOpen && !target.closest("#goals-panel")) {
+        setIsMobileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMobileOpen]);
 
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
@@ -77,110 +93,135 @@ export default function GoalsPanel() {
     setRemovingGoals((prev) => prev.filter((id) => id !== id));
   };
 
-  return (
-    <aside
-      className={`relative ${
-        isCollapsed ? "w-14" : "w-80"
-      } bg-white dark:bg-dark-background border-r dark:border-dark-divider ${
-        isCollapsed ? "px-2 py-6" : "px-4 py-6"
-      } flex flex-col transition-all duration-300 items-center`}
-      id="goals-panel"
+  const MobileToggle = () => (
+    <button
+      onClick={() => setIsMobileOpen(true)}
+      className="md:hidden fixed top-[9rem] left-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
+      aria-label="Open goals panel"
     >
-      <div className="w-full flex flex-col items-center justify-between">
-        <div className="flex w-full justify-between">
-          {!isCollapsed && (
-            <h1 className="font-bold text-2xl w-full text-gray-900 dark:text-dark-textPrimary tracking-wide transition-all duration-300">
-              Goals
-            </h1>
-          )}
+      <Menu size={20} className="text-gray-700 dark:text-dark-textSecondary" />
+    </button>
+  );
 
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
-            ) : (
-              <PanelLeftClose
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
+  return (
+    <>
+      <MobileToggle />
+      <aside
+        className={`fixed md:relative z-30 h-full ${
+          isCollapsed ? "w-14" : "w-80"
+        } bg-white dark:bg-dark-background border-r dark:border-dark-divider ${
+          isCollapsed ? "px-2 py-6" : "px-4 py-6"
+        } flex flex-col transition-all duration-300 items-center
+        ${isMobileOpen ? "left-0" : "-left-full md:left-0"}
+        `}
+        id="goals-panel"
+      >
+        <div className="w-full flex flex-col items-center justify-between">
+          <div className="flex w-full justify-between">
+            {!isCollapsed && (
+              <h1 className="font-bold text-2xl w-full text-gray-900 dark:text-dark-textPrimary tracking-wide transition-all duration-300">
+                Goals
+              </h1>
             )}
-          </button>
-        </div>
-        {!isCollapsed && (
-          <div className="flex gap-3 my-4 justify-center">
-            {Object.values(GoalDuration).map((duration) => (
-              <button
-                key={duration}
-                className={`text-gray-900 dark:text-dark-textSecondary text-xs font-medium px-2 py-2 shadow-sm rounded-md border border-gray-300 dark:border-dark-divider hover:bg-gray-900 dark:hover:bg-dark-actionHover hover:text-white focus:outline-none transition-all duration-200 ${
-                  filters.includes(duration)
-                    ? "bg-gray-900 dark:bg-dark-actionHover text-white"
-                    : ""
-                }`}
-                onClick={() => handleFilterChange(duration)}
-              >
-                {duration.charAt(0).toUpperCase() +
-                  duration.slice(1).toLowerCase()}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {!isCollapsed && (
-        <>
-          <div className="flex flex-col gap-4 py-4 overflow-y-auto h-3/4 w-full">
-            {goals.map(
-              (goal) =>
-                (filters.length === 0 || filters.includes(goal.type)) && (
-                  <GoalCard
-                    key={goal.id}
-                    goal={goal}
-                    handleGoalClick={deleteGoal}
-                    removing={removingGoals.includes(goal.id)}
-                  />
-                )
-            )}
-          </div>
-
-          <div className="flex gap-2 mt-2 text-sm justify-center items-center">
-            <select
-              id="goalType"
-              className="border rounded-md px-2 py-2 dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider focus:outline-none transition-all duration-200"
-              value={currentDuration}
-              onChange={(e) => {
-                setCurrentDuration(
-                  e.target.value.toUpperCase() as GoalDuration
-                );
-              }}
+            <button
+              onClick={() => setIsMobileOpen(false)}
+              className="md:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
             >
+              <X
+                size={24}
+                className="text-gray-700 dark:text-dark-textSecondary"
+              />
+            </button>
+
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-2 hidden md:block rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              ) : (
+                <PanelLeftClose
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              )}
+            </button>
+          </div>
+          {!isCollapsed && (
+            <div className="flex gap-3 my-4 justify-center">
               {Object.values(GoalDuration).map((duration) => (
-                <option key={duration} value={duration}>
+                <button
+                  key={duration}
+                  className={`text-gray-900 dark:text-dark-textSecondary text-xs font-medium px-2 py-2 shadow-sm rounded-md border border-gray-300 dark:border-dark-divider hover:bg-gray-900 dark:hover:bg-dark-actionHover hover:text-white focus:outline-none transition-all duration-200 ${
+                    filters.includes(duration)
+                      ? "bg-gray-900 dark:bg-dark-actionHover text-white"
+                      : ""
+                  }`}
+                  onClick={() => handleFilterChange(duration)}
+                >
                   {duration.charAt(0).toUpperCase() +
                     duration.slice(1).toLowerCase()}
-                </option>
+                </button>
               ))}
-            </select>
-            <input
-              type="text"
-              className="border dark:border-dark-divider px-2 py-2 rounded-md text-center text-md dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-dark-accent transition-all duration-200"
-              onChange={(e) => setGoalToAdd(e.target.value)}
-              value={goalToAdd}
-              placeholder="Add a new goal..."
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && goalToAdd.trim() !== "") {
-                  addGoal();
-                  setGoalToAdd("");
-                }
-              }}
-            />
-          </div>
-        </>
-      )}
-    </aside>
+            </div>
+          )}
+        </div>
+
+        {!isCollapsed && (
+          <>
+            <div className="flex flex-col gap-4 py-4 overflow-y-auto h-3/4 w-full">
+              {goals.map(
+                (goal) =>
+                  (filters.length === 0 || filters.includes(goal.type)) && (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      handleGoalClick={deleteGoal}
+                      removing={removingGoals.includes(goal.id)}
+                    />
+                  )
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-2 text-sm justify-center items-center">
+              <select
+                id="goalType"
+                className="border rounded-md px-2 py-2 dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider focus:outline-none transition-all duration-200"
+                value={currentDuration}
+                onChange={(e) => {
+                  setCurrentDuration(
+                    e.target.value.toUpperCase() as GoalDuration
+                  );
+                }}
+              >
+                {Object.values(GoalDuration).map((duration) => (
+                  <option key={duration} value={duration}>
+                    {duration.charAt(0).toUpperCase() +
+                      duration.slice(1).toLowerCase()}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                className="border dark:border-dark-divider px-2 py-2 rounded-md text-center text-md dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-dark-accent focus:border-dark-accent transition-all duration-200"
+                onChange={(e) => setGoalToAdd(e.target.value)}
+                value={goalToAdd}
+                placeholder="Add a new goal..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && goalToAdd.trim() !== "") {
+                    addGoal();
+                    setGoalToAdd("");
+                  }
+                }}
+              />
+            </div>
+          </>
+        )}
+      </aside>
+    </>
   );
 }
