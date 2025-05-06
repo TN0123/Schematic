@@ -205,6 +205,27 @@ export default function BulletinPriorityQueue({
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, [handleKeyPress]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasUnsavedChanges) {
+        handleSave();
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        handleSave();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges, handleSave]);
+
   return (
     <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
       <div className="p-4 h-full flex flex-col items-center">
