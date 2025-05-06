@@ -42,10 +42,26 @@ export default function WritePanel({
   inputText,
   setChanges,
   selected,
+  lastRequest,
+  setLastRequest,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
   selected: string;
+  lastRequest: {
+    input: string;
+    selected: string;
+    instructions: string;
+    history: { role: "user" | "model"; parts: string }[];
+  } | null;
+  setLastRequest: (
+    request: {
+      input: string;
+      selected: string;
+      instructions: string;
+      history: { role: "user" | "model"; parts: string }[];
+    } | null
+  ) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -56,6 +72,13 @@ export default function WritePanel({
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
+
+    const requestPayload = {
+      input: inputText,
+      selected,
+      instructions,
+      history,
+    };
 
     const userMessage = { message: instructions, role: "user" as const };
     setMessages((prev) => [...prev, userMessage]);
@@ -83,9 +106,54 @@ export default function WritePanel({
         message: data.result[0],
         role: "assistant" as const,
       };
+      setLastRequest(requestPayload);
       setMessages((prev) => [...prev, assistantMessage]);
       setChanges(data.result[1]);
       setInstructions("");
+      setHistory(data.history);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!lastRequest) return;
+
+    const { input, selected, instructions, history } = lastRequest;
+
+    setMessages((prev) => {
+      const trimmed = [...prev];
+      if (trimmed.length && trimmed[trimmed.length - 1].role === "assistant") {
+        trimmed.pop();
+      }
+      return trimmed;
+    });
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentText: selected || input,
+          instructions,
+          history,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Retry failed");
+      }
+
+      const data = await response.json();
+
+      const assistantMessage = {
+        message: data.result[0],
+        role: "assistant" as const,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setChanges(data.result[1]);
       setHistory(data.history);
     } catch (error) {
       console.error(error);
@@ -168,6 +236,16 @@ export default function WritePanel({
                   </span>
                 </p>
               )}
+              {lastRequest && (
+                <button
+                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
+                  onClick={handleRetry}
+                  title="Retry last request"
+                >
+                  <RefreshCw size={20} />
+                </button>
+              )}
+
               <button
                 className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
@@ -190,6 +268,7 @@ export default function WritePanel({
                   );
                   setMessages([]);
                   setHistory([]);
+                  setLastRequest(null);
                 }}
               >
                 <RefreshCw

@@ -12,6 +12,12 @@ export default function Writer() {
   const [changes, setChanges] = useState<ChangeMap>({});
   const [selected, setSelected] = useState<string>("");
   const { startNextStep } = useNextStep();
+  const [lastRequest, setLastRequest] = useState<{
+    input: string;
+    selected: string;
+    instructions: string;
+    history: { role: "user" | "model"; parts: string }[];
+  } | null>(null);
 
   useEffect(() => {
     async function checkAndStartTour() {
@@ -37,12 +43,15 @@ export default function Writer() {
           setInput={setInput}
           changes={changes}
           setSelected={setSelected}
+          onChangesAccepted={() => setLastRequest(null)}
         />
       </div>
       <WritePanel
         inputText={input}
         setChanges={setChanges}
         selected={selected}
+        lastRequest={lastRequest}
+        setLastRequest={setLastRequest}
       />
     </div>
   );

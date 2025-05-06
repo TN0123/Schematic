@@ -9,10 +9,12 @@ export default function WriteEditor({
   setInput,
   changes,
   setSelected,
+  onChangesAccepted,
 }: {
   setInput: (input: string) => void;
   changes: any;
   setSelected: (selected: string) => void;
+  onChangesAccepted: () => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,6 +55,7 @@ export default function WriteEditor({
   useEffect(() => {
     if (Object.keys(pendingChanges).length === 0) {
       setActiveHighlight(null);
+      onChangesAccepted();
     }
   }, [pendingChanges]);
 
