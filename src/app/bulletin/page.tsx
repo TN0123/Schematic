@@ -4,7 +4,15 @@ import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
 import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
 import { useSession } from "next-auth/react";
-import { Plus, Loader2, ListTodo, NotepadText, Logs } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  ListTodo,
+  NotepadText,
+  Logs,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface BulletinItem {
@@ -23,6 +31,7 @@ export default function Bulletin() {
   const [loading, setLoading] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const typeIcons: Record<string, JSX.Element> = {
     text: (
@@ -121,9 +130,13 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="h-[90dvh] flex bg-gradient-to-br from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary transition-all">
+    <div className="h-[90dvh] flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
-      <aside className="w-full md:w-1/4 bg-light-primary overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary">
+      <aside
+        className={`fixed md:static z-10 top-20 left-0 h-full w-3/4 md:w-1/4 bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-transform duration-300 shadow-lg md:shadow-none ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
             All Notes
@@ -134,9 +147,9 @@ export default function Bulletin() {
               onClick={() => setShowDropdown((prev) => !prev)}
             >
               <Plus size={16} className="stroke-current" />
-              New Note
+              <span className="hidden md:inline">New Note</span>
             </button>
-
+            {/* Dropdown */}
             {showDropdown && (
               <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
                 <div className="py-1">
@@ -202,91 +215,101 @@ export default function Bulletin() {
           ))}
         </div>
       </aside>
+      <button
+        className={`md:hidden fixed top-20 bg-white dark:bg-dark-background dark:text-white p-3 rounded-lg ${
+          isSidebarOpen ? "right-4" : "left-4"
+        }`}
+        onClick={() => setIsSidebarOpen((prev) => !prev)}
+      >
+        {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+      </button>
       {/* Main content */}
-      {loading ? (
-        <AnimatePresence>
-          {loading && (
-            <motion.div
-              className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-light-secondary to-light-tertiary bg-opacity-90 dark:from-dark-primary dark:to-dark-secondary"
-              initial={{ opacity: 0, scale: 1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            >
-              <Loader2
-                className="animate-spin text-light-icon dark:text-dark-textSecondary"
-                size={48}
-              />
-              <p className="mt-4 text-light-heading font-medium text-lg dark:text-dark-textSecondary">
-                Loading notes...
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      ) : (
-        <div className="w-full md:w-3/4">
-          {items.map((item) => {
-            if (item.id !== expandedItemId) return null;
+      <div className="w-full md:w-3/4 flex-1">
+        {loading ? (
+          <AnimatePresence>
+            {loading && (
+              <motion.div
+                className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-light-secondary to-light-tertiary bg-opacity-90 dark:from-dark-primary dark:to-dark-secondary"
+                initial={{ opacity: 0, scale: 1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              >
+                <Loader2
+                  className="animate-spin text-light-icon dark:text-dark-textSecondary"
+                  size={48}
+                />
+                <p className="mt-4 text-light-heading font-medium text-lg dark:text-dark-textSecondary">
+                  Loading notes...
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        ) : (
+          <>
+            {items.map((item) => {
+              if (item.id !== expandedItemId) return null;
 
-            switch (item.type) {
-              case "todo":
-                return (
-                  <BulletinTodo
-                    key={item.id}
-                    id={item.id}
-                    title={item.title}
-                    data={item.data}
-                    onSave={saveItem}
-                    onDelete={() => {
-                      deleteItem(item.id);
-                      setExpandedItemId(null);
-                    }}
-                  />
-                );
-              case "priority-queue":
-                return (
-                  <BulletinPriorityQueue
-                    key={item.id}
-                    id={item.id}
-                    title={item.title}
-                    data={item.data}
-                    onSave={saveItem}
-                    onDelete={() => {
-                      deleteItem(item.id);
-                      setExpandedItemId(null);
-                    }}
-                  />
-                );
-              case "text":
-              default:
-                return (
-                  <BulletinNote
-                    key={item.id}
-                    id={item.id}
-                    initialTitle={item.title}
-                    initialContent={item.content}
-                    onSave={saveItem}
-                    onDelete={() => {
-                      deleteItem(item.id);
-                      setExpandedItemId(null);
-                    }}
-                  />
-                );
-            }
-          })}
+              switch (item.type) {
+                case "todo":
+                  return (
+                    <BulletinTodo
+                      key={item.id}
+                      id={item.id}
+                      title={item.title}
+                      data={item.data}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                        setExpandedItemId(null);
+                      }}
+                    />
+                  );
+                case "priority-queue":
+                  return (
+                    <BulletinPriorityQueue
+                      key={item.id}
+                      id={item.id}
+                      title={item.title}
+                      data={item.data}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                        setExpandedItemId(null);
+                      }}
+                    />
+                  );
+                case "text":
+                default:
+                  return (
+                    <BulletinNote
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialContent={item.content}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                        setExpandedItemId(null);
+                      }}
+                    />
+                  );
+              }
+            })}
 
-          {expandedItemId === null && (
-            <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
-              <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
-                No note selected
-              </p>
-              <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
-                Click on a note from the sidebar or create a new note
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+            {expandedItemId === null && (
+              <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
+                <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
+                  No note selected
+                </p>
+                <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
+                  Tap on a note from the sidebar or create a new note
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
