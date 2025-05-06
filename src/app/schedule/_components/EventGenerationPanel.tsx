@@ -21,6 +21,7 @@ interface EventGenerationPanelProps {
   handleAcceptSuggestion: (event: Event) => void;
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
+  onToggle?: () => void;
 }
 
 export default function EventGenerationPanel({
@@ -35,13 +36,20 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion,
   handleRejectSuggestion,
   suggestionsLoading,
+  onToggle,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  const handleToggle = () => {
+    setIsMobileOpen(!isMobileOpen);
+    if (onToggle) onToggle();
+    setTimeout(() => onToggle && onToggle(), 300);
+  };
 
   const MobileToggle = () => (
     <button
       id="event-panel-toggle"
-      onClick={() => setIsMobileOpen(true)}
+      onClick={handleToggle}
       className="md:hidden fixed top-[9rem] right-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
       aria-label="Open event panel"
     >
@@ -64,7 +72,7 @@ export default function EventGenerationPanel({
         <div className="flex" id="event-menu-bar">
           {isMobileOpen && (
             <button
-              onClick={() => setIsMobileOpen(false)}
+              onClick={handleToggle}
               className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
             >
               <PanelRightClose

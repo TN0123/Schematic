@@ -16,7 +16,11 @@ export interface Goal {
   type: GoalDuration;
 }
 
-export default function GoalsPanel() {
+interface GoalsPanelProps {
+  onToggle?: () => void;
+}
+
+export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [goalToAdd, setGoalToAdd] = useState<string>("");
   const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
@@ -103,6 +107,14 @@ export default function GoalsPanel() {
     </button>
   );
 
+  const handleToggle = () => {
+    setIsCollapsed(!isCollapsed);
+    if (onToggle) {
+      onToggle();
+      setTimeout(() => onToggle(), 300);
+    }
+  };
+
   return (
     <>
       <MobileToggle />
@@ -135,7 +147,7 @@ export default function GoalsPanel() {
             </button>
 
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              onClick={handleToggle}
               className="p-2 hidden md:block rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
             >
               {isCollapsed ? (

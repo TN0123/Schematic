@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import { EventClickArg, DateSelectArg } from "@fullcalendar/core";
 import { EventImpl } from "@fullcalendar/core/internal";
@@ -72,6 +72,8 @@ export default function CalendarApp() {
     new Set()
   );
   const { startNextStep } = useNextStep();
+  const calendarRef = useRef<FullCalendar>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -479,14 +481,43 @@ export default function CalendarApp() {
       setEventToDelete(eventToEdit);
     }
   }, [eventToEdit]);
+
+  useEffect(() => {
+    if (!calendarContainerRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (calendarRef.current) {
+        const timeoutId = setTimeout(() => {
+          calendarRef.current?.getApi().updateSize();
+        }, 50);
+        return () => clearTimeout(timeoutId);
+      }
+    });
+
+    resizeObserver.observe(calendarContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const handlePanelToggle = () => {
+    if (calendarRef.current) {
+      setTimeout(() => calendarRef.current?.getApi().updateSize(), 50);
+    }
+  };
+
   return (
     <SessionProvider>
       <div className="h-[90dvh] flex flex-col bg-white dark:bg-dark-background">
         <div className="flex flex-col md:flex-row flex-1 h-full">
           {/* Goals Panel */}
-          <GoalsPanel />
+          <GoalsPanel onToggle={handlePanelToggle} />
           {/* Calendar */}
-          <div className="flex-1 p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary">
+          <div
+            ref={calendarContainerRef}
+            className="flex-1 p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+          >
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div
@@ -504,6 +535,7 @@ export default function CalendarApp() {
               )}
             </AnimatePresence>
             <FullCalendar
+              ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
               events={events}
@@ -603,6 +635,7 @@ export default function CalendarApp() {
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             fetchSuggestions={fetchSuggestions}
+            onToggle={handlePanelToggle}
           />
         </div>
 
