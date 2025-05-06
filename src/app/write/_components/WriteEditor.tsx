@@ -175,11 +175,24 @@ export default function WriteEditor({
     setPendingChanges(updatedChanges);
   };
 
+  const getHighlightedHTML = (
+    text: string,
+    highlight: string | null
+  ): string => {
+    if (!highlight) return text;
+    const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "g");
+    return text.replace(
+      regex,
+      `<mark class="bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary">${highlight}</mark>`
+    );
+  };
+
   const getHighlightedHTMLWithRange = (
     text: string,
     start: number | null,
     end: number | null,
-    variant: "selection" | "generated" | "ai" = "generated",
+    variant: "selection" | "generated" = "generated",
     highlightText?: string
   ): string => {
     if ((start === null || end === null || start === end) && !highlightText)
@@ -188,8 +201,6 @@ export default function WriteEditor({
     const highlightClass =
       variant === "selection"
         ? "bg-purple-100 dark:bg-purple-900 dark:text-dark-textPrimary"
-        : variant === "ai"
-        ? "bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary"
         : "bg-green-100 text-gray-800 dark:text-dark-textPrimary dark:bg-green-900";
 
     const before = text.slice(0, start!);
@@ -241,13 +252,7 @@ export default function WriteEditor({
                 dangerouslySetInnerHTML={{
                   __html:
                     activeHighlight !== null
-                      ? getHighlightedHTMLWithRange(
-                          inputText,
-                          null,
-                          null,
-                          "ai",
-                          activeHighlight
-                        )
+                      ? getHighlightedHTML(inputText, activeHighlight)
                       : selectionStart !== null && selectionEnd !== null
                       ? getHighlightedHTMLWithRange(
                           inputText,
