@@ -209,7 +209,7 @@ export default function Bulletin() {
               </div>
 
               <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
-                {stripHtml(item.content) || "No content"}
+                {stripHtml(item.content) || ""}
               </p>
             </div>
           ))}

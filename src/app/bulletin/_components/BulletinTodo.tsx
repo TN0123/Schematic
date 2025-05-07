@@ -52,9 +52,19 @@ export default function BulletinTodo({
   };
 
   const updateItem = (id: string, updates: Partial<TodoItem>) => {
-    setItems(
-      items.map((item) => (item.id === id ? { ...item, ...updates } : item))
-    );
+    if (updates.checked) {
+      setItems(
+        items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+      );
+
+      setTimeout(() => {
+        setItems(items.filter((item) => item.id !== id));
+      }, 800);
+    } else {
+      setItems(
+        items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+      );
+    }
     setHasUnsavedChanges(true);
   };
 
@@ -174,9 +184,9 @@ export default function BulletinTodo({
               {items.map((item, index) => (
                 <li
                   key={item.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 dark:border-dark-divider ${
-                    item.checked ? "bg-green-50 dark:bg-green-900" : ""
-                  }`}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 dark:border-dark-divider 
+                  ${item.checked ? "bg-green-50 dark:bg-green-900" : ""}
+                  transition-all duration-700 ease-in-out`}
                 >
                   <button
                     onClick={() =>
