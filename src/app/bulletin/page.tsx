@@ -3,6 +3,7 @@ import { useEffect, useState, JSX } from "react";
 import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
 import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
+import BulletinLinkCollection from "./_components/BulletinLinkCollection";
 import { useSession } from "next-auth/react";
 import {
   Plus,
@@ -12,16 +13,40 @@ import {
   Logs,
   PanelLeftClose,
   PanelLeftOpen,
+  Link,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface BulletinItem {
+interface TodoItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
+interface QueueItem {
+  id: string;
+  text: string;
+  priority: number;
+}
+
+interface LinkItem {
+  id: string;
+  url: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+}
+
+type BulletinItem = {
   id: string;
   title: string;
   content: string;
-  type: string;
-  data?: any;
-}
+} & (
+  | { type: "text"; data?: undefined }
+  | { type: "todo"; data: { items: TodoItem[] } }
+  | { type: "priority-queue"; data: { items: QueueItem[] } }
+  | { type: "link-collection"; data: { links: LinkItem[] } }
+);
 
 export default function Bulletin() {
   const [items, setItems] = useState<BulletinItem[]>([]);
@@ -40,6 +65,9 @@ export default function Bulletin() {
     todo: <ListTodo className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
     "priority-queue": (
       <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+    "link-collection": (
+      <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
   };
 
@@ -71,7 +99,7 @@ export default function Bulletin() {
 
   const saveItem = async (
     id: string,
-    updates: { title?: string; content?: string }
+    updates: { title?: string; content?: string; data?: { links?: LinkItem[] } }
   ) => {
     try {
       const response = await fetch(`/api/bulletins/${id}`, {
@@ -105,10 +133,12 @@ export default function Bulletin() {
         type,
         data:
           type === "todo"
-            ? { items: [] }
+            ? { items: [] as TodoItem[] }
             : type === "priority-queue"
-            ? { items: [] }
-            : {},
+            ? { items: [] as QueueItem[] }
+            : type === "link-collection"
+            ? { links: [] as LinkItem[] }
+            : undefined,
       }),
     });
 
@@ -182,6 +212,16 @@ export default function Bulletin() {
                   >
                     <Logs />
                     Priority Queue
+                  </button>
+                  <button
+                    onClick={() => {
+                      addItem("link-collection");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <Link />
+                    Link Collection
                   </button>
                 </div>
               </div>
@@ -279,6 +319,21 @@ export default function Bulletin() {
                       }}
                     />
                   );
+                case "link-collection":
+                  return (
+                    <BulletinLinkCollection
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialLinks={item.data?.links}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                        setExpandedItemId(null);
+                      }}
+                    />
+                  );
+
                 case "text":
                 default:
                   return (
