@@ -1,10 +1,11 @@
 import {
+  Sparkles,
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
   SendHorizonal,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion } from "framer-motion";
 
@@ -116,6 +117,60 @@ export default function WritePanel({
     }
   };
 
+  const handleImprove = async () => {
+    try {
+      const getSurroundingWords = (
+        text: string,
+        selected: string,
+        wordCount: number
+      ) => {
+        const words = text.split(/\s+/);
+        const selectedStartIndex = text.indexOf(selected.trim());
+        const selectedEndIndex = selectedStartIndex + selected.trim().length;
+
+        const beforeWords = text
+          .slice(0, selectedStartIndex)
+          .split(/\s+/)
+          .slice(-wordCount)
+          .join(" ");
+
+        const afterWords = text
+          .slice(selectedEndIndex)
+          .split(/\s+/)
+          .slice(0, wordCount)
+          .join(" ");
+
+        return {
+          before: beforeWords,
+          after: afterWords,
+        };
+      };
+
+      const { before, after } = getSurroundingWords(inputText, selected, 25);
+
+      const response = await fetch("/api/chat/improve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          before,
+          selected,
+          after,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate content");
+      }
+
+      const data = await response.json();
+      setChanges(data.result);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleRetry = async () => {
     if (!lastRequest) return;
 
@@ -164,7 +219,7 @@ export default function WritePanel({
     <aside
       className={`${
         isCollapsed ? "w-14" : "w-1/3"
-      } h-[90dvh] border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
+      } h-full border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
       id="write-panel"
     >
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
@@ -235,6 +290,16 @@ export default function WritePanel({
                     {selected.trim().split(/\s+/).slice(-1)[0]}
                   </span>
                 </p>
+              )}
+              {selected && (
+                <button
+                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
+                  onClick={handleImprove}
+                  title="Improve selected text"
+                  aria-label="Improve selected text"
+                >
+                  <Sparkles size={20} />
+                </button>
               )}
               {lastRequest && (
                 <button

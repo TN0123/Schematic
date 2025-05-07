@@ -21,7 +21,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen py-4 px-4 bg-gray-50 dark:bg-dark-background transition-all">
+    <div className="flex flex-col items-center justify-center h-screen py-4 px-4 bg-gray-50 dark:bg-dark-background transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
         <h1 className="text-3xl sm:text-4xl text-center font-bold text-gray-900 dark:text-dark-textPrimary mb-6 sm:mb-8">
           Welcome to Schematic
