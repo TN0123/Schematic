@@ -37,7 +37,7 @@ export async function improve(before: string, selected: string, after: string) {
 
   const result = await model.generateContent(prompt);
 
-  console.log("Prompt: ", prompt);
+  // console.log("Prompt: ", prompt);
 
   return result.response.text();
 }

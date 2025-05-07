@@ -9,12 +9,13 @@ import {
   Save,
 } from "lucide-react";
 
-interface LinkPreview {
+export interface LinkPreview {
   id: string;
   url: string;
   title: string;
   description?: string;
   imageUrl?: string;
+  category: string;
 }
 
 interface BulletinLinkCollectionProps {
@@ -154,7 +155,31 @@ export default function BulletinLinkCollection({
         id: Date.now().toString(),
         url: normalizedUrl,
         title: normalizedUrl,
+        category: "Uncategorized",
       };
+
+      const categories = Array.from(
+        new Set(links.map((link) => link.category))
+      );
+
+      const response = await fetch("/api/categorize-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          categories,
+          link: newLinkPreview,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to categorize link");
+      }
+
+      const { result } = await response.json();
+
+      newLinkPreview.category = result;
 
       const updatedLinks = [...links, newLinkPreview];
       setLinks(updatedLinks);
@@ -182,6 +207,14 @@ export default function BulletinLinkCollection({
       handleAddLink();
     }
   };
+
+  const linksByCategory = links.reduce((acc, link) => {
+    if (!acc[link.category]) {
+      acc[link.category] = [];
+    }
+    acc[link.category].push(link);
+    return acc;
+  }, {} as Record<string, LinkPreview[]>);
 
   return (
     <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
@@ -260,43 +293,52 @@ export default function BulletinLinkCollection({
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
-          {links.map((link) => (
-            <div
-              key={link.id}
-              className="border dark:border-dark-divider rounded-lg p-4 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium dark:text-dark-textPrimary">
-                  {link.title}
-                </h3>
-                <button
-                  onClick={() => handleDeleteLink(link.id)}
-                  className="p-1 hover:bg-light-hover dark:hover:bg-dark-hover rounded"
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </button>
+        <div className="flex-1 overflow-y-auto">
+          {Object.entries(linksByCategory).map(([category, categoryLinks]) => (
+            <div key={category} className="mb-6">
+              <h2 className="text-xl font-semibold mb-4 dark:text-dark-textPrimary">
+                {category}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categoryLinks.map((link) => (
+                  <div
+                    key={link.id}
+                    className="border dark:border-dark-divider rounded-lg p-4 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium dark:text-dark-textPrimary">
+                        {link.title}
+                      </h3>
+                      <button
+                        onClick={() => handleDeleteLink(link.id)}
+                        className="p-1 hover:bg-light-hover dark:hover:bg-dark-hover rounded"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                    {link.imageUrl && (
+                      <img
+                        src={link.imageUrl}
+                        alt={link.title}
+                        className="w-full h-32 object-cover rounded mb-2"
+                      />
+                    )}
+                    {link.description && (
+                      <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
+                        {link.description}
+                      </p>
+                    )}
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block"
+                    >
+                      {link.url}
+                    </a>
+                  </div>
+                ))}
               </div>
-              {link.imageUrl && (
-                <img
-                  src={link.imageUrl}
-                  alt={link.title}
-                  className="w-full h-32 object-cover rounded mb-2"
-                />
-              )}
-              {link.description && (
-                <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                  {link.description}
-                </p>
-              )}
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block"
-              >
-                {link.url}
-              </a>
             </div>
           ))}
         </div>
