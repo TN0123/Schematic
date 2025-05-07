@@ -5,9 +5,9 @@ import {
   RefreshCw,
   SendHorizonal,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ChangeMap } from "./WriteEditor";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface MessageProps {
   message: string;
@@ -70,6 +70,7 @@ export default function WritePanel({
   const [history, setHistory] = useState<
     { role: "user" | "model"; parts: string }[]
   >([]);
+  const [isImproving, setIsImproving] = useState(false);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
@@ -118,6 +119,7 @@ export default function WritePanel({
   };
 
   const handleImprove = async () => {
+    setIsImproving(true); // Start loading animation
     try {
       const getSurroundingWords = (
         text: string,
@@ -168,6 +170,8 @@ export default function WritePanel({
       setChanges(data.result);
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsImproving(false); // Stop loading animation
     }
   };
 
@@ -215,6 +219,23 @@ export default function WritePanel({
     }
   };
 
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === "i") {
+        event.preventDefault();
+        handleImprove();
+      }
+    },
+    [handleImprove]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyPress);
+    return () => {
+      document.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleKeyPress]);
+
   return (
     <aside
       className={`${
@@ -243,20 +264,50 @@ export default function WritePanel({
             )}
           </button>{" "}
           {!isCollapsed && (
-            <div className="flex flex-col items-end justify-center">
+            <div className="flex flex-col items-end justify-center transition-all">
               <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
                 AI Writing Assistant
               </h2>
-              <p className="text-xs text-gray-500 dark:text-dark-textSecondary text-center mt-1">
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-800">
-                  ctrl
-                </kbd>{" "}
-                +{" "}
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-gray-800">
-                  enter
-                </kbd>{" "}
-                to continue writing
-              </p>
+
+              <AnimatePresence mode="wait">
+                {selected ? (
+                  <motion.p
+                    key="selected"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-xs text-purple-600 dark:text-purple-400 text-center mt-1"
+                  >
+                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                      ctrl
+                    </kbd>{" "}
+                    +{" "}
+                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                      i
+                    </kbd>{" "}
+                    to improve selected text
+                  </motion.p>
+                ) : (
+                  <motion.p
+                    key="default"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-xs text-center mt-1"
+                  >
+                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                      ctrl
+                    </kbd>{" "}
+                    +{" "}
+                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                      enter
+                    </kbd>{" "}
+                    to continue writing
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>
@@ -293,10 +344,13 @@ export default function WritePanel({
               )}
               {selected && (
                 <button
-                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
+                  className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2 ${
+                    isImproving ? "animate-spin" : ""
+                  }`}
                   onClick={handleImprove}
                   title="Improve selected text"
                   aria-label="Improve selected text"
+                  disabled={isImproving} // Disable button while loading
                 >
                   <Sparkles size={20} />
                 </button>
