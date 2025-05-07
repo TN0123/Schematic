@@ -7,7 +7,23 @@ import {
   Loader2,
   AlertCircle,
   Save,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export interface LinkPreview {
   id: string;
@@ -49,6 +65,111 @@ function normalizeUrl(url: string): string {
   return url;
 }
 
+function SortableLinkCard({
+  link,
+  onDelete,
+}: {
+  link: LinkPreview;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: link.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border dark:border-dark-divider rounded-lg p-4 hover:shadow-lg transition-shadow bg-white dark:bg-dark-secondary"
+    >
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2 flex-1">
+          <div {...attributes} {...listeners} className="cursor-grab">
+            <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
+          </div>
+          <h3 className="font-medium dark:text-dark-textPrimary truncate max-w-[80%]">
+            {link.title}
+          </h3>
+        </div>
+        <button
+          onClick={() => onDelete(link.id)}
+          className="p-1 hover:bg-light-hover dark:hover:bg-dark-hover rounded"
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </button>
+      </div>
+      {link.imageUrl && (
+        <img
+          src={link.imageUrl}
+          alt={link.title}
+          className="w-full h-32 object-cover rounded mb-2"
+        />
+      )}
+      {link.description && (
+        <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-3">
+          {link.description}
+        </p>
+      )}
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block truncate block w-full"
+      >
+        {link.url}
+      </a>
+    </div>
+  );
+}
+
+function LinkCard({ link }: { link: LinkPreview }) {
+  return (
+    <div className="border dark:border-dark-divider rounded-lg p-4 shadow-lg bg-white dark:bg-dark-secondary">
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-2 flex-1">
+          <div className="cursor-grab">
+            <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
+          </div>
+          <h3 className="font-medium dark:text-dark-textPrimary truncate max-w-[80%]">
+            {link.title}
+          </h3>
+        </div>
+      </div>
+      {link.imageUrl && (
+        <img
+          src={link.imageUrl}
+          alt={link.title}
+          className="w-full h-32 object-cover rounded mb-2"
+        />
+      )}
+      {link.description && (
+        <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-3">
+          {link.description}
+        </p>
+      )}
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block truncate block w-full"
+      >
+        {link.url}
+      </a>
+    </div>
+  );
+}
+
 export default function BulletinLinkCollection({
   id,
   initialTitle,
@@ -67,6 +188,36 @@ export default function BulletinLinkCollection({
     title: initialTitle,
     links: initialLinks,
   });
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [categoryNameEdits, setCategoryNameEdits] = useState<
+    Record<string, string>
+  >({});
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeLink = activeId
+    ? links.find((link) => link.id === activeId)
+    : null;
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleRenameCategory = (oldCategory: string, newCategory: string) => {
+    if (!newCategory.trim() || oldCategory === newCategory) return;
+
+    const updatedLinks = links.map((link) =>
+      link.category === oldCategory ? { ...link, category: newCategory } : link
+    );
+
+    setLinks(updatedLinks);
+    setEditingCategory(null);
+    setCategoryNameEdits((prev) => {
+      const copy = { ...prev };
+      delete copy[oldCategory];
+      return copy;
+    });
+
+    setHasUnsavedChanges(true);
+    handleSaveWithLinks(updatedLinks);
+  };
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -93,6 +244,36 @@ export default function BulletinLinkCollection({
       setIsSaving(false);
     }
   }, [id, onSave, title, links]);
+
+  const handleSaveWithLinks = useCallback(
+    async (customLinks: LinkPreview[]) => {
+      setIsSaving(true);
+      try {
+        const updates: { title?: string; data?: { links: LinkPreview[] } } = {};
+        if (title !== lastSavedState.current.title) updates.title = title;
+        if (
+          JSON.stringify(customLinks) !==
+          JSON.stringify(lastSavedState.current.links)
+        ) {
+          updates.data = { links: customLinks };
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await onSave(id, updates);
+          lastSavedState.current = {
+            title,
+            links: customLinks,
+          };
+          setHasUnsavedChanges(false);
+        }
+      } catch (error) {
+        console.error("Failed to save:", error);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [id, onSave, title]
+  );
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -185,7 +366,7 @@ export default function BulletinLinkCollection({
       setLinks(updatedLinks);
       setNewLink("");
       setHasUnsavedChanges(true);
-      await handleSave();
+      await handleSaveWithLinks(updatedLinks); // ✅ Use custom save
     } catch (error) {
       console.error("Failed to add link:", error);
       setError("Failed to add link. Please try again.");
@@ -198,7 +379,7 @@ export default function BulletinLinkCollection({
     const updatedLinks = links.filter((link) => link.id !== linkId);
     setLinks(updatedLinks);
     setHasUnsavedChanges(true);
-    await handleSave();
+    await handleSaveWithLinks(updatedLinks); // ✅ Use custom save
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -215,6 +396,40 @@ export default function BulletinLinkCollection({
     acc[link.category].push(link);
     return acc;
   }, {} as Record<string, LinkPreview[]>);
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeLink = links.find((link) => link.id === active.id);
+    const overLink = links.find((link) => link.id === over.id);
+
+    if (!activeLink || !overLink) return;
+
+    // If the links are in different categories, update the category
+    if (activeLink.category !== overLink.category) {
+      const updatedLinks = links.map((link) =>
+        link.id === active.id ? { ...link, category: overLink.category } : link
+      );
+      setLinks(updatedLinks);
+      setHasUnsavedChanges(true);
+      handleSaveWithLinks(updatedLinks);
+    } else {
+      // If in the same category, reorder the links
+      const oldIndex = links.findIndex((link) => link.id === active.id);
+      const newIndex = links.findIndex((link) => link.id === over.id);
+      const updatedLinks = arrayMove(links, oldIndex, newIndex);
+      setLinks(updatedLinks);
+      setHasUnsavedChanges(true);
+      handleSaveWithLinks(updatedLinks);
+    }
+  };
 
   return (
     <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
@@ -294,53 +509,102 @@ export default function BulletinLinkCollection({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {Object.entries(linksByCategory).map(([category, categoryLinks]) => (
-            <div key={category} className="mb-6">
-              <h2 className="text-xl font-semibold mb-4 dark:text-dark-textPrimary">
-                {category}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categoryLinks.map((link) => (
-                  <div
-                    key={link.id}
-                    className="border dark:border-dark-divider rounded-lg p-4 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium dark:text-dark-textPrimary">
-                        {link.title}
-                      </h3>
-                      <button
-                        onClick={() => handleDeleteLink(link.id)}
-                        className="p-1 hover:bg-light-hover dark:hover:bg-dark-hover rounded"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </button>
-                    </div>
-                    {link.imageUrl && (
-                      <img
-                        src={link.imageUrl}
-                        alt={link.title}
-                        className="w-full h-32 object-cover rounded mb-2"
-                      />
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            {Object.entries(linksByCategory).map(
+              ([category, categoryLinks]) => (
+                <div key={category} className="mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    {editingCategory === category ? (
+                      <>
+                        <input
+                          type="text"
+                          value={categoryNameEdits[category] ?? category}
+                          onChange={(e) =>
+                            setCategoryNameEdits((prev) => ({
+                              ...prev,
+                              [category]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => {
+                            const newCategory =
+                              categoryNameEdits[category]?.trim();
+                            if (newCategory) {
+                              handleRenameCategory(category, newCategory);
+                            } else {
+                              setEditingCategory(null);
+                              setCategoryNameEdits((prev) => {
+                                const copy = { ...prev };
+                                delete copy[category];
+                                return copy;
+                              });
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const newCategory =
+                                categoryNameEdits[category]?.trim();
+                              if (newCategory) {
+                                handleRenameCategory(category, newCategory);
+                              } else {
+                                setEditingCategory(null);
+                                setCategoryNameEdits((prev) => {
+                                  const copy = { ...prev };
+                                  delete copy[category];
+                                  return copy;
+                                });
+                              }
+                            } else if (e.key === "Escape") {
+                              setEditingCategory(null);
+                              setCategoryNameEdits((prev) => {
+                                const copy = { ...prev };
+                                delete copy[category];
+                                return copy;
+                              });
+                            }
+                          }}
+                          autoFocus
+                          className="text-xl font-semibold dark:text-dark-textPrimary bg-transparent border-b border-gray-400 focus:outline-none"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <h2
+                          className="text-xl font-semibold dark:text-dark-textPrimary cursor-pointer"
+                          onClick={() => setEditingCategory(category)}
+                          title="Click to edit category name"
+                        >
+                          {category}
+                        </h2>
+                      </>
                     )}
-                    {link.description && (
-                      <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                        {link.description}
-                      </p>
-                    )}
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block"
-                    >
-                      {link.url}
-                    </a>
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <SortableContext
+                      items={categoryLinks.map((link) => link.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      {categoryLinks.map((link) => (
+                        <SortableLinkCard
+                          key={link.id}
+                          link={link}
+                          onDelete={handleDeleteLink}
+                        />
+                      ))}
+                    </SortableContext>
+                  </div>
+                </div>
+              )
+            )}
+            <DragOverlay>
+              {activeLink ? <LinkCard link={activeLink} /> : null}
+            </DragOverlay>
+          </DndContext>
         </div>
       </div>
     </div>

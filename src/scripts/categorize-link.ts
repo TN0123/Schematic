@@ -10,14 +10,15 @@ export async function categorizeLink(categories: string[], link: LinkPreview) {
   
     const prompt = `
     
-    Determine which category the following link should be added to.
+    You will be given a link and a list of categories, your job is to determine which category
+    is most relevant to the link. If none of the categories are relevant, create a new category
+    with a name that is relevant to the link.
     
     Here are the categories: ${JSON.stringify(categories)}
     
     Here is the link: ${JSON.stringify(link)}
     
-    Return exactly the one category that the link should be added to with no additional text. You can
-    add the link to an existing category or come up with a new one. There should only be one category.
+    Return exactly the one category that the link should be added to with no additional text.
     Never make the category "Uncategorized".
     
     `;
