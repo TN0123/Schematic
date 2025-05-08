@@ -16,6 +16,7 @@ import {
   Link,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { LinkPreview } from "./_components/BulletinLinkCollection";
 
 interface TodoItem {
   id: string;
@@ -29,14 +30,6 @@ interface QueueItem {
   priority: number;
 }
 
-interface LinkItem {
-  id: string;
-  url: string;
-  title: string;
-  description?: string;
-  imageUrl?: string;
-}
-
 type BulletinItem = {
   id: string;
   title: string;
@@ -45,7 +38,7 @@ type BulletinItem = {
   | { type: "text"; data?: undefined }
   | { type: "todo"; data: { items: TodoItem[] } }
   | { type: "priority-queue"; data: { items: QueueItem[] } }
-  | { type: "link-collection"; data: { links: LinkItem[] } }
+  | { type: "link-collection"; data: { links: LinkPreview[] } }
 );
 
 export default function Bulletin() {
@@ -99,7 +92,11 @@ export default function Bulletin() {
 
   const saveItem = async (
     id: string,
-    updates: { title?: string; content?: string; data?: { links?: LinkItem[] } }
+    updates: {
+      title?: string;
+      content?: string;
+      data?: { links?: LinkPreview[] };
+    }
   ) => {
     try {
       const response = await fetch(`/api/bulletins/${id}`, {
@@ -137,7 +134,7 @@ export default function Bulletin() {
             : type === "priority-queue"
             ? { items: [] as QueueItem[] }
             : type === "link-collection"
-            ? { links: [] as LinkItem[] }
+            ? { links: [] as LinkPreview[] }
             : undefined,
       }),
     });
