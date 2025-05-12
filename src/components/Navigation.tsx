@@ -24,6 +24,9 @@ export default function Navigation() {
                 className="w-6 h-6 mr-2 mt-[0.1rem] transition-all duration-300"
               />
               Schematic
+              <span className="ml-2 px-2 py-1 mt-1 text-xs font-semibold text-white text-center bg-blue-500 rounded-full">
+                BETA
+              </span>
             </Link>
           </div>
           <button
