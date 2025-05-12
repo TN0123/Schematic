@@ -9,7 +9,7 @@ export async function chat(
 
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-preview-04-17",
+    model: "gemini-2.0-flash",
   });
 
   const systemPrompt = `
