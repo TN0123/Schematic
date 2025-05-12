@@ -4,7 +4,9 @@ export async function generate(startText: string, endText: string) {
   const geminiKey = process.env.GEMINI_API_KEY;
 
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash-preview-04-17",
+  });
 
   let prompt = `
   You are an AI writing assistant tasked with helping someone continue whatever text that have generated so far. 
