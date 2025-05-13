@@ -59,11 +59,12 @@ export async function PUT(
 
   try {
     const id = (await params).id;
-    const { start, end } = await req.json();
+    const { title, start, end } = await req.json();
 
     const updatedEvent = await prisma.event.updateMany({
       where: { id: id, userId: session.user.id },
       data: {
+        title,
         start: new Date(start),
         end: new Date(end),
       },
