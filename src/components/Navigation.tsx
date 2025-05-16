@@ -13,15 +13,15 @@ export default function Navigation() {
     <nav className="sticky top-0 z-50 w-full bg-white shadow-sm border-b border-gray-100 dark:bg-dark-background dark:border-dark-divider">
       <div className="w-full px-4 py-3">
         <div className="flex w-full justify-between items-center">
-          <div className="flex items-center justify-center gap-4 rounded-xl px-4 py-2 bg-gradient-to-r from-gray-700 via-gray-900 to-black dark:bg-dark-background dark:bg-none">
+          <div className="flex items-center justify-center gap-4 px-4 py-2">
             <Link
               href="/"
-              className="flex items-center justify-center text-xl font-bold text-white"
+              className="flex items-center justify-center text-xl font-bold text-black dark:text-white"
             >
               <img
                 src="/favicon.ico"
                 alt="Logo"
-                className="w-6 h-6 mr-2 mt-[0.1rem] transition-all duration-300"
+                className="w-6 h-6 mr-2 mt-[0.1rem] drop-shadow-[0_0px_5px_rgba(0,0,0,0.25)] dark:drop-shadow-none transition-all duration-300"
               />
               Schematic
               <span className="ml-2 px-2 py-1 mt-1 text-xs font-semibold text-white text-center bg-blue-500 rounded-full">
