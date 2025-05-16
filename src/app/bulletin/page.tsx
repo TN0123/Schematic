@@ -4,6 +4,7 @@ import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
 import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
 import BulletinLinkCollection from "./_components/BulletinLinkCollection";
+import BulletinKanban from "./_components/BulletinKanban";
 import { useSession } from "next-auth/react";
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Link,
+  Columns,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LinkPreview } from "./_components/BulletinLinkCollection";
@@ -30,6 +32,17 @@ interface QueueItem {
   priority: number;
 }
 
+interface KanbanCard {
+  id: string;
+  text: string;
+  columnId: string;
+}
+
+interface KanbanColumn {
+  id: string;
+  title: string;
+}
+
 type BulletinItem = {
   id: string;
   title: string;
@@ -39,6 +52,7 @@ type BulletinItem = {
   | { type: "todo"; data: { items: TodoItem[] } }
   | { type: "priority-queue"; data: { items: QueueItem[] } }
   | { type: "link-collection"; data: { links: LinkPreview[] } }
+  | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
 );
 
 export default function Bulletin() {
@@ -62,6 +76,7 @@ export default function Bulletin() {
     "link-collection": (
       <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
+    kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
   };
 
   useEffect(() => {
@@ -135,6 +150,16 @@ export default function Bulletin() {
             ? { items: [] as QueueItem[] }
             : type === "link-collection"
             ? { links: [] as LinkPreview[] }
+            : type === "kanban"
+            ? {
+                columns: [
+                  { id: "backlog", title: "Backlog" },
+                  { id: "todo", title: "To Do" },
+                  { id: "in-progress", title: "In Progress" },
+                  { id: "done", title: "Done" },
+                ],
+                cards: [],
+              }
             : undefined,
       }),
     });
@@ -209,6 +234,16 @@ export default function Bulletin() {
                   >
                     <Logs />
                     Priority Queue
+                  </button>
+                  <button
+                    onClick={() => {
+                      addItem("kanban");
+                      setShowDropdown(false);
+                    }}
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                  >
+                    <Columns />
+                    Kanban Board
                   </button>
                   <button
                     onClick={() => {
@@ -316,6 +351,20 @@ export default function Bulletin() {
                       }}
                     />
                   );
+                case "kanban":
+                  return (
+                    <BulletinKanban
+                      key={item.id}
+                      id={item.id}
+                      title={item.title}
+                      data={item.data}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                        setExpandedItemId(null);
+                      }}
+                    />
+                  );
                 case "link-collection":
                   return (
                     <BulletinLinkCollection
@@ -330,7 +379,6 @@ export default function Bulletin() {
                       }}
                     />
                   );
-
                 case "text":
                 default:
                   return (
