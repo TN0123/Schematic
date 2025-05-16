@@ -14,6 +14,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -145,6 +146,127 @@ function SortableCard({
   );
 }
 
+function SortableColumn({
+  column,
+  cards,
+  onAddCard,
+  onRemoveCard,
+  onUpdateCard,
+  onRemoveColumn,
+  onUpdateColumn,
+  isEditing,
+  onEditStart,
+  onEditEnd,
+  columnNameEdit,
+  onColumnNameEditChange,
+}: {
+  column: KanbanColumn;
+  cards: KanbanCard[];
+  onAddCard: (columnId: string) => void;
+  onRemoveCard: (cardId: string) => void;
+  onUpdateCard: (cardId: string, updates: Partial<KanbanCard>) => void;
+  onRemoveColumn: (columnId: string) => void;
+  onUpdateColumn: (columnId: string, updates: Partial<KanbanColumn>) => void;
+  isEditing: boolean;
+  onEditStart: () => void;
+  onEditEnd: () => void;
+  columnNameEdit: string;
+  onColumnNameEditChange: (value: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `column-${column.id}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex flex-col w-80 bg-gray-50 dark:bg-dark-secondary rounded-lg p-4"
+    >
+      {/* Column Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {/* Drag Handle */}
+          <div {...attributes} {...listeners} className="cursor-grab">
+            <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
+          </div>
+
+          {isEditing ? (
+            <input
+              type="text"
+              value={columnNameEdit}
+              onChange={(e) => onColumnNameEditChange(e.target.value)}
+              onBlur={onEditEnd}
+              className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm dark:text-dark-textPrimary">
+                {column.title}
+              </h3>
+              <button
+                onClick={onEditStart}
+                className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent"
+                type="button"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => onRemoveColumn(column.id)}
+          className="text-red-400 hover:text-red-600"
+          type="button"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Column Cards */}
+      <div className="flex-1 overflow-y-auto">
+        <SortableContext
+          items={cards.map((card) => card.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul className="flex flex-col gap-3">
+            {cards.map((card) => (
+              <SortableCard
+                key={card.id}
+                card={card}
+                onChange={(text) => onUpdateCard(card.id, { text })}
+                onRemove={() => onRemoveCard(card.id)}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </div>
+
+      {/* Add Card Button */}
+      <button
+        onClick={() => onAddCard(column.id)}
+        className="mt-4 flex items-center justify-center gap-1 px-3 py-2 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 text-sm rounded transition"
+        type="button"
+      >
+        <Plus className="w-4 h-4" />
+        Add Card
+      </button>
+    </div>
+  );
+}
+
 export default function BulletinKanban({
   id,
   title: initialTitle,
@@ -236,6 +358,21 @@ export default function BulletinKanban({
 
     if (!over) return;
 
+    // Handle column reordering
+    if (active.id.startsWith("column-")) {
+      const activeColumnId = active.id.replace("column-", "");
+      const overColumnId = over.id.replace("column-", "");
+
+      if (activeColumnId !== overColumnId) {
+        const oldIndex = columns.findIndex((col) => col.id === activeColumnId);
+        const newIndex = columns.findIndex((col) => col.id === overColumnId);
+        setColumns(arrayMove(columns, oldIndex, newIndex));
+        setHasUnsavedChanges(true);
+      }
+      return;
+    }
+
+    // Handle card reordering
     const activeCard = cards.find((card) => card.id === active.id);
     const overCard = cards.find((card) => card.id === over.id);
 
@@ -298,9 +435,9 @@ export default function BulletinKanban({
     <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
       <div className="p-4 h-full flex flex-col">
         {/* Title & Actions */}
-        <div className="flex justify-between items-center w-full mb-4">
+        <div className="flex justify-between items-center">
           <input
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -310,6 +447,15 @@ export default function BulletinKanban({
             aria-label="Board title"
           />
           <div className="flex gap-2 ml-2">
+            <button
+              onClick={addColumn}
+              className="p-2 text-light-icon hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover rounded-lg transition-all"
+              aria-label="Add column"
+              title="Add Column"
+              type="button"
+            >
+              <Columns className="h-5 w-5" />
+            </button>
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
@@ -319,6 +465,7 @@ export default function BulletinKanban({
                   dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
                   ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
                 aria-label="Save changes"
+                type="button"
               >
                 {isSaving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -331,6 +478,7 @@ export default function BulletinKanban({
               onClick={onDelete}
               className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
               aria-label="Delete board"
+              type="button"
             >
               <Trash2 className="h-5 w-5" />
             </button>
@@ -338,126 +486,82 @@ export default function BulletinKanban({
         </div>
 
         {/* Kanban Board */}
-        <div className="flex-1 overflow-x-auto">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex gap-4 min-h-[calc(100vh-200px)]">
-              {columns.map((column) => (
-                <div
-                  key={column.id}
-                  className="flex flex-col w-80 bg-gray-50 dark:bg-dark-secondary rounded-lg p-4"
+        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider">
+          <div className="flex-1 overflow-x-auto">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 min-h-[calc(100vh-200px)]">
+                <SortableContext
+                  items={columns.map((col) => `column-${col.id}`)}
+                  strategy={horizontalListSortingStrategy}
                 >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    {editingColumn === column.id ? (
-                      <input
-                        type="text"
-                        value={columnNameEdits[column.id] ?? column.title}
-                        onChange={(e) =>
-                          setColumnNameEdits((prev) => ({
-                            ...prev,
-                            [column.id]: e.target.value,
-                          }))
+                  {columns.map((column) => (
+                    <SortableColumn
+                      key={column.id}
+                      column={column}
+                      cards={cards.filter(
+                        (card) => card.columnId === column.id
+                      )}
+                      onAddCard={addCard}
+                      onRemoveCard={removeCard}
+                      onUpdateCard={updateCard}
+                      onRemoveColumn={removeColumn}
+                      onUpdateColumn={updateColumn}
+                      isEditing={editingColumn === column.id}
+                      onEditStart={() => {
+                        setEditingColumn(column.id);
+                        setColumnNameEdits((prev) => ({
+                          ...prev,
+                          [column.id]: column.title,
+                        }));
+                      }}
+                      onEditEnd={() => {
+                        const newTitle = columnNameEdits[column.id]?.trim();
+                        if (newTitle) {
+                          updateColumn(column.id, { title: newTitle });
                         }
-                        onBlur={() => {
-                          const newTitle = columnNameEdits[column.id]?.trim();
-                          if (newTitle) {
-                            updateColumn(column.id, { title: newTitle });
-                          }
-                          setEditingColumn(null);
-                          setColumnNameEdits((prev) => {
-                            const copy = { ...prev };
-                            delete copy[column.id];
-                            return copy;
-                          });
-                        }}
-                        className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary"
-                        autoFocus
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-sm dark:text-dark-textPrimary">
-                          {column.title}
-                        </h3>
-                        <button
-                          onClick={() => {
-                            setEditingColumn(column.id);
-                            setColumnNameEdits((prev) => ({
-                              ...prev,
-                              [column.id]: column.title,
-                            }));
-                          }}
-                          className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => removeColumn(column.id)}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+                        setEditingColumn(null);
+                        setColumnNameEdits((prev) => {
+                          const copy = { ...prev };
+                          delete copy[column.id];
+                          return copy;
+                        });
+                      }}
+                      columnNameEdit={
+                        columnNameEdits[column.id] ?? column.title
+                      }
+                      onColumnNameEditChange={(value) =>
+                        setColumnNameEdits((prev) => ({
+                          ...prev,
+                          [column.id]: value,
+                        }))
+                      }
+                    />
+                  ))}
+                </SortableContext>
+              </div>
 
-                  {/* Column Cards */}
-                  <div className="flex-1 overflow-y-auto">
-                    <SortableContext
-                      items={cards
-                        .filter((card) => card.columnId === column.id)
-                        .map((card) => card.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <ul className="flex flex-col gap-3">
-                        {cards
-                          .filter((card) => card.columnId === column.id)
-                          .map((card) => (
-                            <SortableCard
-                              key={card.id}
-                              card={card}
-                              onChange={(text) => updateCard(card.id, { text })}
-                              onRemove={() => removeCard(card.id)}
-                            />
-                          ))}
-                      </ul>
-                    </SortableContext>
-                  </div>
-
-                  {/* Add Card Button */}
-                  <button
-                    onClick={() => addCard(column.id)}
-                    className="mt-4 flex items-center justify-center gap-1 px-3 py-2 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 text-sm rounded transition"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Card
-                  </button>
-                </div>
-              ))}
-
-              {/* Add Column Button */}
-              <button
-                onClick={addColumn}
-                className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 dark:border-dark-divider rounded-lg text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary transition-colors"
-              >
-                <Columns className="w-4 h-4" />
-                Add Column
-              </button>
-            </div>
-
-            <DragOverlay>
-              {activeId ? (
-                <div className="w-80 bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
-                  {cards.find((card) => card.id === activeId)?.text ||
-                    "Untitled"}
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+              <DragOverlay>
+                {activeId ? (
+                  activeId.startsWith("column-") ? (
+                    <div className="w-80 bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
+                      {columns.find((col) => `column-${col.id}` === activeId)
+                        ?.title || "Untitled"}
+                    </div>
+                  ) : (
+                    <div className="w-80 bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
+                      {cards.find((card) => card.id === activeId)?.text ||
+                        "Untitled"}
+                    </div>
+                  )
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
         </div>
       </div>
     </div>
