@@ -78,8 +78,7 @@ export async function suggest_events(
 
         **Valid time range for today:**
         - **Earliest possible start time:** The **later** of 6:00 AM or the current time (${currentDateTime})
-        - **Latest end time:** ${currentDateTime.split("T")[0]}T23:00:00${
-    currentDateTime.includes("Z") ? "Z" : ""
+        - **Latest end time:** ${currentDateTime.split("T")[0]}T23:00:00
   }
 
         **Existing Events (DO NOT suggest conflicting times):**
