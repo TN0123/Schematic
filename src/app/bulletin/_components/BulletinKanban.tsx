@@ -115,29 +115,22 @@ function SortableCard({
         />
       ) : (
         <button
-          className="flex-grow text-left text-sm text-black text-center dark:text-dark-textPrimary truncate focus:outline-none"
+          className="flex-grow text-left text-sm text-black text-center dark:text-dark-textPrimary overflow-y-auto focus:outline-none"
           onClick={() => setIsEditing(true)}
           aria-label="Edit card"
         >
-          {card.text || <span className="italic text-gray-400">Untitled</span>}
-        </button>
-      )}
-
-      {/* Edit Icon */}
-      {!isEditing && (
-        <button
-          onClick={() => setIsEditing(true)}
-          className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent"
-          aria-label="Edit card"
-        >
-          <Pencil className="w-4 h-4" />
+          {card.text || (
+            <span className="italic text-gray-400 overflow-y-auto">
+              Untitled
+            </span>
+          )}
         </button>
       )}
 
       {/* Delete */}
       <button
         onClick={onRemove}
-        className="text-red-400 hover:text-red-600"
+        className="text-red-400 hover:text-red-600 h-full"
         aria-label="Delete card"
       >
         <X className="w-4 h-4" />
