@@ -2,7 +2,6 @@
 import { useEffect, useState, JSX } from "react";
 import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
-import BulletinPriorityQueue from "./_components/BulletinPriorityQueue";
 import BulletinLinkCollection from "./_components/BulletinLinkCollection";
 import BulletinKanban from "./_components/BulletinKanban";
 import { useSession } from "next-auth/react";
@@ -146,8 +145,6 @@ export default function Bulletin() {
         data:
           type === "todo"
             ? { items: [] as TodoItem[] }
-            : type === "priority-queue"
-            ? { items: [] as QueueItem[] }
             : type === "link-collection"
             ? { links: [] as LinkPreview[] }
             : type === "kanban"
@@ -224,16 +221,6 @@ export default function Bulletin() {
                   >
                     <ListTodo />
                     To-Do List
-                  </button>
-                  <button
-                    onClick={() => {
-                      addItem("priority-queue");
-                      setShowDropdown(false);
-                    }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
-                  >
-                    <Logs />
-                    Priority Queue
                   </button>
                   <button
                     onClick={() => {
@@ -326,20 +313,6 @@ export default function Bulletin() {
                 case "todo":
                   return (
                     <BulletinTodo
-                      key={item.id}
-                      id={item.id}
-                      title={item.title}
-                      data={item.data}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                        setExpandedItemId(null);
-                      }}
-                    />
-                  );
-                case "priority-queue":
-                  return (
-                    <BulletinPriorityQueue
                       key={item.id}
                       id={item.id}
                       title={item.title}
