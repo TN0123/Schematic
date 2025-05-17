@@ -93,10 +93,12 @@ function SortableCard({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md px-3 py-4 border dark:border-dark-divider bg-white dark:bg-dark-secondary"
+      {...attributes}
+      {...listeners}
+      className="flex items-center gap-2 rounded-md px-3 py-4 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing"
     >
-      {/* Drag Handle */}
-      <div {...attributes} {...listeners} className="cursor-grab">
+      {/* Grip Icon (now just visual) */}
+      <div className="flex-shrink-0">
         <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
       </div>
 
@@ -130,7 +132,7 @@ function SortableCard({
       {/* Delete */}
       <button
         onClick={onRemove}
-        className="text-red-400 hover:text-red-600 h-full"
+        className="text-red-400 hover:text-red-600 h-full flex-shrink-0"
         aria-label="Delete card"
       >
         <X className="w-4 h-4" />
