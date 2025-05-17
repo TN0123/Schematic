@@ -432,7 +432,7 @@ export default function BulletinLinkCollection({
   };
 
   return (
-    <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
+    <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col">
         <div className="flex justify-between items-center">
           <input

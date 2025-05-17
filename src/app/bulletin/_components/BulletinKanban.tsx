@@ -93,12 +93,10 @@ function SortableCard({
     <li
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className="flex items-center gap-2 rounded-md px-3 py-4 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing"
     >
-      {/* Grip Icon (now just visual) */}
-      <div className="flex-shrink-0">
+      {/* Grip Icon */}
+      <div className="flex-shrink-0" {...attributes} {...listeners}>
         <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
       </div>
 
@@ -112,14 +110,13 @@ function SortableCard({
           onBlur={() => setIsEditing(false)}
           onKeyDown={handleKeyDown}
           placeholder="Enter card text..."
-          className="flex-grow bg-transparent border-b dark:border-dark-divider px-2 py-1 text-center text-sm focus:outline-none dark:text-dark-textPrimary"
+          className="flex-grow bg-transparent border-b dark:border-dark-divider text-center text-sm focus:outline-none dark:text-dark-textPrimary overflow-y-auto"
           aria-label="Edit card"
         />
       ) : (
         <button
           className="flex-grow text-left text-sm text-black text-center dark:text-dark-textPrimary overflow-y-auto focus:outline-none"
           onClick={() => setIsEditing(true)}
-          aria-label="Edit card"
         >
           {card.text || (
             <span className="italic text-gray-400 overflow-y-auto">
@@ -446,7 +443,7 @@ export default function BulletinKanban({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="border w-full h-full dark:bg-dark-background dark:border-dark-divider transition-all">
+    <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col">
         {/* Title & Actions */}
         <div className="flex justify-between items-center">

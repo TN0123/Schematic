@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import {
   Plus,
   Loader2,
-  ListTodo,
+  ClipboardList,
   NotepadText,
   Logs,
   PanelLeftClose,
@@ -68,7 +68,9 @@ export default function Bulletin() {
     text: (
       <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
-    todo: <ListTodo className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
+    todo: (
+      <ClipboardList className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
     "priority-queue": (
       <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
@@ -219,7 +221,7 @@ export default function Bulletin() {
                     }}
                     className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
                   >
-                    <ListTodo />
+                    <ClipboardList />
                     To-Do List
                   </button>
                   <button
