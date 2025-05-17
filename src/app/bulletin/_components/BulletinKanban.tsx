@@ -206,7 +206,7 @@ function SortableColumn({
             />
           ) : (
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm dark:text-dark-textPrimary">
+              <h3 className="font-semibold text-sm dark:text-dark-textPrimary truncate">
                 {column.title}
               </h3>
               <button
@@ -229,7 +229,7 @@ function SortableColumn({
       </div>
 
       {/* Column Cards */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="h-[calc(100vh-300px)] overflow-y-auto">
         <SortableContext
           items={cards.map((card) => card.id)}
           strategy={verticalListSortingStrategy}
@@ -365,21 +365,36 @@ export default function BulletinKanban({
       return;
     }
 
-    // Handle card reordering
+    // Handle card reordering and moving between columns
     const activeCard = cards.find((card) => card.id === active.id);
+    if (!activeCard) return;
+
+    // Check if dropping onto a column
+    if (over.id.startsWith("column-")) {
+      const targetColumnId = over.id.replace("column-", "");
+      if (activeCard.columnId !== targetColumnId) {
+        const updatedCards = cards.map((card) =>
+          card.id === active.id ? { ...card, columnId: targetColumnId } : card
+        );
+        setCards(updatedCards);
+        setHasUnsavedChanges(true);
+      }
+      return;
+    }
+
+    // Handle dropping onto another card
     const overCard = cards.find((card) => card.id === over.id);
+    if (!overCard) return;
 
-    if (!activeCard || !overCard) return;
-
-    // If the cards are in different columns, update the column
     if (activeCard.columnId !== overCard.columnId) {
+      // Moving to a different column
       const updatedCards = cards.map((card) =>
         card.id === active.id ? { ...card, columnId: overCard.columnId } : card
       );
       setCards(updatedCards);
       setHasUnsavedChanges(true);
     } else {
-      // If in the same column, reorder the cards
+      // Reordering within the same column
       const oldIndex = cards.findIndex((card) => card.id === active.id);
       const newIndex = cards.findIndex((card) => card.id === over.id);
       const updatedCards = arrayMove(cards, oldIndex, newIndex);
@@ -479,7 +494,7 @@ export default function BulletinKanban({
         </div>
 
         {/* Kanban Board */}
-        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider">
+        <div className="relative border rounded-lg p-3 flex flex-col dark:border-dark-divider">
           <div className="flex-1 overflow-x-auto">
             <DndContext
               sensors={sensors}
