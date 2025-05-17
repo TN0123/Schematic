@@ -185,13 +185,17 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col w-80 bg-gray-50 dark:bg-dark-secondary rounded-lg p-4"
+      className="flex flex-col bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 h-full"
     >
       {/* Column Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {/* Drag Handle */}
-          <div {...attributes} {...listeners} className="cursor-grab">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab flex-shrink-0"
+          >
             <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
           </div>
 
@@ -201,17 +205,17 @@ function SortableColumn({
               value={columnNameEdit}
               onChange={(e) => onColumnNameEditChange(e.target.value)}
               onBlur={onEditEnd}
-              className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary"
+              className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary w-full"
               autoFocus
             />
           ) : (
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm dark:text-dark-textPrimary truncate">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <h3 className="font-semibold text-sm dark:text-dark-textPrimary truncate flex-1">
                 {column.title}
               </h3>
               <button
                 onClick={onEditStart}
-                className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent"
+                className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent flex-shrink-0"
                 type="button"
               >
                 <Pencil className="w-3 h-3" />
@@ -221,7 +225,7 @@ function SortableColumn({
         </div>
         <button
           onClick={() => onRemoveColumn(column.id)}
-          className="text-red-400 hover:text-red-600"
+          className="text-red-400 hover:text-red-600 flex-shrink-0 ml-2"
           type="button"
         >
           <X className="w-4 h-4" />
@@ -494,7 +498,7 @@ export default function BulletinKanban({
         </div>
 
         {/* Kanban Board */}
-        <div className="relative border rounded-lg p-3 flex flex-col dark:border-dark-divider">
+        <div className="relative border rounded-lg p-3 flex flex-col dark:border-dark-divider overflow-y-auto">
           <div className="flex-1 overflow-x-auto">
             <DndContext
               sensors={sensors}
@@ -502,7 +506,7 @@ export default function BulletinKanban({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="flex gap-4 min-h-[calc(100vh-200px)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[calc(100vh-200px)]">
                 <SortableContext
                   items={columns.map((col) => `column-${col.id}`)}
                   strategy={horizontalListSortingStrategy}
@@ -556,12 +560,12 @@ export default function BulletinKanban({
               <DragOverlay>
                 {activeId ? (
                   activeId.startsWith("column-") ? (
-                    <div className="w-80 bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
+                    <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
                       {columns.find((col) => `column-${col.id}` === activeId)
                         ?.title || "Untitled"}
                     </div>
                   ) : (
-                    <div className="w-80 bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
+                    <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg">
                       {cards.find((card) => card.id === activeId)?.text ||
                         "Untitled"}
                     </div>
