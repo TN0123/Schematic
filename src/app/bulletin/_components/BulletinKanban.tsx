@@ -50,14 +50,23 @@ interface BulletinKanbanProps {
   onDelete?: () => void;
 }
 
+interface SortableCardProps {
+  card: KanbanCard;
+  onChange: (text: string) => void;
+  onRemove: () => void;
+  activeId: string | null;
+}
+
 function SortableCard({
   card,
   onChange,
   onRemove,
+  activeId,
 }: {
   card: KanbanCard;
   onChange: (text: string) => void;
   onRemove: () => void;
+  activeId: string | null;
 }) {
   const {
     attributes,
@@ -74,14 +83,18 @@ function SortableCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
+    if (activeId === card.id) {
+      setIsEditing(true);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
     }
-  }, [isEditing]);
+  }, [activeId, card.id]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -112,6 +125,7 @@ function SortableCard({
           placeholder="Enter card text..."
           className="flex-grow bg-transparent border-b dark:border-dark-divider text-center text-sm focus:outline-none dark:text-dark-textPrimary overflow-y-auto"
           aria-label="Edit card"
+          autoFocus
         />
       ) : (
         <button
@@ -151,6 +165,7 @@ function SortableColumn({
   onEditEnd,
   columnNameEdit,
   onColumnNameEditChange,
+  activeId,
 }: {
   column: KanbanColumn;
   cards: KanbanCard[];
@@ -164,6 +179,7 @@ function SortableColumn({
   onEditEnd: () => void;
   columnNameEdit: string;
   onColumnNameEditChange: (value: string) => void;
+  activeId: string | null;
 }) {
   const {
     attributes,
@@ -244,6 +260,7 @@ function SortableColumn({
                 card={card}
                 onChange={(text) => onUpdateCard(card.id, { text })}
                 onRemove={() => onRemoveCard(card.id)}
+                activeId={activeId}
               />
             ))}
           </ul>
@@ -283,6 +300,7 @@ export default function BulletinKanban({
   const [isSaving, setIsSaving] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
+  const [editingCard, setEditingCard] = useState<string | null>(null);
   const [columnNameEdits, setColumnNameEdits] = useState<
     Record<string, string>
   >({});
@@ -296,8 +314,10 @@ export default function BulletinKanban({
   const sensors = useSensors(useSensor(PointerSensor));
 
   const addCard = (columnId: string) => {
-    setCards([...cards, { id: crypto.randomUUID(), text: "", columnId }]);
+    const newCardId = crypto.randomUUID();
+    setCards([...cards, { id: newCardId, text: "", columnId }]);
     setHasUnsavedChanges(true);
+    setActiveId(newCardId);
   };
 
   const updateCard = (id: string, updates: Partial<KanbanCard>) => {
@@ -551,6 +571,7 @@ export default function BulletinKanban({
                           [column.id]: value,
                         }))
                       }
+                      activeId={activeId}
                     />
                   ))}
                 </SortableContext>
