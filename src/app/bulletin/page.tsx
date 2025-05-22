@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, JSX } from "react";
+import { useEffect, useState, JSX, useCallback } from "react";
 import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
 import BulletinLinkCollection from "./_components/BulletinLinkCollection";
@@ -135,6 +135,54 @@ export default function Bulletin() {
       console.error("Failed to save item:", error);
     }
   };
+
+  const handleKeyboardShortcuts = useCallback(
+    async (event: KeyboardEvent) => {
+      if (event.ctrlKey && items.length > 1) {
+        const currentIndex = items.findIndex(
+          (item) => item.id === expandedItemId
+        );
+
+        if (event.key === ".") {
+          event.preventDefault();
+          // Save current note
+          const currentItem = items[currentIndex];
+          if (currentItem) {
+            await saveItem(currentItem.id, {
+              title: currentItem.title,
+              content: currentItem.content,
+            });
+          }
+
+          // Navigate to next note
+          const nextIndex = (currentIndex + 1) % items.length;
+          setExpandedItemId(items[nextIndex].id);
+        } else if (event.key === ",") {
+          event.preventDefault();
+          // Save current note
+          const currentItem = items[currentIndex];
+          if (currentItem) {
+            await saveItem(currentItem.id, {
+              title: currentItem.title,
+              content: currentItem.content,
+            });
+          }
+
+          // Navigate to previous note
+          const prevIndex = (currentIndex - 1 + items.length) % items.length;
+          setExpandedItemId(items[prevIndex].id);
+        }
+      }
+    },
+    [items, expandedItemId, saveItem]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyboardShortcuts);
+    return () => {
+      document.removeEventListener("keydown", handleKeyboardShortcuts);
+    };
+  }, [handleKeyboardShortcuts]);
 
   const addItem = async (type = "text") => {
     const response = await fetch("/api/bulletins", {
