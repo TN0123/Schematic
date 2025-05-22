@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Calendar, ClipboardList, Zap } from "lucide-react";
+import { TransitionLink } from "@/components/utils/TransitionLink";
 
 export default function Home() {
   const sections = [
@@ -31,7 +32,7 @@ export default function Home() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {sections.map((section) => (
-            <Link
+            <TransitionLink
               key={section.title}
               href={section.path}
               className="bg-white dark:bg-dark-secondary rounded-lg shadow-lg p-4 sm:p-6 hover:shadow-xl transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 ease-in-out"
@@ -53,7 +54,7 @@ export default function Home() {
               <p className="text-sm sm:text-base text-gray-600 dark:text-dark-textSecondary">
                 {section.description}
               </p>
-            </Link>
+            </TransitionLink>
           ))}
         </div>
       </div>
