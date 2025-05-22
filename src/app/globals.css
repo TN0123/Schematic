@@ -59,6 +59,21 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     }
 }
 
+/* Page Transition Styles */
+main {
+    transition-property: opacity, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    will-change: opacity, transform;
+}
+
+.page-transition {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+
 /* Custom styles for FullCalendar */
 .fc-day-today {
     background-color: #f7fafc !important;
