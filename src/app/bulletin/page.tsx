@@ -46,6 +46,7 @@ type BulletinItem = {
   id: string;
   title: string;
   content: string;
+  updatedAt: Date;
 } & (
   | { type: "text"; data?: undefined }
   | { type: "todo"; data: { items: TodoItem[] } }
@@ -194,7 +195,7 @@ export default function Bulletin() {
           </h2>
           <div className="relative inline-block text-left">
             <button
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
               onClick={() => setShowDropdown((prev) => !prev)}
             >
               <Plus size={16} className="stroke-current" />
@@ -362,6 +363,7 @@ export default function Bulletin() {
                       id={item.id}
                       initialTitle={item.title}
                       initialContent={item.content}
+                      updatedAt={item.updatedAt}
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);

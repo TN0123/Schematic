@@ -8,17 +8,21 @@ import {
   Underline as UnderlineIcon,
   Save,
   Loader2,
+  NotepadText,
+  Clock,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
+import { formatDistanceToNow } from "date-fns";
 //import { FontSize } from "@tiptap/extension-font-size";
 
 interface BulletinNoteProps {
   id: string;
   initialTitle: string;
   initialContent?: string;
+  updatedAt: Date;
   onSave: (
     id: string,
     updates: { title?: string; content?: string }
@@ -30,6 +34,7 @@ export default function BulletinNote({
   id,
   initialTitle,
   initialContent = "",
+  updatedAt,
   onSave,
   onDelete,
 }: BulletinNoteProps) {
@@ -76,7 +81,7 @@ export default function BulletinNote({
     }
 
     return (
-      <div className="border-b pb-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
+      <div className="border-y py-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
@@ -188,18 +193,28 @@ export default function BulletinNote({
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-4 h-full flex flex-col">
-        <div className="flex justify-between items-center">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
-            placeholder="Enter title..."
-          />
+      <div className="p-3 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center">
+            <NotepadText className="h-10 w-10 mx-4 text-green-500" />
+            <div className="flex flex-col">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary"
+                placeholder="Enter title..."
+              />
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Last modified{" "}
+                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
+              </div>
+            </div>
+          </div>
           <div className="flex gap-2 ml-2">
             {hasUnsavedChanges && (
               <button
@@ -227,7 +242,7 @@ export default function BulletinNote({
             </button>
           </div>
         </div>
-        <div className="relative border rounded-lg p-3 flex-grow flex flex-col dark:border-dark-divider">
+        <div className="relative rounded-lg flex-grow flex flex-col dark:border-dark-divider">
           <MenuBar />
           <EditorContent
             editor={editor}
