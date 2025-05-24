@@ -384,6 +384,7 @@ export default function BulletinKanban({
         const newIndex = columns.findIndex((col) => col.id === overColumnId);
         setColumns(arrayMove(columns, oldIndex, newIndex));
         setHasUnsavedChanges(true);
+        handleSave();
       }
       return;
     }
@@ -401,6 +402,7 @@ export default function BulletinKanban({
         );
         setCards(updatedCards);
         setHasUnsavedChanges(true);
+        handleSave();
       }
       return;
     }
@@ -416,6 +418,7 @@ export default function BulletinKanban({
       );
       setCards(updatedCards);
       setHasUnsavedChanges(true);
+      handleSave();
     } else {
       // Reordering within the same column
       const oldIndex = cards.findIndex((card) => card.id === active.id);
