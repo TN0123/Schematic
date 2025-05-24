@@ -32,6 +32,7 @@ export interface LinkPreview {
   description?: string;
   imageUrl?: string;
   category: string;
+  faviconUrl?: string;
 }
 
 interface BulletinLinkCollectionProps {
@@ -65,6 +66,16 @@ function normalizeUrl(url: string): string {
   return url;
 }
 
+function getFaviconUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    // Use Google S2 Favicon API for higher-res icons
+    return `https://www.google.com/s2/favicons?sz=64&domain_url=${urlObj.origin}`;
+  } catch {
+    return "";
+  }
+}
+
 function SortableLinkCard({
   link,
   onDelete,
@@ -91,81 +102,143 @@ function SortableLinkCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="border dark:border-dark-divider rounded-lg p-4 hover:shadow-lg transition-shadow bg-white dark:bg-dark-secondary"
+      className="border dark:border-dark-divider rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white dark:bg-dark-secondary relative"
     >
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2 flex-1">
-          <div {...attributes} {...listeners} className="cursor-grab">
-            <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-          </div>
-          <h3 className="font-medium dark:text-dark-textPrimary truncate max-w-[80%]">
-            {link.title}
-          </h3>
+      <div className="absolute top-2 right-2 z-10 flex gap-2">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded"
+        >
+          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
         </div>
         <button
           onClick={() => onDelete(link.id)}
-          className="p-1 hover:bg-light-hover dark:hover:bg-dark-hover rounded"
+          className="p-1 hover:bg-red-300 dark:hover:bg-red-900 rounded bg-white/80 dark:bg-dark-secondary/80"
         >
           <Trash2 className="h-4 w-4 text-red-500" />
         </button>
       </div>
-      {link.imageUrl && (
+
+      {link.imageUrl ? (
         <img
           src={link.imageUrl}
           alt={link.title}
-          className="w-full h-32 object-cover rounded mb-2"
+          className="w-full h-32 object-cover"
         />
+      ) : link.faviconUrl ? (
+        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
+          <img
+            src={link.faviconUrl}
+            alt="Favicon"
+            className="h-10 w-10 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+      ) : (
+        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
+          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
+        </div>
       )}
-      {link.description && (
-        <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-3">
-          {link.description}
-        </p>
-      )}
-      <a
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block truncate block w-full"
-      >
-        {link.url}
-      </a>
+
+      <div className="p-3">
+        <div className="flex items-center gap-2 mb-1">
+          {link.faviconUrl && (
+            <img
+              src={link.faviconUrl}
+              alt=""
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          )}
+          <h3 className="font-medium dark:text-dark-textPrimary truncate">
+            {link.title}
+          </h3>
+        </div>
+        {link.description && (
+          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
+            {link.description}
+          </p>
+        )}
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
+        >
+          {link.url}
+        </a>
+      </div>
     </div>
   );
 }
 
 function LinkCard({ link }: { link: LinkPreview }) {
   return (
-    <div className="border dark:border-dark-divider rounded-lg p-4 shadow-lg bg-white dark:bg-dark-secondary">
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2 flex-1">
-          <div className="cursor-grab">
-            <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-          </div>
-          <h3 className="font-medium dark:text-dark-textPrimary truncate max-w-[80%]">
-            {link.title}
-          </h3>
+    <div className="border dark:border-dark-divider rounded-lg overflow-hidden shadow-lg bg-white dark:bg-dark-secondary relative">
+      <div className="absolute top-2 right-2 z-10">
+        <div className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded">
+          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
         </div>
       </div>
-      {link.imageUrl && (
+
+      {link.imageUrl ? (
         <img
           src={link.imageUrl}
           alt={link.title}
-          className="w-full h-32 object-cover rounded mb-2"
+          className="w-full h-32 object-cover"
         />
+      ) : link.faviconUrl ? (
+        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
+          <img
+            src={link.faviconUrl}
+            alt="Favicon"
+            className="h-10 w-10 object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+      ) : (
+        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
+          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
+        </div>
       )}
-      {link.description && (
-        <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-3">
-          {link.description}
-        </p>
-      )}
-      <a
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-sm text-light-accent dark:text-dark-accent hover:underline mt-2 inline-block truncate block w-full"
-      >
-        {link.url}
-      </a>
+
+      <div className="p-3">
+        <div className="flex items-center gap-2 mb-1">
+          {link.faviconUrl && (
+            <img
+              src={link.faviconUrl}
+              alt=""
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          )}
+          <h3 className="font-medium dark:text-dark-textPrimary truncate">
+            {link.title}
+          </h3>
+        </div>
+        {link.description && (
+          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
+            {link.description}
+          </p>
+        )}
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
+        >
+          {link.url}
+        </a>
+      </div>
     </div>
   );
 }
@@ -337,6 +410,7 @@ export default function BulletinLinkCollection({
         url: normalizedUrl,
         title: normalizedUrl,
         category: "Uncategorized",
+        faviconUrl: getFaviconUrl(normalizedUrl),
       };
 
       const categories = Array.from(
@@ -360,13 +434,18 @@ export default function BulletinLinkCollection({
 
       const { result } = await response.json();
 
-      newLinkPreview.category = result;
+      // Find the closest existing category (case-insensitive match)
+      const existingCategory = categories.find(
+        (cat) => cat.toLowerCase() === result.toLowerCase()
+      );
+
+      newLinkPreview.category = existingCategory || result;
 
       const updatedLinks = [...links, newLinkPreview];
       setLinks(updatedLinks);
       setNewLink("");
       setHasUnsavedChanges(true);
-      await handleSaveWithLinks(updatedLinks); // ✅ Use custom save
+      await handleSaveWithLinks(updatedLinks);
     } catch (error) {
       console.error("Failed to add link:", error);
       setError("Failed to add link. Please try again.");
@@ -379,7 +458,7 @@ export default function BulletinLinkCollection({
     const updatedLinks = links.filter((link) => link.id !== linkId);
     setLinks(updatedLinks);
     setHasUnsavedChanges(true);
-    await handleSaveWithLinks(updatedLinks); // ✅ Use custom save
+    await handleSaveWithLinks(updatedLinks);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -584,7 +663,7 @@ export default function BulletinLinkCollection({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <SortableContext
                       items={categoryLinks.map((link) => link.id)}
                       strategy={rectSortingStrategy}

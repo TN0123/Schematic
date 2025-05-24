@@ -25,7 +25,7 @@ export async function categorizeLink(categories: string[], link: LinkPreview) {
   
     const result = await model.generateContent(prompt);
   
-    console.log("Prompt: ", prompt);
+    // console.log("Prompt: ", prompt);
   
     return result.response.text();
   }
