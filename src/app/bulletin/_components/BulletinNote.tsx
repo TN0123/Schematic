@@ -195,9 +195,9 @@ export default function BulletinNote({
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-3 h-full flex flex-col">
         <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center">
+          <div className="flex items-center w-full">
             <NotepadText className="h-10 w-10 mx-4 text-green-500" />
-            <div className="flex flex-col">
+            <div className="flex flex-col w-full">
               <input
                 type="text"
                 value={title}
@@ -205,7 +205,7 @@ export default function BulletinNote({
                   setTitle(e.target.value);
                   setHasUnsavedChanges(true);
                 }}
-                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary"
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary truncate"
                 placeholder="Enter title..."
               />
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
