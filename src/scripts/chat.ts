@@ -1,16 +1,12 @@
 export async function chat(
   currentText: string,
   instructions: string,
-  history: any[]
+  history: any[],
+  userId?: string
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
-
-  const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-  });
 
   const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you
@@ -44,6 +40,98 @@ export async function chat(
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
     `;
 
+  const userPrompt = `
+    Here is the current text:
+    """
+    ${currentText}
+    """
+
+    Here is what the user asked for:
+    """
+    ${instructions}
+    """
+  `;
+
+  // Special users (you) get unlimited GPT-4.1 access
+  if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
+    try {
+      console.log("using premium model");
+      const { OpenAI } = require("openai");
+      const openAIAPIKey = process.env.OPENAI_API_KEY;
+      const client = new OpenAI({apiKey: openAIAPIKey});
+      
+      const response = await client.responses.create({
+        model: "gpt-4.1",
+        input: systemPrompt + "\n\n" + userPrompt,
+      });
+      
+      const updatedHistory = [
+        ...history,
+        { role: "user", parts: userPrompt },
+        { role: "model", parts: response.output_text },
+      ];
+      
+      return { response: response.output_text, updatedHistory, remainingUses: null };
+    } catch (error) {
+      console.error("OpenAI API call failed:", error);
+      // Continue to Gemini API as fallback
+    }
+  }
+
+  // For other users, check premium usage
+  if (userId) {
+    try {
+      const prisma = require("@/lib/prisma").default;
+      
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { premiumRemainingUses: true },
+      });
+
+      if (user && user.premiumRemainingUses > 0) {
+        console.log("using premium model");
+        const { OpenAI } = require("openai");
+        const openAIAPIKey = process.env.OPENAI_API_KEY;
+        const client = new OpenAI({apiKey: openAIAPIKey});
+        
+        // Decrement usage
+        const updatedUser = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            premiumRemainingUses: {
+              decrement: 1,
+            },
+          },
+          select: {
+            premiumRemainingUses: true,
+          },
+        });
+        
+        const response = await client.responses.create({
+          model: "gpt-4.1",
+          input: systemPrompt + "\n\n" + userPrompt,
+        });
+        
+        const updatedHistory = [
+          ...history,
+          { role: "user", parts: userPrompt },
+          { role: "model", parts: response.output_text },
+        ];
+        
+        return { response: response.output_text, updatedHistory, remainingUses: updatedUser.premiumRemainingUses };
+      }
+    } catch (error) {
+      console.error("Error checking/using premium model:", error);
+      // Continue to Gemini API as fallback
+    }
+  }
+
+  // Fallback to Gemini
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+  });
+
   const formattedHistory = history.map((entry) => ({
     role: entry.role,
     parts: Array.isArray(entry.parts)
@@ -60,18 +148,6 @@ export async function chat(
     ],
   });
 
-  const userPrompt = `
-    Here is the current text:
-    """
-    ${currentText}
-    """
-
-    Here is what the user asked for:
-    """
-    ${instructions}
-    """
-  `;
-
   const result = await chatSession.sendMessage(userPrompt);
   const response = await result.response.text();
 
@@ -81,5 +157,5 @@ export async function chat(
     { role: "model", parts: [{ text: response }] },
   ];
 
-  return { response, updatedHistory };
+  return { response, updatedHistory, remainingUses: null };
 }

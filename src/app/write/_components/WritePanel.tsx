@@ -45,6 +45,9 @@ export default function WritePanel({
   selected,
   lastRequest,
   setLastRequest,
+  userId,
+  premiumRemainingUses,
+  setPremiumRemainingUses,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -63,6 +66,9 @@ export default function WritePanel({
       history: { role: "user" | "model"; parts: string }[];
     } | null
   ) => void;
+  userId: string | undefined;
+  premiumRemainingUses: number | null;
+  setPremiumRemainingUses: (remainingUses: number) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -95,6 +101,7 @@ export default function WritePanel({
           currentText: selected || inputText,
           instructions: `${instructions}`,
           history,
+          userId,
         }),
       });
 
@@ -103,7 +110,9 @@ export default function WritePanel({
       }
 
       const data = await response.json();
-
+      if (data.remainingUses !== null) {
+        setPremiumRemainingUses(data.remainingUses);
+      }
       const assistantMessage = {
         message: data.result[0],
         role: "assistant" as const,
@@ -126,7 +135,6 @@ export default function WritePanel({
         selected: string,
         wordCount: number
       ) => {
-        const words = text.split(/\s+/);
         const selectedStartIndex = text.indexOf(selected.trim());
         const selectedEndIndex = selectedStartIndex + selected.trim().length;
 
@@ -268,7 +276,6 @@ export default function WritePanel({
               <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
                 AI Writing Assistant
               </h2>
-
               <AnimatePresence mode="wait">
                 {selected ? (
                   <motion.p

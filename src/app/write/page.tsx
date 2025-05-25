@@ -19,6 +19,26 @@ export default function Writer() {
     instructions: string;
     history: { role: "user" | "model"; parts: string }[];
   } | null>(null);
+  const [premiumRemainingUses, setPremiumRemainingUses] = useState<
+    number | null
+  >(null);
+
+  useEffect(() => {
+    async function fetchPremiumUsage() {
+      if (userId) {
+        try {
+          const response = await fetch("/api/user/premium-usage");
+          if (response.ok) {
+            const { remainingUses } = await response.json();
+            setPremiumRemainingUses(remainingUses);
+          }
+        } catch (error) {
+          console.error("Failed to fetch premium usage:", error);
+        }
+      }
+    }
+    fetchPremiumUsage();
+  }, [userId]);
 
   useEffect(() => {
     async function checkAndStartTour() {
@@ -49,6 +69,8 @@ export default function Writer() {
           setSelected={setSelected}
           onChangesAccepted={() => setLastRequest(null)}
           userId={userId}
+          premiumRemainingUses={premiumRemainingUses}
+          setPremiumRemainingUses={setPremiumRemainingUses}
         />
       </div>
       <WritePanel
@@ -57,6 +79,9 @@ export default function Writer() {
         selected={selected}
         lastRequest={lastRequest}
         setLastRequest={setLastRequest}
+        userId={userId}
+        premiumRemainingUses={premiumRemainingUses}
+        setPremiumRemainingUses={setPremiumRemainingUses}
       />
     </div>
   );

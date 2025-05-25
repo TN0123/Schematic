@@ -12,21 +12,22 @@ export default function WriteEditor({
   setSelected,
   onChangesAccepted,
   userId,
+  premiumRemainingUses,
+  setPremiumRemainingUses,
 }: {
   setInput: (input: string) => void;
   changes: any;
   setSelected: (selected: string) => void;
   onChangesAccepted: () => void;
   userId?: string;
+  premiumRemainingUses: number | null;
+  setPremiumRemainingUses: (remainingUses: number) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
-  const [premiumRemainingUses, setPremiumRemainingUses] = useState<
-    number | null
-  >(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
@@ -64,23 +65,6 @@ export default function WriteEditor({
       onChangesAccepted();
     }
   }, [pendingChanges]);
-
-  useEffect(() => {
-    async function fetchPremiumUsage() {
-      if (userId) {
-        try {
-          const response = await fetch("/api/user/premium-usage");
-          if (response.ok) {
-            const { remainingUses } = await response.json();
-            setPremiumRemainingUses(remainingUses);
-          }
-        } catch (error) {
-          console.error("Failed to fetch premium usage:", error);
-        }
-      }
-    }
-    fetchPremiumUsage();
-  }, [userId]);
 
   const handleContinue = async () => {
     try {
@@ -311,20 +295,19 @@ export default function WriteEditor({
                       <Info className="w-3 h-3 cursor-help" />
                       Premium model uses remaining: {premiumRemainingUses}
                       <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                        The premium model is only supported for ctrl+enter
-                        generation right now, the model will be integrated into
-                        the sidebar very soon! When your premium uses run out,
-                        the system will automatically switch to the default
+                        The premium model is used for both Ctrl+Enter generation
+                        and AI sidebar suggestions. When your premium uses run
+                        out, the system will automatically switch to the default
                         model.
                       </div>
                     </div>
                   )}
-                {userId === "cm6qw1jxy0000unao2h2rz83l" ||
-                  (userId === "cma8kzffi0000unysbz2awbmf" && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      premium model active
-                    </div>
-                  ))}
+                {(userId === "cm6qw1jxy0000unao2h2rz83l" ||
+                  userId === "cma8kzffi0000unysbz2awbmf") && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    premium model active
+                  </div>
+                )}
               </div>
               <textarea
                 ref={textareaRef}
