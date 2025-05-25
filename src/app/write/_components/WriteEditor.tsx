@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
+import { Info } from "lucide-react";
 
 export type ChangeMap = Record<string, string>;
 
@@ -23,6 +24,9 @@ export default function WriteEditor({
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+  const [premiumRemainingUses, setPremiumRemainingUses] = useState<
+    number | null
+  >(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
@@ -61,6 +65,23 @@ export default function WriteEditor({
     }
   }, [pendingChanges]);
 
+  useEffect(() => {
+    async function fetchPremiumUsage() {
+      if (userId) {
+        try {
+          const response = await fetch("/api/user/premium-usage");
+          if (response.ok) {
+            const { remainingUses } = await response.json();
+            setPremiumRemainingUses(remainingUses);
+          }
+        } catch (error) {
+          console.error("Failed to fetch premium usage:", error);
+        }
+      }
+    }
+    fetchPremiumUsage();
+  }, [userId]);
+
   const handleContinue = async () => {
     try {
       setUndoStack((prev) => {
@@ -97,9 +118,8 @@ export default function WriteEditor({
         throw new Error("Failed to generate content");
       }
       const data = await response.json();
-      // setInputText(before + after);
 
-      const generatedText = data.result || "";
+      const { text: generatedText, remainingUses } = data.result;
 
       const updated = before + generatedText + after;
 
@@ -111,6 +131,11 @@ export default function WriteEditor({
 
       setGeneratedStart(start);
       setGeneratedEnd(end);
+
+      // Update remaining uses if provided
+      if (remainingUses !== null) {
+        setPremiumRemainingUses(remainingUses);
+      }
 
       setLoading(false);
     } catch (error) {
@@ -273,11 +298,34 @@ export default function WriteEditor({
                         ),
                 }}
               />
-              {loading && (
-                <div className="absolute top-3 right-4 text-sm text-gray-500 dark:text-gray-400 z-10">
-                  Generating...
-                </div>
-              )}
+              <div className="absolute top-3 right-4 flex flex-col items-end gap-2 z-10">
+                {loading && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Generating...
+                  </div>
+                )}
+                {premiumRemainingUses !== null &&
+                  userId !== "cm6qw1jxy0000unao2h2rz83l" &&
+                  userId !== "cma8kzffi0000unysbz2awbmf" && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                      <Info className="w-3 h-3 cursor-help" />
+                      Premium model uses remaining: {premiumRemainingUses}
+                      <div className="absolute right-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        The premium model is only supported for ctrl+enter
+                        generation right now, the model will be integrated into
+                        the sidebar very soon! When your premium uses run out,
+                        the system will automatically switch to the default
+                        model.
+                      </div>
+                    </div>
+                  )}
+                {userId === "cm6qw1jxy0000unao2h2rz83l" ||
+                  (userId === "cma8kzffi0000unysbz2awbmf" && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      premium model active
+                    </div>
+                  ))}
+              </div>
               <textarea
                 ref={textareaRef}
                 id="write-editor"

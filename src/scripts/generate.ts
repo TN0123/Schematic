@@ -28,13 +28,54 @@ export async function generate(startText: string, endText: string, userId?: stri
         model: "gpt-4.1",
         input: prompt,
       })
-      return response.output_text;
+      return { text: response.output_text, remainingUses: null };
     } catch (error) {
       console.error("OpenAI API call failed:", error);
       // Continue to Gemini API as fallback
     }
   }
 
+  if (userId) {
+    try {
+      const prisma = require("@/lib/prisma").default;
+      
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { premiumRemainingUses: true },
+      });
+
+      if (user && user.premiumRemainingUses > 0) {
+        // Try to use premium model
+        const { OpenAI } = require("openai");
+        const openAIAPIKey = process.env.OPENAI_API_KEY;
+        const client = new OpenAI({apiKey: openAIAPIKey});
+        
+        // Decrement usage
+        const updatedUser = await prisma.user.update({
+          where: { id: userId },
+          data: {
+            premiumRemainingUses: {
+              decrement: 1,
+            },
+          },
+          select: {
+            premiumRemainingUses: true,
+          },
+        });
+        
+        const response = await client.responses.create({
+          model: "gpt-4.1",
+          input: prompt,
+        });
+        return { text: response.output_text, remainingUses: updatedUser.premiumRemainingUses };
+      }
+    } catch (error) {
+      console.error("Error checking/using premium model:", error);
+      // Continue to Gemini API as fallback
+    }
+  }
+
+  // Fallback to Gemini
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
@@ -44,5 +85,5 @@ export async function generate(startText: string, endText: string, userId?: stri
 
   // console.log("Prompt: ", prompt);
 
-  return result.response.text();
+  return { text: result.response.text(), remainingUses: null };
 }
