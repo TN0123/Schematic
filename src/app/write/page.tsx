@@ -11,6 +11,7 @@ export default function Writer() {
   const [input, setInput] = useState<string>("");
   const [changes, setChanges] = useState<ChangeMap>({});
   const [selected, setSelected] = useState<string>("");
+  const [userId, setUserId] = useState<string | undefined>();
   const { startNextStep } = useNextStep();
   const [lastRequest, setLastRequest] = useState<{
     input: string;
@@ -22,12 +23,15 @@ export default function Writer() {
   useEffect(() => {
     async function checkAndStartTour() {
       try {
+        console.log("Fetching onboarding status");
         const res = await fetch("/api/user/onboarding-status");
         const data = await res.json();
 
         if (!data.hasCompletedWriteTour) {
           startNextStep("writeTour");
         }
+
+        setUserId(data.id);
       } catch (error) {
         console.error("Failed to fetch onboarding status:", error);
       }
@@ -44,6 +48,7 @@ export default function Writer() {
           changes={changes}
           setSelected={setSelected}
           onChangesAccepted={() => setLastRequest(null)}
+          userId={userId}
         />
       </div>
       <WritePanel

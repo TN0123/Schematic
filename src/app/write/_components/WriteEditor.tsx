@@ -10,11 +10,13 @@ export default function WriteEditor({
   changes,
   setSelected,
   onChangesAccepted,
+  userId,
 }: {
   setInput: (input: string) => void;
   changes: any;
   setSelected: (selected: string) => void;
   onChangesAccepted: () => void;
+  userId?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,6 +89,7 @@ export default function WriteEditor({
         body: JSON.stringify({
           startText: `${before}`,
           endText: `${after}`,
+          userId,
         }),
       });
 
@@ -121,7 +124,6 @@ export default function WriteEditor({
       if (event.ctrlKey && event.key === "Enter") {
         event.preventDefault();
         handleContinue();
-        console.log("continuing writing...");
       }
 
       if (event.ctrlKey && event.key.toLowerCase() === "z") {

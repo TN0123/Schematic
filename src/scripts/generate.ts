@@ -1,12 +1,4 @@
-export async function generate(startText: string, endText: string) {
-  const { GoogleGenerativeAI } = require("@google/generative-ai");
-  require("dotenv").config();
-  const geminiKey = process.env.GEMINI_API_KEY;
-
-  const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-  });
+export async function generate(startText: string, endText: string, userId?: string) {
 
   let prompt = `
   You are an AI writing assistant tasked with helping someone continue whatever text that have generated so far. 
@@ -22,6 +14,31 @@ export async function generate(startText: string, endText: string) {
   
   Here is the text so far: ${startText} CONTINUE WRITING HERE ${endText}
   `;
+
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  require("dotenv").config();
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
+    try {
+      const { OpenAI } = require("openai");
+      const openAIAPIKey = process.env.OPENAI_API_KEY;
+      const client = new OpenAI({apiKey: openAIAPIKey});
+      const response = await client.responses.create({
+        model: "gpt-4.1",
+        input: prompt,
+      })
+      return response.output_text;
+    } catch (error) {
+      console.error("OpenAI API call failed:", error);
+      // Continue to Gemini API as fallback
+    }
+  }
+
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+  });
 
   const result = await model.generateContent(prompt);
 
