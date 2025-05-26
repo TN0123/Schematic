@@ -7,26 +7,10 @@ import {
   Loader2,
   AlertCircle,
   Save,
-  GripVertical,
   ZoomIn,
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";
 
@@ -106,178 +90,10 @@ function normalizeUrl(url: string): string {
 function getFaviconUrl(url: string): string {
   try {
     const urlObj = new URL(url);
-    // Use Google S2 Favicon API for higher-res icons
     return `https://www.google.com/s2/favicons?sz=64&domain_url=${urlObj.origin}`;
   } catch {
     return "";
   }
-}
-
-function SortableLinkCard({
-  link,
-  onDelete,
-}: {
-  link: LinkPreview;
-  onDelete: (id: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: link.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="border dark:border-dark-divider rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white dark:bg-dark-secondary relative"
-    >
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded"
-        >
-          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-        </div>
-        <button
-          onClick={() => onDelete(link.id)}
-          className="p-1 hover:bg-red-300 dark:hover:bg-red-900 rounded bg-white/80 dark:bg-dark-secondary/80"
-        >
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </button>
-      </div>
-
-      {link.imageUrl ? (
-        <img
-          src={link.imageUrl}
-          alt={link.title}
-          className="w-full h-32 object-cover"
-        />
-      ) : link.faviconUrl ? (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <img
-            src={link.faviconUrl}
-            alt="Favicon"
-            className="h-10 w-10 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
-      ) : (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-1">
-          {link.faviconUrl && (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              className="w-4 h-4 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          )}
-          <h3 className="font-medium dark:text-dark-textPrimary truncate">
-            {link.title}
-          </h3>
-        </div>
-        {link.description && (
-          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
-            {link.description}
-          </p>
-        )}
-        <a
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
-        >
-          {link.url}
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function LinkCard({ link }: { link: LinkPreview }) {
-  return (
-    <div className="border dark:border-dark-divider rounded-lg overflow-hidden shadow-lg bg-white dark:bg-dark-secondary relative">
-      <div className="absolute top-2 right-2 z-10">
-        <div className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded">
-          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-        </div>
-      </div>
-
-      {link.imageUrl ? (
-        <img
-          src={link.imageUrl}
-          alt={link.title}
-          className="w-full h-32 object-cover"
-        />
-      ) : link.faviconUrl ? (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <img
-            src={link.faviconUrl}
-            alt="Favicon"
-            className="h-10 w-10 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
-      ) : (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-1">
-          {link.faviconUrl && (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              className="w-4 h-4 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          )}
-          <h3 className="font-medium dark:text-dark-textPrimary truncate">
-            {link.title}
-          </h3>
-        </div>
-        {link.description && (
-          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
-            {link.description}
-          </p>
-        )}
-        <a
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
-        >
-          {link.url}
-        </a>
-      </div>
-    </div>
-  );
 }
 
 function GraphView({
@@ -323,8 +139,46 @@ function GraphView({
     null
   );
 
+  // --- FAVICON IMAGE CACHE ---
+  const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
+
+  // --- ANIMATED NODE RADII ---
+  const BASE_RADIUS = 22;
+  const HOVER_RADIUS = 30;
+  const ANIMATION_SPEED = 0.25; // Higher = faster
+  const [nodeRadii, setNodeRadii] = useState<{ [id: string]: number }>({});
+
+  // Animate node radii towards their target
+  useEffect(() => {
+    let running = true;
+    function animate() {
+      setNodeRadii((prev) => {
+        const next: { [id: string]: number } = { ...prev };
+        for (const node of graphData.nodes) {
+          const target =
+            hoveredNode && hoveredNode.id === node.id
+              ? HOVER_RADIUS
+              : BASE_RADIUS;
+          const current = prev[node.id] ?? BASE_RADIUS;
+          if (Math.abs(current - target) > 0.5) {
+            next[node.id] = current + (target - current) * ANIMATION_SPEED;
+          } else {
+            next[node.id] = target;
+          }
+        }
+        return next;
+      });
+      if (running) requestAnimationFrame(animate);
+    }
+    animate();
+    return () => {
+      running = false;
+    };
+  }, [graphData.nodes, hoveredNode]);
+
   useEffect(() => {
     setIsClient(true);
+    handleResetZoom();
   }, []);
 
   useEffect(() => {
@@ -448,7 +302,29 @@ function GraphView({
         }}
         className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
       >
-        <div className="font-semibold mb-1 truncate">{node.link.title}</div>
+        <div className="flex items-center gap-2 mb-1">
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: categoryColorMap[node.category],
+              border: "2px solid #fff",
+              boxShadow: "0 0 0 1px #8884",
+            }}
+          />
+          <span className="font-semibold truncate">{node.link.title}</span>
+          <span
+            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium"
+            style={{
+              background: categoryColorMap[node.category] + "22",
+              color: categoryColorMap[node.category],
+            }}
+          >
+            {node.category}
+          </span>
+        </div>
         <div className="mb-1 break-all text-light-accent dark:text-dark-accent">
           <a href={node.link.url} target="_blank" rel="noopener noreferrer">
             {node.link.url}
@@ -501,6 +377,10 @@ function GraphView({
         ref={graphRef}
         graphData={graphData}
         nodeLabel={"title"}
+        d3Charge={() => -900}
+        d3ForceInit={(fg: any) => {
+          fg.d3Force("collide", d3.forceCollide().radius(38));
+        }}
         nodeCanvasObject={(
           node: any,
           ctx: CanvasRenderingContext2D,
@@ -508,7 +388,7 @@ function GraphView({
         ) => {
           const label = node.link.title;
           const fontSize = 14 / globalScale;
-          const radius = highlightedNodeId === node.id ? 30 : 22;
+          const radius = nodeRadii[node.id] ?? BASE_RADIUS;
           const color = categoryColorMap[node.category] || "#888";
 
           // Draw node circle (border)
@@ -523,11 +403,15 @@ function GraphView({
           ctx.stroke();
           ctx.globalAlpha = 1;
 
-          // Draw favicon or icon
+          // Draw favicon or icon (cached)
           if (node.link.faviconUrl) {
-            const img = new window.Image();
-            img.src = node.link.faviconUrl;
-            img.onload = () => {
+            let img = faviconCache.current[node.link.faviconUrl];
+            if (!img) {
+              img = new window.Image();
+              img.src = node.link.faviconUrl;
+              faviconCache.current[node.link.faviconUrl] = img;
+            }
+            if (img.complete && img.naturalWidth > 0) {
               ctx.save();
               ctx.beginPath();
               ctx.arc(node.x, node.y, radius - 6, 0, 2 * Math.PI);
@@ -541,7 +425,7 @@ function GraphView({
                 (radius - 8) * 2
               );
               ctx.restore();
-            };
+            }
           } else {
             // Draw default icon (simple colored dot)
             ctx.beginPath();
@@ -550,14 +434,44 @@ function GraphView({
             ctx.fill();
           }
 
-          // Draw label below node
+          // Draw label with background for readability
           ctx.font = `bold ${fontSize}px Sans-Serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
+          const text = label;
+          const textWidth = ctx.measureText(text).width;
+          const padding = 6;
+          const labelY = node.y + radius + 4;
+          // Draw rounded rect background
+          ctx.save();
+          ctx.globalAlpha = 0.8;
           ctx.fillStyle = "#222";
-          if (!highlightedNodeId || highlightedNodeId === node.id) {
-            ctx.fillText(label, node.x, node.y + radius + 4);
-          }
+          const rectX = node.x - textWidth / 2 - padding;
+          const rectY = labelY - 2;
+          const rectW = textWidth + padding * 2;
+          const rectH = fontSize + 6;
+          const r = 8;
+          ctx.beginPath();
+          ctx.moveTo(rectX + r, rectY);
+          ctx.lineTo(rectX + rectW - r, rectY);
+          ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + r);
+          ctx.lineTo(rectX + rectW, rectY + rectH - r);
+          ctx.quadraticCurveTo(
+            rectX + rectW,
+            rectY + rectH,
+            rectX + rectW - r,
+            rectY + rectH
+          );
+          ctx.lineTo(rectX + r, rectY + rectH);
+          ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - r);
+          ctx.lineTo(rectX, rectY + r);
+          ctx.quadraticCurveTo(rectX, rectY, rectX + r, rectY);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          // Draw label text
+          ctx.fillStyle = "#fff";
+          ctx.fillText(text, node.x, labelY);
         }}
         linkColor={(link: any) => {
           const isHighlighted =
@@ -588,7 +502,6 @@ function GraphView({
         d3Force="charge"
         d3VelocityDecay={0.3}
         d3AlphaMin={0.001}
-        d3Charge={(node: any) => -400}
         onNodeHover={(node: any, prevNode: any) => {
           setHoveredNode(node);
         }}
@@ -598,6 +511,87 @@ function GraphView({
         onBackgroundClick={() => {
           setHoveredNode(null);
           setMousePos(null);
+        }}
+        backgroundCanvas={(ctx: CanvasRenderingContext2D, graph: GraphData) => {
+          categories.forEach((cat) => {
+            const nodes = graph.nodes.filter(
+              (n) =>
+                n.category === cat &&
+                typeof n.x === "number" &&
+                typeof n.y === "number"
+            );
+            if (nodes.length === 0) return;
+            const color = categoryColorMap[cat] || "#888";
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            if (nodes.length === 1) {
+              ctx.arc(nodes[0].x!, nodes[0].y!, 100, 0, 2 * Math.PI);
+            } else if (nodes.length === 2) {
+              const x = (nodes[0].x! + nodes[1].x!) / 2;
+              const y = (nodes[0].y! + nodes[1].y!) / 2;
+              const dx = nodes[0].x! - nodes[1].x!;
+              const dy = nodes[0].y! - nodes[1].y!;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              ctx.ellipse(
+                x,
+                y,
+                dist / 2 + 100,
+                100,
+                Math.atan2(dy, dx),
+                0,
+                2 * Math.PI
+              );
+            } else {
+              const points = nodes.map((n) => [n.x!, n.y!]);
+              points.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+              function cross(o: number[], a: number[], b: number[]) {
+                return (
+                  (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+                );
+              }
+              const lower: number[][] = [];
+              for (const p of points) {
+                while (
+                  lower.length >= 2 &&
+                  cross(lower[lower.length - 2], lower[lower.length - 1], p) <=
+                    0
+                )
+                  lower.pop();
+                lower.push(p);
+              }
+              const upper: number[][] = [];
+              for (let i = points.length - 1; i >= 0; i--) {
+                const p = points[i];
+                while (
+                  upper.length >= 2 &&
+                  cross(upper[upper.length - 2], upper[upper.length - 1], p) <=
+                    0
+                )
+                  upper.pop();
+                upper.push(p);
+              }
+              const hull = lower.concat(upper.slice(1, -1));
+              if (hull.length > 1) {
+                ctx.moveTo(hull[0][0], hull[0][1]);
+                for (let i = 1; i < hull.length; i++) {
+                  ctx.lineTo(hull[i][0], hull[i][1]);
+                }
+                ctx.closePath();
+              }
+            }
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 40;
+            ctx.fill();
+            ctx.globalAlpha = 0.8;
+            ctx.setLineDash([8, 6]);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          });
         }}
       />
     </div>
@@ -622,36 +616,6 @@ export default function BulletinLinkCollection({
     title: initialTitle,
     links: initialLinks,
   });
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryNameEdits, setCategoryNameEdits] = useState<
-    Record<string, string>
-  >({});
-
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeLink = activeId
-    ? links.find((link) => link.id === activeId)
-    : null;
-
-  const sensors = useSensors(useSensor(PointerSensor));
-
-  const handleRenameCategory = (oldCategory: string, newCategory: string) => {
-    if (!newCategory.trim() || oldCategory === newCategory) return;
-
-    const updatedLinks = links.map((link) =>
-      link.category === oldCategory ? { ...link, category: newCategory } : link
-    );
-
-    setLinks(updatedLinks);
-    setEditingCategory(null);
-    setCategoryNameEdits((prev) => {
-      const copy = { ...prev };
-      delete copy[oldCategory];
-      return copy;
-    });
-
-    setHasUnsavedChanges(true);
-    handleSaveWithLinks(updatedLinks);
-  };
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -678,36 +642,6 @@ export default function BulletinLinkCollection({
       setIsSaving(false);
     }
   }, [id, onSave, title, links]);
-
-  const handleSaveWithLinks = useCallback(
-    async (customLinks: LinkPreview[]) => {
-      setIsSaving(true);
-      try {
-        const updates: { title?: string; data?: { links: LinkPreview[] } } = {};
-        if (title !== lastSavedState.current.title) updates.title = title;
-        if (
-          JSON.stringify(customLinks) !==
-          JSON.stringify(lastSavedState.current.links)
-        ) {
-          updates.data = { links: customLinks };
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await onSave(id, updates);
-          lastSavedState.current = {
-            title,
-            links: customLinks,
-          };
-          setHasUnsavedChanges(false);
-        }
-      } catch (error) {
-        console.error("Failed to save:", error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [id, onSave, title]
-  );
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -795,7 +729,6 @@ export default function BulletinLinkCollection({
 
       const { result } = await response.json();
 
-      // Find the closest existing category (case-insensitive match)
       const existingCategory = categories.find(
         (cat) => cat.toLowerCase() === result.toLowerCase()
       );
@@ -806,7 +739,7 @@ export default function BulletinLinkCollection({
       setLinks(updatedLinks);
       setNewLink("");
       setHasUnsavedChanges(true);
-      await handleSaveWithLinks(updatedLinks);
+      await handleSave();
     } catch (error) {
       console.error("Failed to add link:", error);
       setError("Failed to add link. Please try again.");
@@ -819,55 +752,13 @@ export default function BulletinLinkCollection({
     const updatedLinks = links.filter((link) => link.id !== linkId);
     setLinks(updatedLinks);
     setHasUnsavedChanges(true);
-    await handleSaveWithLinks(updatedLinks);
+    await handleSave();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
       handleAddLink();
-    }
-  };
-
-  const linksByCategory = links.reduce((acc, link) => {
-    if (!acc[link.category]) {
-      acc[link.category] = [];
-    }
-    acc[link.category].push(link);
-    return acc;
-  }, {} as Record<string, LinkPreview[]>);
-
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
-  };
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const activeLink = links.find((link) => link.id === active.id);
-    const overLink = links.find((link) => link.id === over.id);
-
-    if (!activeLink || !overLink) return;
-
-    // If the links are in different categories, update the category
-    if (activeLink.category !== overLink.category) {
-      const updatedLinks = links.map((link) =>
-        link.id === active.id ? { ...link, category: overLink.category } : link
-      );
-      setLinks(updatedLinks);
-      setHasUnsavedChanges(true);
-      handleSaveWithLinks(updatedLinks);
-    } else {
-      // If in the same category, reorder the links
-      const oldIndex = links.findIndex((link) => link.id === active.id);
-      const newIndex = links.findIndex((link) => link.id === over.id);
-      const updatedLinks = arrayMove(links, oldIndex, newIndex);
-      setLinks(updatedLinks);
-      setHasUnsavedChanges(true);
-      handleSaveWithLinks(updatedLinks);
     }
   };
 
