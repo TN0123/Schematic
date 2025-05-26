@@ -471,7 +471,7 @@ export default function BulletinKanban({
         {/* Title & Actions */}
         <div className="flex justify-between items-center">
           <input
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);

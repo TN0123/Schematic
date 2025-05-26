@@ -136,7 +136,7 @@ export default function BulletinTodo({
             <ClipboardList className="h-8 w-8 text-green-500" />
           </div>
           <input
-            className="font-semibold truncate tracking-tight text-2xl mb-1 w-full text-left focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            className="font-semibold truncate tracking-tight text-2xl mb-1 w-full text-left focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);

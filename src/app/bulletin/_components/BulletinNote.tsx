@@ -205,7 +205,7 @@ export default function BulletinNote({
                   setTitle(e.target.value);
                   setHasUnsavedChanges(true);
                 }}
-                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary truncate"
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
                 placeholder="Enter title..."
               />
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">

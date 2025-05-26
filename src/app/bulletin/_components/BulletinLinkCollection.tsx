@@ -521,7 +521,7 @@ export default function BulletinLinkCollection({
               setTitle(e.target.value);
               setHasUnsavedChanges(true);
             }}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             placeholder="Link Collection Title"
           />
           <div className="flex gap-2">
