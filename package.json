@@ -27,6 +27,7 @@
     "@tiptap/extension-underline": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
+    "d3-force": "^3.0.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.4.0",
@@ -40,9 +41,12 @@
     "prisma": "^6.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-force-graph-2d": "^1.27.1",
+    "react-force-graph-3d": "^1.26.1",
     "react-switch": "^7.1.0"
   },
   "devDependencies": {
+    "@types/d3-force": "^3.0.10",
     "@types/next-auth": "^3.15.0",
     "@types/node": "^20",
     "@types/react": "^19",

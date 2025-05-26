@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, forwardRef } from "react";
 import {
   Trash2,
   Link as LinkIcon,
@@ -8,6 +8,9 @@ import {
   AlertCircle,
   Save,
   GripVertical,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import {
   DndContext,
@@ -24,6 +27,17 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import dynamic from "next/dynamic";
+import * as d3 from "d3-force";
+
+// Dynamically import ForceGraph2D with no SSR
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+  ssr: false,
+});
+
+const ForceGraph2DWithRef = forwardRef((props: any, ref) => {
+  return <ForceGraph2D {...props} ref={ref} />;
+});
 
 export interface LinkPreview {
   id: string;
@@ -33,6 +47,29 @@ export interface LinkPreview {
   imageUrl?: string;
   category: string;
   faviconUrl?: string;
+}
+
+interface GraphNode {
+  id: string;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number;
+  fy?: number;
+  link: LinkPreview;
+  category: string;
+}
+
+interface GraphLink {
+  source: string;
+  target: string;
+  category: string;
+}
+
+interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
 }
 
 interface BulletinLinkCollectionProps {
@@ -239,6 +276,330 @@ function LinkCard({ link }: { link: LinkPreview }) {
           {link.url}
         </a>
       </div>
+    </div>
+  );
+}
+
+function GraphView({
+  links,
+  onDelete,
+}: {
+  links: LinkPreview[];
+  onDelete: (id: string) => void;
+}) {
+  const [graphData, setGraphData] = useState<GraphData>({
+    nodes: [],
+    links: [],
+  });
+  const [zoom, setZoom] = useState(1);
+  const [graphInstance, setGraphInstance] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
+  const graphRef = useRef<any>(null);
+
+  // --- CATEGORY COLOR PALETTE ---
+  // Fixed palette for up to 10 categories, fallback to random if more
+  const CATEGORY_COLORS = [
+    "#1a73e8", // blue
+    "#e8711a", // orange
+    "#34a853", // green
+    "#e91e63", // pink
+    "#fbbc05", // yellow
+    "#9c27b0", // purple
+    "#00bcd4", // cyan
+    "#ff9800", // deep orange
+    "#607d8b", // blue grey
+    "#8bc34a", // light green
+  ];
+  // Map category to color
+  const categories = Array.from(new Set(links.map((l) => l.category)));
+  const categoryColorMap: Record<string, string> = {};
+  categories.forEach((cat, i) => {
+    categoryColorMap[cat] = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+  });
+
+  // --- HOVER STATE FOR TOOLTIP & HIGHLIGHTING ---
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (graphRef.current) {
+      setGraphInstance(graphRef.current);
+      graphRef.current.zoomToFit(400);
+    }
+  }, [graphRef.current]);
+
+  useEffect(() => {
+    // Convert links to graph data
+    const nodes: GraphNode[] = links.map((link) => ({
+      id: link.id,
+      link,
+      category: link.category,
+    }));
+
+    // Create links between nodes in the same category
+    const linksByCategory = links.reduce((acc, link) => {
+      if (!acc[link.category]) {
+        acc[link.category] = [];
+      }
+      acc[link.category].push(link);
+      return acc;
+    }, {} as Record<string, LinkPreview[]>);
+
+    const graphLinks: GraphLink[] = Object.values(linksByCategory).flatMap(
+      (categoryLinks) => {
+        const links: GraphLink[] = [];
+        for (let i = 0; i < categoryLinks.length; i++) {
+          for (let j = i + 1; j < categoryLinks.length; j++) {
+            links.push({
+              source: categoryLinks[i].id,
+              target: categoryLinks[j].id,
+              category: categoryLinks[i].category,
+            });
+          }
+        }
+        return links;
+      }
+    );
+
+    setGraphData({ nodes, links: graphLinks });
+  }, [links]);
+
+  const handleZoomIn = () => {
+    if (graphInstance) {
+      const newZoom = zoom * 1.2;
+      setZoom(newZoom);
+      graphInstance.zoom(newZoom);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (graphInstance) {
+      const newZoom = zoom / 1.2;
+      setZoom(newZoom);
+      graphInstance.zoom(newZoom);
+    }
+  };
+
+  const handleResetZoom = () => {
+    if (graphInstance) {
+      setZoom(1);
+      graphInstance.zoom(1);
+      graphInstance.centerAt(0, 0);
+    }
+  };
+
+  if (!isClient) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  // --- LEGEND COMPONENT ---
+  const Legend = () => (
+    <div className="flex flex-wrap gap-3 mb-2 px-4 py-2 bg-white/80 dark:bg-dark-secondary/80 rounded-lg shadow text-xs">
+      {categories.map((cat) => (
+        <div key={cat} className="flex items-center gap-2">
+          <span
+            style={{
+              display: "inline-block",
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: categoryColorMap[cat],
+              border: "2px solid #fff",
+              boxShadow: "0 0 0 1px #8884",
+            }}
+          />
+          <span className="dark:text-dark-textPrimary text-gray-800">
+            {cat}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  // --- TOOLTIP COMPONENT ---
+  const Tooltip = ({
+    node,
+    pos,
+  }: {
+    node: any;
+    pos: { x: number; y: number };
+  }) => {
+    if (!node || !pos) return null;
+    return (
+      <div
+        style={{
+          position: "fixed",
+          left: pos.x + 16,
+          top: pos.y + 16,
+          zIndex: 50,
+          pointerEvents: "none",
+          minWidth: 220,
+          maxWidth: 320,
+        }}
+        className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
+      >
+        <div className="font-semibold mb-1 truncate">{node.link.title}</div>
+        <div className="mb-1 break-all text-light-accent dark:text-dark-accent">
+          <a href={node.link.url} target="_blank" rel="noopener noreferrer">
+            {node.link.url}
+          </a>
+        </div>
+        {node.link.description && (
+          <div className="text-gray-600 dark:text-dark-textSecondary line-clamp-3">
+            {node.link.description}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // --- HIGHLIGHTING LOGIC ---
+  const highlightedNodeId = hoveredNode?.id;
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Legend */}
+      <div className="absolute left-4 top-4 z-20">
+        <Legend />
+      </div>
+      <div className="absolute top-4 right-4 z-10 flex gap-2 bg-white/80 dark:bg-dark-secondary/80 p-2 rounded-lg shadow-lg">
+        <button
+          onClick={handleZoomIn}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          aria-label="Zoom in"
+        >
+          <ZoomIn className="h-4 w-4" />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          aria-label="Zoom out"
+        >
+          <ZoomOut className="h-4 w-4" />
+        </button>
+        <button
+          onClick={handleResetZoom}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          aria-label="Reset view"
+        >
+          <Maximize2 className="h-4 w-4" />
+        </button>
+      </div>
+      {/* Tooltip */}
+      {hoveredNode && mousePos && <Tooltip node={hoveredNode} pos={mousePos} />}
+      <ForceGraph2DWithRef
+        ref={graphRef}
+        graphData={graphData}
+        nodeLabel={"title"}
+        nodeCanvasObject={(
+          node: any,
+          ctx: CanvasRenderingContext2D,
+          globalScale: number
+        ) => {
+          const label = node.link.title;
+          const fontSize = 14 / globalScale;
+          const radius = highlightedNodeId === node.id ? 30 : 22;
+          const color = categoryColorMap[node.category] || "#888";
+
+          // Draw node circle (border)
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          ctx.lineWidth = highlightedNodeId === node.id ? 6 : 4;
+          ctx.strokeStyle = color;
+          ctx.globalAlpha =
+            highlightedNodeId && highlightedNodeId !== node.id ? 0.3 : 1;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Draw favicon or icon
+          if (node.link.faviconUrl) {
+            const img = new window.Image();
+            img.src = node.link.faviconUrl;
+            img.onload = () => {
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, radius - 6, 0, 2 * Math.PI);
+              ctx.closePath();
+              ctx.clip();
+              ctx.drawImage(
+                img,
+                node.x - (radius - 8),
+                node.y - (radius - 8),
+                (radius - 8) * 2,
+                (radius - 8) * 2
+              );
+              ctx.restore();
+            };
+          } else {
+            // Draw default icon (simple colored dot)
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius - 8, 0, 2 * Math.PI);
+            ctx.fillStyle = color + "99";
+            ctx.fill();
+          }
+
+          // Draw label below node
+          ctx.font = `bold ${fontSize}px Sans-Serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          ctx.fillStyle = "#222";
+          if (!highlightedNodeId || highlightedNodeId === node.id) {
+            ctx.fillText(label, node.x, node.y + radius + 4);
+          }
+        }}
+        linkColor={(link: any) => {
+          const isHighlighted =
+            highlightedNodeId &&
+            (link.source === highlightedNodeId ||
+              link.target === highlightedNodeId);
+          return isHighlighted
+            ? categoryColorMap[link.category] || "#bbb"
+            : (categoryColorMap[link.category] || "#bbb") + "55";
+        }}
+        linkWidth={(link: any) => {
+          const isHighlighted =
+            highlightedNodeId &&
+            (link.source === highlightedNodeId ||
+              link.target === highlightedNodeId);
+          return isHighlighted ? 4 : 2;
+        }}
+        linkDirectionalParticles={0}
+        linkDirectionalParticleSpeed={0.005}
+        onNodeClick={(node: any) => {
+          window.open(node.link.url, "_blank");
+        }}
+        onNodeRightClick={(node: any) => {
+          onDelete(node.id);
+        }}
+        cooldownTicks={100}
+        nodeRelSize={8}
+        d3Force="charge"
+        d3VelocityDecay={0.3}
+        d3AlphaMin={0.001}
+        d3Charge={(node: any) => -400}
+        onNodeHover={(node: any, prevNode: any) => {
+          setHoveredNode(node);
+        }}
+        onNodeMouseMove={(node: any, event: MouseEvent) => {
+          setMousePos({ x: event.clientX, y: event.clientY });
+        }}
+        onBackgroundClick={() => {
+          setHoveredNode(null);
+          setMousePos(null);
+        }}
+      />
     </div>
   );
 }
@@ -587,103 +948,8 @@ export default function BulletinLinkCollection({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            {Object.entries(linksByCategory).map(
-              ([category, categoryLinks]) => (
-                <div key={category} className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    {editingCategory === category ? (
-                      <>
-                        <input
-                          type="text"
-                          value={categoryNameEdits[category] ?? category}
-                          onChange={(e) =>
-                            setCategoryNameEdits((prev) => ({
-                              ...prev,
-                              [category]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => {
-                            const newCategory =
-                              categoryNameEdits[category]?.trim();
-                            if (newCategory) {
-                              handleRenameCategory(category, newCategory);
-                            } else {
-                              setEditingCategory(null);
-                              setCategoryNameEdits((prev) => {
-                                const copy = { ...prev };
-                                delete copy[category];
-                                return copy;
-                              });
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const newCategory =
-                                categoryNameEdits[category]?.trim();
-                              if (newCategory) {
-                                handleRenameCategory(category, newCategory);
-                              } else {
-                                setEditingCategory(null);
-                                setCategoryNameEdits((prev) => {
-                                  const copy = { ...prev };
-                                  delete copy[category];
-                                  return copy;
-                                });
-                              }
-                            } else if (e.key === "Escape") {
-                              setEditingCategory(null);
-                              setCategoryNameEdits((prev) => {
-                                const copy = { ...prev };
-                                delete copy[category];
-                                return copy;
-                              });
-                            }
-                          }}
-                          autoFocus
-                          className="text-xl font-semibold dark:text-dark-textPrimary bg-transparent border-b border-gray-400 focus:outline-none"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <h2
-                          className="text-xl font-semibold dark:text-dark-textPrimary cursor-pointer"
-                          onClick={() => setEditingCategory(category)}
-                          title="Click to edit category name"
-                        >
-                          {category}
-                        </h2>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <SortableContext
-                      items={categoryLinks.map((link) => link.id)}
-                      strategy={rectSortingStrategy}
-                    >
-                      {categoryLinks.map((link) => (
-                        <SortableLinkCard
-                          key={link.id}
-                          link={link}
-                          onDelete={handleDeleteLink}
-                        />
-                      ))}
-                    </SortableContext>
-                  </div>
-                </div>
-              )
-            )}
-            <DragOverlay>
-              {activeLink ? <LinkCard link={activeLink} /> : null}
-            </DragOverlay>
-          </DndContext>
+        <div className="flex-1 overflow-hidden rounded-lg border dark:border-dark-divider">
+          <GraphView links={links} onDelete={handleDeleteLink} />
         </div>
       </div>
     </div>
