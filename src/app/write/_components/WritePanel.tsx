@@ -167,6 +167,7 @@ export default function WritePanel({
           before,
           selected,
           after,
+          userId,
         }),
       });
 
@@ -175,6 +176,9 @@ export default function WritePanel({
       }
 
       const data = await response.json();
+      if (data.remainingUses !== null) {
+        setPremiumRemainingUses(data.remainingUses);
+      }
       setChanges(data.result);
     } catch (error) {
       console.error(error);

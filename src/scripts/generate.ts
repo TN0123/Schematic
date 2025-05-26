@@ -9,7 +9,7 @@ export async function generate(startText: string, endText: string, userId?: stri
   
   If you are at the end of a paragraph, you will only be given the text that has been generated before.
   
-  You will continue immediately where the user left off, do not repeat any of the characters in their text so far,
+  You will continue immediately where the user left off, absolutely do not repeat any of the characters in their text so far,
   only generate the continuation of their text. Try to match the user's tone as closely as possible. 
   
   Here is the text so far: ${startText} CONTINUE WRITING HERE ${endText}
