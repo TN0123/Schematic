@@ -282,7 +282,7 @@ export default function WriteEditor({
                         ),
                 }}
               />
-              <div className="absolute top-[-10] left-4 flex flex-col items-start gap-2 z-10">
+              <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
                 {premiumRemainingUses !== null &&
                   userId !== "cm6qw1jxy0000unao2h2rz83l" &&
                   userId !== "cma8kzffi0000unysbz2awbmf" && (
