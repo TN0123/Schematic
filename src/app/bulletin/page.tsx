@@ -65,6 +65,22 @@ export default function Bulletin() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Add scroll lock effect
+  useEffect(() => {
+    if (isSidebarOpen) {
+      // Prevent scrolling on the body when sidebar is open
+      document.body.style.overflow = "hidden";
+    } else {
+      // Restore scrolling when sidebar is closed
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup function to ensure scrolling is restored when component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isSidebarOpen]);
+
   const typeIcons: Record<string, JSX.Element> = {
     text: (
       <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
@@ -185,11 +201,25 @@ export default function Bulletin() {
     <div className="h-[90dvh] flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-10 top-20 left-0 h-full w-3/4 md:w-1/4 bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-transform duration-300 shadow-lg md:shadow-none ${
+        className={`fixed md:static z-50 top-0 left-0 h-full w-full md:w-1/4 bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        <div className="flex justify-between items-center mb-4">
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center justify-between mb-6 pt-4">
+          <h2 className="text-xl font-semibold text-light-heading dark:text-dark-textPrimary">
+            All Notes
+          </h2>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover"
+          >
+            <PanelLeftClose className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Desktop header */}
+        <div className="hidden md:flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
             All Notes
           </h2>
@@ -262,7 +292,14 @@ export default function Bulletin() {
                   ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
                   : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
               }`}
-              onClick={() => setExpandedItemId(item.id)}
+              onClick={() => {
+                setExpandedItemId(item.id);
+                // Close sidebar on mobile after selection
+                if (window.innerWidth < 768) {
+                  // 768px is the md breakpoint
+                  setIsSidebarOpen(false);
+                }
+              }}
             >
               <div className="flex items-center gap-2">
                 {typeIcons[item.type] || (
@@ -280,13 +317,22 @@ export default function Bulletin() {
           ))}
         </div>
       </aside>
+
+      {/* Mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       <button
-        className={`md:hidden fixed top-20 bg-white dark:bg-dark-background dark:text-white p-3 rounded-lg ${
-          isSidebarOpen ? "right-4" : "left-4"
+        className={`md:hidden fixed top-4 left-4 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
+          isSidebarOpen ? "hidden" : "block"
         }`}
-        onClick={() => setIsSidebarOpen((prev) => !prev)}
+        onClick={() => setIsSidebarOpen(true)}
       >
-        {isSidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+        <PanelLeftOpen className="w-6 h-6" />
       </button>
       {/* Main content */}
       <div className="w-full md:w-3/4 flex-1">
