@@ -111,6 +111,27 @@ function GraphView({
   const [graphInstance, setGraphInstance] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
   const graphRef = useRef<any>(null);
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
+  // Add global mouse tracking
+  useEffect(() => {
+    const handleGlobalMouseMove = (event: MouseEvent) => {
+      if (hoveredNode) {
+        setMousePos({
+          x: event.clientX,
+          y: event.clientY,
+        });
+      }
+    };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+    };
+  }, [hoveredNode]);
 
   // --- CATEGORY COLOR PALETTE ---
   // Fixed palette for up to 10 categories, fallback to random if more
@@ -132,12 +153,6 @@ function GraphView({
   categories.forEach((cat, i) => {
     categoryColorMap[cat] = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
   });
-
-  // --- HOVER STATE FOR TOOLTIP & HIGHLIGHTING ---
-  const [hoveredNode, setHoveredNode] = useState<any>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
-    null
-  );
 
   // --- FAVICON IMAGE CACHE ---
   const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
@@ -282,16 +297,52 @@ function GraphView({
     pos: { x: number; y: number };
   }) => {
     if (!node || !pos) return null;
+
+    // Calculate tooltip position to keep it within viewport
+    const TOOLTIP_WIDTH = 320; // max-width of tooltip
+    const PADDING = 16; // padding from viewport edges
+    const TOOLTIP_OFFSET = 16; // offset from cursor
+    const ESTIMATED_TOOLTIP_HEIGHT = 100; // estimated height of tooltip
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Calculate position, ensuring tooltip stays within viewport
+    const left = Math.min(
+      Math.max(pos.x + TOOLTIP_OFFSET, PADDING),
+      viewportWidth - TOOLTIP_WIDTH - PADDING
+    );
+
+    // Calculate available space above and below cursor
+    const spaceBelow = viewportHeight - pos.y - PADDING;
+    const spaceAbove = pos.y - PADDING;
+
+    // Position tooltip above or below cursor based on available space
+    let top;
+    if (spaceBelow >= ESTIMATED_TOOLTIP_HEIGHT || spaceBelow > spaceAbove) {
+      // Position below cursor if there's enough space or more space than above
+      top = pos.y + TOOLTIP_OFFSET;
+    } else {
+      // Position above cursor
+      top = pos.y - ESTIMATED_TOOLTIP_HEIGHT - TOOLTIP_OFFSET;
+    }
+
+    // Ensure tooltip stays within viewport
+    top = Math.max(
+      PADDING,
+      Math.min(top, viewportHeight - ESTIMATED_TOOLTIP_HEIGHT - PADDING)
+    );
+
     return (
       <div
         style={{
           position: "fixed",
-          left: pos.x + 16,
-          top: pos.y + 16,
-          zIndex: 50,
+          left,
+          top,
+          zIndex: 9999,
           pointerEvents: "none",
           minWidth: 220,
-          maxWidth: 320,
+          maxWidth: TOOLTIP_WIDTH,
         }}
         className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
       >
@@ -365,22 +416,29 @@ function GraphView({
         </button>
       </div>
       {/* Tooltip */}
-      {hoveredNode && mousePos && <Tooltip node={hoveredNode} pos={mousePos} />}
+      {hoveredNode && mousePos && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{ zIndex: 9999 }}
+        >
+          <Tooltip node={hoveredNode} pos={mousePos} />
+        </div>
+      )}
       <ForceGraph2DWithRef
         ref={graphRef}
         graphData={graphData}
         nodeLabel={"title"}
-        d3Charge={() => -900}
+        d3Charge={() => -300}
         d3ForceInit={(fg: any) => {
           fg.d3Force("collide", d3.forceCollide().radius(38));
+          fg.d3Force("x", d3.forceX(0).strength(0.1));
+          fg.d3Force("y", d3.forceY(0).strength(0.1));
         }}
         nodeCanvasObject={(
           node: any,
           ctx: CanvasRenderingContext2D,
           globalScale: number
         ) => {
-          const label = node.link.title;
-          const fontSize = 14 / globalScale;
           const radius = nodeRadii[node.id] ?? BASE_RADIUS;
           const color = categoryColorMap[node.category] || "#888";
 
@@ -426,45 +484,6 @@ function GraphView({
             ctx.fillStyle = color + "99";
             ctx.fill();
           }
-
-          // Draw label with background for readability
-          ctx.font = `bold ${fontSize}px Sans-Serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          const text = label;
-          const textWidth = ctx.measureText(text).width;
-          const padding = 6;
-          const labelY = node.y + radius + 4;
-          // Draw rounded rect background
-          ctx.save();
-          ctx.globalAlpha = 0.8;
-          ctx.fillStyle = "#222";
-          const rectX = node.x - textWidth / 2 - padding;
-          const rectY = labelY - 2;
-          const rectW = textWidth + padding * 2;
-          const rectH = fontSize + 6;
-          const r = 8;
-          ctx.beginPath();
-          ctx.moveTo(rectX + r, rectY);
-          ctx.lineTo(rectX + rectW - r, rectY);
-          ctx.quadraticCurveTo(rectX + rectW, rectY, rectX + rectW, rectY + r);
-          ctx.lineTo(rectX + rectW, rectY + rectH - r);
-          ctx.quadraticCurveTo(
-            rectX + rectW,
-            rectY + rectH,
-            rectX + rectW - r,
-            rectY + rectH
-          );
-          ctx.lineTo(rectX + r, rectY + rectH);
-          ctx.quadraticCurveTo(rectX, rectY + rectH, rectX, rectY + rectH - r);
-          ctx.lineTo(rectX, rectY + r);
-          ctx.quadraticCurveTo(rectX, rectY, rectX + r, rectY);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-          // Draw label text
-          ctx.fillStyle = "#fff";
-          ctx.fillText(text, node.x, labelY);
         }}
         linkColor={(link: any) => {
           const isHighlighted =
@@ -484,22 +503,39 @@ function GraphView({
         }}
         linkDirectionalParticles={0}
         linkDirectionalParticleSpeed={0.005}
-        onNodeClick={(node: any) => {
+        onNodeClick={(node: any, event: MouseEvent) => {
           window.open(node.link.url, "_blank");
         }}
         onNodeRightClick={(node: any) => {
           onDelete(node.id);
         }}
-        cooldownTicks={100}
+        cooldownTicks={200}
         nodeRelSize={8}
         d3Force="charge"
-        d3VelocityDecay={0.3}
+        d3VelocityDecay={0.4}
         d3AlphaMin={0.001}
-        onNodeHover={(node: any, prevNode: any) => {
+        d3AlphaDecay={0.02}
+        d3Alpha={0.3}
+        onNodeHover={(node: any) => {
           setHoveredNode(node);
+          if (!node) {
+            setMousePos(null);
+          }
         }}
-        onNodeMouseMove={(node: any, event: MouseEvent) => {
-          setMousePos({ x: event.clientX, y: event.clientY });
+        onEngineStop={() => {
+          if (graphInstance) {
+            const nodes = graphData.nodes;
+            if (nodes.length > 0) {
+              const centerX =
+                nodes.reduce((sum, node) => sum + (node.x || 0), 0) /
+                nodes.length;
+              const centerY =
+                nodes.reduce((sum, node) => sum + (node.y || 0), 0) /
+                nodes.length;
+              graphInstance.centerAt(centerX, centerY);
+              graphInstance.zoom(1.2);
+            }
+          }
         }}
         onBackgroundClick={() => {
           setHoveredNode(null);
