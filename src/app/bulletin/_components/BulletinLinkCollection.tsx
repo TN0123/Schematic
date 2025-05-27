@@ -7,10 +7,6 @@ import {
   Loader2,
   AlertCircle,
   Save,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  ChevronDown,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";

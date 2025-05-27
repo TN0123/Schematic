@@ -240,10 +240,13 @@ export default function Bulletin() {
                       addItem("link-collection");
                       setShowDropdown(false);
                     }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
                   >
                     <Link />
                     Link Collection
+                    <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                      new
+                    </span>
                   </button>
                 </div>
               </div>
