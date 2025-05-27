@@ -62,12 +62,7 @@ function SortableCard({
   onChange,
   onRemove,
   activeId,
-}: {
-  card: KanbanCard;
-  onChange: (text: string) => void;
-  onRemove: () => void;
-  activeId: string | null;
-}) {
+}: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -106,11 +101,11 @@ function SortableCard({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md px-3 py-4 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing"
+      className="flex items-center gap-2 rounded-md px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing touch-manipulation h-12 sm:h-16"
     >
       {/* Grip Icon */}
       <div className="flex-shrink-0" {...attributes} {...listeners}>
-        <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
+        <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 dark:text-dark-icon" />
       </div>
 
       {/* Card Content: Edit/View Toggle */}
@@ -123,20 +118,16 @@ function SortableCard({
           onBlur={() => setIsEditing(false)}
           onKeyDown={handleKeyDown}
           placeholder="Enter card text..."
-          className="flex-grow bg-transparent border-b dark:border-dark-divider text-center text-sm focus:outline-none dark:text-dark-textPrimary overflow-y-auto"
+          className="flex-grow bg-transparent border-b dark:border-dark-divider text-center text-xs sm:text-sm focus:outline-none dark:text-dark-textPrimary"
           aria-label="Edit card"
           autoFocus
         />
       ) : (
         <button
-          className="flex-grow text-left text-sm text-black text-center dark:text-dark-textPrimary overflow-y-auto focus:outline-none"
+          className="flex-grow text-left text-xs sm:text-sm text-black text-center dark:text-dark-textPrimary focus:outline-none overflow-y-auto max-h-full"
           onClick={() => setIsEditing(true)}
         >
-          {card.text || (
-            <span className="italic text-gray-400 overflow-y-auto">
-              Untitled
-            </span>
-          )}
+          {card.text || <span className="italic text-gray-400">Untitled</span>}
         </button>
       )}
 
@@ -146,7 +137,7 @@ function SortableCard({
         className="text-red-400 hover:text-red-600 h-full flex-shrink-0"
         aria-label="Delete card"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3 h-3 sm:w-4 sm:h-4" />
       </button>
     </li>
   );
@@ -200,10 +191,10 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 h-full"
+      className="flex flex-col bg-gray-50 dark:bg-dark-secondary rounded-lg p-2 sm:p-4 h-full"
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2 sm:mb-4">
         <div className="flex items-center gap-2 min-w-0">
           {/* Drag Handle */}
           <div
@@ -211,7 +202,7 @@ function SortableColumn({
             {...listeners}
             className="cursor-grab flex-shrink-0"
           >
-            <GripVertical className="w-4 h-4 text-gray-400 dark:text-dark-icon" />
+            <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 dark:text-dark-icon" />
           </div>
 
           {isEditing ? (
@@ -220,12 +211,12 @@ function SortableColumn({
               value={columnNameEdit}
               onChange={(e) => onColumnNameEditChange(e.target.value)}
               onBlur={onEditEnd}
-              className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary w-full"
+              className="font-semibold bg-transparent border-b dark:border-dark-divider px-2 py-1 text-xs sm:text-sm focus:outline-none dark:text-dark-textPrimary w-full"
               autoFocus
             />
           ) : (
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <h3 className="font-semibold text-sm dark:text-dark-textPrimary truncate flex-1">
+              <h3 className="font-semibold text-xs sm:text-sm dark:text-dark-textPrimary truncate flex-1">
                 {column.title}
               </h3>
               <button
@@ -233,7 +224,7 @@ function SortableColumn({
                 className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent flex-shrink-0"
                 type="button"
               >
-                <Pencil className="w-3 h-3" />
+                <Pencil className="w-2 h-2 sm:w-3 sm:h-3" />
               </button>
             </div>
           )}
@@ -243,17 +234,17 @@ function SortableColumn({
           className="text-red-400 hover:text-red-600 flex-shrink-0 ml-2"
           type="button"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3 h-3 sm:w-4 sm:h-4" />
         </button>
       </div>
 
       {/* Column Cards */}
-      <div className="h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="h-[calc(100vh-400px)] sm:h-[calc(100vh-300px)] overflow-y-auto">
         <SortableContext
           items={cards.map((card) => card.id)}
           strategy={verticalListSortingStrategy}
         >
-          <ul className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2 sm:gap-3 px-1">
             {cards.map((card) => (
               <SortableCard
                 key={card.id}
@@ -270,7 +261,7 @@ function SortableColumn({
       {/* Add Card Button */}
       <button
         onClick={() => onAddCard(column.id)}
-        className="mt-4 flex items-center justify-center gap-1 px-3 py-2 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 text-sm rounded transition"
+        className="mt-4 flex items-center justify-center gap-1 px-3 py-2 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 text-sm rounded transition touch-manipulation"
         type="button"
       >
         <Plus className="w-4 h-4" />
@@ -469,7 +460,7 @@ export default function BulletinKanban({
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col">
         {/* Title & Actions */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
           <input
             className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}

@@ -400,7 +400,7 @@ function GraphView({
   return (
     <div className="relative w-full h-full">
       {/* Legend */}
-      <div className="absolute left-4 top-4 z-20">
+      <div className="absolute left-4 top-4 z-5">
         <Legend categories={categories} categoryColorMap={categoryColorMap} />
       </div>
       {/* Tooltip */}
