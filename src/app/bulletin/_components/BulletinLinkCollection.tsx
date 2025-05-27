@@ -143,9 +143,9 @@ function GraphView({
   const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
 
   // --- ANIMATED NODE RADII ---
-  const BASE_RADIUS = 22;
-  const HOVER_RADIUS = 30;
-  const ANIMATION_SPEED = 0.25; // Higher = faster
+  const BASE_RADIUS = 12;
+  const HOVER_RADIUS = 18;
+  const ANIMATION_SPEED = 0.25;
   const [nodeRadii, setNodeRadii] = useState<{ [id: string]: number }>({});
 
   // Animate node radii towards their target
