@@ -7,9 +7,12 @@ import {
   Loader2,
   AlertCircle,
   Save,
+  NotepadText,
+  Clock,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";
+import { formatDistanceToNow } from "date-fns";
 
 // Constants
 const CATEGORY_COLORS = [
@@ -807,6 +810,7 @@ export default function BulletinLinkCollection({
     title: initialTitle,
     links: initialLinks,
   });
+  const [updatedAt, setUpdatedAt] = useState(new Date().toISOString());
 
   const handleCategoryChange = async (linkId: string, newCategory: string) => {
     const existingCategories = Array.from(
@@ -839,6 +843,7 @@ export default function BulletinLinkCollection({
         await onSave(id, updates);
         lastSavedState.current = { title, links };
         setHasUnsavedChanges(false);
+        setUpdatedAt(new Date().toISOString());
       }
     } catch (error) {
       console.error("Failed to save:", error);
@@ -952,19 +957,29 @@ export default function BulletinLinkCollection({
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-4 h-full flex flex-col">
-        <div className="flex justify-between items-center">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
-            placeholder="Link Collection Title"
-          />
-          <div className="flex gap-2">
+      <div className="p-3 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center w-full">
+            <NotepadText className="h-10 w-10 mx-4 text-green-500" />
+            <div className="flex flex-col w-full">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
+                placeholder="Enter title..."
+              />
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Last modified{" "}
+                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 ml-2">
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
