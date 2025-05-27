@@ -182,13 +182,6 @@ function GraphView({
   }, []);
 
   useEffect(() => {
-    if (graphRef.current) {
-      setGraphInstance(graphRef.current);
-      graphRef.current.zoomToFit(400);
-    }
-  }, [graphRef.current]);
-
-  useEffect(() => {
     // Convert links to graph data
     const nodes: GraphNode[] = links.map((link) => ({
       id: link.id,
