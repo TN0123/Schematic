@@ -15,6 +15,61 @@ import {
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";
 
+// Constants
+const CATEGORY_COLORS = [
+  "#1a73e8", // blue
+  "#e8711a", // orange
+  "#34a853", // green
+  "#e91e63", // pink
+  "#fbbc05", // yellow
+  "#9c27b0", // purple
+  "#00bcd4", // cyan
+  "#ff9800", // deep orange
+  "#607d8b", // blue grey
+  "#8bc34a", // light green
+];
+
+const BASE_RADIUS = 12;
+const HOVER_RADIUS = 18;
+const ANIMATION_SPEED = 0.25;
+
+// Utility functions
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeUrl(url: string): string {
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+function getFaviconUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return `https://www.google.com/s2/favicons?sz=64&domain_url=${urlObj.origin}`;
+  } catch {
+    return "";
+  }
+}
+
+function normalizeCategory(
+  category: string,
+  existingCategories: string[]
+): string {
+  const normalizedInput = category.trim();
+  const matchingCategory = existingCategories.find(
+    (cat) => cat.toLowerCase() === normalizedInput.toLowerCase()
+  );
+  return matchingCategory || normalizedInput;
+}
+
 // Dynamically import ForceGraph2D with no SSR
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
@@ -72,30 +127,115 @@ interface BulletinLinkCollectionProps {
   onDelete?: () => void;
 }
 
-function isValidUrl(url: string): boolean {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Subcomponents for GraphView
+const Legend = ({
+  categories,
+  categoryColorMap,
+}: {
+  categories: string[];
+  categoryColorMap: Record<string, string>;
+}) => (
+  <div className="flex flex-wrap gap-3 mb-2 px-4 py-2 bg-white/80 dark:bg-dark-secondary/80 rounded-lg shadow text-xs">
+    {categories.map((cat) => (
+      <div key={cat} className="flex items-center gap-2">
+        <span
+          style={{
+            display: "inline-block",
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: categoryColorMap[cat],
+            border: "2px solid #fff",
+            boxShadow: "0 0 0 1px #8884",
+          }}
+        />
+        <span className="dark:text-dark-textPrimary text-gray-800">{cat}</span>
+      </div>
+    ))}
+  </div>
+);
 
-function normalizeUrl(url: string): string {
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return `https://${url}`;
-  }
-  return url;
-}
+const Tooltip = ({
+  node,
+  pos,
+  categoryColorMap,
+}: {
+  node: any;
+  pos: { x: number; y: number };
+  categoryColorMap: Record<string, string>;
+}) => {
+  if (!node || !pos) return null;
 
-function getFaviconUrl(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    return `https://www.google.com/s2/favicons?sz=64&domain_url=${urlObj.origin}`;
-  } catch {
-    return "";
+  const TOOLTIP_WIDTH = 320;
+  const PADDING = 16;
+  const TOOLTIP_OFFSET = 16;
+  const ESTIMATED_TOOLTIP_HEIGHT = 200;
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = pos.x + TOOLTIP_OFFSET;
+  let top = pos.y + TOOLTIP_OFFSET;
+
+  if (left + TOOLTIP_WIDTH + PADDING > viewportWidth) {
+    left = pos.x - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
   }
-}
+
+  if (top + ESTIMATED_TOOLTIP_HEIGHT + PADDING > viewportHeight) {
+    top = pos.y - ESTIMATED_TOOLTIP_HEIGHT - TOOLTIP_OFFSET;
+  }
+
+  left = Math.max(
+    PADDING,
+    Math.min(left, viewportWidth - TOOLTIP_WIDTH - PADDING)
+  );
+  top = Math.max(
+    PADDING,
+    Math.min(top, viewportHeight - ESTIMATED_TOOLTIP_HEIGHT - PADDING)
+  );
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left,
+        top,
+        zIndex: 9999,
+        pointerEvents: "none",
+        minWidth: 220,
+        maxWidth: TOOLTIP_WIDTH,
+      }}
+      className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span
+          style={{
+            display: "inline-block",
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: categoryColorMap[node.category],
+            border: "2px solid #fff",
+            boxShadow: "0 0 0 1px #8884",
+          }}
+        />
+        <span className="font-semibold truncate">{node.link.title}</span>
+        <span
+          className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium truncate"
+          style={{
+            background: categoryColorMap[node.category] + "22",
+            color: categoryColorMap[node.category],
+          }}
+        >
+          {node.category}
+        </span>
+      </div>
+      <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
+        Right-click to modify
+      </div>
+    </div>
+  );
+};
 
 function GraphView({
   links,
@@ -127,6 +267,15 @@ function GraphView({
   const [newCategory, setNewCategory] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
+  const [nodeRadii, setNodeRadii] = useState<{ [id: string]: number }>({});
+
+  // Map category to color
+  const categories = Array.from(new Set(links.map((l) => l.category)));
+  const categoryColorMap: Record<string, string> = {};
+  categories.forEach((cat, i) => {
+    categoryColorMap[cat] = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+  });
 
   // Add global mouse tracking
   useEffect(() => {
@@ -144,37 +293,6 @@ function GraphView({
       window.removeEventListener("mousemove", handleGlobalMouseMove);
     };
   }, [hoveredNode]);
-
-  // --- CATEGORY COLOR PALETTE ---
-  // Fixed palette for up to 10 categories, fallback to random if more
-  const CATEGORY_COLORS = [
-    "#1a73e8", // blue
-    "#e8711a", // orange
-    "#34a853", // green
-    "#e91e63", // pink
-    "#fbbc05", // yellow
-    "#9c27b0", // purple
-    "#00bcd4", // cyan
-    "#ff9800", // deep orange
-    "#607d8b", // blue grey
-    "#8bc34a", // light green
-  ];
-
-  // Map category to color
-  const categories = Array.from(new Set(links.map((l) => l.category)));
-  const categoryColorMap: Record<string, string> = {};
-  categories.forEach((cat, i) => {
-    categoryColorMap[cat] = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
-  });
-
-  // --- FAVICON IMAGE CACHE ---
-  const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
-
-  // --- ANIMATED NODE RADII ---
-  const BASE_RADIUS = 12;
-  const HOVER_RADIUS = 18;
-  const ANIMATION_SPEED = 0.25;
-  const [nodeRadii, setNodeRadii] = useState<{ [id: string]: number }>({});
 
   // Animate node radii towards their target
   useEffect(() => {
@@ -277,118 +395,6 @@ function GraphView({
     );
   }
 
-  // --- LEGEND COMPONENT ---
-  const Legend = () => (
-    <div className="flex flex-wrap gap-3 mb-2 px-4 py-2 bg-white/80 dark:bg-dark-secondary/80 rounded-lg shadow text-xs">
-      {categories.map((cat) => (
-        <div key={cat} className="flex items-center gap-2">
-          <span
-            style={{
-              display: "inline-block",
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: categoryColorMap[cat],
-              border: "2px solid #fff",
-              boxShadow: "0 0 0 1px #8884",
-            }}
-          />
-          <span className="dark:text-dark-textPrimary text-gray-800">
-            {cat}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-
-  // --- TOOLTIP COMPONENT ---
-  const Tooltip = ({
-    node,
-    pos,
-  }: {
-    node: any;
-    pos: { x: number; y: number };
-  }) => {
-    if (!node || !pos) return null;
-
-    // Calculate tooltip position to keep it within viewport
-    const TOOLTIP_WIDTH = 320; // max-width of tooltip
-    const PADDING = 16; // padding from viewport edges
-    const TOOLTIP_OFFSET = 16; // offset from cursor
-    const ESTIMATED_TOOLTIP_HEIGHT = 200; // estimated height of tooltip
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // Calculate position, ensuring tooltip stays within viewport
-    const left = Math.min(
-      Math.max(pos.x + TOOLTIP_OFFSET, PADDING),
-      viewportWidth - TOOLTIP_WIDTH - PADDING
-    );
-
-    // Calculate available space above and below cursor
-    const spaceBelow = viewportHeight - pos.y - PADDING;
-    const spaceAbove = pos.y - PADDING;
-
-    // Position tooltip above or below cursor based on available space
-    let top;
-    if (spaceBelow >= ESTIMATED_TOOLTIP_HEIGHT || spaceBelow > spaceAbove) {
-      // Position below cursor if there's enough space or more space than above
-      top = pos.y + TOOLTIP_OFFSET;
-    } else {
-      // Position above cursor
-      top = pos.y - ESTIMATED_TOOLTIP_HEIGHT - TOOLTIP_OFFSET;
-    }
-
-    // Ensure tooltip stays within viewport
-    top = Math.max(
-      PADDING,
-      Math.min(top, viewportHeight - ESTIMATED_TOOLTIP_HEIGHT - PADDING)
-    );
-
-    return (
-      <div
-        style={{
-          position: "fixed",
-          left,
-          top,
-          zIndex: 9999,
-          pointerEvents: "none",
-          minWidth: 220,
-          maxWidth: TOOLTIP_WIDTH,
-        }}
-        className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <span
-            style={{
-              display: "inline-block",
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: categoryColorMap[node.category],
-              border: "2px solid #fff",
-              boxShadow: "0 0 0 1px #8884",
-            }}
-          />
-          <span className="font-semibold truncate">{node.link.title}</span>
-          <span
-            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium truncate"
-            style={{
-              background: categoryColorMap[node.category] + "22",
-              color: categoryColorMap[node.category],
-            }}
-          >
-            {node.category}
-          </span>
-        </div>
-        <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
-          Right-click to modify
-        </div>
-      </div>
-    );
-  };
-
   // --- HIGHLIGHTING LOGIC ---
   const highlightedNodeId = hoveredNode?.id;
 
@@ -396,30 +402,7 @@ function GraphView({
     <div className="relative w-full h-full">
       {/* Legend */}
       <div className="absolute left-4 top-4 z-20">
-        <Legend />
-      </div>
-      <div className="absolute top-4 right-4 z-10 flex gap-2 bg-white/80 dark:bg-dark-secondary/80 p-2 rounded-lg shadow-lg">
-        <button
-          onClick={handleZoomIn}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
-          aria-label="Zoom in"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
-          aria-label="Zoom out"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </button>
-        <button
-          onClick={handleResetZoom}
-          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
-          aria-label="Reset view"
-        >
-          <Maximize2 className="h-4 w-4" />
-        </button>
+        <Legend categories={categories} categoryColorMap={categoryColorMap} />
       </div>
       {/* Tooltip */}
       {hoveredNode && mousePos && (
@@ -427,7 +410,11 @@ function GraphView({
           className="fixed inset-0 pointer-events-none"
           style={{ zIndex: 9999 }}
         >
-          <Tooltip node={hoveredNode} pos={mousePos} />
+          <Tooltip
+            node={hoveredNode}
+            pos={mousePos}
+            categoryColorMap={categoryColorMap}
+          />
         </div>
       )}
       {/* Add context menu */}
@@ -435,7 +422,6 @@ function GraphView({
         <div
           className="fixed inset-0 z-[99998]"
           onClick={(e) => {
-            console.log("Overlay clicked");
             e.preventDefault();
             e.stopPropagation();
             setContextMenu(null);
@@ -445,12 +431,41 @@ function GraphView({
             ref={menuRef}
             className="fixed z-[99999] bg-white dark:bg-dark-secondary rounded-lg shadow-lg border border-gray-200 dark:border-dark-divider"
             style={{
-              left: contextMenu.x,
-              top: contextMenu.y,
+              left: (() => {
+                const MENU_WIDTH = 200;
+                const PADDING = 16;
+                const viewportWidth = window.innerWidth;
+                const rightEdge = contextMenu.x + MENU_WIDTH;
+
+                // If menu would overflow right edge, position it to the left of the cursor
+                if (rightEdge + PADDING > viewportWidth) {
+                  return Math.max(PADDING, contextMenu.x - MENU_WIDTH);
+                }
+                // Otherwise position it to the right of the cursor
+                return Math.min(
+                  contextMenu.x,
+                  viewportWidth - MENU_WIDTH - PADDING
+                );
+              })(),
+              top: (() => {
+                const MENU_HEIGHT = 200; // Estimated height
+                const PADDING = 16;
+                const viewportHeight = window.innerHeight;
+                const bottomEdge = contextMenu.y + MENU_HEIGHT;
+
+                // If menu would overflow bottom edge, position it above the cursor
+                if (bottomEdge + PADDING > viewportHeight) {
+                  return Math.max(PADDING, contextMenu.y - MENU_HEIGHT);
+                }
+                // Otherwise position it below the cursor
+                return Math.min(
+                  contextMenu.y,
+                  viewportHeight - MENU_HEIGHT - PADDING
+                );
+              })(),
               minWidth: 200,
             }}
             onClick={(e) => {
-              console.log("Menu container clicked");
               e.preventDefault();
               e.stopPropagation();
             }}
@@ -471,7 +486,6 @@ function GraphView({
                 <div
                   className="flex gap-1"
                   onClick={(e) => {
-                    console.log("Form container clicked");
                     e.stopPropagation();
                   }}
                 >
@@ -480,11 +494,9 @@ function GraphView({
                     type="text"
                     value={newCategory}
                     onChange={(e) => {
-                      console.log("Input changed:", e.target.value);
                       setNewCategory(e.target.value);
                     }}
                     onBlur={(e) => {
-                      console.log("Input blur");
                       // Add a small delay to allow the save button click to be processed first
                       setTimeout(() => {
                         if (
@@ -495,7 +507,6 @@ function GraphView({
                       }, 100);
                     }}
                     onClick={(e) => {
-                      console.log("Input clicked");
                       e.stopPropagation();
                     }}
                     className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-background text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
@@ -508,14 +519,12 @@ function GraphView({
                       e.preventDefault();
                     }}
                     onClick={(e) => {
-                      console.log("Save button clicked");
                       e.preventDefault();
                       e.stopPropagation();
                       if (
                         newCategory.trim() &&
                         newCategory !== contextMenu.node.category
                       ) {
-                        console.log("Updating category to:", newCategory);
                         onCategoryChange(
                           contextMenu.node.id,
                           newCategory.trim()
@@ -532,7 +541,6 @@ function GraphView({
                 <button
                   type="button"
                   onClick={(e) => {
-                    console.log("Edit button clicked");
                     e.preventDefault();
                     e.stopPropagation();
                     setNewCategory(contextMenu.node.category);
@@ -560,7 +568,6 @@ function GraphView({
               <button
                 type="button"
                 onClick={(e) => {
-                  console.log("Delete button clicked");
                   e.preventDefault();
                   e.stopPropagation();
                   onDelete(contextMenu.node.id);
@@ -578,11 +585,11 @@ function GraphView({
         ref={graphRef}
         graphData={graphData}
         nodeLabel={"title"}
-        d3Charge={() => -300}
+        d3Charge={() => -1000}
         d3ForceInit={(fg: any) => {
           fg.d3Force("collide", d3.forceCollide().radius(38));
-          fg.d3Force("x", d3.forceX(0).strength(0.1));
-          fg.d3Force("y", d3.forceY(0).strength(0.1));
+          fg.d3Force("x", d3.forceX(0).strength(0.05));
+          fg.d3Force("y", d3.forceY(0).strength(0.05));
         }}
         nodeCanvasObject={(
           node: any,
@@ -668,7 +675,7 @@ function GraphView({
         cooldownTicks={200}
         nodeRelSize={8}
         d3Force="charge"
-        d3VelocityDecay={0.4}
+        d3VelocityDecay={0.5}
         d3AlphaMin={0.001}
         d3AlphaDecay={0.02}
         d3Alpha={0.3}
@@ -805,27 +812,10 @@ export default function BulletinLinkCollection({
     links: initialLinks,
   });
 
-  // Helper function to normalize categories
-  const normalizeCategory = (
-    category: string,
-    existingCategories: string[]
-  ): string => {
-    const normalizedInput = category.trim();
-    const matchingCategory = existingCategories.find(
-      (cat) => cat.toLowerCase() === normalizedInput.toLowerCase()
-    );
-    return matchingCategory || normalizedInput;
-  };
-
   const handleCategoryChange = async (linkId: string, newCategory: string) => {
-    console.log("Changing category for link", linkId, "to", newCategory);
-
-    // Get all existing categories
     const existingCategories = Array.from(
       new Set(links.map((link) => link.category))
     );
-
-    // Normalize the new category
     const finalCategory = normalizeCategory(newCategory, existingCategories);
 
     const updatedLinks = links.map((link) =>
@@ -837,6 +827,8 @@ export default function BulletinLinkCollection({
   };
 
   const handleSave = useCallback(async () => {
+    if (!hasUnsavedChanges) return;
+
     setIsSaving(true);
     try {
       const updates: { title?: string; data?: { links: LinkPreview[] } } = {};
@@ -849,10 +841,7 @@ export default function BulletinLinkCollection({
 
       if (Object.keys(updates).length > 0) {
         await onSave(id, updates);
-        lastSavedState.current = {
-          title,
-          links,
-        };
+        lastSavedState.current = { title, links };
         setHasUnsavedChanges(false);
       }
     } catch (error) {
@@ -860,7 +849,7 @@ export default function BulletinLinkCollection({
     } finally {
       setIsSaving(false);
     }
-  }, [id, onSave, title, links]);
+  }, [id, onSave, title, links, hasUnsavedChanges]);
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -874,9 +863,7 @@ export default function BulletinLinkCollection({
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
-    return () => {
-      document.removeEventListener("keydown", handleKeyPress);
-    };
+    return () => document.removeEventListener("keydown", handleKeyPress);
   }, [handleKeyPress]);
 
   useEffect(() => {
@@ -933,26 +920,16 @@ export default function BulletinLinkCollection({
 
       const response = await fetch("/api/categorize-link", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          categories,
-          link: newLinkPreview,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories, link: newLinkPreview }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to categorize link");
-      }
+      if (!response.ok) throw new Error("Failed to categorize link");
 
       const { result } = await response.json();
-
-      // Use the same category normalization logic
       newLinkPreview.category = normalizeCategory(result, categories);
 
-      const updatedLinks = [...links, newLinkPreview];
-      setLinks(updatedLinks);
+      setLinks((prev) => [...prev, newLinkPreview]);
       setNewLink("");
       setHasUnsavedChanges(true);
       await handleSave();
@@ -965,8 +942,7 @@ export default function BulletinLinkCollection({
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    const updatedLinks = links.filter((link) => link.id !== linkId);
-    setLinks(updatedLinks);
+    setLinks((prev) => prev.filter((link) => link.id !== linkId));
     setHasUnsavedChanges(true);
     await handleSave();
   };
