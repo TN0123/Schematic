@@ -121,8 +121,8 @@ export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
       <aside
         className={`fixed md:relative z-30 h-full ${
           isCollapsed ? "w-14" : "w-80"
-        } bg-white dark:bg-dark-background border-r dark:border-dark-divider ${
-          isCollapsed ? "px-2 py-6" : "px-4 py-6"
+        } bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 ${
+          isCollapsed ? "px-2" : "px-4"
         } flex flex-col transition-all duration-300 items-center
         ${isMobileOpen ? "left-0" : "-left-full md:left-0"}
         `}

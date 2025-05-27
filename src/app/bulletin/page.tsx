@@ -64,6 +64,7 @@ export default function Bulletin() {
   const [hasFetched, setHasFetched] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Add scroll lock effect
   useEffect(() => {
@@ -197,13 +198,17 @@ export default function Bulletin() {
     return html.replace(/<[^>]+>/g, " ");
   };
 
+  const handleToggle = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
   return (
     <div className="h-[90dvh] flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full w-full md:w-1/4 bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-transform duration-300 ease-in-out ${
+        className={`fixed md:static z-50 top-0 left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
+        } ${isCollapsed ? "md:w-14" : "md:w-1/4"} w-full`}
       >
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between mb-6 pt-4">
@@ -219,103 +224,187 @@ export default function Bulletin() {
         </div>
 
         {/* Desktop header */}
-        <div className="hidden md:flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-light-heading dark:text-dark-textPrimary">
-            All Notes
-          </h2>
-          <div className="relative inline-block text-left">
+        <div
+          className={`hidden md:flex ${
+            isCollapsed ? "flex-col" : ""
+          } justify-between items-center mb-4`}
+        >
+          <span className="text-lg flex items-center gap-2 font-semibold text-light-heading dark:text-dark-textPrimary">
             <button
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
-              onClick={() => setShowDropdown((prev) => !prev)}
+              onClick={handleToggle}
+              className="p-2 hidden md:block rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
             >
-              <Plus size={16} className="stroke-current" />
-              <span className="hidden md:inline">New Note</span>
+              {isCollapsed ? (
+                <PanelLeftOpen
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              ) : (
+                <PanelLeftClose
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              )}
             </button>
+            {!isCollapsed && <span>All Notes</span>}
+          </span>
+          <div className="relative inline-block text-left">
+            {!isCollapsed ? (
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
+                onClick={() => setShowDropdown((prev) => !prev)}
+              >
+                <Plus size={16} className="stroke-current" />
+                <span className="hidden md:inline">New Note</span>
+              </button>
+            ) : (
+              <button
+                className="p-2 mt-4 rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white hover:bg-gray-100 dark:hover:bg-dark-hover"
+                onClick={() => setShowDropdown((prev) => !prev)}
+              >
+                <Plus size={16} className="stroke-current" />
+              </button>
+            )}
+
             {/* Dropdown */}
             {showDropdown && (
-              <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      addItem("text");
-                      setShowDropdown(false);
-                    }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
-                  >
-                    <NotepadText />
-                    Text Note
-                  </button>
-                  <button
-                    onClick={() => {
-                      addItem("todo");
-                      setShowDropdown(false);
-                    }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
-                  >
-                    <ClipboardList />
-                    To-Do List
-                  </button>
-                  <button
-                    onClick={() => {
-                      addItem("kanban");
-                      setShowDropdown(false);
-                    }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
-                  >
-                    <Columns />
-                    Kanban Board
-                  </button>
-                  <button
-                    onClick={() => {
-                      addItem("link-collection");
-                      setShowDropdown(false);
-                    }}
-                    className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
-                  >
-                    <Link />
-                    Link Collection
-                    <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
-                      new
-                    </span>
-                  </button>
-                </div>
-              </div>
+              <>
+                {isCollapsed ? (
+                  <div className="absolute left-0 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                    <div>
+                      <button
+                        onClick={() => {
+                          addItem("text");
+                          setShowDropdown(false);
+                        }}
+                        className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                        title="Text Note"
+                      >
+                        <NotepadText />
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("todo");
+                          setShowDropdown(false);
+                        }}
+                        className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                        title="To-Do List"
+                      >
+                        <ClipboardList />
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("kanban");
+                          setShowDropdown(false);
+                        }}
+                        className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                        title="Kanban Board"
+                      >
+                        <Columns />
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("link-collection");
+                          setShowDropdown(false);
+                        }}
+                        className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                        title="Link Collection"
+                      >
+                        <Link />
+                        <span className="absolute right-1 top-1 text-[8px] bg-green-500/70 text-white px-1 rounded-sm leading-[1.3]">
+                          new
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          addItem("text");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <NotepadText />
+                        Text Note
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("todo");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <ClipboardList />
+                        To-Do List
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("kanban");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <Columns />
+                        Kanban Board
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("link-collection");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                      >
+                        <Link />
+                        Link Collection
+                        <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                          new
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
-        <div className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
-                item.id === expandedItemId
-                  ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
-                  : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
-              }`}
-              onClick={() => {
-                setExpandedItemId(item.id);
-                // Close sidebar on mobile after selection
-                if (window.innerWidth < 768) {
-                  // 768px is the md breakpoint
-                  setIsSidebarOpen(false);
-                }
-              }}
-            >
-              <div className="flex items-center gap-2">
-                {typeIcons[item.type] || (
-                  <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
-                )}
-                <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
-                  {item.title || "Untitled"}
-                </h3>
-              </div>
+        {!isCollapsed && (
+          <div className="space-y-3">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
+                  item.id === expandedItemId
+                    ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
+                    : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
+                }`}
+                onClick={() => {
+                  setExpandedItemId(item.id);
+                  // Close sidebar on mobile after selection
+                  if (window.innerWidth < 768) {
+                    // 768px is the md breakpoint
+                    setIsSidebarOpen(false);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  {typeIcons[item.type] || (
+                    <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+                  )}
+                  <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
+                    {item.title || "Untitled"}
+                  </h3>
+                </div>
 
-              <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
-                {stripHtml(item.content) || ""}
-              </p>
-            </div>
-          ))}
-        </div>
+                <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
+                  {stripHtml(item.content) || ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </aside>
 
       {/* Mobile backdrop */}
