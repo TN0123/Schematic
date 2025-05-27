@@ -1,55 +1,38 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, forwardRef } from "react";
 import {
   Trash2,
   Link as LinkIcon,
   Loader2,
   AlertCircle,
   Save,
-  GripVertical,
+  NotepadText,
+  Clock,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import dynamic from "next/dynamic";
+import * as d3 from "d3-force";
+import { formatDistanceToNow } from "date-fns";
 
-export interface LinkPreview {
-  id: string;
-  url: string;
-  title: string;
-  description?: string;
-  imageUrl?: string;
-  category: string;
-  faviconUrl?: string;
-}
+// Constants
+const CATEGORY_COLORS = [
+  "#1a73e8", // blue
+  "#e8711a", // orange
+  "#34a853", // green
+  "#e91e63", // pink
+  "#fbbc05", // yellow
+  "#9c27b0", // purple
+  "#00bcd4", // cyan
+  "#ff9800", // deep orange
+  "#607d8b", // blue grey
+  "#8bc34a", // light green
+];
 
-interface BulletinLinkCollectionProps {
-  id: string;
-  initialTitle: string;
-  initialLinks?: LinkPreview[];
-  onSave: (
-    id: string,
-    updates: {
-      title?: string;
-      content?: string;
-      data?: { links: LinkPreview[] };
-    }
-  ) => Promise<void>;
-  onDelete?: () => void;
-}
+const BASE_RADIUS = 12;
+const HOVER_RADIUS = 18;
+const ANIMATION_SPEED = 0.25;
 
+// Utility functions
 function isValidUrl(url: string): boolean {
   try {
     new URL(url);
@@ -69,176 +52,742 @@ function normalizeUrl(url: string): string {
 function getFaviconUrl(url: string): string {
   try {
     const urlObj = new URL(url);
-    // Use Google S2 Favicon API for higher-res icons
     return `https://www.google.com/s2/favicons?sz=64&domain_url=${urlObj.origin}`;
   } catch {
     return "";
   }
 }
 
-function SortableLinkCard({
-  link,
-  onDelete,
-}: {
-  link: LinkPreview;
-  onDelete: (id: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: link.id });
+function normalizeCategory(
+  category: string,
+  existingCategories: string[]
+): string {
+  const normalizedInput = category.trim();
+  const matchingCategory = existingCategories.find(
+    (cat) => cat.toLowerCase() === normalizedInput.toLowerCase()
+  );
+  return matchingCategory || normalizedInput;
+}
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+// Dynamically import ForceGraph2D with no SSR
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+  ssr: false,
+});
+
+const ForceGraph2DWithRef = forwardRef((props: any, ref) => {
+  return <ForceGraph2D {...props} ref={ref} />;
+});
+
+export interface LinkPreview {
+  id: string;
+  url: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  category: string;
+  faviconUrl?: string;
+}
+
+interface GraphNode {
+  id: string;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number;
+  fy?: number;
+  link: LinkPreview;
+  category: string;
+}
+
+interface GraphLink {
+  source: string;
+  target: string;
+  category: string;
+}
+
+interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
+interface BulletinLinkCollectionProps {
+  id: string;
+  initialTitle: string;
+  initialLinks?: LinkPreview[];
+  onSave: (
+    id: string,
+    updates: {
+      title?: string;
+      content?: string;
+      data?: { links: LinkPreview[] };
+    }
+  ) => Promise<void>;
+  onDelete?: () => void;
+}
+
+// Subcomponents for GraphView
+const Legend = ({
+  categories,
+  categoryColorMap,
+}: {
+  categories: string[];
+  categoryColorMap: Record<string, string>;
+}) => (
+  <div className="flex flex-wrap gap-3 mb-2 px-4 py-2 bg-white/80 dark:bg-dark-secondary/80 rounded-lg shadow text-xs">
+    {categories.map((cat) => (
+      <div key={cat} className="flex items-center gap-2">
+        <span
+          style={{
+            display: "inline-block",
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: categoryColorMap[cat],
+            border: "2px solid #fff",
+            boxShadow: "0 0 0 1px #8884",
+          }}
+        />
+        <span className="dark:text-dark-textPrimary text-gray-800">{cat}</span>
+      </div>
+    ))}
+  </div>
+);
+
+const Tooltip = ({
+  node,
+  pos,
+  categoryColorMap,
+}: {
+  node: any;
+  pos: { x: number; y: number };
+  categoryColorMap: Record<string, string>;
+}) => {
+  if (!node || !pos) return null;
+
+  const TOOLTIP_WIDTH = 320;
+  const PADDING = 16;
+  const TOOLTIP_OFFSET = 16;
+  const ESTIMATED_TOOLTIP_HEIGHT = 200;
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = pos.x + TOOLTIP_OFFSET;
+  let top = pos.y + TOOLTIP_OFFSET;
+
+  if (left + TOOLTIP_WIDTH + PADDING > viewportWidth) {
+    left = pos.x - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
+  }
+
+  if (top + ESTIMATED_TOOLTIP_HEIGHT + PADDING > viewportHeight) {
+    top = pos.y - ESTIMATED_TOOLTIP_HEIGHT - TOOLTIP_OFFSET;
+  }
+
+  left = Math.max(
+    PADDING,
+    Math.min(left, viewportWidth - TOOLTIP_WIDTH - PADDING)
+  );
+  top = Math.max(
+    PADDING,
+    Math.min(top, viewportHeight - ESTIMATED_TOOLTIP_HEIGHT - PADDING)
+  );
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className="border dark:border-dark-divider rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white dark:bg-dark-secondary relative"
+      style={{
+        position: "fixed",
+        left,
+        top,
+        zIndex: 9999,
+        pointerEvents: "none",
+        minWidth: 220,
+        maxWidth: TOOLTIP_WIDTH,
+      }}
+      className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
     >
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded"
-        >
-          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-        </div>
-        <button
-          onClick={() => onDelete(link.id)}
-          className="p-1 hover:bg-red-300 dark:hover:bg-red-900 rounded bg-white/80 dark:bg-dark-secondary/80"
-        >
-          <Trash2 className="h-4 w-4 text-red-500" />
-        </button>
-      </div>
-
-      {link.imageUrl ? (
-        <img
-          src={link.imageUrl}
-          alt={link.title}
-          className="w-full h-32 object-cover"
+      <div className="flex items-center gap-2 mb-1">
+        <span
+          style={{
+            display: "inline-block",
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            background: categoryColorMap[node.category],
+            border: "2px solid #fff",
+            boxShadow: "0 0 0 1px #8884",
+          }}
         />
-      ) : link.faviconUrl ? (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <img
-            src={link.faviconUrl}
-            alt="Favicon"
-            className="h-10 w-10 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
-      ) : (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
-        </div>
-      )}
-
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-1">
-          {link.faviconUrl && (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              className="w-4 h-4 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          )}
-          <h3 className="font-medium dark:text-dark-textPrimary truncate">
-            {link.title}
-          </h3>
-        </div>
-        {link.description && (
-          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
-            {link.description}
-          </p>
-        )}
-        <a
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
+        <span className="font-semibold truncate">{node.link.title}</span>
+        <span
+          className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium truncate"
+          style={{
+            background: categoryColorMap[node.category] + "22",
+            color: categoryColorMap[node.category],
+          }}
         >
-          {link.url}
-        </a>
+          {node.category}
+        </span>
+      </div>
+      <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
+        Right-click to modify
       </div>
     </div>
   );
-}
+};
 
-function LinkCard({ link }: { link: LinkPreview }) {
-  return (
-    <div className="border dark:border-dark-divider rounded-lg overflow-hidden shadow-lg bg-white dark:bg-dark-secondary relative">
-      <div className="absolute top-2 right-2 z-10">
-        <div className="cursor-grab bg-white/80 dark:bg-dark-secondary/80 p-1 rounded">
-          <GripVertical className="h-4 w-4 text-gray-400 dark:text-dark-icon" />
-        </div>
+function GraphView({
+  links,
+  onDelete,
+  onCategoryChange,
+}: {
+  links: LinkPreview[];
+  onDelete: (id: string) => void;
+  onCategoryChange: (id: string, newCategory: string) => void;
+}) {
+  const [graphData, setGraphData] = useState<GraphData>({
+    nodes: [],
+    links: [],
+  });
+  const [zoom, setZoom] = useState(1);
+  const [graphInstance, setGraphInstance] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
+  const graphRef = useRef<any>(null);
+  const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [contextMenu, setContextMenu] = useState<{
+    node: any;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const faviconCache = useRef<{ [url: string]: HTMLImageElement }>({});
+  const [nodeRadii, setNodeRadii] = useState<{ [id: string]: number }>({});
+
+  // Map category to color
+  const categories = Array.from(new Set(links.map((l) => l.category)));
+  const categoryColorMap: Record<string, string> = {};
+  categories.forEach((cat, i) => {
+    categoryColorMap[cat] = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+  });
+
+  // Add global mouse tracking
+  useEffect(() => {
+    const handleGlobalMouseMove = (event: MouseEvent) => {
+      if (hoveredNode) {
+        setMousePos({
+          x: event.clientX,
+          y: event.clientY,
+        });
+      }
+    };
+
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+    };
+  }, [hoveredNode]);
+
+  // Animate node radii towards their target
+  useEffect(() => {
+    let running = true;
+    function animate() {
+      setNodeRadii((prev) => {
+        const next: { [id: string]: number } = { ...prev };
+        for (const node of graphData.nodes) {
+          const target =
+            hoveredNode && hoveredNode.id === node.id
+              ? HOVER_RADIUS
+              : BASE_RADIUS;
+          const current = prev[node.id] ?? BASE_RADIUS;
+          if (Math.abs(current - target) > 0.5) {
+            next[node.id] = current + (target - current) * ANIMATION_SPEED;
+          } else {
+            next[node.id] = target;
+          }
+        }
+        return next;
+      });
+      if (running) requestAnimationFrame(animate);
+    }
+    animate();
+    return () => {
+      running = false;
+    };
+  }, [graphData.nodes, hoveredNode]);
+
+  useEffect(() => {
+    setIsClient(true);
+    handleResetZoom();
+  }, []);
+
+  useEffect(() => {
+    // Convert links to graph data
+    const nodes: GraphNode[] = links.map((link) => ({
+      id: link.id,
+      link,
+      category: link.category,
+    }));
+
+    // Create links between nodes in the same category
+    const linksByCategory = links.reduce((acc, link) => {
+      if (!acc[link.category]) {
+        acc[link.category] = [];
+      }
+      acc[link.category].push(link);
+      return acc;
+    }, {} as Record<string, LinkPreview[]>);
+
+    const graphLinks: GraphLink[] = Object.values(linksByCategory).flatMap(
+      (categoryLinks) => {
+        const links: GraphLink[] = [];
+        for (let i = 0; i < categoryLinks.length; i++) {
+          for (let j = i + 1; j < categoryLinks.length; j++) {
+            links.push({
+              source: categoryLinks[i].id,
+              target: categoryLinks[j].id,
+              category: categoryLinks[i].category,
+            });
+          }
+        }
+        return links;
+      }
+    );
+
+    setGraphData({ nodes, links: graphLinks });
+  }, [links]);
+
+  const handleZoomIn = () => {
+    if (graphInstance) {
+      const newZoom = zoom * 1.2;
+      setZoom(newZoom);
+      graphInstance.zoom(newZoom);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (graphInstance) {
+      const newZoom = zoom / 1.2;
+      setZoom(newZoom);
+      graphInstance.zoom(newZoom);
+    }
+  };
+
+  const handleResetZoom = () => {
+    if (graphInstance) {
+      setZoom(1);
+      graphInstance.zoom(1);
+      graphInstance.centerAt(0, 0);
+    }
+  };
+
+  if (!isClient) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
+    );
+  }
 
-      {link.imageUrl ? (
-        <img
-          src={link.imageUrl}
-          alt={link.title}
-          className="w-full h-32 object-cover"
-        />
-      ) : link.faviconUrl ? (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <img
-            src={link.faviconUrl}
-            alt="Favicon"
-            className="h-10 w-10 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
+  // --- HIGHLIGHTING LOGIC ---
+  const highlightedNodeId = hoveredNode?.id;
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Legend */}
+      <div className="absolute left-4 top-4 z-20">
+        <Legend categories={categories} categoryColorMap={categoryColorMap} />
+      </div>
+      {/* Tooltip */}
+      {hoveredNode && mousePos && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{ zIndex: 9999 }}
+        >
+          <Tooltip
+            node={hoveredNode}
+            pos={mousePos}
+            categoryColorMap={categoryColorMap}
           />
         </div>
-      ) : (
-        <div className="w-full h-32 bg-gray-100 dark:bg-dark-hover flex items-center justify-center">
-          <LinkIcon className="h-8 w-8 text-gray-400 dark:text-dark-icon" />
+      )}
+      {/* Add context menu */}
+      {contextMenu && (
+        <div
+          className="fixed inset-0 z-[99998]"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setContextMenu(null);
+          }}
+        >
+          <div
+            ref={menuRef}
+            className="fixed z-[99999] bg-white dark:bg-dark-secondary rounded-lg shadow-lg border border-gray-200 dark:border-dark-divider"
+            style={{
+              left: (() => {
+                const MENU_WIDTH = 200;
+                const PADDING = 16;
+                const viewportWidth = window.innerWidth;
+                const rightEdge = contextMenu.x + MENU_WIDTH;
+
+                // If menu would overflow right edge, position it to the left of the cursor
+                if (rightEdge + PADDING > viewportWidth) {
+                  return Math.max(PADDING, contextMenu.x - MENU_WIDTH);
+                }
+                // Otherwise position it to the right of the cursor
+                return Math.min(
+                  contextMenu.x,
+                  viewportWidth - MENU_WIDTH - PADDING
+                );
+              })(),
+              top: (() => {
+                const MENU_HEIGHT = 200; // Estimated height
+                const PADDING = 16;
+                const viewportHeight = window.innerHeight;
+                const bottomEdge = contextMenu.y + MENU_HEIGHT;
+
+                // If menu would overflow bottom edge, position it above the cursor
+                if (bottomEdge + PADDING > viewportHeight) {
+                  return Math.max(PADDING, contextMenu.y - MENU_HEIGHT);
+                }
+                // Otherwise position it below the cursor
+                return Math.min(
+                  contextMenu.y,
+                  viewportHeight - MENU_HEIGHT - PADDING
+                );
+              })(),
+              minWidth: 200,
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <div className="p-2 border-b border-gray-200 dark:border-dark-divider">
+              <div className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary">
+                {contextMenu.node.link.title}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-dark-textSecondary truncate">
+                {contextMenu.node.link.url}
+              </div>
+            </div>
+            <div className="p-2">
+              <div className="text-xs text-gray-500 dark:text-dark-textSecondary mb-1">
+                Category
+              </div>
+              {isEditing ? (
+                <div
+                  className="flex gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => {
+                      setNewCategory(e.target.value);
+                    }}
+                    onBlur={(e) => {
+                      // Add a small delay to allow the save button click to be processed first
+                      setTimeout(() => {
+                        if (
+                          !menuRef.current?.contains(document.activeElement)
+                        ) {
+                          setIsEditing(false);
+                        }
+                      }, 100);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-background text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
+                    placeholder="Enter category..."
+                  />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      // Prevent the input from losing focus before the click
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (
+                        newCategory.trim() &&
+                        newCategory !== contextMenu.node.category
+                      ) {
+                        onCategoryChange(
+                          contextMenu.node.id,
+                          newCategory.trim()
+                        );
+                      }
+                      setIsEditing(false);
+                    }}
+                    className="px-2 py-1 text-sm text-white bg-light-accent dark:bg-dark-accent rounded hover:opacity-90"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setNewCategory(contextMenu.node.category);
+                    setIsEditing(true);
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-100 dark:hover:bg-dark-hover flex items-center justify-between group"
+                >
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium truncate"
+                    style={{
+                      background:
+                        categoryColorMap[contextMenu.node.category] + "22",
+                      color: categoryColorMap[contextMenu.node.category],
+                    }}
+                  >
+                    {contextMenu.node.category}
+                  </span>
+                  <span className="text-gray-400 dark:text-dark-textSecondary text-xs group-hover:text-gray-600 dark:group-hover:text-dark-textPrimary">
+                    Click to edit
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="p-1 border-t border-gray-200 dark:border-dark-divider">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(contextMenu.node.id);
+                  setContextMenu(null);
+                }}
+                className="w-full text-left px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                Delete Link
+              </button>
+            </div>
+          </div>
         </div>
       )}
+      <ForceGraph2DWithRef
+        ref={graphRef}
+        graphData={graphData}
+        nodeLabel={"title"}
+        d3Charge={() => -1000}
+        d3ForceInit={(fg: any) => {
+          fg.d3Force("collide", d3.forceCollide().radius(38));
+          fg.d3Force("x", d3.forceX(0).strength(0.05));
+          fg.d3Force("y", d3.forceY(0).strength(0.05));
+        }}
+        nodeCanvasObject={(
+          node: any,
+          ctx: CanvasRenderingContext2D,
+          globalScale: number
+        ) => {
+          const radius = nodeRadii[node.id] ?? BASE_RADIUS;
+          const color = categoryColorMap[node.category] || "#888";
 
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-1">
-          {link.faviconUrl && (
-            <img
-              src={link.faviconUrl}
-              alt=""
-              className="w-4 h-4 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
-            />
-          )}
-          <h3 className="font-medium dark:text-dark-textPrimary truncate">
-            {link.title}
-          </h3>
-        </div>
-        {link.description && (
-          <p className="text-sm text-gray-600 dark:text-dark-textSecondary line-clamp-2 mb-2">
-            {link.description}
-          </p>
-        )}
-        <a
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-light-accent dark:text-dark-accent hover:underline truncate block"
-        >
-          {link.url}
-        </a>
-      </div>
+          // Draw node circle (border)
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          ctx.lineWidth = highlightedNodeId === node.id ? 6 : 4;
+          ctx.strokeStyle = color;
+          ctx.globalAlpha =
+            highlightedNodeId && highlightedNodeId !== node.id ? 0.3 : 1;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          // Draw favicon or icon (cached)
+          if (node.link.faviconUrl) {
+            let img = faviconCache.current[node.link.faviconUrl];
+            if (!img) {
+              img = new window.Image();
+              img.src = node.link.faviconUrl;
+              faviconCache.current[node.link.faviconUrl] = img;
+            }
+            if (img.complete && img.naturalWidth > 0) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, radius - 6, 0, 2 * Math.PI);
+              ctx.closePath();
+              ctx.clip();
+              ctx.drawImage(
+                img,
+                node.x - (radius - 8),
+                node.y - (radius - 8),
+                (radius - 8) * 2,
+                (radius - 8) * 2
+              );
+              ctx.restore();
+            }
+          } else {
+            // Draw default icon (simple colored dot)
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius - 8, 0, 2 * Math.PI);
+            ctx.fillStyle = color + "99";
+            ctx.fill();
+          }
+        }}
+        linkColor={(link: any) => {
+          const isHighlighted =
+            highlightedNodeId &&
+            (link.source === highlightedNodeId ||
+              link.target === highlightedNodeId);
+          return isHighlighted
+            ? categoryColorMap[link.category] || "#bbb"
+            : (categoryColorMap[link.category] || "#bbb") + "55";
+        }}
+        linkWidth={(link: any) => {
+          const isHighlighted =
+            highlightedNodeId &&
+            (link.source === highlightedNodeId ||
+              link.target === highlightedNodeId);
+          return isHighlighted ? 4 : 2;
+        }}
+        linkDirectionalParticles={0}
+        linkDirectionalParticleSpeed={0.005}
+        onNodeClick={(node: any, event: MouseEvent) => {
+          window.open(node.link.url, "_blank");
+        }}
+        onNodeRightClick={(node: any, event: MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setContextMenu({
+            node,
+            x: event.clientX,
+            y: event.clientY,
+          });
+        }}
+        cooldownTicks={200}
+        nodeRelSize={8}
+        d3Force="charge"
+        d3VelocityDecay={0.5}
+        d3AlphaMin={0.001}
+        d3AlphaDecay={0.02}
+        d3Alpha={0.3}
+        onNodeHover={(node: any) => {
+          setHoveredNode(node);
+          if (!node) {
+            setMousePos(null);
+          }
+        }}
+        onEngineStop={() => {
+          if (graphInstance) {
+            const nodes = graphData.nodes;
+            if (nodes.length > 0) {
+              const centerX =
+                nodes.reduce((sum, node) => sum + (node.x || 0), 0) /
+                nodes.length;
+              const centerY =
+                nodes.reduce((sum, node) => sum + (node.y || 0), 0) /
+                nodes.length;
+              graphInstance.centerAt(centerX, centerY);
+              graphInstance.zoom(1.2);
+            }
+          }
+        }}
+        onBackgroundClick={() => {
+          if (!document.querySelector(".context-menu:hover")) {
+            setHoveredNode(null);
+            setMousePos(null);
+            setContextMenu(null);
+          }
+        }}
+        backgroundCanvas={(ctx: CanvasRenderingContext2D, graph: GraphData) => {
+          categories.forEach((cat) => {
+            const nodes = graph.nodes.filter(
+              (n) =>
+                n.category === cat &&
+                typeof n.x === "number" &&
+                typeof n.y === "number"
+            );
+            if (nodes.length === 0) return;
+            const color = categoryColorMap[cat] || "#888";
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.beginPath();
+            if (nodes.length === 1) {
+              ctx.arc(nodes[0].x!, nodes[0].y!, 100, 0, 2 * Math.PI);
+            } else if (nodes.length === 2) {
+              const x = (nodes[0].x! + nodes[1].x!) / 2;
+              const y = (nodes[0].y! + nodes[1].y!) / 2;
+              const dx = nodes[0].x! - nodes[1].x!;
+              const dy = nodes[0].y! - nodes[1].y!;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              ctx.ellipse(
+                x,
+                y,
+                dist / 2 + 100,
+                100,
+                Math.atan2(dy, dx),
+                0,
+                2 * Math.PI
+              );
+            } else {
+              const points = nodes.map((n) => [n.x!, n.y!]);
+              points.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+              function cross(o: number[], a: number[], b: number[]) {
+                return (
+                  (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+                );
+              }
+              const lower: number[][] = [];
+              for (const p of points) {
+                while (
+                  lower.length >= 2 &&
+                  cross(lower[lower.length - 2], lower[lower.length - 1], p) <=
+                    0
+                )
+                  lower.pop();
+                lower.push(p);
+              }
+              const upper: number[][] = [];
+              for (let i = points.length - 1; i >= 0; i--) {
+                const p = points[i];
+                while (
+                  upper.length >= 2 &&
+                  cross(upper[upper.length - 2], upper[upper.length - 1], p) <=
+                    0
+                )
+                  upper.pop();
+                upper.push(p);
+              }
+              const hull = lower.concat(upper.slice(1, -1));
+              if (hull.length > 1) {
+                ctx.moveTo(hull[0][0], hull[0][1]);
+                for (let i = 1; i < hull.length; i++) {
+                  ctx.lineTo(hull[i][0], hull[i][1]);
+                }
+                ctx.closePath();
+              }
+            }
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 40;
+            ctx.fill();
+            ctx.globalAlpha = 0.8;
+            ctx.setLineDash([8, 6]);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          });
+        }}
+      />
     </div>
   );
 }
@@ -261,38 +810,25 @@ export default function BulletinLinkCollection({
     title: initialTitle,
     links: initialLinks,
   });
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryNameEdits, setCategoryNameEdits] = useState<
-    Record<string, string>
-  >({});
+  const [updatedAt, setUpdatedAt] = useState(new Date().toISOString());
 
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const activeLink = activeId
-    ? links.find((link) => link.id === activeId)
-    : null;
-
-  const sensors = useSensors(useSensor(PointerSensor));
-
-  const handleRenameCategory = (oldCategory: string, newCategory: string) => {
-    if (!newCategory.trim() || oldCategory === newCategory) return;
+  const handleCategoryChange = async (linkId: string, newCategory: string) => {
+    const existingCategories = Array.from(
+      new Set(links.map((link) => link.category))
+    );
+    const finalCategory = normalizeCategory(newCategory, existingCategories);
 
     const updatedLinks = links.map((link) =>
-      link.category === oldCategory ? { ...link, category: newCategory } : link
+      link.id === linkId ? { ...link, category: finalCategory } : link
     );
-
     setLinks(updatedLinks);
-    setEditingCategory(null);
-    setCategoryNameEdits((prev) => {
-      const copy = { ...prev };
-      delete copy[oldCategory];
-      return copy;
-    });
-
     setHasUnsavedChanges(true);
-    handleSaveWithLinks(updatedLinks);
+    await handleSave();
   };
 
   const handleSave = useCallback(async () => {
+    if (!hasUnsavedChanges) return;
+
     setIsSaving(true);
     try {
       const updates: { title?: string; data?: { links: LinkPreview[] } } = {};
@@ -305,48 +841,16 @@ export default function BulletinLinkCollection({
 
       if (Object.keys(updates).length > 0) {
         await onSave(id, updates);
-        lastSavedState.current = {
-          title,
-          links,
-        };
+        lastSavedState.current = { title, links };
         setHasUnsavedChanges(false);
+        setUpdatedAt(new Date().toISOString());
       }
     } catch (error) {
       console.error("Failed to save:", error);
     } finally {
       setIsSaving(false);
     }
-  }, [id, onSave, title, links]);
-
-  const handleSaveWithLinks = useCallback(
-    async (customLinks: LinkPreview[]) => {
-      setIsSaving(true);
-      try {
-        const updates: { title?: string; data?: { links: LinkPreview[] } } = {};
-        if (title !== lastSavedState.current.title) updates.title = title;
-        if (
-          JSON.stringify(customLinks) !==
-          JSON.stringify(lastSavedState.current.links)
-        ) {
-          updates.data = { links: customLinks };
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await onSave(id, updates);
-          lastSavedState.current = {
-            title,
-            links: customLinks,
-          };
-          setHasUnsavedChanges(false);
-        }
-      } catch (error) {
-        console.error("Failed to save:", error);
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [id, onSave, title]
-  );
+  }, [id, onSave, title, links, hasUnsavedChanges]);
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
@@ -360,9 +864,7 @@ export default function BulletinLinkCollection({
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
-    return () => {
-      document.removeEventListener("keydown", handleKeyPress);
-    };
+    return () => document.removeEventListener("keydown", handleKeyPress);
   }, [handleKeyPress]);
 
   useEffect(() => {
@@ -419,33 +921,18 @@ export default function BulletinLinkCollection({
 
       const response = await fetch("/api/categorize-link", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          categories,
-          link: newLinkPreview,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories, link: newLinkPreview }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to categorize link");
-      }
+      if (!response.ok) throw new Error("Failed to categorize link");
 
       const { result } = await response.json();
+      newLinkPreview.category = normalizeCategory(result, categories);
 
-      // Find the closest existing category (case-insensitive match)
-      const existingCategory = categories.find(
-        (cat) => cat.toLowerCase() === result.toLowerCase()
-      );
-
-      newLinkPreview.category = existingCategory || result;
-
-      const updatedLinks = [...links, newLinkPreview];
-      setLinks(updatedLinks);
+      setLinks((prev) => [...prev, newLinkPreview]);
       setNewLink("");
       setHasUnsavedChanges(true);
-      await handleSaveWithLinks(updatedLinks);
     } catch (error) {
       console.error("Failed to add link:", error);
       setError("Failed to add link. Please try again.");
@@ -455,10 +942,8 @@ export default function BulletinLinkCollection({
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    const updatedLinks = links.filter((link) => link.id !== linkId);
-    setLinks(updatedLinks);
+    setLinks((prev) => prev.filter((link) => link.id !== linkId));
     setHasUnsavedChanges(true);
-    await handleSaveWithLinks(updatedLinks);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -468,63 +953,41 @@ export default function BulletinLinkCollection({
     }
   };
 
-  const linksByCategory = links.reduce((acc, link) => {
-    if (!acc[link.category]) {
-      acc[link.category] = [];
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      const timeout = setTimeout(() => {
+        handleSave();
+      }, 300);
+
+      return () => clearTimeout(timeout);
     }
-    acc[link.category].push(link);
-    return acc;
-  }, {} as Record<string, LinkPreview[]>);
-
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
-  };
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const activeLink = links.find((link) => link.id === active.id);
-    const overLink = links.find((link) => link.id === over.id);
-
-    if (!activeLink || !overLink) return;
-
-    // If the links are in different categories, update the category
-    if (activeLink.category !== overLink.category) {
-      const updatedLinks = links.map((link) =>
-        link.id === active.id ? { ...link, category: overLink.category } : link
-      );
-      setLinks(updatedLinks);
-      setHasUnsavedChanges(true);
-      handleSaveWithLinks(updatedLinks);
-    } else {
-      // If in the same category, reorder the links
-      const oldIndex = links.findIndex((link) => link.id === active.id);
-      const newIndex = links.findIndex((link) => link.id === over.id);
-      const updatedLinks = arrayMove(links, oldIndex, newIndex);
-      setLinks(updatedLinks);
-      setHasUnsavedChanges(true);
-      handleSaveWithLinks(updatedLinks);
-    }
-  };
+  }, [hasUnsavedChanges, handleSave]);
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-4 h-full flex flex-col">
-        <div className="flex justify-between items-center">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              setHasUnsavedChanges(true);
-            }}
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
-            placeholder="Link Collection Title"
-          />
-          <div className="flex gap-2">
+      <div className="p-3 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center w-full">
+            <NotepadText className="h-10 w-10 mx-4 text-green-500" />
+            <div className="flex flex-col w-full">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setHasUnsavedChanges(true);
+                }}
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
+                placeholder="Enter title..."
+              />
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Last modified{" "}
+                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 ml-2">
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
@@ -563,7 +1026,7 @@ export default function BulletinLinkCollection({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Enter a URL..."
-              className={`flex-1 p-2 rounded-lg border dark:border-dark-divider dark:bg-dark-editorBackground dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent ${
+              className={`flex-1 p-2 border-b dark:border-dark-divider dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none ${
                 error ? "border-red-500 dark:border-red-500" : ""
               }`}
             />
@@ -587,103 +1050,12 @@ export default function BulletinLinkCollection({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            {Object.entries(linksByCategory).map(
-              ([category, categoryLinks]) => (
-                <div key={category} className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    {editingCategory === category ? (
-                      <>
-                        <input
-                          type="text"
-                          value={categoryNameEdits[category] ?? category}
-                          onChange={(e) =>
-                            setCategoryNameEdits((prev) => ({
-                              ...prev,
-                              [category]: e.target.value,
-                            }))
-                          }
-                          onBlur={() => {
-                            const newCategory =
-                              categoryNameEdits[category]?.trim();
-                            if (newCategory) {
-                              handleRenameCategory(category, newCategory);
-                            } else {
-                              setEditingCategory(null);
-                              setCategoryNameEdits((prev) => {
-                                const copy = { ...prev };
-                                delete copy[category];
-                                return copy;
-                              });
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const newCategory =
-                                categoryNameEdits[category]?.trim();
-                              if (newCategory) {
-                                handleRenameCategory(category, newCategory);
-                              } else {
-                                setEditingCategory(null);
-                                setCategoryNameEdits((prev) => {
-                                  const copy = { ...prev };
-                                  delete copy[category];
-                                  return copy;
-                                });
-                              }
-                            } else if (e.key === "Escape") {
-                              setEditingCategory(null);
-                              setCategoryNameEdits((prev) => {
-                                const copy = { ...prev };
-                                delete copy[category];
-                                return copy;
-                              });
-                            }
-                          }}
-                          autoFocus
-                          className="text-xl font-semibold dark:text-dark-textPrimary bg-transparent border-b border-gray-400 focus:outline-none"
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <h2
-                          className="text-xl font-semibold dark:text-dark-textPrimary cursor-pointer"
-                          onClick={() => setEditingCategory(category)}
-                          title="Click to edit category name"
-                        >
-                          {category}
-                        </h2>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <SortableContext
-                      items={categoryLinks.map((link) => link.id)}
-                      strategy={rectSortingStrategy}
-                    >
-                      {categoryLinks.map((link) => (
-                        <SortableLinkCard
-                          key={link.id}
-                          link={link}
-                          onDelete={handleDeleteLink}
-                        />
-                      ))}
-                    </SortableContext>
-                  </div>
-                </div>
-              )
-            )}
-            <DragOverlay>
-              {activeLink ? <LinkCard link={activeLink} /> : null}
-            </DragOverlay>
-          </DndContext>
+        <div className="flex-1 overflow-hidden rounded-lg border dark:border-dark-divider">
+          <GraphView
+            links={links}
+            onDelete={handleDeleteLink}
+            onCategoryChange={handleCategoryChange}
+          />
         </div>
       </div>
     </div>
