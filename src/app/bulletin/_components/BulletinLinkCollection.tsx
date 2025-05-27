@@ -10,6 +10,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  ChevronDown,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";
@@ -99,9 +100,11 @@ function getFaviconUrl(url: string): string {
 function GraphView({
   links,
   onDelete,
+  onCategoryChange,
 }: {
   links: LinkPreview[];
   onDelete: (id: string) => void;
+  onCategoryChange: (id: string, newCategory: string) => void;
 }) {
   const [graphData, setGraphData] = useState<GraphData>({
     nodes: [],
@@ -115,6 +118,15 @@ function GraphView({
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
+  const [contextMenu, setContextMenu] = useState<{
+    node: any;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Add global mouse tracking
   useEffect(() => {
@@ -147,6 +159,7 @@ function GraphView({
     "#607d8b", // blue grey
     "#8bc34a", // light green
   ];
+
   // Map category to color
   const categories = Array.from(new Set(links.map((l) => l.category)));
   const categoryColorMap: Record<string, string> = {};
@@ -370,7 +383,7 @@ function GraphView({
           </span>
         </div>
         <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
-          Right-click to remove
+          Right-click to modify
         </div>
       </div>
     );
@@ -415,6 +428,150 @@ function GraphView({
           style={{ zIndex: 9999 }}
         >
           <Tooltip node={hoveredNode} pos={mousePos} />
+        </div>
+      )}
+      {/* Add context menu */}
+      {contextMenu && (
+        <div
+          className="fixed inset-0 z-[99998]"
+          onClick={(e) => {
+            console.log("Overlay clicked");
+            e.preventDefault();
+            e.stopPropagation();
+            setContextMenu(null);
+          }}
+        >
+          <div
+            ref={menuRef}
+            className="fixed z-[99999] bg-white dark:bg-dark-secondary rounded-lg shadow-lg border border-gray-200 dark:border-dark-divider"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+              minWidth: 200,
+            }}
+            onClick={(e) => {
+              console.log("Menu container clicked");
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <div className="p-2 border-b border-gray-200 dark:border-dark-divider">
+              <div className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary">
+                {contextMenu.node.link.title}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-dark-textSecondary truncate">
+                {contextMenu.node.link.url}
+              </div>
+            </div>
+            <div className="p-2">
+              <div className="text-xs text-gray-500 dark:text-dark-textSecondary mb-1">
+                Category
+              </div>
+              {isEditing ? (
+                <div
+                  className="flex gap-1"
+                  onClick={(e) => {
+                    console.log("Form container clicked");
+                    e.stopPropagation();
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => {
+                      console.log("Input changed:", e.target.value);
+                      setNewCategory(e.target.value);
+                    }}
+                    onBlur={(e) => {
+                      console.log("Input blur");
+                      // Add a small delay to allow the save button click to be processed first
+                      setTimeout(() => {
+                        if (
+                          !menuRef.current?.contains(document.activeElement)
+                        ) {
+                          setIsEditing(false);
+                        }
+                      }, 100);
+                    }}
+                    onClick={(e) => {
+                      console.log("Input clicked");
+                      e.stopPropagation();
+                    }}
+                    className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-background text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
+                    placeholder="Enter category..."
+                  />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      // Prevent the input from losing focus before the click
+                      e.preventDefault();
+                    }}
+                    onClick={(e) => {
+                      console.log("Save button clicked");
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (
+                        newCategory.trim() &&
+                        newCategory !== contextMenu.node.category
+                      ) {
+                        console.log("Updating category to:", newCategory);
+                        onCategoryChange(
+                          contextMenu.node.id,
+                          newCategory.trim()
+                        );
+                      }
+                      setIsEditing(false);
+                    }}
+                    className="px-2 py-1 text-sm text-white bg-light-accent dark:bg-dark-accent rounded hover:opacity-90"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    console.log("Edit button clicked");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setNewCategory(contextMenu.node.category);
+                    setIsEditing(true);
+                  }}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-100 dark:hover:bg-dark-hover flex items-center justify-between group"
+                >
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium truncate"
+                    style={{
+                      background:
+                        categoryColorMap[contextMenu.node.category] + "22",
+                      color: categoryColorMap[contextMenu.node.category],
+                    }}
+                  >
+                    {contextMenu.node.category}
+                  </span>
+                  <span className="text-gray-400 dark:text-dark-textSecondary text-xs group-hover:text-gray-600 dark:group-hover:text-dark-textPrimary">
+                    Click to edit
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="p-1 border-t border-gray-200 dark:border-dark-divider">
+              <button
+                type="button"
+                onClick={(e) => {
+                  console.log("Delete button clicked");
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(contextMenu.node.id);
+                  setContextMenu(null);
+                }}
+                className="w-full text-left px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+              >
+                Delete Link
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <ForceGraph2DWithRef
@@ -499,8 +656,14 @@ function GraphView({
         onNodeClick={(node: any, event: MouseEvent) => {
           window.open(node.link.url, "_blank");
         }}
-        onNodeRightClick={(node: any) => {
-          onDelete(node.id);
+        onNodeRightClick={(node: any, event: MouseEvent) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setContextMenu({
+            node,
+            x: event.clientX,
+            y: event.clientY,
+          });
         }}
         cooldownTicks={200}
         nodeRelSize={8}
@@ -531,8 +694,11 @@ function GraphView({
           }
         }}
         onBackgroundClick={() => {
-          setHoveredNode(null);
-          setMousePos(null);
+          if (!document.querySelector(".context-menu:hover")) {
+            setHoveredNode(null);
+            setMousePos(null);
+            setContextMenu(null);
+          }
         }}
         backgroundCanvas={(ctx: CanvasRenderingContext2D, graph: GraphData) => {
           categories.forEach((cat) => {
@@ -638,6 +804,37 @@ export default function BulletinLinkCollection({
     title: initialTitle,
     links: initialLinks,
   });
+
+  // Helper function to normalize categories
+  const normalizeCategory = (
+    category: string,
+    existingCategories: string[]
+  ): string => {
+    const normalizedInput = category.trim();
+    const matchingCategory = existingCategories.find(
+      (cat) => cat.toLowerCase() === normalizedInput.toLowerCase()
+    );
+    return matchingCategory || normalizedInput;
+  };
+
+  const handleCategoryChange = async (linkId: string, newCategory: string) => {
+    console.log("Changing category for link", linkId, "to", newCategory);
+
+    // Get all existing categories
+    const existingCategories = Array.from(
+      new Set(links.map((link) => link.category))
+    );
+
+    // Normalize the new category
+    const finalCategory = normalizeCategory(newCategory, existingCategories);
+
+    const updatedLinks = links.map((link) =>
+      link.id === linkId ? { ...link, category: finalCategory } : link
+    );
+    setLinks(updatedLinks);
+    setHasUnsavedChanges(true);
+    await handleSave();
+  };
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -751,11 +948,8 @@ export default function BulletinLinkCollection({
 
       const { result } = await response.json();
 
-      const existingCategory = categories.find(
-        (cat) => cat.toLowerCase() === result.toLowerCase()
-      );
-
-      newLinkPreview.category = existingCategory || result;
+      // Use the same category normalization logic
+      newLinkPreview.category = normalizeCategory(result, categories);
 
       const updatedLinks = [...links, newLinkPreview];
       setLinks(updatedLinks);
@@ -862,7 +1056,11 @@ export default function BulletinLinkCollection({
         </div>
 
         <div className="flex-1 overflow-hidden rounded-lg border dark:border-dark-divider">
-          <GraphView links={links} onDelete={handleDeleteLink} />
+          <GraphView
+            links={links}
+            onDelete={handleDeleteLink}
+            onCategoryChange={handleCategoryChange}
+          />
         </div>
       </div>
     </div>
