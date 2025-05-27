@@ -360,7 +360,7 @@ function GraphView({
           />
           <span className="font-semibold truncate">{node.link.title}</span>
           <span
-            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium"
+            className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium truncate"
             style={{
               background: categoryColorMap[node.category] + "22",
               color: categoryColorMap[node.category],
@@ -369,16 +369,6 @@ function GraphView({
             {node.category}
           </span>
         </div>
-        <div className="mb-1 break-all text-light-accent dark:text-dark-accent">
-          <a href={node.link.url} target="_blank" rel="noopener noreferrer">
-            {node.link.url}
-          </a>
-        </div>
-        {node.link.description && (
-          <div className="text-gray-600 dark:text-dark-textSecondary line-clamp-3">
-            {node.link.description}
-          </div>
-        )}
         <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
           Right-click to remove
         </div>
