@@ -302,7 +302,7 @@ function GraphView({
     const TOOLTIP_WIDTH = 320; // max-width of tooltip
     const PADDING = 16; // padding from viewport edges
     const TOOLTIP_OFFSET = 16; // offset from cursor
-    const ESTIMATED_TOOLTIP_HEIGHT = 100; // estimated height of tooltip
+    const ESTIMATED_TOOLTIP_HEIGHT = 200; // estimated height of tooltip
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -379,6 +379,9 @@ function GraphView({
             {node.link.description}
           </div>
         )}
+        <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
+          Right-click to remove
+        </div>
       </div>
     );
   };
