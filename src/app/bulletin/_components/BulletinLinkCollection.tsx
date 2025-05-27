@@ -933,7 +933,6 @@ export default function BulletinLinkCollection({
       setLinks((prev) => [...prev, newLinkPreview]);
       setNewLink("");
       setHasUnsavedChanges(true);
-      await handleSave();
     } catch (error) {
       console.error("Failed to add link:", error);
       setError("Failed to add link. Please try again.");
@@ -945,7 +944,6 @@ export default function BulletinLinkCollection({
   const handleDeleteLink = async (linkId: string) => {
     setLinks((prev) => prev.filter((link) => link.id !== linkId));
     setHasUnsavedChanges(true);
-    await handleSave();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -954,6 +952,16 @@ export default function BulletinLinkCollection({
       handleAddLink();
     }
   };
+
+  useEffect(() => {
+    if (hasUnsavedChanges) {
+      const timeout = setTimeout(() => {
+        handleSave();
+      }, 300);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [hasUnsavedChanges, handleSave]);
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
@@ -1018,7 +1026,7 @@ export default function BulletinLinkCollection({
               }}
               onKeyDown={handleKeyDown}
               placeholder="Enter a URL..."
-              className={`flex-1 p-2 rounded-lg border dark:border-dark-divider dark:bg-dark-editorBackground dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent ${
+              className={`flex-1 p-2 border-b dark:border-dark-divider dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none ${
                 error ? "border-red-500 dark:border-red-500" : ""
               }`}
             />
