@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Link,
   Columns,
+  Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LinkPreview } from "./_components/BulletinLinkCollection";
@@ -65,6 +66,7 @@ export default function Bulletin() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Add scroll lock effect
   useEffect(() => {
@@ -372,37 +374,52 @@ export default function Bulletin() {
         </div>
         {!isCollapsed && (
           <div className="space-y-3">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
-                  item.id === expandedItemId
-                    ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
-                    : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
-                }`}
-                onClick={() => {
-                  setExpandedItemId(item.id);
-                  // Close sidebar on mobile after selection
-                  if (window.innerWidth < 768) {
-                    // 768px is the md breakpoint
-                    setIsSidebarOpen(false);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  {typeIcons[item.type] || (
-                    <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
-                  )}
-                  <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
-                    {item.title || "Untitled"}
-                  </h3>
-                </div>
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-light-subtle dark:text-dark-textSecondary" />
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-full border-2 border-light-border dark:border-dark-divider bg-white dark:bg-dark-background text-light-heading dark:text-dark-textPrimary placeholder:text-light-subtle dark:placeholder:text-dark-textSecondary focus:outline-none focus:border-blue-500 dark:focus:border-blue-400"
+              />
+            </div>
+            {items
+              .filter((item) =>
+                item.title.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
+                    item.id === expandedItemId
+                      ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
+                      : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
+                  }`}
+                  onClick={() => {
+                    setExpandedItemId(item.id);
+                    // Close sidebar on mobile after selection
+                    if (window.innerWidth < 768) {
+                      // 768px is the md breakpoint
+                      setIsSidebarOpen(false);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {typeIcons[item.type] || (
+                      <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+                    )}
+                    <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
+                      {item.title || "Untitled"}
+                    </h3>
+                  </div>
 
-                <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
-                  {stripHtml(item.content) || ""}
-                </p>
-              </div>
-            ))}
+                  <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
+                    {stripHtml(item.content) || ""}
+                  </p>
+                </div>
+              ))}
           </div>
         )}
       </aside>
