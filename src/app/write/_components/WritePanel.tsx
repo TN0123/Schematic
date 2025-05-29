@@ -3,7 +3,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
-  SendHorizonal,
+  CircleArrowUp,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { ChangeMap } from "./WriteEditor";
@@ -380,7 +380,7 @@ export default function WritePanel({
                 className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
               >
-                <SendHorizonal size={20} />
+                <CircleArrowUp size={20} />
               </button>
             </div>
           </div>
