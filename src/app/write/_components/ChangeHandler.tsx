@@ -70,52 +70,48 @@ export function ChangeHandler({
 
   return (
     <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
-      <div className="flex flex-col justify-center items-center py-3 gap-2 border-b border-gray-300 dark:border-dark-divider mb-3">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary text-center">
-          {totalChanges} Change(s) Remaining
-        </h3>
-      </div>
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary text-center">
+        {totalChanges} Change(s) Remaining
+      </h3>
 
-      <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4">
-        <div>
-          <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
-            Suggested:
-          </span>
-          <div className="text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap mt-2">
-            {suggestion}
-          </div>
+      <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
+        <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
+          Suggested:
+        </span>
+        <div className="text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap">
+          {suggestion}
         </div>
       </div>
 
-      <div className="flex w-full justify-between gap-4">
-        <button
-          onClick={handleAccept}
-          className="w-1/2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-4 py-2 rounded-xl text-sm hover:bg-green-200 dark:hover:bg-green-800 transition-colors duration-200 flex items-center justify-center gap-2 border border-green-200 dark:border-green-700 shadow-sm"
-        >
-          <Check size={16} className="text-green-700 dark:text-green-300" />{" "}
-          Accept
-        </button>
-        <button
-          onClick={handleReject}
-          className="w-1/2 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-4 py-2 rounded-xl text-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200 flex items-center justify-center gap-2 border border-red-200 dark:border-red-700 shadow-sm"
-        >
-          <X size={16} className="text-red-700 dark:text-red-300" /> Reject
-        </button>
-      </div>
-
-      <div className="flex w-full gap-4">
-        <button
-          onClick={handleAcceptAll}
-          className="w-1/2 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-4 py-2 rounded-xl text-sm hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 border border-indigo-200 dark:border-indigo-700 shadow-sm"
-        >
-          Accept All
-        </button>
-        <button
-          onClick={handleRejectAll}
-          className="w-1/2 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-4 py-2 rounded-xl text-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200 border border-red-200 dark:border-red-700 shadow-sm"
-        >
-          Reject All
-        </button>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={handleAccept}
+            className="px-1 py-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors duration-200 flex items-center gap-1.5 border border-green-100 dark:border-green-800/50"
+          >
+            <Check size={14} className="text-green-600 dark:text-green-400" />
+            Accept
+          </button>
+          <button
+            onClick={handleReject}
+            className="px-1 py-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors duration-200 flex items-center gap-1.5 border border-red-100 dark:border-red-800/50"
+          >
+            <X size={14} className="text-red-600 dark:text-red-400" />
+            Reject
+          </button>
+          <button
+            onClick={handleAcceptAll}
+            className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm"
+          >
+            Accept All
+          </button>
+          <button
+            onClick={handleRejectAll}
+            className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm"
+          >
+            Reject All
+          </button>
+        </div>
       </div>
     </div>
   );
