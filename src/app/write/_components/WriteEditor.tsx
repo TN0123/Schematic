@@ -180,6 +180,10 @@ export default function WriteEditor({
     setPendingChanges({});
   };
 
+  const rejectAllChanges = () => {
+    setPendingChanges({});
+  };
+
   const appendChange = (newText: string) => {
     const updatedText = inputText + newText;
     setInputText(updatedText);
@@ -386,6 +390,7 @@ export default function WriteEditor({
           rejectChange={rejectChange}
           appendChange={appendChange}
           acceptAllChanges={acceptAllChanges}
+          rejectAllChanges={rejectAllChanges}
           setActiveHighlight={setActiveHighlight}
         />
       </div>

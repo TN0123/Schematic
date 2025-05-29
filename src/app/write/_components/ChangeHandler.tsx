@@ -8,6 +8,7 @@ export function ChangeHandler({
   rejectChange,
   appendChange,
   acceptAllChanges,
+  rejectAllChanges,
   setActiveHighlight,
 }: {
   changes: ChangeMap;
@@ -15,6 +16,7 @@ export function ChangeHandler({
   rejectChange: (original: string) => void;
   appendChange: (newText: string) => void;
   acceptAllChanges: () => void;
+  rejectAllChanges: () => void;
   setActiveHighlight: (text: string | null) => void;
 }) {
   const changeKeys = Object.keys(changes);
@@ -51,6 +53,12 @@ export function ChangeHandler({
 
   const handleAcceptAll = () => {
     acceptAllChanges();
+    setActiveHighlight(null);
+    setCurrentKey(null);
+  };
+
+  const handleRejectAll = () => {
+    rejectAllChanges();
     setActiveHighlight(null);
     setCurrentKey(null);
   };
@@ -95,12 +103,20 @@ export function ChangeHandler({
         </button>
       </div>
 
-      <button
-        onClick={handleAcceptAll}
-        className="w-full mt-4 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-4 py-2 rounded-xl text-sm hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 border border-indigo-200 dark:border-indigo-700 shadow-sm"
-      >
-        Accept All
-      </button>
+      <div className="flex w-full gap-4">
+        <button
+          onClick={handleAcceptAll}
+          className="w-1/2 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-4 py-2 rounded-xl text-sm hover:bg-indigo-200 dark:hover:bg-indigo-800 transition-colors duration-200 border border-indigo-200 dark:border-indigo-700 shadow-sm"
+        >
+          Accept All
+        </button>
+        <button
+          onClick={handleRejectAll}
+          className="w-1/2 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 px-4 py-2 rounded-xl text-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-200 border border-red-200 dark:border-red-700 shadow-sm"
+        >
+          Reject All
+        </button>
+      </div>
     </div>
   );
 }
