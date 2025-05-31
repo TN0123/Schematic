@@ -3,7 +3,7 @@ export async function chat(
   instructions: string,
   history: any[],
   userId?: string,
-  selectedModel: "auto" | "basic" | "premium" = "auto"
+  selectedModel: "basic" | "premium" = "premium"
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
@@ -80,7 +80,7 @@ export async function chat(
   }
 
   // For other users, check premium usage
-  if (userId && (selectedModel === "auto" || selectedModel === "premium")) {
+  if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;
       
@@ -129,8 +129,7 @@ export async function chat(
 
   // Use Gemini if:
   // 1. Model is set to "basic"
-  // 2. Model is "auto" but user has no premium uses
-  // 3. Model is "premium" but user has no premium uses
+  // 2. Model is "premium" but user has no premium uses
   console.log("using basic model");
   const genAI = new GoogleGenerativeAI(geminiKey);
   const geminiModel = genAI.getGenerativeModel({

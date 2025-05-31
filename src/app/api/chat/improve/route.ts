@@ -3,8 +3,8 @@ import { improve } from "@/scripts/improve";
 
 export async function POST(req: Request) {
   try {
-    const { before, selected, after, userId } = await req.json();
-    const { response, remainingUses } = await improve(before, selected, after, userId);
+    const { before, selected, after, userId, model = "premium" } = await req.json();
+    const { response, remainingUses } = await improve(before, selected, after, userId, model);
     if (response.includes("```json")) {
       const cleanResult = JSON.parse(response.substring(7, response.length - 3));
       return NextResponse.json(

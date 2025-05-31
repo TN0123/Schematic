@@ -1,4 +1,10 @@
-export async function improve(before: string, selected: string, after: string, userId: string) {
+export async function improve(
+  before: string,
+  selected: string,
+  after: string,
+  userId: string,
+  selectedModel: "basic" | "premium" = "premium"
+) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -32,6 +38,7 @@ export async function improve(before: string, selected: string, after: string, u
     Do not include any other text in your response, only the JSON object.
     `;
 
+  // Special users (you) get unlimited GPT-4.1 access
   if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
     try {
       console.log("using premium model");
@@ -50,7 +57,8 @@ export async function improve(before: string, selected: string, after: string, u
     }
   }
 
-  if (userId) {
+  // For other users, check premium usage
+  if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;
       
@@ -89,12 +97,14 @@ export async function improve(before: string, selected: string, after: string, u
     }
   }
 
+  // Use Gemini if:
+  // 1. Model is set to "basic"
+  // 2. Model is "premium" but user has no premium uses
+  console.log("using basic model");
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const result = await model.generateContent(prompt);
 
-  // console.log("Prompt: ", prompt);
-
-  return result.response.text();
+  return { response: result.response.text(), remainingUses: null };
 }

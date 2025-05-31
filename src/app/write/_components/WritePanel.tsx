@@ -178,6 +178,7 @@ export default function WritePanel({
           selected,
           after,
           userId,
+          model: selectedModel,
         }),
       });
 
