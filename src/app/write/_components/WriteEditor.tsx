@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import { Info } from "lucide-react";
+import { Info, FileUp } from "lucide-react";
 
 export type ChangeMap = Record<string, string>;
 
@@ -253,151 +253,159 @@ export default function WriteEditor({
   }, [inputText, generatedStart, generatedEnd]);
 
   return (
-    <div
-      className={`w-full flex items-center p-4 pb-0 gap-2 ${
-        Object.keys(pendingChanges).length != 0
-          ? "justify-start"
-          : "justify-center"
-      }`}
-    >
+    <div className="w-full flex flex-col justify-center items-center">
+      <div className="w-[925px] flex items-center justify-end py-2">
+        <button className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200">
+          Export
+          <FileUp className="w-4 h-4" />
+        </button>
+      </div>
       <div
-        className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider transition-all duration-200"
-        id="write-editor"
+        className={`w-full h-full flex items-center px-4 gap-2 ${
+          Object.keys(pendingChanges).length != 0
+            ? "justify-start"
+            : "justify-center"
+        }`}
       >
-        <div className="w-full flex flex-col gap-6 px-2">
-          <div className="relative">
-            <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
-              <div
-                className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    activeHighlight !== null
-                      ? getHighlightedHTML(inputText, activeHighlight)
-                      : selectionStart !== null && selectionEnd !== null
-                      ? getHighlightedHTMLWithRange(
-                          inputText,
-                          selectionStart,
-                          selectionEnd,
-                          "selection"
-                        )
-                      : getHighlightedHTMLWithRange(
-                          inputText,
-                          generatedStart,
-                          generatedEnd,
-                          "generated"
-                        ),
-                }}
-              />
-              <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
-                {selectedModel !== "basic" &&
-                  premiumRemainingUses !== null &&
-                  userId !== "cm6qw1jxy0000unao2h2rz83l" &&
-                  userId !== "cma8kzffi0000unysbz2awbmf" && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
-                      <Info className="w-3 h-3 cursor-help" />
-                      Premium model uses remaining: {premiumRemainingUses}
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                        The premium model is used for both Ctrl+Enter generation
-                        and AI sidebar suggestions. If you have 0 premium uses
-                        left, the system will automatically switch to the
-                        default model.
+        <div
+          className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider transition-all duration-200"
+          id="write-editor"
+        >
+          <div className="w-full flex flex-col gap-6 px-2">
+            <div className="relative">
+              <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
+                <div
+                  className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
+                  aria-hidden="true"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      activeHighlight !== null
+                        ? getHighlightedHTML(inputText, activeHighlight)
+                        : selectionStart !== null && selectionEnd !== null
+                        ? getHighlightedHTMLWithRange(
+                            inputText,
+                            selectionStart,
+                            selectionEnd,
+                            "selection"
+                          )
+                        : getHighlightedHTMLWithRange(
+                            inputText,
+                            generatedStart,
+                            generatedEnd,
+                            "generated"
+                          ),
+                  }}
+                />
+                <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
+                  {selectedModel !== "basic" &&
+                    premiumRemainingUses !== null &&
+                    userId !== "cm6qw1jxy0000unao2h2rz83l" &&
+                    userId !== "cma8kzffi0000unysbz2awbmf" && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                        <Info className="w-3 h-3 cursor-help" />
+                        Premium model uses remaining: {premiumRemainingUses}
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                          The premium model is used for both Ctrl+Enter
+                          generation and AI sidebar suggestions. If you have 0
+                          premium uses left, the system will automatically
+                          switch to the default model.
+                        </div>
                       </div>
+                    )}
+                  {selectedModel !== "basic" &&
+                    (userId === "cm6qw1jxy0000unao2h2rz83l" ||
+                      userId === "cma8kzffi0000unysbz2awbmf") && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                        <Info className="w-3 h-3 cursor-help" />
+                        Premium model active
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                          The premium model is used for both Ctrl+Enter
+                          generation and AI sidebar suggestions. You are a
+                          premium user with unlimited uses.
+                        </div>
+                      </div>
+                    )}
+                </div>
+                <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
+                  {loading && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Generating...
                     </div>
                   )}
-                {selectedModel !== "basic" &&
-                  (userId === "cm6qw1jxy0000unao2h2rz83l" ||
-                    userId === "cma8kzffi0000unysbz2awbmf") && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
-                      <Info className="w-3 h-3 cursor-help" />
-                      Premium model active
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                        The premium model is used for both Ctrl+Enter generation
-                        and AI sidebar suggestions. You are a premium user with
-                        unlimited uses.
-                      </div>
-                    </div>
-                  )}
-              </div>
-              <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
-                {loading && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Generating...
-                  </div>
-                )}
-              </div>
-              <textarea
-                ref={textareaRef}
-                id="write-editor"
-                className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
-                value={inputText}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  const cursorPos = e.target.selectionStart ?? 0;
-                  cursorPositionRef.current = cursorPos;
-                  setInput(newValue);
-                  setInputText(newValue);
-                  setGeneratedStart(null);
-                  setGeneratedEnd(null);
-                  updateTextareaHeight();
-                }}
-                onSelect={(e) => {
-                  const textarea = e.currentTarget;
-                  const start = textarea.selectionStart;
-                  const end = textarea.selectionEnd;
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  id="write-editor"
+                  className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
+                  value={inputText}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    const cursorPos = e.target.selectionStart ?? 0;
+                    cursorPositionRef.current = cursorPos;
+                    setInput(newValue);
+                    setInputText(newValue);
+                    setGeneratedStart(null);
+                    setGeneratedEnd(null);
+                    updateTextareaHeight();
+                  }}
+                  onSelect={(e) => {
+                    const textarea = e.currentTarget;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
 
-                  cursorPositionRef.current = start;
-                  setSelectionStart(start);
-                  setSelectionEnd(end);
+                    cursorPositionRef.current = start;
+                    setSelectionStart(start);
+                    setSelectionEnd(end);
 
-                  const selected = textarea.value.substring(start, end);
-                  setSelected(selected);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Tab") {
-                    e.preventDefault();
-                    const textarea = textareaRef.current;
-                    if (textarea) {
-                      const start = textarea.selectionStart;
-                      const end = textarea.selectionEnd;
-                      const newValue =
-                        inputText.substring(0, start) +
-                        "\t" +
-                        inputText.substring(end);
-                      setInputText(newValue);
-                      setInput(newValue);
-                      cursorPositionRef.current = start + 1;
-                      setTimeout(() => {
-                        textarea.selectionStart = textarea.selectionEnd =
-                          start + 1;
-                      }, 0);
+                    const selected = textarea.value.substring(start, end);
+                    setSelected(selected);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Tab") {
+                      e.preventDefault();
+                      const textarea = textareaRef.current;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const newValue =
+                          inputText.substring(0, start) +
+                          "\t" +
+                          inputText.substring(end);
+                        setInputText(newValue);
+                        setInput(newValue);
+                        cursorPositionRef.current = start + 1;
+                        setTimeout(() => {
+                          textarea.selectionStart = textarea.selectionEnd =
+                            start + 1;
+                        }, 0);
+                      }
                     }
-                  }
-                }}
-                onInput={updateTextareaHeight}
-                placeholder="Start typing here..."
-              />
+                  }}
+                  onInput={updateTextareaHeight}
+                  placeholder="Start typing here..."
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div
-        className={`transition-all duration-500 ease-in-out overflow-hidden ${
-          Object.keys(pendingChanges).length !== 0 &&
-          Object.keys(pendingChanges)[0] !== ""
-            ? "w-2/6 opacity-100 translate-x-0"
-            : "w-0 opacity-0 -translate-x-10"
-        } h-3/4 self-start`}
-      >
-        <ChangeHandler
-          changes={pendingChanges}
-          applyChange={applyChange}
-          rejectChange={rejectChange}
-          appendChange={appendChange}
-          acceptAllChanges={acceptAllChanges}
-          rejectAllChanges={rejectAllChanges}
-          setActiveHighlight={setActiveHighlight}
-        />
+        <div
+          className={`transition-all duration-500 ease-in-out overflow-hidden ${
+            Object.keys(pendingChanges).length !== 0 &&
+            Object.keys(pendingChanges)[0] !== ""
+              ? "w-2/6 opacity-100 translate-x-0"
+              : "w-0 opacity-0 -translate-x-10"
+          } h-3/4 self-start`}
+        >
+          <ChangeHandler
+            changes={pendingChanges}
+            applyChange={applyChange}
+            rejectChange={rejectChange}
+            appendChange={appendChange}
+            acceptAllChanges={acceptAllChanges}
+            rejectAllChanges={rejectAllChanges}
+            setActiveHighlight={setActiveHighlight}
+          />
+        </div>
       </div>
     </div>
   );

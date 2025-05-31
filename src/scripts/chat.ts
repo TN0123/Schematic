@@ -54,7 +54,7 @@ export async function chat(
   `;
 
   // Special users (you) get unlimited GPT-4.1 access
-  if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
+  if ((userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") && selectedModel === "premium") {
     try {
       console.log("using premium model");
       const { OpenAI } = require("openai");
@@ -63,8 +63,8 @@ export async function chat(
       
       const response = await client.responses.create({
         model: "gpt-4.1",
-        input: systemPrompt + "\n\n" + userPrompt,
-      });
+        input: systemPrompt + "\n\n" + userPrompt + "\n\n Here is the conversation history: \n" + JSON.stringify(history),
+      })
       
       const updatedHistory = [
         ...history,
@@ -72,6 +72,7 @@ export async function chat(
         { role: "model", parts: response.output_text },
       ];
       
+
       return { response: response.output_text, updatedHistory, remainingUses: null };
     } catch (error) {
       console.error("OpenAI API call failed:", error);
@@ -110,7 +111,7 @@ export async function chat(
         
         const response = await client.responses.create({
           model: "gpt-4.1",
-          input: systemPrompt + "\n\n" + userPrompt,
+          input: systemPrompt + "\n\n" + userPrompt + "\n\n Here is the conversation history: \n" + JSON.stringify(history),
         });
         
         const updatedHistory = [
