@@ -3,9 +3,8 @@ import { generate } from "@/scripts/generate";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { startText, endText, userId } = body;
-    const result = await generate(startText, endText, userId);
+    const { startText, endText, userId, model = "premium" } = await req.json();
+    const result = await generate(startText, endText, userId, model);
     return NextResponse.json({ result }, { status: 200 });
   } catch (error) {
     console.error("Error generating content:", error);

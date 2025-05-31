@@ -1,5 +1,9 @@
-export async function generate(startText: string, endText: string, userId?: string) {
-
+export async function generate(
+  startText: string,
+  endText: string,
+  userId?: string,
+  selectedModel: "basic" | "premium" = "premium"
+) {
   let prompt = `
   You are an AI writing assistant tasked with helping someone continue whatever text that have generated so far. 
   You will either be continuing the text at the end or in the middle of a paragraph. 
@@ -20,8 +24,10 @@ export async function generate(startText: string, endText: string, userId?: stri
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
+  // Special users (you) get unlimited GPT-4.1 access
   if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
     try {
+      console.log("using premium model");
       const { OpenAI } = require("openai");
       const openAIAPIKey = process.env.OPENAI_API_KEY;
       const client = new OpenAI({apiKey: openAIAPIKey});
@@ -36,7 +42,8 @@ export async function generate(startText: string, endText: string, userId?: stri
     }
   }
 
-  if (userId) {
+  // For other users, check premium usage
+  if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;
       
@@ -46,7 +53,7 @@ export async function generate(startText: string, endText: string, userId?: stri
       });
 
       if (user && user.premiumRemainingUses > 0) {
-        // Try to use premium model
+        console.log("using premium model");
         const { OpenAI } = require("openai");
         const openAIAPIKey = process.env.OPENAI_API_KEY;
         const client = new OpenAI({apiKey: openAIAPIKey});
@@ -76,15 +83,16 @@ export async function generate(startText: string, endText: string, userId?: stri
     }
   }
 
-  // Fallback to Gemini
+  // Use Gemini if:
+  // 1. Model is set to "basic"
+  // 2. Model is "premium" but user has no premium uses
+  console.log("using basic model");
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
   });
 
   const result = await model.generateContent(prompt);
-
-  // console.log("Prompt: ", prompt);
 
   return { text: result.response.text(), remainingUses: null };
 }

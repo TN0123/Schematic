@@ -97,6 +97,7 @@ export default function WriteEditor({
           startText: `${before}`,
           endText: `${after}`,
           userId,
+          model: selectedModel,
         }),
       });
 
