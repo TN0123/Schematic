@@ -25,7 +25,7 @@ export async function generate(
   const geminiKey = process.env.GEMINI_API_KEY;
 
   // Special users (you) get unlimited GPT-4.1 access
-  if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
+  if ((userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") && selectedModel === "premium") {
     try {
       console.log("using premium model");
       const { OpenAI } = require("openai");
