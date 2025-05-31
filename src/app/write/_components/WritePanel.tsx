@@ -9,6 +9,8 @@ import { useState, useEffect, useCallback } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
 
+export type ModelType = "basic" | "premium";
+
 interface MessageProps {
   message: string;
   role: "user" | "assistant";
@@ -48,6 +50,7 @@ export default function WritePanel({
   userId,
   premiumRemainingUses,
   setPremiumRemainingUses,
+  onModelChange,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -69,6 +72,7 @@ export default function WritePanel({
   userId: string | undefined;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
+  onModelChange: (model: ModelType) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -77,6 +81,11 @@ export default function WritePanel({
     { role: "user" | "model"; parts: string }[]
   >([]);
   const [isImproving, setIsImproving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
+
+  useEffect(() => {
+    onModelChange(selectedModel);
+  }, [selectedModel, onModelChange]);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
@@ -102,6 +111,7 @@ export default function WritePanel({
           instructions: `${instructions}`,
           history,
           userId,
+          model: selectedModel,
         }),
       });
 
@@ -406,7 +416,15 @@ export default function WritePanel({
                   className="text-gray-800 dark:text-dark-textPrimary"
                 />
               </button>
-              <p className="text-xs italic text-gray-500 dark:text-dark-textSecondary text-center">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value as ModelType)}
+                className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
+              >
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+              </select>
+              <p className="text-[10px] italic text-gray-500 dark:text-dark-textSecondary text-center">
                 This is a temporary chat, your work will not be saved.
               </p>
             </div>

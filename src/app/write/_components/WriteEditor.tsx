@@ -14,6 +14,7 @@ export default function WriteEditor({
   userId,
   premiumRemainingUses,
   setPremiumRemainingUses,
+  selectedModel,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -22,6 +23,7 @@ export default function WriteEditor({
   userId?: string;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
+  selectedModel: "auto" | "basic" | "premium";
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -287,7 +289,8 @@ export default function WriteEditor({
                 }}
               />
               <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
-                {premiumRemainingUses !== null &&
+                {selectedModel !== "basic" &&
+                  premiumRemainingUses !== null &&
                   userId !== "cm6qw1jxy0000unao2h2rz83l" &&
                   userId !== "cma8kzffi0000unysbz2awbmf" && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
@@ -295,24 +298,25 @@ export default function WriteEditor({
                       Premium model uses remaining: {premiumRemainingUses}
                       <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
                         The premium model is used for both Ctrl+Enter generation
-                        and AI sidebar suggestions. When your premium uses run
-                        out, the system will automatically switch to the default
-                        model.
+                        and AI sidebar suggestions. If you have 0 premium uses
+                        left, the system will automatically switch to the
+                        default model.
                       </div>
                     </div>
                   )}
-                {(userId === "cm6qw1jxy0000unao2h2rz83l" ||
-                  userId === "cma8kzffi0000unysbz2awbmf") && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
-                    <Info className="w-3 h-3 cursor-help" />
-                    Premium model active
-                    <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                      The premium model is used for both Ctrl+Enter generation
-                      and AI sidebar suggestions. You are a premium user with
-                      unlimited uses.
+                {selectedModel !== "basic" &&
+                  (userId === "cm6qw1jxy0000unao2h2rz83l" ||
+                    userId === "cma8kzffi0000unysbz2awbmf") && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                      <Info className="w-3 h-3 cursor-help" />
+                      Premium model active
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        The premium model is used for both Ctrl+Enter generation
+                        and AI sidebar suggestions. You are a premium user with
+                        unlimited uses.
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
               <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
                 {loading && (

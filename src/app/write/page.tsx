@@ -6,6 +6,7 @@ import WritePanel from "@/app/write/_components/WritePanel";
 import { FileText } from "lucide-react";
 import { ChangeMap } from "@/app/write/_components/WriteEditor";
 import { useNextStep } from "nextstepjs";
+import { ModelType } from "@/app/write/_components/WritePanel";
 
 export default function Writer() {
   const [input, setInput] = useState<string>("");
@@ -22,6 +23,7 @@ export default function Writer() {
   const [premiumRemainingUses, setPremiumRemainingUses] = useState<
     number | null
   >(null);
+  const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
 
   useEffect(() => {
     async function fetchPremiumUsage() {
@@ -71,6 +73,7 @@ export default function Writer() {
           userId={userId}
           premiumRemainingUses={premiumRemainingUses}
           setPremiumRemainingUses={setPremiumRemainingUses}
+          selectedModel={selectedModel}
         />
       </div>
       <WritePanel
@@ -82,6 +85,7 @@ export default function Writer() {
         userId={userId}
         premiumRemainingUses={premiumRemainingUses}
         setPremiumRemainingUses={setPremiumRemainingUses}
+        onModelChange={setSelectedModel}
       />
     </div>
   );

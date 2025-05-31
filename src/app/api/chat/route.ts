@@ -3,12 +3,13 @@ import { chat } from "@/scripts/chat";
 
 export async function POST(req: Request) {
   try {
-    const { currentText, instructions, history = [], userId } = await req.json();
+    const { currentText, instructions, history = [], userId, model = "basic" } = await req.json();
     const { response, updatedHistory, remainingUses } = await chat(
       currentText,
       instructions,
       history,
-      userId
+      userId,
+      model
     );
 
     if (response.includes("```json")) {
