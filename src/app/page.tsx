@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, ClipboardList, Zap } from "lucide-react";
+import { Calendar, ClipboardList, PenLine } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 
 export default function Home() {
@@ -39,7 +39,7 @@ export default function Home() {
             >
               <div className="flex items-center mb-3 sm:mb-4">
                 {section.title === "Write" && (
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
+                  <PenLine className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
                 )}
                 {section.title === "Bulletin" && (
                   <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 dark:text-green-400" />

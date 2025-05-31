@@ -101,7 +101,7 @@ function SortableCard({
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md px-2 sm:px-3 py-1.5 sm:py-2 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing touch-manipulation h-12 sm:h-16"
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 sm:py-2 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing touch-manipulation h-12 sm:h-16"
     >
       {/* Grip Icon */}
       <div className="flex-shrink-0" {...attributes} {...listeners}>
@@ -118,13 +118,13 @@ function SortableCard({
           onBlur={() => setIsEditing(false)}
           onKeyDown={handleKeyDown}
           placeholder="Enter card text..."
-          className="flex-grow bg-transparent border-b dark:border-dark-divider text-center text-xs sm:text-sm focus:outline-none dark:text-dark-textPrimary"
+          className="flex-grow bg-transparent w-full border-b dark:border-dark-divider text-center text-xs sm:text-sm focus:outline-none dark:text-dark-textPrimary"
           aria-label="Edit card"
           autoFocus
         />
       ) : (
         <button
-          className="flex-grow text-left text-xs sm:text-sm text-black text-center dark:text-dark-textPrimary focus:outline-none overflow-y-auto max-h-full"
+          className="flex-grow text-left text-xs sm:text-sm text-black text-center dark:text-dark-textPrimary focus:outline-none overflow-x-auto max-h-full"
           onClick={() => setIsEditing(true)}
         >
           {card.text || <span className="italic text-gray-400">Untitled</span>}
@@ -191,7 +191,7 @@ function SortableColumn({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex flex-col bg-gray-50 dark:bg-dark-secondary rounded-lg p-2 sm:p-4 h-full"
+      className="flex flex-col h-full bg-gray-50 dark:bg-dark-secondary rounded-lg p-2 sm:p-4 overflow-y-scroll"
     >
       {/* Column Header */}
       <div className="flex items-center justify-between mb-2 sm:mb-4">
@@ -239,7 +239,7 @@ function SortableColumn({
       </div>
 
       {/* Column Cards */}
-      <div className="h-[calc(100vh-400px)] sm:h-[calc(100vh-300px)] overflow-y-auto">
+      <div className="h-[calc(100vh-400px)] sm:h-full overflow-y-auto">
         <SortableContext
           items={cards.map((card) => card.id)}
           strategy={verticalListSortingStrategy}
@@ -511,7 +511,7 @@ export default function BulletinKanban({
         </div>
 
         {/* Kanban Board */}
-        <div className="relative border rounded-lg p-3 flex flex-col dark:border-dark-divider overflow-y-auto">
+        <div className="relative border h-full rounded-lg p-3 flex flex-col dark:border-dark-divider overflow-y-auto">
           <div className="flex-1 overflow-x-auto">
             <DndContext
               sensors={sensors}
@@ -519,7 +519,7 @@ export default function BulletinKanban({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[calc(100vh-200px)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full">
                 <SortableContext
                   items={columns.map((col) => `column-${col.id}`)}
                   strategy={horizontalListSortingStrategy}

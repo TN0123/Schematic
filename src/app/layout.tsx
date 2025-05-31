@@ -54,7 +54,7 @@ export default function RootLayout({
             <NextStepWrapper>
               <AuthProvider>
                 <Navigation />
-                <main className="h-[calc(100vh-4.5rem)]">{children}</main>
+                <main className="h-screen pl-16">{children}</main>
                 <PageTransition />
               </AuthProvider>
             </NextStepWrapper>
