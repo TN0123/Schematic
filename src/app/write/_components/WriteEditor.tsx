@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
 import { Info, FileUp } from "lucide-react";
+import jsPDF from "jspdf";
 
 export type ChangeMap = Record<string, string>;
 
@@ -187,6 +188,63 @@ export default function WriteEditor({
     setPendingChanges({});
   };
 
+  const handleExport = () => {
+    if (!inputText.trim()) {
+      alert("Please add some content before exporting.");
+      return;
+    }
+
+    try {
+      // Create new PDF document
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // Set up Google Docs-style formatting
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 25.4; // 1 inch margins like Google Docs
+      const lineHeight = 6; // Line spacing
+      const fontSize = 11; // Standard document font size
+
+      pdf.setFont("times", "normal");
+      pdf.setFontSize(fontSize);
+
+      // Split text into lines that fit within margins
+      const maxWidth = pageWidth - margin * 2;
+      const lines = pdf.splitTextToSize(inputText, maxWidth);
+
+      let yPosition = margin;
+      let currentPage = 1;
+
+      // Add lines to PDF, handling page breaks
+      for (let i = 0; i < lines.length; i++) {
+        // Check if we need a new page
+        if (yPosition + lineHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+          currentPage++;
+        }
+
+        pdf.text(lines[i], margin, yPosition);
+        yPosition += lineHeight;
+      }
+
+      // Generate filename with timestamp
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, "");
+      const filename = `document_${timestamp}.pdf`;
+
+      // Download the PDF
+      pdf.save(filename);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("An error occurred while generating the PDF. Please try again.");
+    }
+  };
+
   const appendChange = (newText: string) => {
     const updatedText = inputText + newText;
     setInputText(updatedText);
@@ -255,7 +313,10 @@ export default function WriteEditor({
   return (
     <div className="w-full flex flex-col justify-center items-center">
       <div className="w-[925px] flex items-center justify-end py-2">
-        <button className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200">
+        <button
+          onClick={handleExport}
+          className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200"
+        >
           Export
           <FileUp className="w-4 h-4" />
         </button>
