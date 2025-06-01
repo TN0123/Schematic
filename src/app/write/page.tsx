@@ -66,7 +66,7 @@ export default function DocumentsPage() {
                   <FileText className="w-5 h-5 text-white" />
                 </div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
-                  Schematic Write
+                  Write
                 </h1>
               </div>
             </div>

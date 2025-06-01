@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import WriteEditor from "@/app/write/_components/WriteEditor";
 import WritePanel from "@/app/write/_components/WritePanel";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 import { ChangeMap } from "@/app/write/_components/WriteEditor";
 import { ModelType } from "@/app/write/_components/WritePanel";
@@ -92,16 +90,6 @@ export default function DocumentEditorPage() {
 
   return (
     <div className="flex w-full h-screen bg-gray-200 dark:bg-dark-secondary transition-all duration-200">
-      <div className="absolute top-6 left-6 z-20">
-        <Link
-          href="/write"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-dark-paper/80 shadow hover:bg-purple-100 dark:hover:bg-purple-900 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all border border-gray-200 dark:border-dark-divider"
-          style={{ backdropFilter: "blur(4px)" }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Documents
-        </Link>
-      </div>
       <div className="flex w-full h-full overflow-auto justify-center">
         <WriteEditor
           setInput={setInput}

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import { Info, FileUp, FileText, Save, Loader2 } from "lucide-react";
+import { Info, FileUp, FileText, Loader2, ArrowLeft } from "lucide-react";
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
+import Link from "next/link";
 
 export type ChangeMap = Record<string, string>;
 
@@ -355,26 +356,36 @@ export default function WriteEditor({
 
   return (
     <div className="w-full flex flex-col justify-center items-center">
-      <div className="w-[925px] flex items-center justify-between py-2">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              debouncedSaveTitle(e.target.value);
-            }}
-            className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
-            placeholder="Untitled Document"
-          />
-          {(isSaving || isSavingContent) && (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          )}
+      <div className="w-[925px] flex items-center justify-between py-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/write"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Documents
+          </Link>
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 dark:text-gray-400" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                debouncedSaveTitle(e.target.value);
+              }}
+              className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
+              placeholder="Untitled Document"
+            />
+            {(isSaving || isSavingContent) && (
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            )}
+          </div>
         </div>
         <button
           onClick={handleExport}
-          className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200"
+          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200 font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:shadow-md"
         >
           Export
           <FileUp className="w-4 h-4" />
