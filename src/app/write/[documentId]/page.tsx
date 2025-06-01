@@ -75,29 +75,20 @@ export default function DocumentEditorPage() {
         body: JSON.stringify({
           id: document.id,
           title: document.title,
-          content: input,
+          content: document.content,
         }),
       });
       if (response.ok) {
         const updatedDoc = await response.json();
         setDocument(updatedDoc);
+        setInput(updatedDoc.content);
       }
     } catch (error) {
-      // Optionally show error
+      console.error("Failed to save document:", error);
     } finally {
       setIsSaving(false);
     }
   };
-
-  // Auto-save document when input changes
-  useEffect(() => {
-    if (document && input !== document.content) {
-      const timeoutId = setTimeout(() => {
-        handleSaveDocument();
-      }, 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [input, document]);
 
   return (
     <div className="flex w-full h-screen bg-gray-200 dark:bg-dark-secondary transition-all duration-200">

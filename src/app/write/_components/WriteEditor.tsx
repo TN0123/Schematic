@@ -46,6 +46,7 @@ export default function WriteEditor({
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+  const [isSavingContent, setIsSavingContent] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
@@ -56,6 +57,17 @@ export default function WriteEditor({
   const [title, setTitle] = useState(
     currentDocument?.title || "Untitled Document"
   );
+
+  // Debounced save for content
+  const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
+    if (currentDocument && newContent !== currentDocument.content) {
+      setIsSavingContent(true);
+      currentDocument.content = newContent;
+      onSaveDocument();
+      // Reset saving indicator after a short delay
+      setTimeout(() => setIsSavingContent(false), 500);
+    }
+  }, 1000);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -94,7 +106,8 @@ export default function WriteEditor({
   // Debounced save for title
   const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
     if (currentDocument && newTitle !== currentDocument.title) {
-      // Only update the document if the title actually changed
+      // Update the document with new title
+      currentDocument.title = newTitle;
       onSaveDocument();
     }
   }, 800);
@@ -355,7 +368,7 @@ export default function WriteEditor({
             className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
             placeholder="Untitled Document"
           />
-          {isSaving && (
+          {(isSaving || isSavingContent) && (
             <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
           )}
         </div>
@@ -451,6 +464,7 @@ export default function WriteEditor({
                     cursorPositionRef.current = cursorPos;
                     setInput(newValue);
                     setInputText(newValue);
+                    debouncedSaveContent(newValue);
                     setGeneratedStart(null);
                     setGeneratedEnd(null);
                     updateTextareaHeight();
