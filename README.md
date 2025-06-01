@@ -34,3 +34,51 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+# Schematic
+
+## Installation Guide
+
+### Windows
+
+1. Download the `Schematic-Setup-x.x.x.exe` file
+2. Double-click the installer
+3. Follow the installation wizard
+4. Launch Schematic from your desktop or start menu
+
+### macOS
+
+1. Download the `Schematic-x.x.x.dmg` file
+2. Double-click the `.dmg` file to mount it
+3. Drag the Schematic icon to your Applications folder
+4. Launch Schematic from your Applications directory
+
+### Linux
+
+1. Download the `Schematic-x.x.x.AppImage` file
+2. Open terminal in the download directory
+3. Make the file executable:
+   ```bash
+   chmod +x Schematic-x.x.x.AppImage
+   ```
+4. Run the application:
+   ```bash
+   ./Schematic-x.x.x.AppImage
+   ```
+
+## Auto-Updates
+
+The application will automatically check for updates when launched. If an update is available:
+
+1. You'll be notified of the new version
+2. The update will download automatically
+3. The new version will be installed when you restart the application
+
+## Troubleshooting
+
+If you encounter any issues during installation:
+
+1. Make sure you have the latest version of your operating system
+2. For Windows: Run the installer as administrator if you encounter permission issues
+3. For macOS: If you see a security warning, go to System Preferences > Security & Privacy and allow the application
+4. For Linux: Ensure you have the necessary permissions to execute the AppImage file

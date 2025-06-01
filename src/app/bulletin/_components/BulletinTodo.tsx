@@ -131,7 +131,7 @@ export default function BulletinTodo({
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col items-center">
         {/* Title & Actions */}
-        <div className="flex justify-center items-center w-full md:w-1/2 mt-10 mb-4">
+        <div className="flex justify-center items-center w-full md:w-1/2 mt-16 mb-4">
           <div className="flex-shrink-0">
             <ClipboardList className="h-8 w-8 text-green-500" />
           </div>

@@ -20,6 +20,17 @@
 # production
 /build
 
+# electron
+/dist
+/win-unpacked
+/mac
+/linux-unpacked
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+
 # misc
 .DS_Store
 *.pem

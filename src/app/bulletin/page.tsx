@@ -205,7 +205,7 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="h-[90dvh] flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
+    <div className="h-screen flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside
         className={`fixed md:static z-50 top-0 left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
@@ -250,7 +250,7 @@ export default function Bulletin() {
             </button>
             {!isCollapsed && <span>All Notes</span>}
           </span>
-          <div className="relative inline-block text-left">
+          <div className="inline-block text-left">
             {!isCollapsed ? (
               <button
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
