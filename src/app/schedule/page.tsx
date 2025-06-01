@@ -509,14 +509,14 @@ export default function CalendarApp() {
 
   return (
     <SessionProvider>
-      <div className="h-screen flex flex-col bg-white dark:bg-dark-background">
-        <div className="flex flex-col md:flex-row flex-1 h-full">
+      <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
+        <div className="flex flex-col md:flex-row h-full">
           {/* Goals Panel */}
           <GoalsPanel onToggle={handlePanelToggle} />
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className="flex-1 justify-center items-center p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
           >
             <AnimatePresence>
               {calendarLoading && (
@@ -540,7 +540,7 @@ export default function CalendarApp() {
               initialView="timeGridWeek"
               events={events}
               eventClick={handleEventClick}
-              height="calc(100vh - 6rem)"
+              height="100%"
               headerToolbar={{
                 start: "prev,next today",
                 center: "title",

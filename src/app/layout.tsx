@@ -8,6 +8,7 @@ import { NextStepProvider } from "nextstepjs";
 import NextStepWrapper from "@/components/NextStepWrapper";
 import Script from "next/script";
 import PageTransition from "@/components/PageTransition";
+import MainWrapper from "@/components/MainWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,7 +55,7 @@ export default function RootLayout({
             <NextStepWrapper>
               <AuthProvider>
                 <Navigation />
-                <main className="h-screen pl-16">{children}</main>
+                <MainWrapper>{children}</MainWrapper>
                 <PageTransition />
               </AuthProvider>
             </NextStepWrapper>
