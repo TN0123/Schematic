@@ -2,10 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import { Info, FileUp } from "lucide-react";
+import { Info, FileUp, FileText, Save, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
+import { useDebouncedCallback } from "use-debounce";
 
 export type ChangeMap = Record<string, string>;
+
+interface Document {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: string;
+  userId: string;
+}
 
 export default function WriteEditor({
   setInput,
@@ -16,6 +25,9 @@ export default function WriteEditor({
   premiumRemainingUses,
   setPremiumRemainingUses,
   selectedModel,
+  currentDocument,
+  onSaveDocument,
+  isSaving,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -25,6 +37,9 @@ export default function WriteEditor({
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
   selectedModel: "auto" | "basic" | "premium";
+  currentDocument: Document | null;
+  onSaveDocument: () => void;
+  isSaving: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,6 +53,9 @@ export default function WriteEditor({
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [title, setTitle] = useState(
+    currentDocument?.title || "Untitled Document"
+  );
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -68,6 +86,18 @@ export default function WriteEditor({
       onChangesAccepted();
     }
   }, [pendingChanges]);
+
+  useEffect(() => {
+    setTitle(currentDocument?.title || "Untitled Document");
+  }, [currentDocument?.title]);
+
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
+    if (currentDocument && newTitle !== currentDocument.title) {
+      // Only update the document if the title actually changed
+      onSaveDocument();
+    }
+  }, 800);
 
   const handleContinue = async () => {
     try {
@@ -312,7 +342,23 @@ export default function WriteEditor({
 
   return (
     <div className="w-full flex flex-col justify-center items-center">
-      <div className="w-[925px] flex items-center justify-end py-2">
+      <div className="w-[925px] flex items-center justify-between py-2">
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              debouncedSaveTitle(e.target.value);
+            }}
+            className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
+            placeholder="Untitled Document"
+          />
+          {isSaving && (
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+          )}
+        </div>
         <button
           onClick={handleExport}
           className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200"
