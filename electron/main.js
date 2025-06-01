@@ -1,6 +1,11 @@
 const { app, BrowserWindow } = require("electron");
 const path = require("path");
 const isDev = !app.isPackaged;
+const { autoUpdater } = require("electron-updater");
+
+// Configure auto-updater
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -26,20 +31,39 @@ function createWindow() {
   }
 }
 
-// Wait for Next.js to be ready before creating the window
-if (isDev) {
-  const waitOn = require("wait-on");
-  waitOn({ resources: ["http://localhost:3000"] }, (err) => {
-    if (err) {
-      console.error("Error waiting for Next.js:", err);
-      app.quit();
-      return;
-    }
-    createWindow();
-  });
-} else {
-  app.whenReady().then(createWindow);
-}
+// Add auto-update handlers
+autoUpdater.on("checking-for-update", () => {
+  console.log("Checking for updates...");
+});
+
+autoUpdater.on("update-available", (info) => {
+  console.log("Update available:", info);
+  autoUpdater.downloadUpdate();
+});
+
+autoUpdater.on("update-not-available", (info) => {
+  console.log("Update not available:", info);
+});
+
+autoUpdater.on("error", (err) => {
+  console.error("Error in auto-updater:", err);
+});
+
+autoUpdater.on("download-progress", (progressObj) => {
+  console.log("Download progress:", progressObj);
+});
+
+autoUpdater.on("update-downloaded", (info) => {
+  console.log("Update downloaded:", info);
+});
+
+// Check for updates when app is ready
+app.whenReady().then(() => {
+  if (!isDev) {
+    autoUpdater.checkForUpdates();
+  }
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

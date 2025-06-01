@@ -48,7 +48,8 @@
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.27.1",
     "react-force-graph-3d": "^1.26.1",
-    "react-switch": "^7.1.0"
+    "react-switch": "^7.1.0",
+    "electron-updater": "^6.2.1"
   },
   "devDependencies": {
     "@types/d3-force": "^3.0.10",
@@ -68,6 +69,11 @@
   "build": {
     "appId": "com.schematic.app",
     "productName": "Schematic",
+    "publish": [{
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USERNAME",
+      "repo": "YOUR_REPO_NAME"
+    }],
     "files": [
       "electron/**/*",
       ".next/**/*",
