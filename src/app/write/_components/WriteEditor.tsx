@@ -2,10 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import { Info, FileUp } from "lucide-react";
+import { Info, FileUp, FileText, Loader2, ArrowLeft } from "lucide-react";
 import jsPDF from "jspdf";
+import { useDebouncedCallback } from "use-debounce";
+import Link from "next/link";
 
 export type ChangeMap = Record<string, string>;
+
+interface Document {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: string;
+  userId: string;
+}
 
 export default function WriteEditor({
   setInput,
@@ -16,6 +26,9 @@ export default function WriteEditor({
   premiumRemainingUses,
   setPremiumRemainingUses,
   selectedModel,
+  currentDocument,
+  onSaveDocument,
+  isSaving,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -25,12 +38,16 @@ export default function WriteEditor({
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
   selectedModel: "auto" | "basic" | "premium";
+  currentDocument: Document | null;
+  onSaveDocument: () => void;
+  isSaving: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
+  const [isSavingContent, setIsSavingContent] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
@@ -38,6 +55,27 @@ export default function WriteEditor({
   const [undoStack, setUndoStack] = useState<string[]>([]);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [title, setTitle] = useState(
+    currentDocument?.title || "Untitled Document"
+  );
+
+  // Debounced save for content
+  const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
+    if (currentDocument && newContent !== currentDocument.content) {
+      setIsSavingContent(true);
+      // Call onSaveDocument to trigger the save
+      onSaveDocument();
+      // Reset saving indicator after a short delay
+      setTimeout(() => setIsSavingContent(false), 500);
+    }
+  }, 1000);
+
+  // Add effect to sync input with document content
+  useEffect(() => {
+    if (currentDocument) {
+      setInputText(currentDocument.content);
+    }
+  }, [currentDocument?.content]);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -68,6 +106,19 @@ export default function WriteEditor({
       onChangesAccepted();
     }
   }, [pendingChanges]);
+
+  useEffect(() => {
+    setTitle(currentDocument?.title || "Untitled Document");
+  }, [currentDocument?.title]);
+
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
+    if (currentDocument && newTitle !== currentDocument.title) {
+      // Update the document with new title
+      currentDocument.title = newTitle;
+      onSaveDocument();
+    }
+  }, 800);
 
   const handleContinue = async () => {
     try {
@@ -291,6 +342,18 @@ export default function WriteEditor({
     );
   };
 
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart ?? 0;
+    cursorPositionRef.current = cursorPos;
+    setInput(newValue);
+    setInputText(newValue);
+    debouncedSaveContent(newValue);
+    setGeneratedStart(null);
+    setGeneratedEnd(null);
+    updateTextareaHeight();
+  };
+
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
     return () => {
@@ -312,10 +375,36 @@ export default function WriteEditor({
 
   return (
     <div className="w-full flex flex-col justify-center items-center">
-      <div className="w-[925px] flex items-center justify-end py-2">
+      <div className="w-[925px] flex items-center justify-between py-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/write"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Documents
+          </Link>
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 dark:text-gray-400" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                debouncedSaveTitle(e.target.value);
+              }}
+              className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
+              placeholder="Untitled Document"
+            />
+            {(isSaving || isSavingContent) && (
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            )}
+          </div>
+        </div>
         <button
           onClick={handleExport}
-          className="w-20 text-xs border border-gray-100 dark:border-dark-divider rounded-md p-2 flex items-center justify-center gap-2 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200"
+          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200 font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:shadow-md"
         >
           Export
           <FileUp className="w-4 h-4" />
@@ -399,16 +488,7 @@ export default function WriteEditor({
                   id="write-editor"
                   className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
                   value={inputText}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    const cursorPos = e.target.selectionStart ?? 0;
-                    cursorPositionRef.current = cursorPos;
-                    setInput(newValue);
-                    setInputText(newValue);
-                    setGeneratedStart(null);
-                    setGeneratedEnd(null);
-                    updateTextareaHeight();
-                  }}
+                  onChange={handleTextChange}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
