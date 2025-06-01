@@ -316,6 +316,7 @@ export default function CalendarApp() {
         );
 
         setEvents([...events, ...createdEvents]);
+        setInputText("");
       }
     } catch (error) {
       console.error("Error generating events:", error);

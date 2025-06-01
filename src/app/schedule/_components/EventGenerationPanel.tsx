@@ -117,15 +117,6 @@ export default function EventGenerationPanel({
               }}
               placeholder="Enter your schedule here..."
             />
-            <button
-              className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover rounded-full transition-colors duration-200"
-              onClick={() => setInputText("")}
-            >
-              <RefreshCw
-                size={16}
-                className="text-black dark:text-dark-textPrimary"
-              />
-            </button>
           </div>
 
           <button
