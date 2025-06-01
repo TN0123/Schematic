@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { FileText, Plus, Search, Loader2, MoreVertical } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Search,
+  Loader2,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Document {
@@ -26,9 +33,16 @@ export default function DocumentList({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Use external search query if provided, otherwise use internal one
   const activeSearchQuery = externalSearchQuery ?? internalSearchQuery;
+
+  useEffect(() => {
+    console.log("Current openDropdown state:", openDropdown);
+  }, [openDropdown]);
 
   useEffect(() => {
     if (userId) {
@@ -50,9 +64,43 @@ export default function DocumentList({
     }
   };
 
+  const handleDeleteDocument = async (documentId: string) => {
+    setDeleting(documentId);
+    try {
+      const response = await fetch("/api/documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: documentId }),
+      });
+
+      if (response.ok) {
+        setDocuments(documents.filter((doc) => doc.id !== documentId));
+        setShowDeleteModal(null);
+      } else {
+        console.error("Failed to delete document");
+      }
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const filteredDocuments = documents.filter((doc) =>
     doc.title.toLowerCase().includes(activeSearchQuery.toLowerCase())
   );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-dropdown]")) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   if (loading) {
     return (
@@ -122,15 +170,48 @@ export default function DocumentList({
                 {/* Document Preview */}
                 <div className="h-3/4 bg-gray-50 dark:bg-dark-secondary p-4 relative">
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      className="p-1 hover:bg-gray-200 dark:hover:bg-dark-divider rounded"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Handle menu actions
-                      }}
-                    >
-                      <MoreVertical className="w-4 h-4 text-gray-500 dark:text-dark-textSecondary" />
-                    </button>
+                    <div className="relative" data-dropdown>
+                      <button
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-dark-divider rounded"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const newState =
+                            openDropdown === doc.id ? null : doc.id;
+                          setOpenDropdown(newState);
+                        }}
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-500 dark:text-dark-textSecondary" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openDropdown === doc.id &&
+                        (console.log(
+                          "Rendering dropdown menu for doc:",
+                          doc.id
+                        ),
+                        (
+                          <div
+                            className="absolute right-0 top-full mt-1 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg shadow-lg py-1 z-[9999] min-w-[120px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <button
+                              className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setShowDeleteModal(doc.id);
+                                setOpenDropdown(null);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                    </div>
                   </div>
 
                   <div className="flex flex-col h-full">
@@ -206,6 +287,47 @@ export default function DocumentList({
               Create your first document
             </button>
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white dark:bg-dark-paper rounded-lg shadow-xl max-w-md w-full p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+              Delete Document
+            </h3>
+            <p className="text-gray-600 dark:text-dark-textSecondary mb-6">
+              Are you sure you want to delete "
+              {documents.find((d) => d.id === showDeleteModal)?.title ||
+                "Untitled Document"}
+              "? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteModal(null)}
+                className="px-4 py-2 text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-secondary rounded-lg transition-colors"
+                disabled={deleting === showDeleteModal}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteDocument(showDeleteModal)}
+                disabled={deleting === showDeleteModal}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deleting === showDeleteModal && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
+                Delete
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>
