@@ -67,26 +67,52 @@ export default function DocumentEditorPage() {
     if (!document) return;
     setIsSaving(true);
     try {
+      const updatedDocument = {
+        ...document,
+        content: input,
+      };
+
       const response = await fetch("/api/documents", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: document.id,
           title: document.title,
-          content: document.content,
+          content: input,
         }),
       });
+
       if (response.ok) {
-        const updatedDoc = await response.json();
-        setDocument(updatedDoc);
-        setInput(updatedDoc.content);
+        const savedDoc = await response.json();
+        setDocument(savedDoc);
+        setInput(savedDoc.content);
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to save document:", errorText);
+        setInput(document.content);
       }
     } catch (error) {
       console.error("Failed to save document:", error);
+      setInput(document.content);
     } finally {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (document && input !== document.content) {
+      const timeoutId = setTimeout(() => {
+        handleSaveDocument();
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [input, document?.content]);
+
+  useEffect(() => {
+    if (document) {
+      setInput(document.content);
+    }
+  }, [document?.content]);
 
   return (
     <div className="flex w-full h-screen bg-gray-200 dark:bg-dark-secondary transition-all duration-200">

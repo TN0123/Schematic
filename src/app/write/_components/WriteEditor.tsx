@@ -63,12 +63,19 @@ export default function WriteEditor({
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
     if (currentDocument && newContent !== currentDocument.content) {
       setIsSavingContent(true);
-      currentDocument.content = newContent;
+      // Call onSaveDocument to trigger the save
       onSaveDocument();
       // Reset saving indicator after a short delay
       setTimeout(() => setIsSavingContent(false), 500);
     }
   }, 1000);
+
+  // Add effect to sync input with document content
+  useEffect(() => {
+    if (currentDocument) {
+      setInputText(currentDocument.content);
+    }
+  }, [currentDocument?.content]);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -335,6 +342,18 @@ export default function WriteEditor({
     );
   };
 
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart ?? 0;
+    cursorPositionRef.current = cursorPos;
+    setInput(newValue);
+    setInputText(newValue);
+    debouncedSaveContent(newValue);
+    setGeneratedStart(null);
+    setGeneratedEnd(null);
+    updateTextareaHeight();
+  };
+
   useEffect(() => {
     document.addEventListener("keydown", handleKeyPress);
     return () => {
@@ -469,17 +488,7 @@ export default function WriteEditor({
                   id="write-editor"
                   className="w-full h-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
                   value={inputText}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    const cursorPos = e.target.selectionStart ?? 0;
-                    cursorPositionRef.current = cursorPos;
-                    setInput(newValue);
-                    setInputText(newValue);
-                    debouncedSaveContent(newValue);
-                    setGeneratedStart(null);
-                    setGeneratedEnd(null);
-                    updateTextareaHeight();
-                  }}
+                  onChange={handleTextChange}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
