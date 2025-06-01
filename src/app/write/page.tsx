@@ -15,6 +15,7 @@ interface Document {
 
 export default function DocumentsPage() {
   const [userId, setUserId] = useState<string | undefined>();
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -77,6 +78,8 @@ export default function DocumentsPage() {
                   <input
                     type="text"
                     placeholder="Search documents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-dark-secondary border-0 rounded-full text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
@@ -110,6 +113,7 @@ export default function DocumentsPage() {
           onDocumentSelect={handleDocumentSelect}
           onCreateDocument={handleCreateDocument}
           userId={userId}
+          searchQuery={searchQuery}
         />
       </main>
     </div>

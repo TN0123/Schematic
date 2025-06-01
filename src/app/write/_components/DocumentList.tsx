@@ -14,16 +14,21 @@ interface DocumentListProps {
   onDocumentSelect: (document: Document) => void;
   onCreateDocument: () => void;
   userId: string | undefined;
+  searchQuery?: string;
 }
 
 export default function DocumentList({
   onDocumentSelect,
   onCreateDocument,
   userId,
+  searchQuery: externalSearchQuery,
 }: DocumentListProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+
+  // Use external search query if provided, otherwise use internal one
+  const activeSearchQuery = externalSearchQuery ?? internalSearchQuery;
 
   useEffect(() => {
     if (userId) {
@@ -46,7 +51,7 @@ export default function DocumentList({
   };
 
   const filteredDocuments = documents.filter((doc) =>
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+    doc.title.toLowerCase().includes(activeSearchQuery.toLowerCase())
   );
 
   if (loading) {
@@ -59,19 +64,21 @@ export default function DocumentList({
 
   return (
     <div className="w-full">
-      {/* Mobile Search */}
-      <div className="sm:hidden mb-6">
-        <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search documents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-full text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-sm"
-          />
+      {/* Mobile Search - only show if no external search query is provided */}
+      {!externalSearchQuery && (
+        <div className="sm:hidden mb-6">
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search documents..."
+              value={internalSearchQuery}
+              onChange={(e) => setInternalSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-full text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-sm"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Create New Document Card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
@@ -183,14 +190,14 @@ export default function DocumentList({
             <FileText className="w-10 h-10 text-gray-400 dark:text-dark-textSecondary" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-dark-textPrimary mb-2">
-            {searchQuery ? "No documents found" : "No documents yet"}
+            {activeSearchQuery ? "No documents found" : "No documents yet"}
           </h3>
           <p className="text-gray-500 dark:text-dark-textSecondary mb-6 max-w-sm">
-            {searchQuery
-              ? `No documents match "${searchQuery}". Try adjusting your search.`
+            {activeSearchQuery
+              ? `No documents match "${activeSearchQuery}". Try adjusting your search.`
               : "Create your first document to get started with your writing journey."}
           </p>
-          {!searchQuery && (
+          {!activeSearchQuery && (
             <button
               onClick={onCreateDocument}
               className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-medium transition-colors duration-200"
