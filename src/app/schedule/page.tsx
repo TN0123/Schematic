@@ -71,6 +71,8 @@ export default function CalendarApp() {
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(
     new Set()
   );
+  const [copiedEvents, setCopiedEvents] = useState<Event[]>([]);
+  const [lastClickedDate, setLastClickedDate] = useState<Date | null>(null);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -259,10 +261,115 @@ export default function CalendarApp() {
       setIsDeleteModalOpen(true);
     }
   };
+
+  const handleCopyEvents = () => {
+    if (selectedEventIds.size > 0) {
+      const eventsToCopy = events.filter((event) =>
+        selectedEventIds.has(event.id)
+      );
+      setCopiedEvents(eventsToCopy);
+      console.log(`Copied ${eventsToCopy.length} event(s)`);
+    }
+  };
+
+  const handlePasteEvents = async () => {
+    if (copiedEvents.length === 0) return;
+
+    const targetDate = lastClickedDate || new Date();
+
+    // Calculate the time difference between the first copied event and target date
+    const firstCopiedEvent = copiedEvents[0];
+    const originalStart = new Date(firstCopiedEvent.start);
+    const timeDifference = targetDate.getTime() - originalStart.getTime();
+
+    const eventsToCreate = copiedEvents.map((event) => {
+      const newStart = new Date(
+        new Date(event.start).getTime() + timeDifference
+      );
+      const newEnd = new Date(new Date(event.end).getTime() + timeDifference);
+
+      return {
+        title: event.title,
+        start: newStart,
+        end: newEnd,
+      };
+    });
+
+    try {
+      const res = await fetch("/api/events/bulkAdd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ events: eventsToCreate }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to paste events");
+      }
+
+      const responseData = await res.json();
+      console.log("API Response:", responseData); // Debug log
+
+      // Handle different possible response structures
+      const createdEventsArray = Array.isArray(responseData)
+        ? responseData
+        : responseData.events || responseData.data || [];
+
+      let formattedEvents: Event[];
+
+      if (
+        Array.isArray(createdEventsArray) &&
+        createdEventsArray.length > 0 &&
+        createdEventsArray[0].id
+      ) {
+        // API returned events with IDs - use them
+        formattedEvents = createdEventsArray.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }));
+      } else {
+        // API didn't return proper events - generate temporary IDs and refetch
+        console.log(
+          "API didn't return events with IDs, generating temporary IDs"
+        );
+        formattedEvents = eventsToCreate.map((event, index) => ({
+          id: `temp-${Date.now()}-${index}`,
+          title: event.title,
+          start: event.start,
+          end: event.end,
+        }));
+
+        // Refetch events to get the actual data from the database
+        setTimeout(() => {
+          if (fetchedRange) {
+            fetchEvents(
+              fetchedRange.start.toISOString(),
+              fetchedRange.end.toISOString()
+            );
+          }
+        }, 100);
+      }
+
+      setEvents((prevEvents) => [...prevEvents, ...formattedEvents]);
+      console.log(`Pasted ${formattedEvents.length} event(s)`);
+
+      // Clear selection and set new selection to pasted events
+      setSelectedEventIds(new Set(formattedEvents.map((e: Event) => e.id)));
+    } catch (error) {
+      console.error("Error pasting events:", error);
+    }
+  };
+
   const handleSelect = (selectInfo: DateSelectArg) => {
     console.log("Called!");
     const selectedStart = new Date(selectInfo.start);
     const selectedEnd = new Date(selectInfo.end);
+
+    // Track the last clicked date for pasting
+    setLastClickedDate(selectedStart);
 
     const eventsInRange = events.filter((event) => {
       const eventStart = new Date(event.start);
@@ -465,11 +572,25 @@ export default function CalendarApp() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Backspace" && selectedEventIds.size > 0) {
         handleBackspaceDelete();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "c" &&
+        selectedEventIds.size > 0
+      ) {
+        e.preventDefault();
+        handleCopyEvents();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "v" &&
+        copiedEvents.length > 0
+      ) {
+        e.preventDefault();
+        handlePasteEvents();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedEventIds]);
+  }, [selectedEventIds, copiedEvents]);
 
   useEffect(() => {
     if (eventToEdit) {
@@ -542,6 +663,18 @@ export default function CalendarApp() {
               events={events}
               eventClick={handleEventClick}
               height="100%"
+              eventClassNames={(eventInfo) => {
+                const isCopied = copiedEvents.some(
+                  (e) => e.id === eventInfo.event.id
+                );
+                const isSelected = selectedEventIds.has(eventInfo.event.id);
+                return [
+                  isCopied
+                    ? "opacity-60 border-2 border-dashed border-blue-400"
+                    : "",
+                  isSelected ? "ring-2 ring-blue-500" : "",
+                ].filter(Boolean);
+              }}
               headerToolbar={{
                 start: "prev,next today",
                 center: "title",
@@ -572,6 +705,9 @@ export default function CalendarApp() {
               select={handleSelect}
               unselectAuto={false}
               selectable={true}
+              dateClick={(clickInfo) => {
+                setLastClickedDate(new Date(clickInfo.date));
+              }}
               eventResize={async (resizeInfo) => {
                 try {
                   const updatedEvent = {
