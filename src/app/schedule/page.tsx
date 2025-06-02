@@ -277,23 +277,68 @@ export default function CalendarApp() {
 
     const targetDate = lastClickedDate || new Date();
 
-    // Calculate the time difference between the first copied event and target date
-    const firstCopiedEvent = copiedEvents[0];
-    const originalStart = new Date(firstCopiedEvent.start);
-    const timeDifference = targetDate.getTime() - originalStart.getTime();
+    // Get current calendar view
+    const currentView = calendarRef.current?.getApi().view.type;
+    const isMonthView = currentView === "dayGridMonth";
 
-    const eventsToCreate = copiedEvents.map((event) => {
-      const newStart = new Date(
-        new Date(event.start).getTime() + timeDifference
-      );
-      const newEnd = new Date(new Date(event.end).getTime() + timeDifference);
+    let eventsToCreate;
 
-      return {
-        title: event.title,
-        start: newStart,
-        end: newEnd,
-      };
-    });
+    if (isMonthView) {
+      // In month view, preserve original times and only change the date
+      eventsToCreate = copiedEvents.map((event) => {
+        const originalStart = new Date(event.start);
+        const originalEnd = new Date(event.end);
+
+        // Create new dates with target date but original times
+        const newStart = new Date(targetDate);
+        newStart.setHours(
+          originalStart.getHours(),
+          originalStart.getMinutes(),
+          originalStart.getSeconds(),
+          originalStart.getMilliseconds()
+        );
+
+        const newEnd = new Date(targetDate);
+        newEnd.setHours(
+          originalEnd.getHours(),
+          originalEnd.getMinutes(),
+          originalEnd.getSeconds(),
+          originalEnd.getMilliseconds()
+        );
+
+        // Handle events that span multiple days
+        const originalDuration =
+          originalEnd.getTime() - originalStart.getTime();
+        if (originalDuration > 24 * 60 * 60 * 1000) {
+          // More than 24 hours
+          newEnd.setTime(newStart.getTime() + originalDuration);
+        }
+
+        return {
+          title: event.title,
+          start: newStart,
+          end: newEnd,
+        };
+      });
+    } else {
+      // For week/day views, use the existing relative positioning logic
+      const firstCopiedEvent = copiedEvents[0];
+      const originalStart = new Date(firstCopiedEvent.start);
+      const timeDifference = targetDate.getTime() - originalStart.getTime();
+
+      eventsToCreate = copiedEvents.map((event) => {
+        const newStart = new Date(
+          new Date(event.start).getTime() + timeDifference
+        );
+        const newEnd = new Date(new Date(event.end).getTime() + timeDifference);
+
+        return {
+          title: event.title,
+          start: newStart,
+          end: newEnd,
+        };
+      });
+    }
 
     try {
       const res = await fetch("/api/events/bulkAdd", {
@@ -354,7 +399,9 @@ export default function CalendarApp() {
       }
 
       setEvents((prevEvents) => [...prevEvents, ...formattedEvents]);
-      console.log(`Pasted ${formattedEvents.length} event(s)`);
+      console.log(
+        `Pasted ${formattedEvents.length} event(s) in ${currentView} view`
+      );
 
       // Clear selection and set new selection to pasted events
       setSelectedEventIds(new Set(formattedEvents.map((e: Event) => e.id)));
