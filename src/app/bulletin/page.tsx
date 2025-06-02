@@ -109,7 +109,10 @@ export default function Bulletin() {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest(".relative.inline-block")) {
+      const dropdownContainer = document.querySelector(
+        ".relative.inline-block"
+      );
+      if (dropdownContainer && !dropdownContainer.contains(target)) {
         setShowDropdown(false);
       }
     };
@@ -254,7 +257,10 @@ export default function Bulletin() {
             {!isCollapsed ? (
               <button
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
-                onClick={() => setShowDropdown((prev) => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown((prev) => !prev);
+                }}
               >
                 <Plus size={16} className="stroke-current" />
                 <span className="hidden md:inline">New Note</span>
@@ -262,7 +268,10 @@ export default function Bulletin() {
             ) : (
               <button
                 className="p-2 mt-4 rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white hover:bg-gray-100 dark:hover:bg-dark-hover"
-                onClick={() => setShowDropdown((prev) => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown((prev) => !prev);
+                }}
               >
                 <Plus size={16} className="stroke-current" />
               </button>
