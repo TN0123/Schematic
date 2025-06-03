@@ -26,7 +26,9 @@ import {
   GripVertical,
   Pencil,
   Columns,
+  Clock,
 } from "lucide-react";
+import { useDebouncedCallback } from "use-debounce";
 
 interface KanbanCard {
   id: string;
@@ -43,11 +45,13 @@ interface BulletinKanbanProps {
   id: string;
   title: string;
   data: { columns: KanbanColumn[]; cards: KanbanCard[] };
+  updatedAt?: Date;
   onSave: (
     id: string,
     updates: { title?: string; data?: any }
   ) => Promise<void>;
   onDelete?: () => void;
+  isSaving?: boolean;
 }
 
 interface SortableCardProps {
@@ -275,8 +279,10 @@ export default function BulletinKanban({
   id,
   title: initialTitle,
   data,
+  updatedAt,
   onSave,
   onDelete,
+  isSaving: externalIsSaving = false,
 }: BulletinKanbanProps) {
   const [title, setTitle] = useState(initialTitle);
   const [columns, setColumns] = useState<KanbanColumn[]>(
@@ -289,6 +295,7 @@ export default function BulletinKanban({
   const [cards, setCards] = useState<KanbanCard[]>(data?.cards || []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<string | null>(null);
@@ -304,23 +311,89 @@ export default function BulletinKanban({
 
   const sensors = useSensors(useSensor(PointerSensor));
 
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback(async (newTitle: string) => {
+    if (newTitle !== lastSaved.current.title) {
+      setIsAutoSaving(true);
+      try {
+        await onSave(id, { title: newTitle });
+        lastSaved.current.title = newTitle;
+
+        // Update hasUnsavedChanges based on title, columns, and cards
+        const titleChanged = newTitle !== lastSaved.current.title;
+        const columnsChanged =
+          JSON.stringify(columns) !== JSON.stringify(lastSaved.current.columns);
+        const cardsChanged =
+          JSON.stringify(cards) !== JSON.stringify(lastSaved.current.cards);
+        setHasUnsavedChanges(titleChanged || columnsChanged || cardsChanged);
+      } catch (error) {
+        console.error("Failed to auto-save title:", error);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }
+  }, 800);
+
+  // Debounced save for data (columns and cards)
+  const debouncedSaveData = useDebouncedCallback(
+    async (newColumns: KanbanColumn[], newCards: KanbanCard[]) => {
+      const columnsChanged =
+        JSON.stringify(newColumns) !==
+        JSON.stringify(lastSaved.current.columns);
+      const cardsChanged =
+        JSON.stringify(newCards) !== JSON.stringify(lastSaved.current.cards);
+
+      if (columnsChanged || cardsChanged) {
+        setIsAutoSaving(true);
+        try {
+          await onSave(id, { data: { columns: newColumns, cards: newCards } });
+          lastSaved.current.columns = newColumns;
+          lastSaved.current.cards = newCards;
+
+          // Update hasUnsavedChanges based on title, columns, and cards
+          const titleChanged = title !== lastSaved.current.title;
+          const stillColumnsChanged =
+            JSON.stringify(newColumns) !==
+            JSON.stringify(lastSaved.current.columns);
+          const stillCardsChanged =
+            JSON.stringify(newCards) !==
+            JSON.stringify(lastSaved.current.cards);
+          setHasUnsavedChanges(
+            titleChanged || stillColumnsChanged || stillCardsChanged
+          );
+        } catch (error) {
+          console.error("Failed to auto-save data:", error);
+        } finally {
+          setIsAutoSaving(false);
+        }
+      }
+    },
+    1000
+  );
+
   const addCard = (columnId: string) => {
     const newCardId = crypto.randomUUID();
-    setCards([...cards, { id: newCardId, text: "", columnId }]);
+    const newCards = [...cards, { id: newCardId, text: "", columnId }];
+    setCards(newCards);
     setHasUnsavedChanges(true);
     setActiveId(newCardId);
+    debouncedSaveData(columns, newCards);
   };
 
   const updateCard = (id: string, updates: Partial<KanbanCard>) => {
-    setCards(
-      cards.map((card) => (card.id === id ? { ...card, ...updates } : card))
+    const newCards = cards.map((card) =>
+      card.id === id ? { ...card, ...updates } : card
     );
+    setCards(newCards);
     setHasUnsavedChanges(true);
+    debouncedSaveData(columns, newCards);
   };
 
   const removeCard = (id: string) => {
-    setCards(cards.filter((card) => card.id !== id));
+    const newCards = cards.filter((card) => card.id !== id);
+    setCards(newCards);
     setHasUnsavedChanges(true);
+    debouncedSaveData(columns, newCards);
   };
 
   const addColumn = () => {
@@ -328,23 +401,28 @@ export default function BulletinKanban({
       id: crypto.randomUUID(),
       title: "New Column",
     };
-    setColumns([...columns, newColumn]);
+    const newColumns = [...columns, newColumn];
+    setColumns(newColumns);
     setHasUnsavedChanges(true);
+    debouncedSaveData(newColumns, cards);
   };
 
   const updateColumn = (id: string, updates: Partial<KanbanColumn>) => {
-    setColumns(
-      columns.map((column) =>
-        column.id === id ? { ...column, ...updates } : column
-      )
+    const newColumns = columns.map((column) =>
+      column.id === id ? { ...column, ...updates } : column
     );
+    setColumns(newColumns);
     setHasUnsavedChanges(true);
+    debouncedSaveData(newColumns, cards);
   };
 
   const removeColumn = (id: string) => {
-    setColumns(columns.filter((column) => column.id !== id));
-    setCards(cards.filter((card) => card.columnId !== id));
+    const newColumns = columns.filter((column) => column.id !== id);
+    const newCards = cards.filter((card) => card.columnId !== id);
+    setColumns(newColumns);
+    setCards(newCards);
     setHasUnsavedChanges(true);
+    debouncedSaveData(newColumns, newCards);
   };
 
   const handleSave = async () => {
@@ -373,9 +451,10 @@ export default function BulletinKanban({
       if (activeColumnId !== overColumnId) {
         const oldIndex = columns.findIndex((col) => col.id === activeColumnId);
         const newIndex = columns.findIndex((col) => col.id === overColumnId);
-        setColumns(arrayMove(columns, oldIndex, newIndex));
+        const newColumns = arrayMove(columns, oldIndex, newIndex);
+        setColumns(newColumns);
         setHasUnsavedChanges(true);
-        handleSave();
+        debouncedSaveData(newColumns, cards);
       }
       return;
     }
@@ -393,7 +472,7 @@ export default function BulletinKanban({
         );
         setCards(updatedCards);
         setHasUnsavedChanges(true);
-        handleSave();
+        debouncedSaveData(columns, updatedCards);
       }
       return;
     }
@@ -409,7 +488,7 @@ export default function BulletinKanban({
       );
       setCards(updatedCards);
       setHasUnsavedChanges(true);
-      handleSave();
+      debouncedSaveData(columns, updatedCards);
     } else {
       // Reordering within the same column
       const oldIndex = cards.findIndex((card) => card.id === active.id);
@@ -417,6 +496,7 @@ export default function BulletinKanban({
       const updatedCards = arrayMove(cards, oldIndex, newIndex);
       setCards(updatedCards);
       setHasUnsavedChanges(true);
+      debouncedSaveData(columns, updatedCards);
     }
   };
 
@@ -465,8 +545,10 @@ export default function BulletinKanban({
             className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
-              setTitle(e.target.value);
+              const newTitle = e.target.value;
+              setTitle(newTitle);
               setHasUnsavedChanges(true);
+              debouncedSaveTitle(newTitle);
             }}
             placeholder="Untitled Kanban Board"
             aria-label="Board title"
@@ -484,15 +566,19 @@ export default function BulletinKanban({
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || externalIsSaving}
                 className={`p-2 rounded-lg transition-colors
                   text-light-icon hover:text-light-accent hover:bg-light-hover
                   dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                  ${
+                    isSaving || externalIsSaving
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
                 aria-label="Save changes"
                 type="button"
               >
-                {isSaving ? (
+                {isSaving || externalIsSaving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Save className="h-5 w-5" />

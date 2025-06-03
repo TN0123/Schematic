@@ -515,11 +515,13 @@ export default function Bulletin() {
                       id={item.id}
                       title={item.title}
                       data={item.data}
+                      updatedAt={item.updatedAt}
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
                         setExpandedItemId(null);
                       }}
+                      isSaving={savingItems.has(item.id)}
                     />
                   );
                 case "link-collection":
