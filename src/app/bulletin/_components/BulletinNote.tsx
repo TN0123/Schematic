@@ -17,7 +17,6 @@ import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
-//import { FontSize } from "@tiptap/extension-font-size";
 
 interface BulletinNoteProps {
   id: string;
