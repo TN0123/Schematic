@@ -223,9 +223,9 @@ export default function Bulletin() {
     <div className="h-screen flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
+        className={`fixed md:static z-50 top-0 left-16 md:left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        } ${isCollapsed ? "md:w-14" : "md:w-1/4"} w-full`}
+        } ${isCollapsed ? "md:w-14" : "md:w-1/4"} w-[calc(100%-4rem)]`}
       >
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between mb-6 pt-4">
@@ -451,13 +451,13 @@ export default function Bulletin() {
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden left-16"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       <button
-        className={`md:hidden fixed top-4 left-4 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
+        className={`md:hidden fixed top-4 left-20 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
           isSidebarOpen ? "hidden" : "block"
         }`}
         onClick={() => setIsSidebarOpen(true)}
