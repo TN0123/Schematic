@@ -37,6 +37,22 @@ export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
   }, []);
 
   useEffect(() => {
+    // Add scroll lock effect for mobile
+    if (isMobileOpen) {
+      // Prevent scrolling on the body when panel is open
+      document.body.style.overflow = "hidden";
+    } else {
+      // Restore scrolling when panel is closed
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup function to ensure scrolling is restored when component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileOpen]);
+
+  useEffect(() => {
     // Close mobile panel when clicking outside
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -100,7 +116,7 @@ export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
-      className="md:hidden fixed top-[9rem] left-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
+      className="md:hidden fixed top-[9rem] left-20 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
       aria-label="Open goals panel"
     >
       <Menu size={20} className="text-gray-700 dark:text-dark-textSecondary" />
@@ -118,13 +134,20 @@ export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
   return (
     <>
       <MobileToggle />
+      {/* Mobile backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden left-16"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
       <aside
         className={`fixed md:relative z-30 h-full ${
           isCollapsed ? "w-14" : "w-80"
         } bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 ${
           isCollapsed ? "px-2" : "px-4"
         } flex flex-col transition-all duration-300 items-center
-        ${isMobileOpen ? "left-0" : "-left-full md:left-0"}
+        ${isMobileOpen ? "left-16 w-[calc(100%-4rem)]" : "-left-full md:left-0"}
         `}
         id="goals-panel"
       >
