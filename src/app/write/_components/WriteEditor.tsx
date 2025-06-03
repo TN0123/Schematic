@@ -374,8 +374,8 @@ export default function WriteEditor({
   }, [inputText, generatedStart, generatedEnd]);
 
   return (
-    <div className="w-full flex flex-col justify-center items-center">
-      <div className="w-[925px] flex items-center justify-between py-4">
+    <div className="w-full flex flex-col justify-center items-center h-full">
+      <div className="w-full max-w-[1200px] flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-3">
           <Link
             href="/write"
@@ -410,15 +410,14 @@ export default function WriteEditor({
           <FileUp className="w-4 h-4" />
         </button>
       </div>
-      <div
-        className={`w-full h-full flex items-center px-4 gap-2 ${
-          Object.keys(pendingChanges).length != 0
-            ? "justify-start"
-            : "justify-center"
-        }`}
-      >
+      <div className="w-full flex-1 flex flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100vh-80px)]">
         <div
-          className="w-[925px] h-full overflow-y-scroll flex flex-col bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider transition-all duration-200"
+          className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-scroll ${
+            Object.keys(pendingChanges).length !== 0 &&
+            Object.keys(pendingChanges)[0] !== ""
+              ? "flex-[2_2_0%] min-w-0"
+              : "flex-[1_1_0%] min-w-0"
+          }`}
           id="write-editor"
         >
           <div className="w-full flex flex-col gap-6 px-2">
@@ -530,12 +529,12 @@ export default function WriteEditor({
           </div>
         </div>
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          className={`transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
             Object.keys(pendingChanges).length !== 0 &&
             Object.keys(pendingChanges)[0] !== ""
-              ? "w-2/6 opacity-100 translate-x-0"
-              : "w-0 opacity-0 -translate-x-10"
-          } h-3/4 self-start`}
+              ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
+              : "flex-[0_0_0%] max-w-0 opacity-0 -translate-x-10"
+          }`}
         >
           <ChangeHandler
             changes={pendingChanges}
