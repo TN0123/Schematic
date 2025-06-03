@@ -67,6 +67,7 @@ export default function Bulletin() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
 
   // Add scroll lock effect
   useEffect(() => {
@@ -137,6 +138,9 @@ export default function Bulletin() {
       data?: { links?: LinkPreview[] };
     }
   ) => {
+    // Add item to saving set
+    setSavingItems((prev) => new Set([...prev, id]));
+
     try {
       const response = await fetch(`/api/bulletins/${id}`, {
         method: "PATCH",
@@ -156,6 +160,14 @@ export default function Bulletin() {
       );
     } catch (error) {
       console.error("Failed to save item:", error);
+      // You could add a toast notification here for better UX
+    } finally {
+      // Remove item from saving set
+      setSavingItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
@@ -422,6 +434,9 @@ export default function Bulletin() {
                     <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
                       {item.title || "Untitled"}
                     </h3>
+                    {savingItems.has(item.id) && (
+                      <Loader2 className="w-3 h-3 animate-spin text-blue-500 dark:text-blue-400 ml-auto" />
+                    )}
                   </div>
 
                   <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
@@ -533,6 +548,7 @@ export default function Bulletin() {
                         deleteItem(item.id);
                         setExpandedItemId(null);
                       }}
+                      isSaving={savingItems.has(item.id)}
                     />
                   );
               }
