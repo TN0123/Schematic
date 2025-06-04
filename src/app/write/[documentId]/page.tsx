@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import WriteEditor from "@/app/write/_components/WriteEditor";
 import WritePanel from "@/app/write/_components/WritePanel";
+import { useNextStep } from "nextstepjs";
 
 import { ChangeMap } from "@/app/write/_components/WriteEditor";
 import { ModelType } from "@/app/write/_components/WritePanel";
@@ -30,6 +31,24 @@ export default function DocumentEditorPage() {
   >(null);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const [isSaving, setIsSaving] = useState(false);
+  const { startNextStep } = useNextStep();
+
+  useEffect(() => {
+    async function checkAndStartTour() {
+      try {
+        const res = await fetch("/api/user/onboarding-status");
+        const data = await res.json();
+
+        if (!data.hasCompletedWriteTour) {
+          startNextStep("writeTour");
+        }
+      } catch (error) {
+        console.error("Failed to fetch onboarding status:", error);
+      }
+    }
+
+    checkAndStartTour();
+  }, [startNextStep]);
 
   useEffect(() => {
     async function fetchUserId() {
