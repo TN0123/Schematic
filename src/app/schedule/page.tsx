@@ -999,25 +999,25 @@ export default function CalendarApp() {
   function renderEventContent(eventInfo: EventContentArg) {
     const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
 
-    return (
-      <div className="group relative h-full w-full flex flex-col justify-start p-1">
-        <div className="text-xs font-light">{eventInfo.timeText}</div>
-        <div className="font-normal truncate">{eventInfo.event.title}</div>
+    if (isSuggestion) {
+      return (
+        <div className="group relative h-full w-full flex items-center justify-between p-1">
+          <div className="font-normal truncate text-xs pr-1">
+            {eventInfo.event.title}
+          </div>
 
-        {/* Tooltip */}
-        <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
-          {eventInfo.event.title}
-          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-        </div>
+          <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
+            {eventInfo.event.title}
+            <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+          </div>
 
-        {isSuggestion && (
-          <div className="absolute top-[2px] right-[2px] flex flex-col z-10">
+          <div className="flex shrink-0 items-center space-x-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleAcceptSuggestion(eventInfo.event.id);
               }}
-              className="bg-green-500 hover:bg-green-600 text-white p-0.5 mb-1 rounded-full flex items-center justify-center"
+              className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center"
               style={{ width: "16px", height: "16px" }}
               aria-label="Accept suggestion"
             >
@@ -1035,7 +1035,20 @@ export default function CalendarApp() {
               <X size={10} />
             </button>
           </div>
-        )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="group relative h-full w-full flex flex-col justify-start p-1">
+        <div className="text-xs font-light">{eventInfo.timeText}</div>
+        <div className="font-normal truncate">{eventInfo.event.title}</div>
+
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
+          {eventInfo.event.title}
+          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+        </div>
       </div>
     );
   }

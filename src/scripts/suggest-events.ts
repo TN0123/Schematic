@@ -51,11 +51,7 @@ function getAvailableTimeSlots(events: Event[], day: Date): TimeSlot[] {
   return availableSlots;
 }
 
-export async function suggest_events(
-  userId: string,
-  existingEvents: Event[],
-  timezone: string
-) {
+export async function suggest_events(userId: string, existingEvents: Event[]) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
