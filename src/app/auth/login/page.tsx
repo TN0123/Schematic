@@ -95,45 +95,83 @@ export default function Login() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          <div className="bg-white dark:bg-dark-secondary rounded-2xl shadow-lg dark:shadow-md p-6 sm:p-8 hover:shadow-xl dark:hover:shadow-lg transition-shadow">
-            <div className="h-12 w-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-6">
-              <PenLine className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        <div className="space-y-20 sm:space-y-32">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block p-3 bg-purple-100 dark:bg-purple-900 rounded-lg mb-4">
+                <PenLine className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-dark-textPrimary sm:text-4xl">
+                AI Writing Assistant
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-dark-textSecondary">
+                Experience the next generation of productivity with an
+                innovative, AI-enhanced writing editor. Seamlessly integrated
+                into your workflow, our intelligent sidebar lets you chat
+                directly with the AI about your writing or project, offering
+                instant suggestions and actionable edits that you can easily
+                accept or reject just like Cursor or GitHub Copilot. Instantly
+                continue your train of thought with a simple press of
+                Ctrl+Enter, letting the AI pick up exactly where you left off.
+                Want to enhance your writing? Highlight any section and press
+                Ctrl+I to get immediate improvements tailored to your unique
+                voice. With a focus on speed, clarity, and control, our editor
+                puts powerful AI assistance right at your fingertips, helping
+                you write smarter and accomplish more.
+              </p>
             </div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-dark-textPrimary mb-4">
-              AI Writing Assistant
-            </h2>
-            <p className="text-gray-600 dark:text-dark-textSecondary text-sm sm:text-base">
-              Enhance your writing with AI-powered suggestions, content
-              generation, and real-time improvements for emails, documents, and
-              more.
-            </p>
+            <div className="flex justify-center">
+              <PenLine className="h-48 w-48 text-purple-100 dark:text-purple-900/50" />
+            </div>
           </div>
 
-          <div className="bg-white dark:bg-dark-secondary rounded-2xl shadow-lg dark:shadow-md p-6 sm:p-8 hover:shadow-xl dark:hover:shadow-lg transition-shadow">
-            <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-6">
-              <ClipboardList className="h-6 w-6 text-green-600 dark:text-green-400" />
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="md:order-last">
+              <div className="inline-block p-3 bg-green-100 dark:bg-green-900 rounded-lg mb-4">
+                <ClipboardList className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-dark-textPrimary sm:text-4xl">
+                Intelligent Note-Taking
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-dark-textSecondary">
+                Organize your ideas effortlessly with our versatile Bulletin,
+                designed for clarity and productivity. Whether you’re jotting
+                down quick thoughts with text notes, mapping out tasks on an
+                intuitive to-do list, or visualizing projects on dynamic Kanban
+                boards, our app adapts to any workflow. For in-depth research
+                and knowledge management, use the new Link Collection note to
+                efficiently organize, categorize, and visualize links within a
+                powerful knowledge graph. Enjoy a beautifully clean interface
+                that keeps your mind focused and your notes always accessible.
+              </p>
             </div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-dark-textPrimary mb-4">
-              Intelligent Note-Taking
-            </h2>
-            <p className="text-gray-600 dark:text-dark-textSecondary text-sm sm:text-base">
-              Capture and organize your ideas seamlessly with AI-assisted
-              note-taking, smart categorization, and instant retrieval.
-            </p>
+            <div className="flex justify-center md:order-first">
+              <ClipboardList className="h-48 w-48 text-green-100 dark:text-green-900/50" />
+            </div>
           </div>
 
-          <div className="bg-white dark:bg-dark-secondary rounded-2xl shadow-lg dark:shadow-md p-6 sm:p-8 hover:shadow-xl dark:hover:shadow-lg transition-shadow">
-            <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-6">
-              <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block p-3 bg-blue-100 dark:bg-blue-900 rounded-lg mb-4">
+                <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-dark-textPrimary sm:text-4xl">
+                AI-Powered Scheduling
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 dark:text-dark-textSecondary">
+                Make scheduling effortless with our intelligent Schedule
+                feature. Just enter your plans in natural language, and watch as
+                they are seamlessly transformed into calendar events. AI-driven
+                suggestions help you optimize planning by considering your
+                ongoing notes, real-time availability, and progress toward your
+                goals. With its elegantly simple interface, calendar management
+                becomes smooth and intuitive, giving you more time to focus on
+                what matters most.
+              </p>
             </div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-dark-textPrimary mb-4">
-              AI-Powered Scheduling
-            </h2>
-            <p className="text-gray-600 dark:text-dark-textSecondary text-sm sm:text-base">
-              Let AI help you plan your day efficiently—quickly create events,
-              prioritize tasks, and manage your time effortlessly.
-            </p>
+            <div className="flex justify-center">
+              <Calendar className="h-48 w-48 text-blue-100 dark:text-blue-900/50" />
+            </div>
           </div>
         </div>
       </div>
