@@ -3,6 +3,50 @@ import { Event } from "@/app/schedule/page";
 
 const prisma = new PrismaClient();
 
+interface TimeSlot {
+  start: string;
+  end: string;
+}
+
+function getAvailableTimeSlots(events: Event[], day: Date): TimeSlot[] {
+  const WORK_DAY_START = new Date(day);
+  WORK_DAY_START.setHours(9, 0, 0, 0);
+
+  const WORK_DAY_END = new Date(day);
+  WORK_DAY_END.setHours(17, 0, 0, 0);
+
+  const sortedEvents = [...events].sort(
+    (a, b) => a.start.getTime() - b.start.getTime()
+  );
+
+  const availableSlots: TimeSlot[] = [];
+  let currentPointer = new Date(WORK_DAY_START);
+
+  for (const event of sortedEvents) {
+    if (event.end <= currentPointer) continue;
+
+    if (event.start > currentPointer) {
+      availableSlots.push({
+        start: currentPointer.toISOString(),
+        end: event.start.toISOString(),
+      });
+    }
+
+    if (event.end > currentPointer) {
+      currentPointer = new Date(event.end);
+    }
+  }
+
+  if (currentPointer < WORK_DAY_END) {
+    availableSlots.push({
+      start: currentPointer.toISOString(),
+      end: WORK_DAY_END.toISOString(),
+    });
+  }
+
+  return availableSlots;
+}
+
 export async function suggest_events(
   userId: string,
   existingEvents: Event[],
@@ -40,62 +84,55 @@ export async function suggest_events(
     select: { title: true, type: true },
   });
 
-  // console.log(goals);
+  const availableTimeSlots = getAvailableTimeSlots(existingEvents, new Date());
 
   const prompt = `
-        You are a helpful AI that suggests a person tasks for a single day to help
-        them be more productive. Your goal is to generate a JSON array of task objects.
-        The person you are helping has a calendar on which they might already have some
-        events. The person you are helping also may also have some notes and a list of daily goals.
-        
-        The current date and time is ${currentDateTime}. 
-        
+    You are a helpful AI assistant that suggests a person up to three productive tasks for a single day. Your goal is to return a JSON array of task objects that fit into the person’s **available time slots** today.
 
-        **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
-        1. **ONLY SUGGEST TASKS WITH START TIMES STRICTLY AFTER THE CURRENT TIME (${currentDateTime}).**  
-           - If a task would start before this time, **DO NOT SUGGEST IT**.  
-           - If no valid time slots exist, return an empty array.
-        2. **DO NOT SUGGEST TASKS THAT CONFLICT WITH EXISTING EVENTS.**  
-        3. **ALL TASKS MUST START AT OR AFTER 6:00 AM AND END AT OR BEFORE 11:00 PM LOCAL TIME.**  
-        4. **DOUBLE-CHECK ALL TIMES BEFORE RETURNING THEM** to ensure they are:  
-           - After the current time.  
-           - Within the allowed time range (6:00 AM - 11:00 PM).  
-           - Not conflicting with any existing events.  
-        5. When possible, only suggest tasks that are relevant to the person's bulletin board or daily goals.  
-        6. Suggest **AT MOST three tasks**
-        7. Suggest **AT LEAST one task**
-        
-        
-        **Output Format (JSON array only, no extra text):**
-        [
-            {
-            "id": "unique-string",
-            "title": "Event Title",
-            "start": "ISO8601 DateTime",
-            "end": "ISO8601 DateTime"
-            }
-        ]
+    ---
 
-        **Valid time range for today:**
-        - **Earliest possible start time:** The **later** of 6:00 AM or the current time (${currentDateTime})
-        - **Latest end time:** ${currentDateTime.split("T")[0]}T23:00:00
-  }
+    **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
+    1. All tasks must start **strictly after the current time**: ${currentDateTime}
+    2. Tasks must only use the provided **available time slots** (see below). Do not propose overlapping or conflicting tasks.
+    3. All tasks must occur within the **available time slots**.
+    4. You must return:
+      - At **least 1** task
+      - At **most 3** tasks
+    5. Prefer tasks related to the person’s bulletin items or daily goals when possible.
+    6. Output must be a **JSON array only** — no extra text.
 
-        **Existing Events (DO NOT suggest conflicting times):**
-            ${JSON.stringify(existingEvents, null, 2)}
-        
-        **Bulletin Items(Might be empty):**
-        ${JSON.stringify(bulletinDict, null, 2)}
+    ---
 
-        **Daily Goals (Might be empty):**
-        ${JSON.stringify(goals, null, 2)}
+    **AVAILABLE TIME SLOTS** (you may only schedule tasks within these ranges):
+    ${JSON.stringify(availableTimeSlots, null, 2)}
 
-        **FINAL VERIFICATION BEFORE RETURNING RESPONSE:**  
-        - Ensure ALL suggested tasks start **strictly after the current time** (${currentDateTime}).  
-        - Ensure ALL tasks fall within 6:00 AM - 11:00 PM.  
-        - Ensure NO tasks conflict with existing events.  
-        - If no valid time slots exist, return an empty array.
-    `;
+    **CURRENT TIME** (you must not schedule anything before this):
+    ${currentDateTime}
+
+    **BULLETIN ITEMS (optional task ideas):**
+    ${JSON.stringify(bulletinDict, null, 2)}
+
+    **DAILY GOALS (priorities for today):**
+    ${JSON.stringify(goals, null, 2)}
+
+    ---
+
+    **OUTPUT FORMAT (JSON only):**
+    [
+      {
+        "id": "unique-string",
+        "title": "Event Title",
+        "start": "ISO8601 DateTime",
+        "end": "ISO8601 DateTime"
+      }
+    ]
+
+    ---
+
+    **FINAL VERIFICATION BEFORE RETURNING:**
+    - All tasks must start **after** ${currentDateTime}
+    - All tasks must fall within the **availableTimeSlots**
+  `;
 
   // console.log(prompt);
 
