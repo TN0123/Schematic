@@ -9,38 +9,42 @@ interface TimeSlot {
 }
 
 function getAvailableTimeSlots(events: Event[], day: Date): TimeSlot[] {
-  const WORK_DAY_START = new Date(day);
-  WORK_DAY_START.setHours(9, 0, 0, 0);
+  const now = new Date();
+  const workDayEnd = new Date(day);
+  workDayEnd.setHours(23, 59, 59, 999);
 
-  const WORK_DAY_END = new Date(day);
-  WORK_DAY_END.setHours(17, 0, 0, 0);
+  const todayEvents = events.filter((event) => {
+    const eventStart = new Date(event.start);
+    return eventStart >= now && eventStart <= workDayEnd;
+  });
 
-  const sortedEvents = [...events].sort(
-    (a, b) => a.start.getTime() - b.start.getTime()
+  const sortedEvents = [...todayEvents].sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
   );
 
   const availableSlots: TimeSlot[] = [];
-  let currentPointer = new Date(WORK_DAY_START);
+  let currentTime = new Date(now);
 
   for (const event of sortedEvents) {
-    if (event.end <= currentPointer) continue;
+    const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
 
-    if (event.start > currentPointer) {
+    if (eventStart > currentTime) {
       availableSlots.push({
-        start: currentPointer.toISOString(),
-        end: event.start.toISOString(),
+        start: currentTime.toISOString(),
+        end: eventStart.toISOString(),
       });
     }
 
-    if (event.end > currentPointer) {
-      currentPointer = new Date(event.end);
+    if (eventEnd > currentTime) {
+      currentTime = eventEnd;
     }
   }
 
-  if (currentPointer < WORK_DAY_END) {
+  if (currentTime < workDayEnd) {
     availableSlots.push({
-      start: currentPointer.toISOString(),
-      end: WORK_DAY_END.toISOString(),
+      start: currentTime.toISOString(),
+      end: workDayEnd.toISOString(),
     });
   }
 
@@ -55,16 +59,6 @@ export async function suggest_events(
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
-  const currentDateTime = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(new Date());
 
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -92,22 +86,17 @@ export async function suggest_events(
     ---
 
     **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
-    1. All tasks must start **strictly after the current time**: ${currentDateTime}
-    2. Tasks must only use the provided **available time slots** (see below). Do not propose overlapping or conflicting tasks.
-    3. All tasks must occur within the **available time slots**.
-    4. You must return:
+    1. All tasks must occur within the **available time slots**.
+    2. You must return:
       - At **least 1** task
       - At **most 3** tasks
-    5. Prefer tasks related to the person’s bulletin items or daily goals when possible.
-    6. Output must be a **JSON array only** — no extra text.
+    3. Prefer tasks related to the person’s bulletin items or daily goals when possible.
+    4. Output must be a **JSON array only** — no extra text.
 
     ---
 
     **AVAILABLE TIME SLOTS** (you may only schedule tasks within these ranges):
     ${JSON.stringify(availableTimeSlots, null, 2)}
-
-    **CURRENT TIME** (you must not schedule anything before this):
-    ${currentDateTime}
 
     **BULLETIN ITEMS (optional task ideas):**
     ${JSON.stringify(bulletinDict, null, 2)}
@@ -130,7 +119,6 @@ export async function suggest_events(
     ---
 
     **FINAL VERIFICATION BEFORE RETURNING:**
-    - All tasks must start **after** ${currentDateTime}
     - All tasks must fall within the **availableTimeSlots**
   `;
 

@@ -32,7 +32,6 @@ import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
-import EventSuggestion from "./_components/EventSuggestion";
 import GoalCard from "./_components/GoalCard";
 
 export interface Event {
@@ -304,7 +303,6 @@ export default function CalendarApp() {
     },
   });
   const userId = session?.user?.id;
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const [events, setEvents] = useState<Event[]>([]);
   const [showCreationModal, setShowCreationModal] = useState<boolean>(false);
@@ -744,7 +742,7 @@ export default function CalendarApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText, timezone: userTimezone }),
+        body: JSON.stringify({ text: inputText }),
       });
       const data = await response.json();
       if (data.events) {
@@ -815,7 +813,6 @@ export default function CalendarApp() {
         body: JSON.stringify({
           existingEvents: todaysEvents,
           userId: userId,
-          timezone: userTimezone,
         }),
       });
 
