@@ -293,7 +293,7 @@ export default function Bulletin() {
             {showDropdown && (
               <>
                 {isCollapsed ? (
-                  <div className="absolute left-0 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                  <div className="absolute left-2 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
                     <div>
                       <button
                         onClick={() => {
