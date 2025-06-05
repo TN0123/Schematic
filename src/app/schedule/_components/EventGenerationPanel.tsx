@@ -97,7 +97,7 @@ export default function EventGenerationPanel({
         <div id="event-adder">
           <div className="relative">
             <textarea
-              className="flex p-4 h-auto resize-none bg-gray-100 dark:bg-dark-paper focus:outline-none border dark:border-dark-divider rounded-br-md rounded-bl-md text-black dark:text-dark-textPrimary w-full"
+              className="flex w-full p-4 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onInput={(e) => {
@@ -105,7 +105,7 @@ export default function EventGenerationPanel({
                 textarea.style.height = "auto";
                 textarea.style.height = `${Math.min(
                   textarea.scrollHeight,
-                  140
+                  300
                 )}px`;
               }}
               placeholder="Enter your schedule here..."
