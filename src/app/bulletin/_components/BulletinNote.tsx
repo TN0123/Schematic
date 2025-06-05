@@ -265,11 +265,6 @@ export default function BulletinNote({
                 <Clock className="h-3 w-3" />
                 Last modified{" "}
                 {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
-                {(isAutoSaving || externalIsSaving) && (
-                  <span className="ml-2 text-xs text-blue-500 dark:text-blue-400">
-                    {isAutoSaving ? "Auto-saving..." : "Saving..."}
-                  </span>
-                )}
               </div>
             </div>
           </div>
