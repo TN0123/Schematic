@@ -133,22 +133,12 @@ export default function GoalsPanel({ onToggle }: GoalsPanelProps) {
 
   return (
     <>
-      <MobileToggle />
-      {/* Mobile backdrop */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden left-16"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
       <aside
-        className={`fixed md:relative z-30 h-full ${
+        className={`hidden md:flex fixed md:relative z-30 h-full ${
           isCollapsed ? "w-14" : "w-80"
         } bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 ${
           isCollapsed ? "px-2" : "px-4"
-        } flex flex-col transition-all duration-300 items-center
-        ${isMobileOpen ? "left-16 w-[calc(100%-4rem)]" : "-left-full md:left-0"}
-        `}
+        } flex-col transition-all duration-300 items-center`}
         id="goals-panel"
       >
         <div className="w-full flex flex-col items-center justify-between">

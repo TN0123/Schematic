@@ -62,11 +62,8 @@ export default function EventGenerationPanel({
 
   return (
     <>
-      <MobileToggle />
       <aside
-        className={`fixed md:relative z-30 h-full w-80 md:w-96 bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex flex-col gap-4 transition-all duration-300 ${
-          isMobileOpen ? "right-0" : "-right-full md:right-0"
-        } md:transform-none`}
+        className={`hidden md:flex fixed md:relative z-30 h-full w-80 md:w-96 bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300`}
       >
         {/* Menu Bar */}
         <div className="flex" id="event-menu-bar">

@@ -12,13 +12,15 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus, FileUp, Calendar, Target } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
-import GoalsPanel from "./_components/GoalsPanel";
+import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
+import EventSuggestion from "./_components/EventSuggestion";
+import GoalCard from "./_components/GoalCard";
 
 export interface Event {
   id: string;
@@ -31,6 +33,294 @@ interface GeneratedEvent {
   title: string;
   start: string;
   end: string;
+}
+
+// Mobile Panel Tabs Component
+interface MobilePanelTabsProps {
+  inputText: string;
+  setInputText: (text: string) => void;
+  loading: boolean;
+  handleSubmit: () => void;
+  suggestedEvents: Event[];
+  handleAcceptSuggestion: (event: Event) => void;
+  handleRejectSuggestion: (eventId: string) => void;
+  suggestionsLoading: boolean;
+  setShowModal: (show: boolean) => void;
+  setIsFileUploaderModalOpen: (open: boolean) => void;
+  fetchSuggestions: () => void;
+  onToggle?: () => void;
+}
+
+function MobilePanelTabs({
+  inputText,
+  setInputText,
+  loading,
+  handleSubmit,
+  suggestedEvents,
+  handleAcceptSuggestion,
+  handleRejectSuggestion,
+  suggestionsLoading,
+  setShowModal,
+  setIsFileUploaderModalOpen,
+  fetchSuggestions,
+  onToggle,
+}: MobilePanelTabsProps) {
+  const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalToAdd, setGoalToAdd] = useState<string>("");
+  const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
+    GoalDuration.DAILY
+  );
+  const [filters, setFilters] = useState<GoalDuration[]>([]);
+  const [removingGoals, setRemovingGoals] = useState<string[]>([]);
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (activeTab === "goals") {
+      fetchGoals();
+    }
+  }, [activeTab]);
+
+  const fetchGoals = async () => {
+    try {
+      const response = await fetch("/api/goals");
+      if (!response.ok) {
+        throw new Error("Failed to fetch goals");
+      }
+      const data = await response.json();
+      setGoals(data);
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+    }
+  };
+
+  const addGoal = async () => {
+    const response = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: goalToAdd,
+        type: currentDuration,
+      }),
+    });
+
+    const newGoal = await response.json();
+    setGoals([...goals, newGoal]);
+    setGoalToAdd("");
+  };
+
+  const deleteGoal = async (id: string) => {
+    setRemovingGoals((prev) => [...prev, id]);
+
+    await fetch(`/api/goals/${id}`, {
+      method: "DELETE",
+    });
+
+    setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
+    setRemovingGoals((prev) => prev.filter((goalId) => goalId !== id));
+  };
+
+  const handleFilterChange = (duration: GoalDuration) => {
+    setFilters((prevFilters) =>
+      prevFilters.includes(duration)
+        ? prevFilters.filter((filter) => filter !== duration)
+        : [...prevFilters, duration]
+    );
+  };
+
+  const filteredGoals =
+    filters.length > 0
+      ? goals.filter((goal) => filters.includes(goal.type))
+      : goals;
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Tab Navigation */}
+      <div className="flex border-b dark:border-dark-divider">
+        <button
+          onClick={() => setActiveTab("events")}
+          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+            activeTab === "events"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Calendar size={16} />
+            Events
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab("goals")}
+          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+            activeTab === "goals"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Target size={16} />
+            Goals
+          </div>
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "events" ? (
+          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={16} />
+                Add Event
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                onClick={() => setIsFileUploaderModalOpen(true)}
+              >
+                <FileUp size={16} />
+                Upload
+              </button>
+            </div>
+
+            {/* Event Generation */}
+            <div className="flex flex-col gap-3">
+              <textarea
+                className="w-full p-3 bg-gray-100 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Enter your schedule here..."
+                rows={3}
+              />
+              <button
+                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+                onClick={handleSubmit}
+              >
+                {loading ? "Generating..." : "Generate Events"}
+              </button>
+            </div>
+
+            {/* Suggested Events */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                  Suggested Events
+                </h3>
+                <button
+                  onClick={fetchSuggestions}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                >
+                  <RefreshCw
+                    size={16}
+                    className="text-gray-600 dark:text-dark-textSecondary"
+                  />
+                </button>
+              </div>
+
+              <div className="max-h-40 overflow-y-auto space-y-2">
+                {suggestionsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <RefreshCw
+                      size={24}
+                      className="animate-spin text-gray-600 dark:text-dark-textSecondary"
+                    />
+                  </div>
+                ) : suggestedEvents.length > 0 ? (
+                  suggestedEvents.map((event) => (
+                    <EventSuggestion
+                      key={event.id}
+                      suggestedEvent={event}
+                      onAccept={handleAcceptSuggestion}
+                      onReject={handleRejectSuggestion}
+                    />
+                  ))
+                ) : (
+                  <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
+                    No suggestions yet
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
+            {/* Goal Filters */}
+            <div className="flex gap-2 flex-wrap">
+              {Object.values(GoalDuration).map((duration) => (
+                <button
+                  key={duration}
+                  className={`text-xs font-medium px-3 py-1 rounded-full border transition-all duration-200 ${
+                    filters.includes(duration)
+                      ? "bg-gray-900 text-white border-gray-900 dark:bg-dark-actionHover dark:border-dark-actionHover"
+                      : "text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover"
+                  }`}
+                  onClick={() => handleFilterChange(duration)}
+                >
+                  {duration}
+                </button>
+              ))}
+            </div>
+
+            {/* Add Goal */}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <select
+                  value={currentDuration}
+                  onChange={(e) =>
+                    setCurrentDuration(e.target.value as GoalDuration)
+                  }
+                  className="px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.values(GoalDuration).map((duration) => (
+                    <option key={duration} value={duration}>
+                      {duration}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={goalToAdd}
+                  onChange={(e) => setGoalToAdd(e.target.value)}
+                  placeholder="Enter goal title..."
+                  className="flex-1 px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={addGoal}
+                disabled={!goalToAdd.trim()}
+                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Goal
+              </button>
+            </div>
+
+            {/* Goals List */}
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {filteredGoals.length > 0 ? (
+                filteredGoals.map((goal) => (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    handleGoalClick={deleteGoal}
+                    removing={removingGoals.includes(goal.id)}
+                  />
+                ))
+              ) : (
+                <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
+                  No goals yet. Add one above!
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function CalendarApp() {
@@ -679,7 +969,8 @@ export default function CalendarApp() {
   return (
     <SessionProvider>
       <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
-        <div className="flex flex-col md:flex-row h-full">
+        {/* Desktop Layout */}
+        <div className="hidden md:flex md:flex-row h-full">
           {/* Goals Panel */}
           <GoalsPanel onToggle={handlePanelToggle} />
           {/* Calendar */}
@@ -821,6 +1112,150 @@ export default function CalendarApp() {
             fetchSuggestions={fetchSuggestions}
             onToggle={handlePanelToggle}
           />
+        </div>
+
+        {/* Mobile Layout */}
+        <div className="flex md:hidden flex-col h-full">
+          {/* Calendar Section - Top */}
+          <div
+            ref={calendarContainerRef}
+            className="flex-1 justify-center items-center p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+          >
+            <AnimatePresence>
+              {calendarLoading && (
+                <motion.div
+                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10 dark:bg-dark-paper dark:bg-opacity-70"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                >
+                  <RefreshCw
+                    size={32}
+                    className="animate-spin text-gray-600 dark:text-dark-textSecondary"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              events={events}
+              eventClick={handleEventClick}
+              height="100%"
+              eventClassNames={(eventInfo) => {
+                const isCopied = copiedEvents.some(
+                  (e) => e.id === eventInfo.event.id
+                );
+                const isSelected = selectedEventIds.has(eventInfo.event.id);
+                return [
+                  isCopied
+                    ? "opacity-60 border-2 border-dashed border-blue-400"
+                    : "",
+                  isSelected ? "ring-2 ring-blue-500" : "",
+                ].filter(Boolean);
+              }}
+              headerToolbar={{
+                start: "prev,next",
+                center: "title",
+                right: "today",
+              }}
+              buttonText={{
+                today: "Today",
+                month: "Month",
+                week: "Week",
+                day: "Day",
+              }}
+              dayMaxEventRows={2}
+              views={{
+                dayGridMonth: {
+                  titleFormat: { year: "numeric", month: "short" },
+                  dayHeaderFormat: { weekday: "narrow" },
+                },
+              }}
+              themeSystem="standard"
+              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+              dayHeaderClassNames="text-gray-700 font-semibold py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
+              nowIndicator={true}
+              nowIndicatorClassNames="border-red-500 dark:border-red-900"
+              scrollTimeReset={false}
+              allDaySlot={false}
+              editable={true}
+              select={handleSelect}
+              unselectAuto={false}
+              selectable={true}
+              dateClick={(clickInfo) => {
+                setLastClickedDate(new Date(clickInfo.date));
+              }}
+              eventResize={async (resizeInfo) => {
+                try {
+                  const updatedEvent = {
+                    id: resizeInfo.event.id,
+                    start: resizeInfo.event.start,
+                    end: resizeInfo.event.end,
+                  };
+
+                  const res = await fetch(`/api/events/${updatedEvent.id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updatedEvent),
+                  });
+
+                  if (!res.ok) {
+                    throw new Error("Failed to update event duration");
+                  }
+
+                  console.log("Event resized and updated successfully");
+                } catch (error) {
+                  console.error("Error updating event duration:", error);
+                  resizeInfo.revert();
+                }
+              }}
+              eventDrop={handleEventDrop}
+              datesSet={(dateInfo) => {
+                const visibleStart = new Date(dateInfo.startStr);
+                const visibleEnd = new Date(dateInfo.endStr);
+
+                const bufferStart = new Date(visibleStart);
+                bufferStart.setMonth(bufferStart.getMonth() - 2);
+
+                const bufferEnd = new Date(visibleEnd);
+                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
+
+                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                  console.log(
+                    "Fetching events for range:",
+                    bufferStart,
+                    bufferEnd
+                  );
+                  fetchEvents(
+                    bufferStart.toISOString(),
+                    bufferEnd.toISOString()
+                  );
+                  setFetchedRange({ start: bufferStart, end: bufferEnd });
+                }
+              }}
+            />
+          </div>
+
+          {/* Bottom Panel Section - Mobile */}
+          <div className="h-1/3 bg-white dark:bg-dark-background border-t dark:border-dark-divider">
+            <MobilePanelTabs
+              inputText={inputText}
+              setInputText={setInputText}
+              loading={loading}
+              handleSubmit={handleSubmit}
+              suggestedEvents={suggestedEvents}
+              handleAcceptSuggestion={handleAcceptSuggestion}
+              handleRejectSuggestion={handleRejectSuggestion}
+              suggestionsLoading={suggestionsLoading}
+              setShowModal={setShowCreationModal}
+              setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
+              fetchSuggestions={fetchSuggestions}
+              onToggle={handlePanelToggle}
+            />
+          </div>
         </div>
 
         {showCreationModal && (
