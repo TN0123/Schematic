@@ -336,9 +336,9 @@ export default function WritePanel({
       </div>
       {!isCollapsed && (
         <div className="flex flex-col w-full h-full overflow-y-auto py-2 gap-4 transition-all">
-          <div className="bg-white dark:bg-dark-paper rounded-xl border-2 border-gray-200 dark:border-dark-divider mx-4">
+          <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
             <textarea
-              className="flex w-full p-4 h-auto resize-none placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary"
+              className="w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               onInput={(e) => {
@@ -346,12 +346,13 @@ export default function WritePanel({
                 textarea.style.height = "auto";
                 textarea.style.height = `${Math.min(
                   textarea.scrollHeight,
-                  300
+                  200
                 )}px`;
               }}
               placeholder="Ask anything"
+              rows={3}
             />
-            <div className="flex w-full justify-end items-center px-2 py-1">
+            <div className="flex w-full justify-end items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
               {selected && (
                 <p className="text-xs text-gray-400 italic px-4 pb-1">
                   Using selected text from{" "}
