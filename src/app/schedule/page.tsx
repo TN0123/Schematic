@@ -48,7 +48,6 @@ interface MobilePanelTabsProps {
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
   fetchSuggestions: () => void;
-  onToggle?: () => void;
 }
 
 function MobilePanelTabs({
@@ -63,7 +62,6 @@ function MobilePanelTabs({
   setShowModal,
   setIsFileUploaderModalOpen,
   fetchSuggestions,
-  onToggle,
 }: MobilePanelTabsProps) {
   const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -222,7 +220,7 @@ function MobilePanelTabs({
                 </button>
               </div>
 
-              <div className="max-h-40 overflow-y-auto space-y-2">
+              <div className="flex-1 overflow-y-auto space-y-2 min-h-[100px] max-h-[200px]">
                 {suggestionsLoading ? (
                   <div className="flex items-center justify-center py-4">
                     <RefreshCw
@@ -960,19 +958,13 @@ export default function CalendarApp() {
     };
   }, []);
 
-  const handlePanelToggle = () => {
-    if (calendarRef.current) {
-      setTimeout(() => calendarRef.current?.getApi().updateSize(), 50);
-    }
-  };
-
   return (
     <SessionProvider>
       <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
         {/* Desktop Layout */}
         <div className="hidden md:flex md:flex-row h-full">
           {/* Goals Panel */}
-          <GoalsPanel onToggle={handlePanelToggle} />
+          <GoalsPanel />
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
@@ -1110,7 +1102,6 @@ export default function CalendarApp() {
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             fetchSuggestions={fetchSuggestions}
-            onToggle={handlePanelToggle}
           />
         </div>
 
@@ -1253,7 +1244,6 @@ export default function CalendarApp() {
               setShowModal={setShowCreationModal}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
               fetchSuggestions={fetchSuggestions}
-              onToggle={handlePanelToggle}
             />
           </div>
         </div>

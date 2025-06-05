@@ -21,7 +21,6 @@ interface EventGenerationPanelProps {
   handleAcceptSuggestion: (event: Event) => void;
   handleRejectSuggestion: (eventId: string) => void;
   suggestionsLoading: boolean;
-  onToggle?: () => void;
 }
 
 export default function EventGenerationPanel({
@@ -36,14 +35,11 @@ export default function EventGenerationPanel({
   handleAcceptSuggestion,
   handleRejectSuggestion,
   suggestionsLoading,
-  onToggle,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const handleToggle = () => {
     setIsMobileOpen(!isMobileOpen);
-    if (onToggle) onToggle();
-    setTimeout(() => onToggle && onToggle(), 300);
   };
 
   const MobileToggle = () => (
