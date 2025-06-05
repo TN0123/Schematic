@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
-import { EventClickArg, DateSelectArg } from "@fullcalendar/core";
+import {
+  EventClickArg,
+  DateSelectArg,
+  EventContentArg,
+  EventChangeArg,
+} from "@fullcalendar/core";
 import { EventImpl } from "@fullcalendar/core/internal";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -12,7 +17,15 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCw, Plus, FileUp, Calendar, Target } from "lucide-react";
+import {
+  RefreshCw,
+  Plus,
+  FileUp,
+  Calendar,
+  Target,
+  Check,
+  X,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
@@ -27,6 +40,7 @@ export interface Event {
   title: string;
   start: Date;
   end: Date;
+  isSuggestion?: boolean;
 }
 
 interface GeneratedEvent {
@@ -41,13 +55,8 @@ interface MobilePanelTabsProps {
   setInputText: (text: string) => void;
   loading: boolean;
   handleSubmit: () => void;
-  suggestedEvents: Event[];
-  handleAcceptSuggestion: (event: Event) => void;
-  handleRejectSuggestion: (eventId: string) => void;
-  suggestionsLoading: boolean;
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
-  fetchSuggestions: () => void;
 }
 
 function MobilePanelTabs({
@@ -55,13 +64,8 @@ function MobilePanelTabs({
   setInputText,
   loading,
   handleSubmit,
-  suggestedEvents,
-  handleAcceptSuggestion,
-  handleRejectSuggestion,
-  suggestionsLoading,
   setShowModal,
   setIsFileUploaderModalOpen,
-  fetchSuggestions,
 }: MobilePanelTabsProps) {
   const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -207,42 +211,13 @@ function MobilePanelTabs({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary">
-                  Suggested Events
+                  AI Suggestions
                 </h3>
-                <button
-                  onClick={fetchSuggestions}
-                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200"
-                >
-                  <RefreshCw
-                    size={16}
-                    className="text-gray-600 dark:text-dark-textSecondary"
-                  />
-                </button>
               </div>
-
-              <div className="flex-1 overflow-y-auto space-y-2 min-h-[100px] max-h-[200px]">
-                {suggestionsLoading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <RefreshCw
-                      size={24}
-                      className="animate-spin text-gray-600 dark:text-dark-textSecondary"
-                    />
-                  </div>
-                ) : suggestedEvents.length > 0 ? (
-                  suggestedEvents.map((event) => (
-                    <EventSuggestion
-                      key={event.id}
-                      suggestedEvent={event}
-                      onAccept={handleAcceptSuggestion}
-                      onReject={handleRejectSuggestion}
-                    />
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
-                    No suggestions yet
-                  </p>
-                )}
-              </div>
+              <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
+                Click the refresh icon in the calendar header to get
+                suggestions. They will appear on your calendar.
+              </p>
             </div>
           </div>
         ) : (
@@ -332,7 +307,6 @@ export default function CalendarApp() {
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
   const [showCreationModal, setShowCreationModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({
@@ -364,6 +338,14 @@ export default function CalendarApp() {
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
+    const buttons = document.querySelectorAll(".fc-refresh-button");
+    buttons.forEach((button) => {
+      button.innerHTML = refreshIcon;
+    });
+  }, [suggestionsLoading]);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -463,6 +445,78 @@ export default function CalendarApp() {
     }
   };
 
+  const handleEventUpdate = async (info: EventChangeArg) => {
+    const { event } = info;
+    const isSuggestion = event.extendedProps.isSuggestion;
+
+    if (isSuggestion) {
+      const suggestion = events.find((e) => e.id === event.id);
+      if (!suggestion) {
+        info.revert();
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: suggestion.title,
+            start: event.start,
+            end: event.end,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to create event from suggestion");
+        }
+        const createdEvent = await res.json();
+        setEvents((currentEvents) => [
+          ...currentEvents.filter((e) => e.id !== event.id),
+          {
+            id: createdEvent.id,
+            title: createdEvent.title,
+            start: new Date(createdEvent.start),
+            end: new Date(createdEvent.end),
+            isSuggestion: false,
+          },
+        ]);
+        console.log("Suggestion accepted and updated successfully");
+      } catch (error) {
+        console.error("Error handling suggestion update:", error);
+        info.revert();
+      }
+    } else {
+      // It's a regular event
+      try {
+        const res = await fetch(`/api/events/${event.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start: event.start,
+            end: event.end,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to update event");
+        }
+
+        setEvents((prevEvents) =>
+          prevEvents.map((e) =>
+            e.id === event.id
+              ? { ...e, start: event.start!, end: event.end! }
+              : e
+          )
+        );
+        console.log("Event updated successfully");
+      } catch (error) {
+        console.error("Error updating event:", error);
+        info.revert();
+      }
+    }
+  };
+
   const handleEventClick = (clickInfo: EventClickArg): void => {
     if (clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
       setEventToDelete(clickInfo.event);
@@ -470,40 +524,6 @@ export default function CalendarApp() {
     } else {
       setEventToEdit(clickInfo.event);
       setShowEditModal(true);
-    }
-  };
-
-  const handleEventDrop = async (dropInfo: any) => {
-    const { id } = dropInfo.event;
-    const start = dropInfo.event.start;
-    const end = dropInfo.event.end;
-
-    try {
-      const res = await fetch(`/api/events/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          start: start?.toISOString(),
-          end: end?.toISOString(),
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to update event");
-      }
-
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === id
-            ? { ...event, start: start || event.start, end: end || event.end }
-            : event
-        )
-      );
-
-      console.log("Event updated successfully");
-    } catch (error) {
-      console.error("Error updating event:", error);
-      dropInfo.revert();
     }
   };
 
@@ -772,10 +792,12 @@ export default function CalendarApp() {
   const endOfDay = new Date(currentDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  const todaysEvents = events.filter((event) => {
-    const eventStart = new Date(event.start);
-    return eventStart >= currentDate && eventStart <= endOfDay;
-  });
+  const todaysEvents = events
+    .filter((event) => !event.isSuggestion)
+    .filter((event) => {
+      const eventStart = new Date(event.start);
+      return eventStart >= currentDate && eventStart <= endOfDay;
+    });
 
   const fetchSuggestions = async () => {
     if (!userId) {
@@ -800,7 +822,19 @@ export default function CalendarApp() {
       if (!response.ok) throw new Error("Failed to fetch suggestions");
 
       const data = await response.json();
-      setSuggestedEvents(data.events);
+      if (data.events) {
+        const newSuggestions = data.events.map((event: any) => ({
+          id: event.id || `suggestion-${Date.now()}-${Math.random()}`,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+          isSuggestion: true,
+        }));
+        setEvents((currentEvents) => [
+          ...currentEvents.filter((e) => !e.isSuggestion),
+          ...newSuggestions,
+        ]);
+      }
     } catch (error) {
       console.error("Error suggesting events:", error);
     } finally {
@@ -808,17 +842,20 @@ export default function CalendarApp() {
     }
   };
 
-  const handleAcceptSuggestion = async (event: Event) => {
+  const handleAcceptSuggestion = async (suggestionId: string) => {
+    const suggestion = events.find((e) => e.id === suggestionId);
+    if (!suggestion) return;
+
     try {
-      const res = await fetch("api/events", {
+      const res = await fetch("/api/events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: event.title,
-          start: event.start,
-          end: event.end,
+          title: suggestion.title,
+          start: suggestion.start,
+          end: suggestion.end,
         }),
       });
 
@@ -828,24 +865,28 @@ export default function CalendarApp() {
 
       const createdEvent = await res.json();
 
-      setEvents([
-        ...events,
-        {
-          id: createdEvent.id,
-          title: createdEvent.title,
-          start: new Date(createdEvent.start),
-          end: new Date(createdEvent.end),
-        },
-      ]);
-
-      setSuggestedEvents(suggestedEvents.filter((e) => e.id !== event.id));
+      setEvents((currentEvents) =>
+        currentEvents.map((e) =>
+          e.id === suggestionId
+            ? {
+                id: createdEvent.id,
+                title: createdEvent.title,
+                start: new Date(createdEvent.start),
+                end: new Date(createdEvent.end),
+                isSuggestion: false,
+              }
+            : e
+        )
+      );
     } catch (error) {
       console.error("Error accepting suggestion:", error);
     }
   };
 
-  const handleRejectSuggestion = (eventId: string) => {
-    setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
+  const handleRejectSuggestion = (suggestionId: string) => {
+    setEvents((currentEvents) =>
+      currentEvents.filter((e) => e.id !== suggestionId)
+    );
   };
 
   useEffect(() => {
@@ -958,6 +999,50 @@ export default function CalendarApp() {
     };
   }, []);
 
+  function renderEventContent(eventInfo: EventContentArg) {
+    const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
+
+    return (
+      <div className="group relative h-full w-full flex flex-col justify-start p-1">
+        <div className="text-xs font-light">{eventInfo.timeText}</div>
+        <div className="font-normal truncate">{eventInfo.event.title}</div>
+
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
+          {eventInfo.event.title}
+          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+        </div>
+
+        {isSuggestion && (
+          <div className="absolute top-[2px] right-[2px] flex flex-col z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAcceptSuggestion(eventInfo.event.id);
+              }}
+              className="bg-green-500 hover:bg-green-600 text-white p-0.5 mb-1 rounded-full flex items-center justify-center"
+              style={{ width: "16px", height: "16px" }}
+              aria-label="Accept suggestion"
+            >
+              <Check size={10} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRejectSuggestion(eventInfo.event.id);
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center"
+              style={{ width: "16px", height: "16px" }}
+              aria-label="Reject suggestion"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <SessionProvider>
       <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
@@ -992,23 +1077,59 @@ export default function CalendarApp() {
               initialView="timeGridWeek"
               events={events}
               eventClick={handleEventClick}
+              eventContent={renderEventContent}
               height="100%"
+              customButtons={{
+                refresh: {
+                  text: "",
+                  click: fetchSuggestions,
+                  hint: "Refresh Suggestions",
+                },
+              }}
               eventClassNames={(eventInfo) => {
+                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
                 const isCopied = copiedEvents.some(
                   (e) => e.id === eventInfo.event.id
                 );
                 const isSelected = selectedEventIds.has(eventInfo.event.id);
-                return [
-                  isCopied
-                    ? "opacity-60 border-2 border-dashed border-blue-400"
-                    : "",
-                  isSelected ? "ring-2 ring-blue-500" : "",
-                ].filter(Boolean);
+
+                if (!isSuggestion && isCopied) {
+                  const copiedClasses = [
+                    "opacity-60",
+                    "border-2",
+                    "border-dashed",
+                    "border-blue-400",
+                    "rounded-md",
+                  ];
+                  if (isSelected) {
+                    copiedClasses.push("ring-2", "ring-blue-500");
+                  }
+                  return copiedClasses;
+                }
+
+                const classes = [
+                  "dark:bg-blue-900/80",
+                  "dark:border-blue-500",
+                  "border-l-4",
+                  "text-white dark:text-blue-200",
+                  "rounded-md",
+                  "border-transparent",
+                  "overflow-visible",
+                ];
+
+                if (isSuggestion) {
+                  classes.push("opacity-70");
+                }
+
+                if (isSelected) {
+                  classes.push("ring-2", "ring-blue-500");
+                }
+                return classes.filter(Boolean);
               }}
               headerToolbar={{
                 start: "prev,next today",
                 center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay",
+                right: "dayGridMonth,timeGridWeek,timeGridDay,refresh",
               }}
               buttonText={{
                 today: "Today",
@@ -1038,31 +1159,8 @@ export default function CalendarApp() {
               dateClick={(clickInfo) => {
                 setLastClickedDate(new Date(clickInfo.date));
               }}
-              eventResize={async (resizeInfo) => {
-                try {
-                  const updatedEvent = {
-                    id: resizeInfo.event.id,
-                    start: resizeInfo.event.start,
-                    end: resizeInfo.event.end,
-                  };
-
-                  const res = await fetch(`/api/events/${updatedEvent.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(updatedEvent),
-                  });
-
-                  if (!res.ok) {
-                    throw new Error("Failed to update event duration");
-                  }
-
-                  console.log("Event resized and updated successfully");
-                } catch (error) {
-                  console.error("Error updating event duration:", error);
-                  resizeInfo.revert();
-                }
-              }}
-              eventDrop={handleEventDrop}
+              eventResize={handleEventUpdate}
+              eventDrop={handleEventUpdate}
               datesSet={(dateInfo) => {
                 const visibleStart = new Date(dateInfo.startStr);
                 const visibleEnd = new Date(dateInfo.endStr);
@@ -1095,13 +1193,8 @@ export default function CalendarApp() {
             setInputText={setInputText}
             loading={loading}
             handleSubmit={handleSubmit}
-            suggestedEvents={suggestedEvents}
-            handleAcceptSuggestion={handleAcceptSuggestion}
-            handleRejectSuggestion={handleRejectSuggestion}
-            suggestionsLoading={suggestionsLoading}
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
-            fetchSuggestions={fetchSuggestions}
           />
         </div>
 
@@ -1134,23 +1227,53 @@ export default function CalendarApp() {
               initialView="dayGridMonth"
               events={events}
               eventClick={handleEventClick}
+              eventContent={renderEventContent}
               height="100%"
+              customButtons={{
+                refresh: {
+                  text: "",
+                  click: fetchSuggestions,
+                },
+              }}
               eventClassNames={(eventInfo) => {
+                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
                 const isCopied = copiedEvents.some(
                   (e) => e.id === eventInfo.event.id
                 );
                 const isSelected = selectedEventIds.has(eventInfo.event.id);
-                return [
-                  isCopied
-                    ? "opacity-60 border-2 border-dashed border-blue-400"
-                    : "",
-                  isSelected ? "ring-2 ring-blue-500" : "",
-                ].filter(Boolean);
-              }}
-              headerToolbar={{
-                start: "prev,next",
-                center: "title",
-                right: "today",
+
+                if (!isSuggestion && isCopied) {
+                  const copiedClasses = [
+                    "opacity-60",
+                    "border-2",
+                    "border-dashed",
+                    "border-blue-400",
+                    "rounded-md",
+                  ];
+                  if (isSelected) {
+                    copiedClasses.push("ring-2", "ring-blue-500");
+                  }
+                  return copiedClasses;
+                }
+
+                const classes = [
+                  "dark:bg-blue-900/80",
+                  "dark:border-blue-500",
+                  "border-l-4",
+                  "text-white dark:text-blue-200",
+                  "rounded-md",
+                  "border-transparent",
+                  "overflow-visible",
+                ];
+
+                if (isSuggestion) {
+                  classes.push("opacity-70");
+                }
+
+                if (isSelected) {
+                  classes.push("ring-2", "ring-blue-500");
+                }
+                return classes.filter(Boolean);
               }}
               buttonText={{
                 today: "Today",
@@ -1179,31 +1302,8 @@ export default function CalendarApp() {
               dateClick={(clickInfo) => {
                 setLastClickedDate(new Date(clickInfo.date));
               }}
-              eventResize={async (resizeInfo) => {
-                try {
-                  const updatedEvent = {
-                    id: resizeInfo.event.id,
-                    start: resizeInfo.event.start,
-                    end: resizeInfo.event.end,
-                  };
-
-                  const res = await fetch(`/api/events/${updatedEvent.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(updatedEvent),
-                  });
-
-                  if (!res.ok) {
-                    throw new Error("Failed to update event duration");
-                  }
-
-                  console.log("Event resized and updated successfully");
-                } catch (error) {
-                  console.error("Error updating event duration:", error);
-                  resizeInfo.revert();
-                }
-              }}
-              eventDrop={handleEventDrop}
+              eventResize={handleEventUpdate}
+              eventDrop={handleEventUpdate}
               datesSet={(dateInfo) => {
                 const visibleStart = new Date(dateInfo.startStr);
                 const visibleEnd = new Date(dateInfo.endStr);
@@ -1237,13 +1337,8 @@ export default function CalendarApp() {
               setInputText={setInputText}
               loading={loading}
               handleSubmit={handleSubmit}
-              suggestedEvents={suggestedEvents}
-              handleAcceptSuggestion={handleAcceptSuggestion}
-              handleRejectSuggestion={handleRejectSuggestion}
-              suggestionsLoading={suggestionsLoading}
               setShowModal={setShowCreationModal}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
-              fetchSuggestions={fetchSuggestions}
             />
           </div>
         </div>

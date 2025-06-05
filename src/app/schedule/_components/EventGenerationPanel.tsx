@@ -5,9 +5,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
-import EventSuggestion from "./EventSuggestion";
-import { Event } from "../page";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -16,11 +14,6 @@ interface EventGenerationPanelProps {
   setInputText: (text: string) => void;
   loading: boolean;
   handleSubmit: () => void;
-  fetchSuggestions: () => void;
-  suggestedEvents: Event[];
-  handleAcceptSuggestion: (event: Event) => void;
-  handleRejectSuggestion: (eventId: string) => void;
-  suggestionsLoading: boolean;
 }
 
 export default function EventGenerationPanel({
@@ -30,31 +23,12 @@ export default function EventGenerationPanel({
   setInputText,
   loading,
   handleSubmit,
-  fetchSuggestions,
-  suggestedEvents,
-  handleAcceptSuggestion,
-  handleRejectSuggestion,
-  suggestionsLoading,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const handleToggle = () => {
     setIsMobileOpen(!isMobileOpen);
   };
-
-  const MobileToggle = () => (
-    <button
-      id="event-panel-toggle"
-      onClick={handleToggle}
-      className="md:hidden fixed top-[9rem] right-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
-      aria-label="Open event panel"
-    >
-      <PanelRightOpen
-        size={20}
-        className="text-gray-700 dark:text-dark-textSecondary"
-      />
-    </button>
-  );
 
   return (
     <>
@@ -122,48 +96,6 @@ export default function EventGenerationPanel({
           >
             {loading ? "Generating..." : "Generate"}
           </button>
-        </div>
-
-        <div
-          className="w-full border-t dark:border-dark-divider"
-          id="suggested-events"
-        >
-          <div className="flex items-center justify-between px-2 w-full">
-            <h1 className="text-md py-2 text-black dark:text-dark-textPrimary">
-              Suggested
-            </h1>
-            <button className="px-2" onClick={fetchSuggestions}>
-              <div className="flex items-center justify-center gap-2">
-                <RefreshCw
-                  className="hover:text-blue-500 dark:hover:text-blue-400 transition-all duration-200"
-                  size={16}
-                />
-              </div>
-            </button>
-          </div>
-          {suggestedEvents.length > 0 && (
-            <div className="w-full flex flex-col justify-center items-center">
-              {suggestedEvents.map((suggestedEvent) => (
-                <EventSuggestion
-                  suggestedEvent={suggestedEvent}
-                  key={suggestedEvent.id}
-                  onAccept={(event) => {
-                    handleAcceptSuggestion(event);
-                    setIsMobileOpen(false);
-                  }}
-                  onReject={handleRejectSuggestion}
-                />
-              ))}
-            </div>
-          )}
-          {suggestionsLoading && (
-            <div className="w-full flex justify-center items-center">
-              <RefreshCw
-                size={24}
-                className="animate-spin text-black dark:text-dark-textPrimary"
-              />
-            </div>
-          )}
         </div>
       </aside>
     </>
