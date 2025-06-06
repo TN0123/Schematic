@@ -4,12 +4,14 @@ import {
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  CalendarPlus,
 } from "lucide-react";
 import { useState } from "react";
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
+  setIsIcsUploaderModalOpen: (open: boolean) => void;
   inputText: string;
   setInputText: (text: string) => void;
   loading: boolean;
@@ -19,6 +21,7 @@ interface EventGenerationPanelProps {
 export default function EventGenerationPanel({
   setShowModal,
   setIsFileUploaderModalOpen,
+  setIsIcsUploaderModalOpen,
   inputText,
   setInputText,
   loading,
@@ -65,6 +68,15 @@ export default function EventGenerationPanel({
             }}
           >
             <FileUp size={20} />
+          </button>
+          <button
+            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+            onClick={() => {
+              setIsIcsUploaderModalOpen(true);
+              setIsMobileOpen(false);
+            }}
+          >
+            <CalendarPlus size={20} />
           </button>
         </div>
 

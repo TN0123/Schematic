@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
+import IcsUploaderModal from "./_components/IcsUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
 import GoalCard from "./_components/GoalCard";
@@ -56,6 +57,7 @@ interface MobilePanelTabsProps {
   handleSubmit: () => void;
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
+  setIsIcsUploaderModalOpen: (open: boolean) => void;
 }
 
 function MobilePanelTabs({
@@ -65,6 +67,7 @@ function MobilePanelTabs({
   handleSubmit,
   setShowModal,
   setIsFileUploaderModalOpen,
+  setIsIcsUploaderModalOpen,
 }: MobilePanelTabsProps) {
   const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -185,6 +188,13 @@ function MobilePanelTabs({
               >
                 <FileUp size={16} />
                 Upload
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                onClick={() => setIsIcsUploaderModalOpen(true)}
+              >
+                <FileUp size={16} />
+                Import
               </button>
             </div>
 
@@ -319,6 +329,7 @@ export default function CalendarApp() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
+  const [isIcsUploaderModalOpen, setIsIcsUploaderModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [eventToEdit, setEventToEdit] = useState<EventImpl>();
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
@@ -1205,6 +1216,7 @@ export default function CalendarApp() {
             handleSubmit={handleSubmit}
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
+            setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
           />
         </div>
 
@@ -1349,6 +1361,7 @@ export default function CalendarApp() {
               handleSubmit={handleSubmit}
               setShowModal={setShowCreationModal}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
+              setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
             />
           </div>
         </div>
@@ -1394,6 +1407,11 @@ export default function CalendarApp() {
         <FileUploaderModal
           isOpen={isFileUploaderModalOpen}
           onClose={() => setIsFileUploaderModalOpen(false)}
+          setEvents={setExtractedEvents}
+        />
+        <IcsUploaderModal
+          isOpen={isIcsUploaderModalOpen}
+          onClose={() => setIsIcsUploaderModalOpen(false)}
           setEvents={setExtractedEvents}
         />
       </div>
