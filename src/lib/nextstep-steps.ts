@@ -25,7 +25,7 @@ export const steps: Tour[] = [
         icon: "",
         title: "Add Events",
         content:
-          "You can also add events manually or through uploading a file containing your events.",
+          "You can also add events manually, through uploading a file containing your events, or through importing your events from a .ics file from another calendar app.",
         selector: "#event-menu-bar",
         side: "bottom-left",
         pointerRadius: 10,
@@ -41,16 +41,6 @@ export const steps: Tour[] = [
         pointerRadius: 0,
         pointerPadding: 0,
         showSkip: true,
-      },
-      {
-        icon: "",
-        title: "Suggested Events",
-        content:
-          "AI Powered suggestions connected to your bulletin and goals to help you best ulilize your time. You can modify these in settings.",
-        selector: "#suggested-events",
-        side: "left",
-        pointerRadius: 10,
-        pointerPadding: 20,
       },
     ],
   },
