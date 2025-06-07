@@ -7,6 +7,10 @@ import {
   CalendarPlus,
 } from "lucide-react";
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { motion, AnimatePresence } from "framer-motion";
+import { Event } from "../page";
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -16,6 +20,7 @@ interface EventGenerationPanelProps {
   setInputText: (text: string) => void;
   loading: boolean;
   handleSubmit: () => void;
+  dailySummary: string;
 }
 
 export default function EventGenerationPanel({
@@ -26,6 +31,7 @@ export default function EventGenerationPanel({
   setInputText,
   loading,
   handleSubmit,
+  dailySummary,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -109,6 +115,32 @@ export default function EventGenerationPanel({
             {loading ? "Generating..." : "Generate"}
           </button>
         </div>
+
+        <AnimatePresence>
+          {dailySummary && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="flex flex-col gap-2 mt-4"
+            >
+              <p className="text-lg text-gray-500 text-center font-bold dark:text-dark-textSecondary">
+                Daily Summary
+              </p>
+              <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: (props) => <p {...props} className="mt-4" />,
+                  }}
+                >
+                  {dailySummary}
+                </ReactMarkdown>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </aside>
     </>
   );

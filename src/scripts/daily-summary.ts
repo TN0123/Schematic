@@ -1,10 +1,6 @@
 import { Event } from "@/app/schedule/page";
 
 export async function daily_summary(existingEvents: Event[]) {
-  if (existingEvents.length === 0) {
-    return "";
-  }
-
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -14,7 +10,11 @@ export async function daily_summary(existingEvents: Event[]) {
 
   let prompt = `
     You are a helpful assistant that generates a daily summary of the user's events. 
-    The summary should be concise and in bullet points if applicable.
+    The summary should be concise and in bullet points if applicable. In addition to this,
+    provide some short and specific advice on how the user can best utilize their time for the day.
+    
+    Return just the summary and advice with no additional text. Use markdown formatting. Don't label
+    the summary or advice, just return the text. Clearly separate the summary and advice with a line break.
 
     Here are the user's existing events for the day:
 

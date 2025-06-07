@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import {
   EventClickArg,
@@ -344,6 +344,8 @@ export default function CalendarApp() {
   );
   const [copiedEvents, setCopiedEvents] = useState<Event[]>([]);
   const [lastClickedDate, setLastClickedDate] = useState<Date | null>(null);
+  const [dailySummary, setDailySummary] = useState("");
+  const [hasFetchedDailySummary, setHasFetchedDailySummary] = useState(false);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -796,17 +798,45 @@ export default function CalendarApp() {
     }
   };
 
-  const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(currentDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  const todaysEvents = useMemo(() => {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(currentDate);
+    endOfDay.setHours(23, 59, 59, 999);
 
-  const todaysEvents = events
-    .filter((event) => !event.isSuggestion)
-    .filter((event) => {
-      const eventStart = new Date(event.start);
-      return eventStart >= currentDate && eventStart <= endOfDay;
-    });
+    return events
+      .filter((event) => !event.isSuggestion)
+      .filter((event) => {
+        const eventStart = new Date(event.start);
+        return eventStart >= currentDate && eventStart <= endOfDay;
+      });
+  }, [events]);
+
+  useEffect(() => {
+    if (todaysEvents.length > 0 && !hasFetchedDailySummary) {
+      const fetchDailySummary = async () => {
+        try {
+          const response = await fetch("/api/daily-summary", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ existingEvents: todaysEvents }),
+          });
+          if (!response.ok) {
+            throw new Error("Failed to fetch daily summary");
+          }
+          const data = await response.json();
+          setDailySummary(data.result);
+          setHasFetchedDailySummary(true);
+        } catch (error) {
+          console.error("Error fetching daily summary:", error);
+          setDailySummary("Could not load summary.");
+        }
+      };
+      fetchDailySummary();
+    }
+  }, [todaysEvents, hasFetchedDailySummary]);
 
   const fetchSuggestions = async () => {
     if (!userId) {
@@ -1217,6 +1247,7 @@ export default function CalendarApp() {
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
+            dailySummary={dailySummary}
           />
         </div>
 
