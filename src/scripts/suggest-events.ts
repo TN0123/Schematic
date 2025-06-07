@@ -87,7 +87,8 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
       - At **least 1** task
       - At **most 3** tasks
     3. Prefer tasks related to the person’s bulletin items or daily goals when possible.
-    4. Output must be a **JSON array only** — no extra text.
+    4. Make sure to not suggest events that are already on the schedule (this means not repeating the times or the titles of existing events)
+    5. Output must be a **JSON array only** — no extra text.
 
     ---
 
@@ -119,9 +120,10 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
 
     **FINAL VERIFICATION BEFORE RETURNING:**
     - All tasks must fall within the **availableTimeSlots**
+    - Make sure to not suggest events that are already on the schedule
   `;
 
-  // console.log(prompt);
+  console.log(prompt);
 
   let retries = 3;
   let delay = 1000;
