@@ -65,7 +65,11 @@ export async function suggest_events(
 
   const bulletins = await prisma.bulletin.findMany({
     where: { userId },
-    select: { title: true, content: true },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    take: 10,
+    select: { title: true, content: true, data: true },
   });
 
   const bulletinDict: Record<string, string> = {};
@@ -82,7 +86,7 @@ export async function suggest_events(
 
   const prompt = `
     You are a helpful AI assistant that suggests a person up to three productive tasks for a 
-    single day. Your goal is to return a JSON array of task objects that fit into the person’s 
+    single day. Your goal is to return a JSON array of task objects that fit into the person's 
     **available time slots** today.
 
     ---
@@ -92,7 +96,7 @@ export async function suggest_events(
     2. You must return:
       - At **least 1** task
       - At **most 3** tasks
-    3. Prefer tasks related to the person’s bulletin items or daily goals when possible.
+    3. Prefer tasks related to the person's bulletin items or daily goals when possible.
     4. Make sure to not suggest events that are already on the schedule. This means not 
     repeating the times or the titles of existing events. It is okay to suggest fewer 
     tasks than the maximum if you cannot find come up with tasks that are not already 
