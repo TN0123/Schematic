@@ -817,6 +817,27 @@ export default function CalendarApp() {
       const fetchDailySummary = async () => {
         try {
           const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+          const eventSummary = todaysEvents
+            .map((event) => {
+              const options: Intl.DateTimeFormatOptions = {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+                timeZone: userTimezone,
+              };
+              const start = new Date(event.start).toLocaleTimeString(
+                "en-US",
+                options
+              );
+              const end = new Date(event.end).toLocaleTimeString(
+                "en-US",
+                options
+              );
+              return `- ${event.title}: ${start} - ${end}`;
+            })
+            .join("\n");
+
           const response = await fetch("/api/daily-summary", {
             method: "POST",
             headers: {
@@ -825,13 +846,14 @@ export default function CalendarApp() {
             body: JSON.stringify({
               existingEvents: todaysEvents,
               timezone: userTimezone,
+              userId: userId,
             }),
           });
           if (!response.ok) {
             throw new Error("Failed to fetch daily summary");
           }
           const data = await response.json();
-          setDailySummary(data.result);
+          setDailySummary(`${eventSummary}\n\n${data.result}`);
           setHasFetchedDailySummary(true);
         } catch (error) {
           console.error("Error fetching daily summary:", error);
@@ -840,7 +862,7 @@ export default function CalendarApp() {
       };
       fetchDailySummary();
     }
-  }, [todaysEvents, hasFetchedDailySummary]);
+  }, [todaysEvents, hasFetchedDailySummary, userId]);
 
   const fetchSuggestions = async () => {
     if (!userId) {
@@ -850,6 +872,25 @@ export default function CalendarApp() {
 
     try {
       setSuggestionsLoading(true);
+
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const eventSummary = todaysEvents
+        .map((event) => {
+          const options: Intl.DateTimeFormatOptions = {
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: userTimezone,
+          };
+          const start = new Date(event.start).toLocaleTimeString(
+            "en-US",
+            options
+          );
+          const end = new Date(event.end).toLocaleTimeString("en-US", options);
+          return `- ${event.title}: ${start} - ${end}`;
+        })
+        .join("\n");
+
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
         headers: {
@@ -857,6 +898,7 @@ export default function CalendarApp() {
         },
         body: JSON.stringify({
           existingEvents: todaysEvents,
+          eventSummary: eventSummary,
           userId: userId,
         }),
       });

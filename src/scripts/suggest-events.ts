@@ -51,7 +51,11 @@ function getAvailableTimeSlots(events: Event[], day: Date): TimeSlot[] {
   return availableSlots;
 }
 
-export async function suggest_events(userId: string, existingEvents: Event[]) {
+export async function suggest_events(
+  userId: string,
+  existingEvents: Event[],
+  eventSummary: string
+) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -77,7 +81,9 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
   const availableTimeSlots = getAvailableTimeSlots(existingEvents, new Date());
 
   const prompt = `
-    You are a helpful AI assistant that suggests a person up to three productive tasks for a single day. Your goal is to return a JSON array of task objects that fit into the person’s **available time slots** today.
+    You are a helpful AI assistant that suggests a person up to three productive tasks for a 
+    single day. Your goal is to return a JSON array of task objects that fit into the person’s 
+    **available time slots** today.
 
     ---
 
@@ -87,7 +93,10 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
       - At **least 1** task
       - At **most 3** tasks
     3. Prefer tasks related to the person’s bulletin items or daily goals when possible.
-    4. Make sure to not suggest events that are already on the schedule (this means not repeating the times or the titles of existing events)
+    4. Make sure to not suggest events that are already on the schedule. This means not 
+    repeating the times or the titles of existing events. It is okay to suggest fewer 
+    tasks than the maximum if you cannot find come up with tasks that are not already 
+    on the schedule.
     5. Output must be a **JSON array only** — no extra text.
 
     ---
@@ -101,8 +110,8 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
     **DAILY GOALS (priorities for today):**
     ${JSON.stringify(goals, null, 2)}
 
-    **EXISTING EVENTS (don't repeat things already on the schedule):**
-    ${JSON.stringify(existingEvents, null, 2)}
+    **EXISTING EVENTS FOR TODAY (don't repeat tasks that the user is already going to do today!):**
+    ${eventSummary}
 
     ---
 

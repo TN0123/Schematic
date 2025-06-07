@@ -1,6 +1,13 @@
 import { Event } from "@/app/schedule/page";
+import { PrismaClient } from "@prisma/client";
 
-export async function daily_summary(existingEvents: Event[], timezone: string) {
+const prisma = new PrismaClient();
+
+export async function daily_summary(
+  existingEvents: Event[],
+  timezone: string,
+  userId: string
+) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -8,14 +15,20 @@ export async function daily_summary(existingEvents: Event[], timezone: string) {
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+  const goals = await prisma.goal.findMany({
+    where: {
+      userId,
+    },
+    select: { title: true, type: true },
+  });
+
   let prompt = `
-    You are a helpful assistant that generates a daily summary of the user's events. 
-    The summary should be concise and in bullet points if applicable. In addition to this,
-    provide some short and specific advice on how the user can best utilize their time for the day.
+    You are a helpful assistant that provides some short and specific advice on how the user 
+    can best utilize their time for the day based on their events and goals.
     If you mention any times, use 12 hour time.
     
-    Return just the summary and advice with no additional text. Use markdown formatting. Don't label
-    the summary or advice, just return the text. Clearly separate the summary and advice with a line break.
+    Return just the advice with no additional text. Use markdown formatting. Don't label
+    the advice, just return the text.
 
     Here are the user's existing events for the day:
 
@@ -32,10 +45,16 @@ export async function daily_summary(existingEvents: Event[], timezone: string) {
           options
         );
         const end = new Date(event.end).toLocaleTimeString("en-US", options);
-        return `*   ${event.title}: ${start} - ${end}`;
+        return `- ${event.title}: ${start} - ${end}`;
       })
       .join("\n")}
-    `;
+    
+      Here are the user's goals:
+
+      ${goals.map((goal) => `*   ${goal.title} (${goal.type} GOAL)`).join("\n")}
+      `;
+
+  console.log(prompt);
 
   const result = await model.generateContent(prompt);
   return result.response.text();

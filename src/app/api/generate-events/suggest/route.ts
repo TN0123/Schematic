@@ -3,13 +3,13 @@ import { suggest_events } from "@/scripts/suggest-events";
 
 export async function POST(request: Request) {
   try {
-    const { existingEvents, userId } = await request.json();
+    const { eventSummary, userId, existingEvents } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    const result = await suggest_events(userId, existingEvents);
+    const result = await suggest_events(userId, existingEvents, eventSummary);
     const cleanedResult = result.replace(/```json|```/g, "").trim();
     const events = JSON.parse(cleanedResult);
 
