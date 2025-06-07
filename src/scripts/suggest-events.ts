@@ -100,6 +100,9 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
     **DAILY GOALS (priorities for today):**
     ${JSON.stringify(goals, null, 2)}
 
+    **EXISTING EVENTS (don't repeat things already on the schedule):**
+    ${JSON.stringify(existingEvents, null, 2)}
+
     ---
 
     **OUTPUT FORMAT (JSON only):**
