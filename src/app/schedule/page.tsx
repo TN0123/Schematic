@@ -1043,19 +1043,25 @@ export default function CalendarApp() {
 
   function renderEventContent(eventInfo: EventContentArg) {
     const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
+    const eventTitle = eventInfo.event.title;
+
+    const tooltip = (
+      <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
+        {eventTitle}
+        <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+      </div>
+    );
+
+    const baseContainerClasses = "group relative h-full w-full p-1";
+    const titleClasses = "font-normal truncate";
 
     if (isSuggestion) {
       return (
-        <div className="group relative h-full w-full flex items-center justify-between p-1">
-          <div className="font-normal truncate text-xs pr-1">
-            {eventInfo.event.title}
-          </div>
-
-          <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
-            {eventInfo.event.title}
-            <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-          </div>
-
+        <div
+          className={`${baseContainerClasses} flex items-center justify-between`}
+        >
+          <div className={`${titleClasses} text-xs pr-1`}>{eventTitle}</div>
+          {tooltip}
           <div className="flex shrink-0 items-center space-x-1">
             <button
               onClick={(e) => {
@@ -1085,15 +1091,9 @@ export default function CalendarApp() {
     }
 
     return (
-      <div className="group relative h-full w-full flex flex-col justify-start p-1">
-        <div className="text-xs font-light">{eventInfo.timeText}</div>
-        <div className="font-normal truncate">{eventInfo.event.title}</div>
-
-        {/* Tooltip */}
-        <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
-          {eventInfo.event.title}
-          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-        </div>
+      <div className={`${baseContainerClasses} flex flex-col justify-start`}>
+        <div className={titleClasses}>{eventTitle}</div>
+        {tooltip}
       </div>
     );
   }

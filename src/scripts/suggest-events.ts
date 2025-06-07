@@ -123,7 +123,7 @@ export async function suggest_events(userId: string, existingEvents: Event[]) {
     - Make sure to not suggest events that are already on the schedule
   `;
 
-  console.log(prompt);
+  // console.log(prompt);
 
   let retries = 3;
   let delay = 1000;
