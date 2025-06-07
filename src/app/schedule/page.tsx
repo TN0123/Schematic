@@ -816,12 +816,16 @@ export default function CalendarApp() {
     if (todaysEvents.length > 0 && !hasFetchedDailySummary) {
       const fetchDailySummary = async () => {
         try {
+          const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           const response = await fetch("/api/daily-summary", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ existingEvents: todaysEvents }),
+            body: JSON.stringify({
+              existingEvents: todaysEvents,
+              timezone: userTimezone,
+            }),
           });
           if (!response.ok) {
             throw new Error("Failed to fetch daily summary");
