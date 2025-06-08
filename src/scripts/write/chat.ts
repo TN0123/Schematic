@@ -24,8 +24,10 @@ export async function chat(
   const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
 
-        Here is the context for what the user is writing:
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
         ${context}
+        END OF CONTEXT
 
         Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
         modify the content accordingly. 
