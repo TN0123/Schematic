@@ -429,6 +429,7 @@ export default function WritePanel({
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
                   title="Edit AI Context"
                   onClick={() => setIsContextModalOpen(true)}
+                  id="write-panel-context-button"
                 >
                   <UserPen
                     size={18}
