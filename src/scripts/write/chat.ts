@@ -191,8 +191,6 @@ export async function chat(
     ],
   });
 
-  console.log("System Prompt: ", systemPrompt);
-
   const result = await chatSession.sendMessage(userPrompt);
   const response = await result.response.text();
 

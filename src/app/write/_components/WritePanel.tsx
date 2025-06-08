@@ -4,10 +4,13 @@ import {
   PanelRightOpen,
   RefreshCw,
   CircleArrowUp,
+  UserPen,
+  Info,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
+import ContextModal from "./ContextModal";
 
 export type ModelType = "basic" | "premium";
 
@@ -79,6 +82,7 @@ export default function WritePanel({
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [history, setHistory] = useState<
     { role: "user" | "model"; parts: string }[]
   >([]);
@@ -375,7 +379,6 @@ export default function WritePanel({
                   }`}
                   onClick={handleImprove}
                   title="Improve selected text"
-                  aria-label="Improve selected text"
                   disabled={isImproving} // Disable button while loading
                 >
                   <Sparkles size={20} />
@@ -399,28 +402,53 @@ export default function WritePanel({
               </button>
             </div>
           </div>
-          <div className="flex flex-col w-full max-h-[600px] overflow-auto px-2 py-1 gap-1 border-t dark:border-dark-divider">
+          <div className="flex flex-col w-full h-[600px] max-h-[600px] overflow-auto px-2 py-1 gap-1 border-t dark:border-dark-divider">
             <div className="flex w-full items-center justify-between">
-              <button
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
-                aria-label="Clear messages"
-                onClick={() => {
-                  const button = document.activeElement as HTMLButtonElement;
-                  button.classList.add("animate-spin");
-                  setTimeout(
-                    () => button.classList.remove("animate-spin"),
-                    500
-                  );
-                  setMessages([]);
-                  setHistory([]);
-                  setLastRequest(null);
-                }}
-              >
-                <RefreshCw
-                  size={18}
-                  className="text-gray-800 dark:text-dark-textPrimary"
-                />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
+                  title="Clear messages"
+                  onClick={() => {
+                    const button = document.activeElement as HTMLButtonElement;
+                    button.classList.add("animate-spin");
+                    setTimeout(
+                      () => button.classList.remove("animate-spin"),
+                      500
+                    );
+                    setMessages([]);
+                    setHistory([]);
+                    setLastRequest(null);
+                  }}
+                >
+                  <RefreshCw
+                    size={18}
+                    className="text-gray-800 dark:text-dark-textPrimary"
+                  />
+                </button>
+                <button
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
+                  title="Edit AI Context"
+                  onClick={() => setIsContextModalOpen(true)}
+                >
+                  <UserPen
+                    size={18}
+                    className="text-gray-800 dark:text-dark-textPrimary"
+                  />
+                </button>
+                <div className="relative group">
+                  <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-gray-800/95 dark:bg-dark-secondary/95 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48">
+                    Chat messages are temporary and won't be saved. Instead,
+                    document context is maintained and used to help the AI
+                    produce better outputs.
+                  </div>
+                  <button className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200 cursor-help">
+                    <Info
+                      size={14}
+                      className="text-gray-600 dark:text-gray-400"
+                    />
+                  </button>
+                </div>
+              </div>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value as ModelType)}
@@ -429,9 +457,6 @@ export default function WritePanel({
                 <option value="basic">Basic</option>
                 <option value="premium">Premium</option>
               </select>
-              <p className="text-[10px] italic text-gray-500 dark:text-dark-textSecondary text-center">
-                This is a temporary chat, your work will not be saved.
-              </p>
             </div>
             {messages.map((msg, index) => (
               <Message key={index} message={msg.message} role={msg.role} />
@@ -439,6 +464,11 @@ export default function WritePanel({
           </div>
         </div>
       )}
+      <ContextModal
+        isOpen={isContextModalOpen}
+        onClose={() => setIsContextModalOpen(false)}
+        documentId={documentId}
+      />
     </aside>
   );
 }
