@@ -439,7 +439,7 @@ export default function WritePanel({
                 />
               </button>
               <div className="relative group">
-                <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-gray-800/95 dark:bg-dark-secondary/95 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48">
+                <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48">
                   Chat messages are temporary and won't be saved. Instead,
                   document context is maintained and used to help the AI produce
                   better outputs.
