@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { daily_summary } from "@/scripts/daily-summary";
+import { daily_summary } from "@/scripts/schedule/daily-summary";
 
 export async function POST(request: Request) {
   try {

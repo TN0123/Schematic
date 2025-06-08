@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pdfUpload } from "@/scripts/pdf-upload";
+import { pdfUpload } from "@/scripts/schedule/pdf-upload";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();

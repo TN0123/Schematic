@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { suggest_events } from "@/scripts/suggest-events";
+import { suggest_events } from "@/scripts/schedule/suggest-events";
 
 export async function POST(request: Request) {
   try {

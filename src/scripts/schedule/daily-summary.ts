@@ -54,7 +54,7 @@ export async function daily_summary(
       ${goals.map((goal) => `*   ${goal.title} (${goal.type} GOAL)`).join("\n")}
       `;
 
-  console.log(prompt);
+  // console.log(prompt);
 
   const result = await model.generateContent(prompt);
   return result.response.text();

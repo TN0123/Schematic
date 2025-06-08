@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { chat } from "@/scripts/chat";
+import { chat } from "@/scripts/write/chat";
 
 export async function POST(req: Request) {
   try {
-    const { currentText, instructions, history = [], userId, model = "basic" } = await req.json();
+    const {
+      currentText,
+      instructions,
+      history = [],
+      userId,
+      model = "basic",
+    } = await req.json();
     const { response, updatedHistory, remainingUses } = await chat(
       currentText,
       instructions,
@@ -13,7 +19,9 @@ export async function POST(req: Request) {
     );
 
     if (response.includes("```json")) {
-      const cleanResult = JSON.parse(response.substring(7, response.length - 3));
+      const cleanResult = JSON.parse(
+        response.substring(7, response.length - 3)
+      );
       return NextResponse.json(
         { result: cleanResult, history: updatedHistory, remainingUses },
         { status: 200 }
