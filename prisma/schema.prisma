@@ -84,6 +84,7 @@ model Document {
   id        String   @id @default(cuid())
   title     String
   content   String   @db.Text
+  context   String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String

@@ -48,6 +48,7 @@ export default function WritePanel({
   lastRequest,
   setLastRequest,
   userId,
+  documentId,
   premiumRemainingUses,
   setPremiumRemainingUses,
   onModelChange,
@@ -70,6 +71,7 @@ export default function WritePanel({
     } | null
   ) => void;
   userId: string | undefined;
+  documentId: any;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
   onModelChange: (model: ModelType) => void;
@@ -111,6 +113,7 @@ export default function WritePanel({
           instructions: `${instructions}`,
           history,
           userId,
+          documentId,
           model: selectedModel,
         }),
       });

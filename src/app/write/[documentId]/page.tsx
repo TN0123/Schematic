@@ -86,11 +86,6 @@ export default function DocumentEditorPage() {
     if (!document) return;
     setIsSaving(true);
     try {
-      const updatedDocument = {
-        ...document,
-        content: input,
-      };
-
       const response = await fetch("/api/documents", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -157,6 +152,7 @@ export default function DocumentEditorPage() {
         lastRequest={lastRequest}
         setLastRequest={setLastRequest}
         userId={userId}
+        documentId={document?.id}
         premiumRemainingUses={premiumRemainingUses}
         setPremiumRemainingUses={setPremiumRemainingUses}
         onModelChange={setSelectedModel}

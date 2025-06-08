@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chat } from "@/scripts/write/chat";
+import { contextUpdate } from "@/scripts/write/context-update";
 
 export async function POST(req: Request) {
   try {
@@ -8,15 +9,19 @@ export async function POST(req: Request) {
       instructions,
       history = [],
       userId,
+      documentId,
       model = "basic",
     } = await req.json();
     const { response, updatedHistory, remainingUses } = await chat(
       currentText,
       instructions,
       history,
+      documentId,
       userId,
       model
     );
+
+    contextUpdate(updatedHistory, documentId);
 
     if (response.includes("```json")) {
       const cleanResult = JSON.parse(
