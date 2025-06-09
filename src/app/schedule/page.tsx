@@ -750,12 +750,13 @@ export default function CalendarApp() {
     if (!inputText.trim()) return;
     setLoading(true);
     try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const response = await fetch("/api/generate-events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText }),
+        body: JSON.stringify({ text: inputText, timezone: userTimezone }),
       });
       const data = await response.json();
       if (data.events) {
