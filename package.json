@@ -51,8 +51,8 @@
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.27.1",
     "react-force-graph-3d": "^1.26.1",
-    "react-speech-recognition": "^4.0.1",
     "react-markdown": "^10.1.0",
+    "react-speech-recognition": "^4.0.1",
     "react-switch": "^7.1.0",
     "remark-gfm": "^4.0.1",
     "use-debounce": "^10.0.4"
@@ -64,6 +64,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-speech-recognition": "^3.9.6",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^36.3.2",
