@@ -1,19 +1,10 @@
 "use client";
 
-import {
-  Plus,
-  FileUp,
-  RefreshCw,
-  PanelRightOpen,
-  PanelRightClose,
-  Mic,
-  CalendarPlus,
-} from "lucide-react";
+import { Plus, FileUp, PanelRightClose, Mic, CalendarPlus } from "lucide-react";
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
-import { Event } from "../page";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
