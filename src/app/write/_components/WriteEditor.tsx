@@ -52,7 +52,6 @@ export default function WriteEditor({
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
   const [generatedEnd, setGeneratedEnd] = useState<number | null>(null);
-  const [undoStack, setUndoStack] = useState<string[]>([]);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [title, setTitle] = useState(
@@ -122,10 +121,6 @@ export default function WriteEditor({
 
   const handleContinue = async () => {
     try {
-      setUndoStack((prev) => {
-        const newStack = [...prev, inputText];
-        return newStack.length > 10 ? newStack.slice(-10) : newStack;
-      });
       setError("");
       const liveCursor =
         textareaRef.current?.selectionStart ?? inputText.length;
@@ -189,21 +184,8 @@ export default function WriteEditor({
         event.preventDefault();
         handleContinue();
       }
-
-      if (event.ctrlKey && event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        if (undoStack.length > 0) {
-          const last = undoStack[undoStack.length - 1];
-          setInputText(last);
-          setInput(last);
-          setUndoStack((prev) => prev.slice(0, prev.length - 1));
-          setGeneratedStart(null);
-          setGeneratedEnd(null);
-          console.log("undo last generation");
-        }
-      }
     },
-    [handleContinue, undoStack, setInput]
+    [handleContinue, setInput]
   );
 
   const applyChange = (original: string, replacement: string) => {
