@@ -1,13 +1,18 @@
+'use client';
+
 import {
   Plus,
   FileUp,
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  Mic,
 } from "lucide-react";
 import EventSuggestion from "./EventSuggestion";
 import { Event } from "../page";
 import { useState, useEffect } from "react";
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -46,6 +51,29 @@ export default function EventGenerationPanel({
     setTimeout(() => onToggle && onToggle(), 300);
   };
 
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+
+ useEffect(() => {
+    if (transcript) {
+      setInputText(transcript);
+    }
+  }, [transcript, setInputText]);
+
+  const handleListen = () => {
+    resetTranscript();
+    SpeechRecognition.startListening({ continuous: false });
+  };
+  
+    if (!browserSupportsSpeechRecognition) {
+    return <p>Your browser does not support speech recognition.</p>;
+  }
+ 
   const MobileToggle = () => (
     <button
       id="event-panel-toggle"
@@ -126,6 +154,17 @@ export default function EventGenerationPanel({
                 className="text-black dark:text-dark-textPrimary"
               />
             </button>
+
+            <button
+              className ="absolute bottom-2 right-9 p-1 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover rounded-full transition-colors duration-200"
+              onClick={handleListen}
+              
+              >
+                <Mic
+                size={16}
+                className="text-black dark:text-dark-textPrimary"
+                />
+              </button>
           </div>
 
           <button
@@ -184,4 +223,5 @@ export default function EventGenerationPanel({
       </aside>
     </>
   );
-}
+  }
+

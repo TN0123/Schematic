@@ -43,6 +43,7 @@
     "react-dom": "^19.0.0",
     "react-force-graph-2d": "^1.27.1",
     "react-force-graph-3d": "^1.26.1",
+    "react-speech-recognition": "^4.0.1",
     "react-switch": "^7.1.0"
   },
   "devDependencies": {
