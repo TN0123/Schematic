@@ -1,16 +1,22 @@
+"use client";
+
 import {
   Plus,
   FileUp,
   RefreshCw,
   PanelRightOpen,
   PanelRightClose,
+  Mic,
   CalendarPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
 import { Event } from "../page";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -38,6 +44,42 @@ export default function EventGenerationPanel({
   const handleToggle = () => {
     setIsMobileOpen(!isMobileOpen);
   };
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+
+  useEffect(() => {
+    if (transcript) {
+      setInputText(transcript);
+    }
+  }, [transcript, setInputText]);
+
+  const handleListen = () => {
+    resetTranscript();
+    SpeechRecognition.startListening({ continuous: false });
+  };
+
+  if (!browserSupportsSpeechRecognition) {
+    return <p>Your browser does not support speech recognition.</p>;
+  }
+
+  const MobileToggle = () => (
+    <button
+      id="event-panel-toggle"
+      onClick={handleToggle}
+      className="md:hidden fixed top-[9rem] right-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
+      aria-label="Open event panel"
+    >
+      <PanelRightOpen
+        size={20}
+        className="text-gray-700 dark:text-dark-textSecondary"
+      />
+    </button>
+  );
 
   return (
     <>
@@ -102,6 +144,25 @@ export default function EventGenerationPanel({
               }}
               placeholder="Enter your schedule here..."
             />
+            <button
+              className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover rounded-full transition-colors duration-200"
+              onClick={() => setInputText("")}
+            >
+              <RefreshCw
+                size={16}
+                className="text-black dark:text-dark-textPrimary"
+              />
+            </button>
+
+            <button
+              className="absolute bottom-2 right-9 p-1 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover rounded-full transition-colors duration-200"
+              onClick={handleListen}
+            >
+              <Mic
+                size={16}
+                className="text-black dark:text-dark-textPrimary"
+              />
+            </button>
           </div>
 
           <button
