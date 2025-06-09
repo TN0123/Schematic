@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server";
-import { suggest_events } from "@/scripts/suggest-events";
+import { suggest_events } from "@/scripts/schedule/suggest-events";
 
-export async function POST(request: Request){
-    try {
-        const { existingEvents, userId, timezone } = await request.json();
+export async function POST(request: Request) {
+  try {
+    const { eventSummary, userId, existingEvents } = await request.json();
 
-        if (!userId) {
-            return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-        }
-
-        const result = await suggest_events(userId, existingEvents, timezone);
-        const cleanedResult = result.replace(/```json|```/g, "").trim();
-        const events = JSON.parse(cleanedResult);
-
-        return NextResponse.json({ events }, { status: 200 });
-    } catch (error) {
-        console.error("Error suggesting events:", error);
-        return NextResponse.json({ error: "Failed to suggest events" }, { status: 500 });
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
+
+    const result = await suggest_events(userId, existingEvents, eventSummary);
+    const cleanedResult = result.replace(/```json|```/g, "").trim();
+    const events = JSON.parse(cleanedResult);
+
+    return NextResponse.json({ events }, { status: 200 });
+  } catch (error) {
+    console.error("Error suggesting events:", error);
+    return NextResponse.json(
+      { error: "Failed to suggest events" },
+      { status: 500 }
+    );
+  }
 }

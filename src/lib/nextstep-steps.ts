@@ -25,7 +25,7 @@ export const steps: Tour[] = [
         icon: "",
         title: "Add Events",
         content:
-          "You can also add events manually or through uploading a file containing your events.",
+          "You can also add events manually, through uploading a file containing your events, or through importing your events from a .ics file from another calendar app.",
         selector: "#event-menu-bar",
         side: "bottom-left",
         pointerRadius: 10,
@@ -41,16 +41,6 @@ export const steps: Tour[] = [
         pointerRadius: 0,
         pointerPadding: 0,
         showSkip: true,
-      },
-      {
-        icon: "",
-        title: "Suggested Events",
-        content:
-          "AI Powered suggestions connected to your bulletin and goals to help you best ulilize your time. You can modify these in settings.",
-        selector: "#suggested-events",
-        side: "left",
-        pointerRadius: 10,
-        pointerPadding: 20,
       },
     ],
   },
@@ -79,8 +69,21 @@ export const steps: Tour[] = [
       {
         icon: "",
         title: "Chat",
-        content: "Chat with an AI assistant to help you write.",
+        content:
+          "Chat with an AI assistant to help you write. Highlighted text can be selected and improved with the AI.",
         selector: "#write-panel",
+        side: "left",
+        pointerRadius: 0,
+        pointerPadding: 0,
+        showControls: true,
+        showSkip: true,
+      },
+      {
+        icon: "",
+        title: "Context",
+        content:
+          "Each document has a context that the AI uses to help it write. You can edit it to help the AI better understand your intentions and get better results.",
+        selector: "#write-panel-context-button",
         side: "left",
         pointerRadius: 0,
         pointerPadding: 0,

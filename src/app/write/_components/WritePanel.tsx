@@ -3,11 +3,16 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
-  SendHorizonal,
+  CircleArrowUp,
+  UserPen,
+  Info,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
+import ContextModal from "./ContextModal";
+
+export type ModelType = "basic" | "premium";
 
 interface MessageProps {
   message: string;
@@ -46,8 +51,10 @@ export default function WritePanel({
   lastRequest,
   setLastRequest,
   userId,
+  documentId,
   premiumRemainingUses,
   setPremiumRemainingUses,
+  onModelChange,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -67,16 +74,24 @@ export default function WritePanel({
     } | null
   ) => void;
   userId: string | undefined;
+  documentId: any;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
+  onModelChange: (model: ModelType) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [history, setHistory] = useState<
     { role: "user" | "model"; parts: string }[]
   >([]);
   const [isImproving, setIsImproving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
+
+  useEffect(() => {
+    onModelChange(selectedModel);
+  }, [selectedModel, onModelChange]);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
@@ -102,6 +117,8 @@ export default function WritePanel({
           instructions: `${instructions}`,
           history,
           userId,
+          documentId,
+          model: selectedModel,
         }),
       });
 
@@ -168,6 +185,7 @@ export default function WritePanel({
           selected,
           after,
           userId,
+          model: selectedModel,
         }),
       });
 
@@ -210,6 +228,9 @@ export default function WritePanel({
           currentText: selected || input,
           instructions,
           history,
+          model: selectedModel,
+          userId,
+          documentId,
         }),
       });
 
@@ -325,9 +346,9 @@ export default function WritePanel({
       </div>
       {!isCollapsed && (
         <div className="flex flex-col w-full h-full overflow-y-auto py-2 gap-4 transition-all">
-          <div className="bg-white dark:bg-dark-paper rounded-xl border-2 border-gray-200 dark:border-dark-divider mx-4">
+          <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
             <textarea
-              className="flex w-full p-4 h-auto resize-none placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary"
+              className="w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled"
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               onInput={(e) => {
@@ -335,12 +356,13 @@ export default function WritePanel({
                 textarea.style.height = "auto";
                 textarea.style.height = `${Math.min(
                   textarea.scrollHeight,
-                  300
+                  200
                 )}px`;
               }}
               placeholder="Ask anything"
+              rows={3}
             />
-            <div className="flex w-full justify-end items-center px-2 py-1">
+            <div className="flex w-full justify-end items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
               {selected && (
                 <p className="text-xs text-gray-400 italic px-4 pb-1">
                   Using selected text from{" "}
@@ -360,7 +382,6 @@ export default function WritePanel({
                   }`}
                   onClick={handleImprove}
                   title="Improve selected text"
-                  aria-label="Improve selected text"
                   disabled={isImproving} // Disable button while loading
                 >
                   <Sparkles size={20} />
@@ -380,15 +401,15 @@ export default function WritePanel({
                 className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
               >
-                <SendHorizonal size={20} />
+                <CircleArrowUp size={20} />
               </button>
             </div>
           </div>
-          <div className="flex flex-col w-full max-h-[600px] overflow-auto px-2 py-1 gap-1 border-t dark:border-dark-divider">
-            <div className="flex w-full items-center justify-between">
+          <div className="flex w-full items-center justify-between p-2 border-y dark:border-dark-divider">
+            <div className="flex items-center gap-1">
               <button
                 className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
-                aria-label="Clear messages"
+                title="Clear messages"
                 onClick={() => {
                   const button = document.activeElement as HTMLButtonElement;
                   button.classList.add("animate-spin");
@@ -406,16 +427,52 @@ export default function WritePanel({
                   className="text-gray-800 dark:text-dark-textPrimary"
                 />
               </button>
-              <p className="text-xs italic text-gray-500 dark:text-dark-textSecondary text-center">
-                This is a temporary chat, your work will not be saved.
-              </p>
+              <button
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-white dark:bg-dark-paper hover:bg-gray-100 dark:hover:bg-dark-hover transition-all duration-200 focus:outline-none aspect-square"
+                title="Edit AI Context"
+                onClick={() => setIsContextModalOpen(true)}
+                id="write-panel-context-button"
+              >
+                <UserPen
+                  size={18}
+                  className="text-gray-800 dark:text-dark-textPrimary"
+                />
+              </button>
+              <div className="relative group">
+                <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48">
+                  Chat messages are temporary and won't be saved. Instead,
+                  document context is maintained and used to help the AI produce
+                  better outputs.
+                </div>
+                <button className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200 cursor-help">
+                  <Info
+                    size={14}
+                    className="text-gray-600 dark:text-gray-400"
+                  />
+                </button>
+              </div>
             </div>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value as ModelType)}
+              className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
+            >
+              <option value="basic">Basic</option>
+              <option value="premium">Premium</option>
+            </select>
+          </div>
+          <div className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider">
             {messages.map((msg, index) => (
               <Message key={index} message={msg.message} role={msg.role} />
             ))}
           </div>
         </div>
       )}
+      <ContextModal
+        isOpen={isContextModalOpen}
+        onClose={() => setIsContextModalOpen(false)}
+        documentId={documentId}
+      />
     </aside>
   );
 }

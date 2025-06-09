@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { imageUpload } from "@/scripts/image-upload";
+import { imageUpload } from "@/scripts/schedule/image-upload";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();

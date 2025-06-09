@@ -11,6 +11,7 @@ import {
   Trash2,
   ClipboardList,
 } from "lucide-react";
+import { useDebouncedCallback } from "use-debounce";
 
 interface TodoItem {
   id: string;
@@ -22,56 +23,124 @@ interface BulletinTodoProps {
   id: string;
   title: string;
   data: { items: TodoItem[] };
+  updatedAt?: Date;
   onSave: (
     id: string,
     updates: { title?: string; data?: any }
   ) => Promise<void>;
   onDelete?: () => void;
+  isSaving?: boolean;
 }
 
 export default function BulletinTodo({
   id,
   title: initialTitle,
   data,
+  updatedAt,
   onSave,
   onDelete,
+  isSaving: externalIsSaving = false,
 }: BulletinTodoProps) {
   const [title, setTitle] = useState(initialTitle);
   const [items, setItems] = useState<TodoItem[]>(data?.items || []);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const lastSaved = useRef({ title: initialTitle, items: data?.items || [] });
 
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback(async (newTitle: string) => {
+    if (newTitle !== lastSaved.current.title) {
+      setIsAutoSaving(true);
+      try {
+        await onSave(id, { title: newTitle });
+        lastSaved.current.title = newTitle;
+
+        // Update hasUnsavedChanges based on both title and items
+        const titleChanged = newTitle !== lastSaved.current.title;
+        const itemsChanged =
+          JSON.stringify(items) !== JSON.stringify(lastSaved.current.items);
+        setHasUnsavedChanges(titleChanged || itemsChanged);
+      } catch (error) {
+        console.error("Failed to auto-save title:", error);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }
+  }, 800);
+
+  // Debounced save for items
+  const debouncedSaveItems = useDebouncedCallback(
+    async (newItems: TodoItem[]) => {
+      if (
+        JSON.stringify(newItems) !== JSON.stringify(lastSaved.current.items)
+      ) {
+        setIsAutoSaving(true);
+        try {
+          await onSave(id, { data: { items: newItems } });
+          lastSaved.current.items = newItems;
+
+          // Update hasUnsavedChanges based on both title and items
+          const titleChanged = title !== lastSaved.current.title;
+          const itemsChanged =
+            JSON.stringify(newItems) !==
+            JSON.stringify(lastSaved.current.items);
+          setHasUnsavedChanges(titleChanged || itemsChanged);
+        } catch (error) {
+          console.error("Failed to auto-save items:", error);
+        } finally {
+          setIsAutoSaving(false);
+        }
+      }
+    },
+    1000
+  );
+
   const addItem = () => {
-    setItems([...items, { id: crypto.randomUUID(), text: "", checked: false }]);
+    const newItems = [
+      ...items,
+      { id: crypto.randomUUID(), text: "", checked: false },
+    ];
+    setItems(newItems);
     setHasUnsavedChanges(true);
+    debouncedSaveItems(newItems);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
   };
 
   const updateItem = (id: string, updates: Partial<TodoItem>) => {
+    let newItems: TodoItem[];
     if (updates.checked) {
-      setItems(
-        items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+      newItems = items.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
       );
+      setItems(newItems);
 
       setTimeout(() => {
-        setItems(items.filter((item) => item.id !== id));
+        const filteredItems: TodoItem[] = newItems.filter(
+          (item) => item.id !== id
+        );
+        setItems(filteredItems);
+        debouncedSaveItems(filteredItems);
       }, 800);
     } else {
-      setItems(
-        items.map((item) => (item.id === id ? { ...item, ...updates } : item))
+      newItems = items.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
       );
+      setItems(newItems);
+      debouncedSaveItems(newItems);
     }
     setHasUnsavedChanges(true);
   };
 
   const removeItem = (id: string) => {
-    setItems(items.filter((item) => item.id !== id));
+    const newItems = items.filter((item) => item.id !== id);
+    setItems(newItems);
     setHasUnsavedChanges(true);
+    debouncedSaveItems(newItems);
   };
 
   const handleSave = async () => {
@@ -131,7 +200,7 @@ export default function BulletinTodo({
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col items-center">
         {/* Title & Actions */}
-        <div className="flex justify-center items-center w-full md:w-1/2 mt-10 mb-4">
+        <div className="flex justify-center items-center w-full md:w-1/2 mt-16 mb-4">
           <div className="flex-shrink-0">
             <ClipboardList className="h-8 w-8 text-green-500" />
           </div>
@@ -139,8 +208,10 @@ export default function BulletinTodo({
             className="font-semibold truncate tracking-tight text-2xl mb-1 w-full text-left focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
-              setTitle(e.target.value);
+              const newTitle = e.target.value;
+              setTitle(newTitle);
               setHasUnsavedChanges(true);
+              debouncedSaveTitle(newTitle);
             }}
             placeholder="Untitled To Do List"
             aria-label="Todo list title"
@@ -149,13 +220,17 @@ export default function BulletinTodo({
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || externalIsSaving}
                 className={`p-2 rounded-lg transition-colors
                   dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                  ${
+                    isSaving || externalIsSaving
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
                 aria-label="Save changes"
               >
-                {isSaving ? (
+                {isSaving || externalIsSaving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Save className="h-5 w-5" />

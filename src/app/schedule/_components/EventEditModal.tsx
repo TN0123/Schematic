@@ -1,4 +1,3 @@
-import { EventImpl } from "@fullcalendar/core/internal";
 import { Event } from "../page";
 import { Trash2 } from "lucide-react";
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Calendar, ClipboardList, Zap } from "lucide-react";
+import { Calendar, ClipboardList, PenLine } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 
 export default function Home() {
@@ -22,7 +22,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen py-4 px-4 bg-gray-50 dark:bg-dark-background transition-all">
+    <div className="flex flex-col items-center justify-center h-screen w-full py-4 px-4 bg-gray-50 dark:bg-dark-background transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
         <h1 className="text-3xl sm:text-4xl text-center font-bold text-gray-900 dark:text-dark-textPrimary mb-6 sm:mb-8">
           Welcome to Schematic
@@ -39,7 +39,7 @@ export default function Home() {
             >
               <div className="flex items-center mb-3 sm:mb-4">
                 {section.title === "Write" && (
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
+                  <PenLine className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
                 )}
                 {section.title === "Bulletin" && (
                   <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 dark:text-green-400" />

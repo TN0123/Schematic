@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generate_events } from "@/scripts/generate-events";
+import { generate_events } from "@/scripts/schedule/generate-events";
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +12,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
     console.error("Error generating events:", error);
-    return NextResponse.json({ error: "Failed to generate events" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate events" },
+      { status: 500 }
+    );
   }
 }

@@ -1,15 +1,33 @@
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
 export async function chat(
   currentText: string,
   instructions: string,
   history: any[],
-  userId?: string
+  documentId: any,
+  userId?: string,
+  selectedModel: "basic" | "premium" = "premium"
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { context: true },
+  });
+
+  const context = document?.context;
+
   const systemPrompt = `
-        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
 
         Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
         modify the content accordingly. 
@@ -53,25 +71,38 @@ export async function chat(
   `;
 
   // Special users (you) get unlimited GPT-4.1 access
-  if (userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") {
+  if (
+    (userId === "cm6qw1jxy0000unao2h2rz83l" ||
+      userId === "cma8kzffi0000unysbz2awbmf") &&
+    selectedModel === "premium"
+  ) {
     try {
       console.log("using premium model");
       const { OpenAI } = require("openai");
       const openAIAPIKey = process.env.OPENAI_API_KEY;
-      const client = new OpenAI({apiKey: openAIAPIKey});
-      
+      const client = new OpenAI({ apiKey: openAIAPIKey });
+
       const response = await client.responses.create({
         model: "gpt-4.1",
-        input: systemPrompt + "\n\n" + userPrompt,
+        input:
+          systemPrompt +
+          "\n\n" +
+          userPrompt +
+          "\n\n Here is the conversation history: \n" +
+          JSON.stringify(history),
       });
-      
+
       const updatedHistory = [
         ...history,
         { role: "user", parts: userPrompt },
         { role: "model", parts: response.output_text },
       ];
-      
-      return { response: response.output_text, updatedHistory, remainingUses: null };
+
+      return {
+        response: response.output_text,
+        updatedHistory,
+        remainingUses: null,
+      };
     } catch (error) {
       console.error("OpenAI API call failed:", error);
       // Continue to Gemini API as fallback
@@ -79,10 +110,10 @@ export async function chat(
   }
 
   // For other users, check premium usage
-  if (userId) {
+  if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;
-      
+
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { premiumRemainingUses: true },
@@ -92,8 +123,8 @@ export async function chat(
         console.log("using premium model");
         const { OpenAI } = require("openai");
         const openAIAPIKey = process.env.OPENAI_API_KEY;
-        const client = new OpenAI({apiKey: openAIAPIKey});
-        
+        const client = new OpenAI({ apiKey: openAIAPIKey });
+
         // Decrement usage
         const updatedUser = await prisma.user.update({
           where: { id: userId },
@@ -106,19 +137,28 @@ export async function chat(
             premiumRemainingUses: true,
           },
         });
-        
+
         const response = await client.responses.create({
           model: "gpt-4.1",
-          input: systemPrompt + "\n\n" + userPrompt,
+          input:
+            systemPrompt +
+            "\n\n" +
+            userPrompt +
+            "\n\n Here is the conversation history: \n" +
+            JSON.stringify(history),
         });
-        
+
         const updatedHistory = [
           ...history,
           { role: "user", parts: userPrompt },
           { role: "model", parts: response.output_text },
         ];
-        
-        return { response: response.output_text, updatedHistory, remainingUses: updatedUser.premiumRemainingUses };
+
+        return {
+          response: response.output_text,
+          updatedHistory,
+          remainingUses: updatedUser.premiumRemainingUses,
+        };
       }
     } catch (error) {
       console.error("Error checking/using premium model:", error);
@@ -126,9 +166,12 @@ export async function chat(
     }
   }
 
-  // Fallback to Gemini
+  // Use Gemini if:
+  // 1. Model is set to "basic"
+  // 2. Model is "premium" but user has no premium uses
+  console.log("using basic model");
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({
+  const geminiModel = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
   });
 
@@ -141,7 +184,7 @@ export async function chat(
       : [{ text: entry.parts }],
   }));
 
-  const chatSession = model.startChat({
+  const chatSession = geminiModel.startChat({
     history: [
       { role: "user", parts: [{ text: systemPrompt }] },
       ...formattedHistory,

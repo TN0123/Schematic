@@ -67,6 +67,7 @@ export default function Bulletin() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
 
   // Add scroll lock effect
   useEffect(() => {
@@ -109,7 +110,10 @@ export default function Bulletin() {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest(".relative.inline-block")) {
+      const dropdownContainer = document.querySelector(
+        ".relative.inline-block"
+      );
+      if (dropdownContainer && !dropdownContainer.contains(target)) {
         setShowDropdown(false);
       }
     };
@@ -134,6 +138,9 @@ export default function Bulletin() {
       data?: { links?: LinkPreview[] };
     }
   ) => {
+    // Add item to saving set
+    setSavingItems((prev) => new Set([...prev, id]));
+
     try {
       const response = await fetch(`/api/bulletins/${id}`, {
         method: "PATCH",
@@ -153,6 +160,14 @@ export default function Bulletin() {
       );
     } catch (error) {
       console.error("Failed to save item:", error);
+      // You could add a toast notification here for better UX
+    } finally {
+      // Remove item from saving set
+      setSavingItems((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
@@ -205,12 +220,12 @@ export default function Bulletin() {
   };
 
   return (
-    <div className="h-[90dvh] flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
+    <div className="h-screen flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-50 top-0 left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
+        className={`fixed md:static z-50 top-0 left-16 md:left-0 h-full bg-white overflow-y-scroll p-4 dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        } ${isCollapsed ? "md:w-14" : "md:w-1/4"} w-full`}
+        } ${isCollapsed ? "md:w-14" : "md:w-1/4"} w-[calc(100%-4rem)]`}
       >
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between mb-6 pt-4">
@@ -254,7 +269,10 @@ export default function Bulletin() {
             {!isCollapsed ? (
               <button
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
-                onClick={() => setShowDropdown((prev) => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown((prev) => !prev);
+                }}
               >
                 <Plus size={16} className="stroke-current" />
                 <span className="hidden md:inline">New Note</span>
@@ -262,7 +280,10 @@ export default function Bulletin() {
             ) : (
               <button
                 className="p-2 mt-4 rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white hover:bg-gray-100 dark:hover:bg-dark-hover"
-                onClick={() => setShowDropdown((prev) => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDropdown((prev) => !prev);
+                }}
               >
                 <Plus size={16} className="stroke-current" />
               </button>
@@ -272,7 +293,7 @@ export default function Bulletin() {
             {showDropdown && (
               <>
                 {isCollapsed ? (
-                  <div className="absolute left-0 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                  <div className="absolute left-2 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
                     <div>
                       <button
                         onClick={() => {
@@ -427,13 +448,13 @@ export default function Bulletin() {
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden left-16"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       <button
-        className={`md:hidden fixed top-4 left-4 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
+        className={`md:hidden fixed top-4 left-20 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
           isSidebarOpen ? "hidden" : "block"
         }`}
         onClick={() => setIsSidebarOpen(true)}
@@ -475,11 +496,13 @@ export default function Bulletin() {
                       id={item.id}
                       title={item.title}
                       data={item.data}
+                      updatedAt={item.updatedAt}
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
                         setExpandedItemId(null);
                       }}
+                      isSaving={savingItems.has(item.id)}
                     />
                   );
                 case "kanban":
@@ -489,11 +512,13 @@ export default function Bulletin() {
                       id={item.id}
                       title={item.title}
                       data={item.data}
+                      updatedAt={item.updatedAt}
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
                         setExpandedItemId(null);
                       }}
+                      isSaving={savingItems.has(item.id)}
                     />
                   );
                 case "link-collection":
@@ -524,6 +549,7 @@ export default function Bulletin() {
                         deleteItem(item.id);
                         setExpandedItemId(null);
                       }}
+                      isSaving={savingItems.has(item.id)}
                     />
                   );
               }

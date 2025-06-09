@@ -16,7 +16,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 import { formatDistanceToNow } from "date-fns";
-//import { FontSize } from "@tiptap/extension-font-size";
+import { useDebouncedCallback } from "use-debounce";
 
 interface BulletinNoteProps {
   id: string;
@@ -28,6 +28,7 @@ interface BulletinNoteProps {
     updates: { title?: string; content?: string }
   ) => Promise<void>;
   onDelete?: () => void;
+  isSaving?: boolean;
 }
 
 export default function BulletinNote({
@@ -37,15 +38,60 @@ export default function BulletinNote({
   updatedAt,
   onSave,
   onDelete,
+  isSaving: externalIsSaving = false,
 }: BulletinNoteProps) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const lastSavedState = useRef({
     title: initialTitle,
     content: initialContent,
   });
+
+  // Debounced save for content
+  const debouncedSaveContent = useDebouncedCallback(
+    async (newContent: string) => {
+      if (newContent !== lastSavedState.current.content) {
+        setIsAutoSaving(true);
+        try {
+          await onSave(id, { content: newContent });
+          lastSavedState.current.content = newContent;
+
+          // Update hasUnsavedChanges based on both title and content
+          const titleChanged = title !== lastSavedState.current.title;
+          const contentChanged = newContent !== lastSavedState.current.content;
+          setHasUnsavedChanges(titleChanged || contentChanged);
+        } catch (error) {
+          console.error("Failed to auto-save content:", error);
+        } finally {
+          setIsAutoSaving(false);
+        }
+      }
+    },
+    1000
+  );
+
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback(async (newTitle: string) => {
+    if (newTitle !== lastSavedState.current.title) {
+      setIsAutoSaving(true);
+      try {
+        await onSave(id, { title: newTitle });
+        lastSavedState.current.title = newTitle;
+
+        // Update hasUnsavedChanges based on both title and content
+        const titleChanged = newTitle !== lastSavedState.current.title;
+        const contentChanged = content !== lastSavedState.current.content;
+        setHasUnsavedChanges(titleChanged || contentChanged);
+      } catch (error) {
+        console.error("Failed to auto-save title:", error);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }
+  }, 800);
 
   const editor = useEditor({
     extensions: [
@@ -64,6 +110,9 @@ export default function BulletinNote({
         title != lastSavedState.current.title ||
         htmlContent != lastSavedState.current.content;
       setHasUnsavedChanges(hasChanges);
+
+      // Trigger debounced save for content
+      debouncedSaveContent(htmlContent);
     },
     editable: true,
     editorProps: {
@@ -202,8 +251,12 @@ export default function BulletinNote({
                 type="text"
                 value={title}
                 onChange={(e) => {
-                  setTitle(e.target.value);
+                  const newTitle = e.target.value;
+                  setTitle(newTitle);
                   setHasUnsavedChanges(true);
+
+                  // Trigger debounced save for title
+                  debouncedSaveTitle(newTitle);
                 }}
                 className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
                 placeholder="Enter title..."
@@ -219,14 +272,18 @@ export default function BulletinNote({
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || externalIsSaving}
                 className={`p-2 rounded-lg transition-colors
                   text-light-icon hover:text-light-accent hover:bg-light-hover
                   dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                  ${
+                    isSaving || externalIsSaving
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
                 aria-label="Save changes"
               >
-                {isSaving ? (
+                {isSaving || externalIsSaving ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Save className="h-5 w-5" />
@@ -246,7 +303,7 @@ export default function BulletinNote({
           <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[480px] dark:prose-invert`}
+            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert`}
           />
         </div>
       </div>

@@ -21,6 +21,7 @@ model User {
   events                   Event[]
   goals                    Goal[]
   sessions                 Session[]
+  documents                Document[]
 }
 
 model Account {
@@ -78,6 +79,19 @@ model Goal {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  context   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+} 
 
 enum GoalType {
   DAILY

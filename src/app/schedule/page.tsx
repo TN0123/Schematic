@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
-import { EventClickArg, DateSelectArg } from "@fullcalendar/core";
+import {
+  EventClickArg,
+  DateSelectArg,
+  EventContentArg,
+  EventChangeArg,
+} from "@fullcalendar/core";
 import { EventImpl } from "@fullcalendar/core/internal";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -12,25 +17,292 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import {
+  RefreshCw,
+  Plus,
+  FileUp,
+  Calendar,
+  Target,
+  Check,
+  X,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
-import GoalsPanel from "./_components/GoalsPanel";
+import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
+import IcsUploaderModal from "./_components/IcsUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
+import GoalCard from "./_components/GoalCard";
 
 export interface Event {
   id: string;
   title: string;
   start: Date;
   end: Date;
+  isSuggestion?: boolean;
 }
 
 interface GeneratedEvent {
   title: string;
   start: string;
   end: string;
+}
+
+// Mobile Panel Tabs Component
+interface MobilePanelTabsProps {
+  inputText: string;
+  setInputText: (text: string) => void;
+  loading: boolean;
+  handleSubmit: () => void;
+  setShowModal: (show: boolean) => void;
+  setIsFileUploaderModalOpen: (open: boolean) => void;
+  setIsIcsUploaderModalOpen: (open: boolean) => void;
+}
+
+function MobilePanelTabs({
+  inputText,
+  setInputText,
+  loading,
+  handleSubmit,
+  setShowModal,
+  setIsFileUploaderModalOpen,
+  setIsIcsUploaderModalOpen,
+}: MobilePanelTabsProps) {
+  const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalToAdd, setGoalToAdd] = useState<string>("");
+  const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
+    GoalDuration.DAILY
+  );
+  const [filters, setFilters] = useState<GoalDuration[]>([]);
+  const [removingGoals, setRemovingGoals] = useState<string[]>([]);
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (activeTab === "goals") {
+      fetchGoals();
+    }
+  }, [activeTab]);
+
+  const fetchGoals = async () => {
+    try {
+      const response = await fetch("/api/goals");
+      if (!response.ok) {
+        throw new Error("Failed to fetch goals");
+      }
+      const data = await response.json();
+      setGoals(data);
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+    }
+  };
+
+  const addGoal = async () => {
+    const response = await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: goalToAdd,
+        type: currentDuration,
+      }),
+    });
+
+    const newGoal = await response.json();
+    setGoals([...goals, newGoal]);
+    setGoalToAdd("");
+  };
+
+  const deleteGoal = async (id: string) => {
+    setRemovingGoals((prev) => [...prev, id]);
+
+    await fetch(`/api/goals/${id}`, {
+      method: "DELETE",
+    });
+
+    setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
+    setRemovingGoals((prev) => prev.filter((goalId) => goalId !== id));
+  };
+
+  const handleFilterChange = (duration: GoalDuration) => {
+    setFilters((prevFilters) =>
+      prevFilters.includes(duration)
+        ? prevFilters.filter((filter) => filter !== duration)
+        : [...prevFilters, duration]
+    );
+  };
+
+  const filteredGoals =
+    filters.length > 0
+      ? goals.filter((goal) => filters.includes(goal.type))
+      : goals;
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Tab Navigation */}
+      <div className="flex border-b dark:border-dark-divider">
+        <button
+          onClick={() => setActiveTab("events")}
+          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+            activeTab === "events"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Calendar size={16} />
+            Events
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab("goals")}
+          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+            activeTab === "goals"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
+              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+          }`}
+        >
+          <div className="flex items-center justify-center gap-2">
+            <Target size={16} />
+            Goals
+          </div>
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "events" ? (
+          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={16} />
+                Add Event
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                onClick={() => setIsFileUploaderModalOpen(true)}
+              >
+                <FileUp size={16} />
+                Upload
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                onClick={() => setIsIcsUploaderModalOpen(true)}
+              >
+                <FileUp size={16} />
+                Import
+              </button>
+            </div>
+
+            {/* Event Generation */}
+            <div className="flex flex-col gap-3">
+              <textarea
+                className="w-full p-3 bg-gray-100 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Enter your schedule here..."
+                rows={3}
+              />
+              <button
+                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+                onClick={handleSubmit}
+              >
+                {loading ? "Generating..." : "Generate Events"}
+              </button>
+            </div>
+
+            {/* Suggested Events */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                  AI Suggestions
+                </h3>
+              </div>
+              <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
+                Click the refresh icon in the calendar header to get
+                suggestions. They will appear on your calendar.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
+            {/* Goal Filters */}
+            <div className="flex gap-2 flex-wrap">
+              {Object.values(GoalDuration).map((duration) => (
+                <button
+                  key={duration}
+                  className={`text-xs font-medium px-3 py-1 rounded-full border transition-all duration-200 ${
+                    filters.includes(duration)
+                      ? "bg-gray-900 text-white border-gray-900 dark:bg-dark-actionHover dark:border-dark-actionHover"
+                      : "text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover"
+                  }`}
+                  onClick={() => handleFilterChange(duration)}
+                >
+                  {duration}
+                </button>
+              ))}
+            </div>
+
+            {/* Add Goal */}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <select
+                  value={currentDuration}
+                  onChange={(e) =>
+                    setCurrentDuration(e.target.value as GoalDuration)
+                  }
+                  className="px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Object.values(GoalDuration).map((duration) => (
+                    <option key={duration} value={duration}>
+                      {duration}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={goalToAdd}
+                  onChange={(e) => setGoalToAdd(e.target.value)}
+                  placeholder="Enter goal title..."
+                  className="flex-1 px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                onClick={addGoal}
+                disabled={!goalToAdd.trim()}
+                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Goal
+              </button>
+            </div>
+
+            {/* Goals List */}
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {filteredGoals.length > 0 ? (
+                filteredGoals.map((goal) => (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    handleGoalClick={deleteGoal}
+                    removing={removingGoals.includes(goal.id)}
+                  />
+                ))
+              ) : (
+                <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
+                  No goals yet. Add one above!
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function CalendarApp() {
@@ -41,10 +313,8 @@ export default function CalendarApp() {
     },
   });
   const userId = session?.user?.id;
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [suggestedEvents, setSuggestedEvents] = useState<Event[]>([]);
   const [showCreationModal, setShowCreationModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [newEvent, setNewEvent] = useState({
@@ -59,6 +329,7 @@ export default function CalendarApp() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
+  const [isIcsUploaderModalOpen, setIsIcsUploaderModalOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [eventToEdit, setEventToEdit] = useState<EventImpl>();
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
@@ -71,9 +342,21 @@ export default function CalendarApp() {
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(
     new Set()
   );
+  const [copiedEvents, setCopiedEvents] = useState<Event[]>([]);
+  const [lastClickedDate, setLastClickedDate] = useState<Date | null>(null);
+  const [dailySummary, setDailySummary] = useState("");
+  const [hasFetchedDailySummary, setHasFetchedDailySummary] = useState(false);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
+    const buttons = document.querySelectorAll(".fc-refresh-button");
+    buttons.forEach((button) => {
+      button.innerHTML = refreshIcon;
+    });
+  }, [suggestionsLoading]);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -173,6 +456,78 @@ export default function CalendarApp() {
     }
   };
 
+  const handleEventUpdate = async (info: EventChangeArg) => {
+    const { event } = info;
+    const isSuggestion = event.extendedProps.isSuggestion;
+
+    if (isSuggestion) {
+      const suggestion = events.find((e) => e.id === event.id);
+      if (!suggestion) {
+        info.revert();
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: suggestion.title,
+            start: event.start,
+            end: event.end,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to create event from suggestion");
+        }
+        const createdEvent = await res.json();
+        setEvents((currentEvents) => [
+          ...currentEvents.filter((e) => e.id !== event.id),
+          {
+            id: createdEvent.id,
+            title: createdEvent.title,
+            start: new Date(createdEvent.start),
+            end: new Date(createdEvent.end),
+            isSuggestion: false,
+          },
+        ]);
+        console.log("Suggestion accepted and updated successfully");
+      } catch (error) {
+        console.error("Error handling suggestion update:", error);
+        info.revert();
+      }
+    } else {
+      // It's a regular event
+      try {
+        const res = await fetch(`/api/events/${event.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start: event.start,
+            end: event.end,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to update event");
+        }
+
+        setEvents((prevEvents) =>
+          prevEvents.map((e) =>
+            e.id === event.id
+              ? { ...e, start: event.start!, end: event.end! }
+              : e
+          )
+        );
+        console.log("Event updated successfully");
+      } catch (error) {
+        console.error("Error updating event:", error);
+        info.revert();
+      }
+    }
+  };
+
   const handleEventClick = (clickInfo: EventClickArg): void => {
     if (clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
       setEventToDelete(clickInfo.event);
@@ -180,40 +535,6 @@ export default function CalendarApp() {
     } else {
       setEventToEdit(clickInfo.event);
       setShowEditModal(true);
-    }
-  };
-
-  const handleEventDrop = async (dropInfo: any) => {
-    const { id } = dropInfo.event;
-    const start = dropInfo.event.start;
-    const end = dropInfo.event.end;
-
-    try {
-      const res = await fetch(`/api/events/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          start: start?.toISOString(),
-          end: end?.toISOString(),
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to update event");
-      }
-
-      setEvents((prevEvents) =>
-        prevEvents.map((event) =>
-          event.id === id
-            ? { ...event, start: start || event.start, end: end || event.end }
-            : event
-        )
-      );
-
-      console.log("Event updated successfully");
-    } catch (error) {
-      console.error("Error updating event:", error);
-      dropInfo.revert();
     }
   };
 
@@ -259,10 +580,162 @@ export default function CalendarApp() {
       setIsDeleteModalOpen(true);
     }
   };
+
+  const handleCopyEvents = () => {
+    if (selectedEventIds.size > 0) {
+      const eventsToCopy = events.filter((event) =>
+        selectedEventIds.has(event.id)
+      );
+      setCopiedEvents(eventsToCopy);
+      console.log(`Copied ${eventsToCopy.length} event(s)`);
+    }
+  };
+
+  const handlePasteEvents = async () => {
+    if (copiedEvents.length === 0) return;
+
+    const targetDate = lastClickedDate || new Date();
+
+    // Get current calendar view
+    const currentView = calendarRef.current?.getApi().view.type;
+    const isMonthView = currentView === "dayGridMonth";
+
+    let eventsToCreate;
+
+    if (isMonthView) {
+      // In month view, preserve original times and only change the date
+      eventsToCreate = copiedEvents.map((event) => {
+        const originalStart = new Date(event.start);
+        const originalEnd = new Date(event.end);
+
+        // Create new dates with target date but original times
+        const newStart = new Date(targetDate);
+        newStart.setHours(
+          originalStart.getHours(),
+          originalStart.getMinutes(),
+          originalStart.getSeconds(),
+          originalStart.getMilliseconds()
+        );
+
+        const newEnd = new Date(targetDate);
+        newEnd.setHours(
+          originalEnd.getHours(),
+          originalEnd.getMinutes(),
+          originalEnd.getSeconds(),
+          originalEnd.getMilliseconds()
+        );
+
+        // Handle events that span multiple days
+        const originalDuration =
+          originalEnd.getTime() - originalStart.getTime();
+        if (originalDuration > 24 * 60 * 60 * 1000) {
+          // More than 24 hours
+          newEnd.setTime(newStart.getTime() + originalDuration);
+        }
+
+        return {
+          title: event.title,
+          start: newStart,
+          end: newEnd,
+        };
+      });
+    } else {
+      // For week/day views, use the existing relative positioning logic
+      const firstCopiedEvent = copiedEvents[0];
+      const originalStart = new Date(firstCopiedEvent.start);
+      const timeDifference = targetDate.getTime() - originalStart.getTime();
+
+      eventsToCreate = copiedEvents.map((event) => {
+        const newStart = new Date(
+          new Date(event.start).getTime() + timeDifference
+        );
+        const newEnd = new Date(new Date(event.end).getTime() + timeDifference);
+
+        return {
+          title: event.title,
+          start: newStart,
+          end: newEnd,
+        };
+      });
+    }
+
+    try {
+      const res = await fetch("/api/events/bulkAdd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ events: eventsToCreate }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to paste events");
+      }
+
+      const responseData = await res.json();
+      console.log("API Response:", responseData); // Debug log
+
+      // Handle different possible response structures
+      const createdEventsArray = Array.isArray(responseData)
+        ? responseData
+        : responseData.events || responseData.data || [];
+
+      let formattedEvents: Event[];
+
+      if (
+        Array.isArray(createdEventsArray) &&
+        createdEventsArray.length > 0 &&
+        createdEventsArray[0].id
+      ) {
+        // API returned events with IDs - use them
+        formattedEvents = createdEventsArray.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }));
+      } else {
+        // API didn't return proper events - generate temporary IDs and refetch
+        console.log(
+          "API didn't return events with IDs, generating temporary IDs"
+        );
+        formattedEvents = eventsToCreate.map((event, index) => ({
+          id: `temp-${Date.now()}-${index}`,
+          title: event.title,
+          start: event.start,
+          end: event.end,
+        }));
+
+        // Refetch events to get the actual data from the database
+        setTimeout(() => {
+          if (fetchedRange) {
+            fetchEvents(
+              fetchedRange.start.toISOString(),
+              fetchedRange.end.toISOString()
+            );
+          }
+        }, 100);
+      }
+
+      setEvents((prevEvents) => [...prevEvents, ...formattedEvents]);
+      console.log(
+        `Pasted ${formattedEvents.length} event(s) in ${currentView} view`
+      );
+
+      // Clear selection and set new selection to pasted events
+      setSelectedEventIds(new Set(formattedEvents.map((e: Event) => e.id)));
+    } catch (error) {
+      console.error("Error pasting events:", error);
+    }
+  };
+
   const handleSelect = (selectInfo: DateSelectArg) => {
     console.log("Called!");
     const selectedStart = new Date(selectInfo.start);
     const selectedEnd = new Date(selectInfo.end);
+
+    // Track the last clicked date for pasting
+    setLastClickedDate(selectedStart);
 
     const eventsInRange = events.filter((event) => {
       const eventStart = new Date(event.start);
@@ -282,7 +755,7 @@ export default function CalendarApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText, timezone: userTimezone }),
+        body: JSON.stringify({ text: inputText }),
       });
       const data = await response.json();
       if (data.events) {
@@ -316,6 +789,7 @@ export default function CalendarApp() {
         );
 
         setEvents([...events, ...createdEvents]);
+        setInputText("");
       }
     } catch (error) {
       console.error("Error generating events:", error);
@@ -324,15 +798,71 @@ export default function CalendarApp() {
     }
   };
 
-  const currentDate = new Date();
-  currentDate.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(currentDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  const todaysEvents = useMemo(() => {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(currentDate);
+    endOfDay.setHours(23, 59, 59, 999);
 
-  const todaysEvents = events.filter((event) => {
-    const eventStart = new Date(event.start);
-    return eventStart >= currentDate && eventStart <= endOfDay;
-  });
+    return events
+      .filter((event) => !event.isSuggestion)
+      .filter((event) => {
+        const eventStart = new Date(event.start);
+        return eventStart >= currentDate && eventStart <= endOfDay;
+      });
+  }, [events]);
+
+  useEffect(() => {
+    if (todaysEvents.length > 0 && !hasFetchedDailySummary) {
+      const fetchDailySummary = async () => {
+        try {
+          const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+          const eventSummary = todaysEvents
+            .map((event) => {
+              const options: Intl.DateTimeFormatOptions = {
+                hour: "numeric",
+                minute: "numeric",
+                hour12: true,
+                timeZone: userTimezone,
+              };
+              const start = new Date(event.start).toLocaleTimeString(
+                "en-US",
+                options
+              );
+              const end = new Date(event.end).toLocaleTimeString(
+                "en-US",
+                options
+              );
+              return `- ${event.title}: ${start} - ${end}`;
+            })
+            .join("\n");
+
+          const response = await fetch("/api/daily-summary", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              existingEvents: todaysEvents,
+              timezone: userTimezone,
+              userId: userId,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error("Failed to fetch daily summary");
+          }
+          const data = await response.json();
+          setDailySummary(`${eventSummary}\n\n${data.result}`);
+          setHasFetchedDailySummary(true);
+        } catch (error) {
+          console.error("Error fetching daily summary:", error);
+          setDailySummary("Could not load summary.");
+        }
+      };
+      fetchDailySummary();
+    }
+  }, [todaysEvents, hasFetchedDailySummary, userId]);
 
   const fetchSuggestions = async () => {
     if (!userId) {
@@ -342,6 +872,25 @@ export default function CalendarApp() {
 
     try {
       setSuggestionsLoading(true);
+
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const eventSummary = todaysEvents
+        .map((event) => {
+          const options: Intl.DateTimeFormatOptions = {
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: userTimezone,
+          };
+          const start = new Date(event.start).toLocaleTimeString(
+            "en-US",
+            options
+          );
+          const end = new Date(event.end).toLocaleTimeString("en-US", options);
+          return `- ${event.title}: ${start} - ${end}`;
+        })
+        .join("\n");
+
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
         headers: {
@@ -349,15 +898,27 @@ export default function CalendarApp() {
         },
         body: JSON.stringify({
           existingEvents: todaysEvents,
+          eventSummary: eventSummary,
           userId: userId,
-          timezone: userTimezone,
         }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch suggestions");
 
       const data = await response.json();
-      setSuggestedEvents(data.events);
+      if (data.events) {
+        const newSuggestions = data.events.map((event: any) => ({
+          id: event.id || `suggestion-${Date.now()}-${Math.random()}`,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+          isSuggestion: true,
+        }));
+        setEvents((currentEvents) => [
+          ...currentEvents.filter((e) => !e.isSuggestion),
+          ...newSuggestions,
+        ]);
+      }
     } catch (error) {
       console.error("Error suggesting events:", error);
     } finally {
@@ -365,17 +926,20 @@ export default function CalendarApp() {
     }
   };
 
-  const handleAcceptSuggestion = async (event: Event) => {
+  const handleAcceptSuggestion = async (suggestionId: string) => {
+    const suggestion = events.find((e) => e.id === suggestionId);
+    if (!suggestion) return;
+
     try {
-      const res = await fetch("api/events", {
+      const res = await fetch("/api/events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: event.title,
-          start: event.start,
-          end: event.end,
+          title: suggestion.title,
+          start: suggestion.start,
+          end: suggestion.end,
         }),
       });
 
@@ -385,24 +949,28 @@ export default function CalendarApp() {
 
       const createdEvent = await res.json();
 
-      setEvents([
-        ...events,
-        {
-          id: createdEvent.id,
-          title: createdEvent.title,
-          start: new Date(createdEvent.start),
-          end: new Date(createdEvent.end),
-        },
-      ]);
-
-      setSuggestedEvents(suggestedEvents.filter((e) => e.id !== event.id));
+      setEvents((currentEvents) =>
+        currentEvents.map((e) =>
+          e.id === suggestionId
+            ? {
+                id: createdEvent.id,
+                title: createdEvent.title,
+                start: new Date(createdEvent.start),
+                end: new Date(createdEvent.end),
+                isSuggestion: false,
+              }
+            : e
+        )
+      );
     } catch (error) {
       console.error("Error accepting suggestion:", error);
     }
   };
 
-  const handleRejectSuggestion = (eventId: string) => {
-    setSuggestedEvents(suggestedEvents.filter((e) => e.id !== eventId));
+  const handleRejectSuggestion = (suggestionId: string) => {
+    setEvents((currentEvents) =>
+      currentEvents.filter((e) => e.id !== suggestionId)
+    );
   };
 
   useEffect(() => {
@@ -464,11 +1032,25 @@ export default function CalendarApp() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Backspace" && selectedEventIds.size > 0) {
         handleBackspaceDelete();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "c" &&
+        selectedEventIds.size > 0
+      ) {
+        e.preventDefault();
+        handleCopyEvents();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "v" &&
+        copiedEvents.length > 0
+      ) {
+        e.preventDefault();
+        handlePasteEvents();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedEventIds]);
+  }, [selectedEventIds, copiedEvents]);
 
   useEffect(() => {
     if (eventToEdit) {
@@ -501,22 +1083,74 @@ export default function CalendarApp() {
     };
   }, []);
 
-  const handlePanelToggle = () => {
-    if (calendarRef.current) {
-      setTimeout(() => calendarRef.current?.getApi().updateSize(), 50);
+  function renderEventContent(eventInfo: EventContentArg) {
+    const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
+    const eventTitle = eventInfo.event.title;
+
+    const tooltip = (
+      <div className="absolute bottom-full left-1/2 z-20 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
+        {eventTitle}
+        <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+      </div>
+    );
+
+    const baseContainerClasses = "group relative h-full w-full p-1";
+    const titleClasses = "font-normal truncate";
+
+    if (isSuggestion) {
+      return (
+        <div
+          className={`${baseContainerClasses} flex items-center justify-between`}
+        >
+          <div className={`${titleClasses} text-xs pr-1`}>{eventTitle}</div>
+          {tooltip}
+          <div className="flex shrink-0 items-center space-x-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAcceptSuggestion(eventInfo.event.id);
+              }}
+              className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center"
+              style={{ width: "16px", height: "16px" }}
+              aria-label="Accept suggestion"
+            >
+              <Check size={10} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRejectSuggestion(eventInfo.event.id);
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center"
+              style={{ width: "16px", height: "16px" }}
+              aria-label="Reject suggestion"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        </div>
+      );
     }
-  };
+
+    return (
+      <div className={`${baseContainerClasses} flex flex-col justify-start`}>
+        <div className={titleClasses}>{eventTitle}</div>
+        {tooltip}
+      </div>
+    );
+  }
 
   return (
     <SessionProvider>
-      <div className="h-[90dvh] flex flex-col bg-white dark:bg-dark-background">
-        <div className="flex flex-col md:flex-row flex-1 h-full">
+      <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
+        {/* Desktop Layout */}
+        <div className="hidden md:flex md:flex-row h-full">
           {/* Goals Panel */}
-          <GoalsPanel onToggle={handlePanelToggle} />
+          <GoalsPanel />
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className="flex-1 justify-center items-center p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
           >
             <AnimatePresence>
               {calendarLoading && (
@@ -540,11 +1174,59 @@ export default function CalendarApp() {
               initialView="timeGridWeek"
               events={events}
               eventClick={handleEventClick}
-              height="calc(100vh - 6rem)"
+              eventContent={renderEventContent}
+              height="100%"
+              customButtons={{
+                refresh: {
+                  text: "",
+                  click: fetchSuggestions,
+                  hint: "Refresh Suggestions",
+                },
+              }}
+              eventClassNames={(eventInfo) => {
+                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
+                const isCopied = copiedEvents.some(
+                  (e) => e.id === eventInfo.event.id
+                );
+                const isSelected = selectedEventIds.has(eventInfo.event.id);
+
+                if (!isSuggestion && isCopied) {
+                  const copiedClasses = [
+                    "opacity-60",
+                    "border-2",
+                    "border-dashed",
+                    "border-blue-400",
+                    "rounded-md",
+                  ];
+                  if (isSelected) {
+                    copiedClasses.push("ring-2", "ring-blue-500");
+                  }
+                  return copiedClasses;
+                }
+
+                const classes = [
+                  "dark:bg-blue-900/80",
+                  "dark:border-blue-500",
+                  "border-l-4",
+                  "text-white dark:text-blue-200",
+                  "rounded-md",
+                  "border-transparent",
+                  "overflow-visible",
+                ];
+
+                if (isSuggestion) {
+                  classes.push("opacity-70");
+                }
+
+                if (isSelected) {
+                  classes.push("ring-2", "ring-blue-500");
+                }
+                return classes.filter(Boolean);
+              }}
               headerToolbar={{
                 start: "prev,next today",
                 center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay",
+                right: "dayGridMonth,timeGridWeek,timeGridDay,refresh",
               }}
               buttonText={{
                 today: "Today",
@@ -571,31 +1253,11 @@ export default function CalendarApp() {
               select={handleSelect}
               unselectAuto={false}
               selectable={true}
-              eventResize={async (resizeInfo) => {
-                try {
-                  const updatedEvent = {
-                    id: resizeInfo.event.id,
-                    start: resizeInfo.event.start,
-                    end: resizeInfo.event.end,
-                  };
-
-                  const res = await fetch(`/api/events/${updatedEvent.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(updatedEvent),
-                  });
-
-                  if (!res.ok) {
-                    throw new Error("Failed to update event duration");
-                  }
-
-                  console.log("Event resized and updated successfully");
-                } catch (error) {
-                  console.error("Error updating event duration:", error);
-                  resizeInfo.revert();
-                }
+              dateClick={(clickInfo) => {
+                setLastClickedDate(new Date(clickInfo.date));
               }}
-              eventDrop={handleEventDrop}
+              eventResize={handleEventUpdate}
+              eventDrop={handleEventUpdate}
               datesSet={(dateInfo) => {
                 const visibleStart = new Date(dateInfo.startStr);
                 const visibleEnd = new Date(dateInfo.endStr);
@@ -628,15 +1290,157 @@ export default function CalendarApp() {
             setInputText={setInputText}
             loading={loading}
             handleSubmit={handleSubmit}
-            suggestedEvents={suggestedEvents}
-            handleAcceptSuggestion={handleAcceptSuggestion}
-            handleRejectSuggestion={handleRejectSuggestion}
-            suggestionsLoading={suggestionsLoading}
             setShowModal={setShowCreationModal}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
-            fetchSuggestions={fetchSuggestions}
-            onToggle={handlePanelToggle}
+            setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
+            dailySummary={dailySummary}
           />
+        </div>
+
+        {/* Mobile Layout */}
+        <div className="flex md:hidden flex-col h-full">
+          {/* Calendar Section - Top */}
+          <div
+            ref={calendarContainerRef}
+            className="flex-1 justify-center items-center p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+          >
+            <AnimatePresence>
+              {calendarLoading && (
+                <motion.div
+                  className="absolute inset-0 flex flex-col justify-center items-center bg-white bg-opacity-70 backdrop-blur-sm z-10 dark:bg-dark-paper dark:bg-opacity-70"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                >
+                  <RefreshCw
+                    size={32}
+                    className="animate-spin text-gray-600 dark:text-dark-textSecondary"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              events={events}
+              eventClick={handleEventClick}
+              eventContent={renderEventContent}
+              height="100%"
+              customButtons={{
+                refresh: {
+                  text: "",
+                  click: fetchSuggestions,
+                },
+              }}
+              eventClassNames={(eventInfo) => {
+                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
+                const isCopied = copiedEvents.some(
+                  (e) => e.id === eventInfo.event.id
+                );
+                const isSelected = selectedEventIds.has(eventInfo.event.id);
+
+                if (!isSuggestion && isCopied) {
+                  const copiedClasses = [
+                    "opacity-60",
+                    "border-2",
+                    "border-dashed",
+                    "border-blue-400",
+                    "rounded-md",
+                  ];
+                  if (isSelected) {
+                    copiedClasses.push("ring-2", "ring-blue-500");
+                  }
+                  return copiedClasses;
+                }
+
+                const classes = [
+                  "dark:bg-blue-900/80",
+                  "dark:border-blue-500",
+                  "border-l-4",
+                  "text-white dark:text-blue-200",
+                  "rounded-md",
+                  "border-transparent",
+                  "overflow-visible",
+                ];
+
+                if (isSuggestion) {
+                  classes.push("opacity-70");
+                }
+
+                if (isSelected) {
+                  classes.push("ring-2", "ring-blue-500");
+                }
+                return classes.filter(Boolean);
+              }}
+              buttonText={{
+                today: "Today",
+                month: "Month",
+                week: "Week",
+                day: "Day",
+              }}
+              dayMaxEventRows={2}
+              views={{
+                dayGridMonth: {
+                  titleFormat: { year: "numeric", month: "short" },
+                  dayHeaderFormat: { weekday: "narrow" },
+                },
+              }}
+              themeSystem="standard"
+              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+              dayHeaderClassNames="text-gray-700 font-semibold py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
+              nowIndicator={true}
+              nowIndicatorClassNames="border-red-500 dark:border-red-900"
+              scrollTimeReset={false}
+              allDaySlot={false}
+              editable={true}
+              select={handleSelect}
+              unselectAuto={false}
+              selectable={true}
+              dateClick={(clickInfo) => {
+                setLastClickedDate(new Date(clickInfo.date));
+              }}
+              eventResize={handleEventUpdate}
+              eventDrop={handleEventUpdate}
+              datesSet={(dateInfo) => {
+                const visibleStart = new Date(dateInfo.startStr);
+                const visibleEnd = new Date(dateInfo.endStr);
+
+                const bufferStart = new Date(visibleStart);
+                bufferStart.setMonth(bufferStart.getMonth() - 2);
+
+                const bufferEnd = new Date(visibleEnd);
+                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
+
+                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                  console.log(
+                    "Fetching events for range:",
+                    bufferStart,
+                    bufferEnd
+                  );
+                  fetchEvents(
+                    bufferStart.toISOString(),
+                    bufferEnd.toISOString()
+                  );
+                  setFetchedRange({ start: bufferStart, end: bufferEnd });
+                }
+              }}
+            />
+          </div>
+
+          {/* Bottom Panel Section - Mobile */}
+          <div className="h-1/3 bg-white dark:bg-dark-background border-t dark:border-dark-divider">
+            <MobilePanelTabs
+              inputText={inputText}
+              setInputText={setInputText}
+              loading={loading}
+              handleSubmit={handleSubmit}
+              setShowModal={setShowCreationModal}
+              setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
+              setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
+            />
+          </div>
         </div>
 
         {showCreationModal && (
@@ -680,6 +1484,11 @@ export default function CalendarApp() {
         <FileUploaderModal
           isOpen={isFileUploaderModalOpen}
           onClose={() => setIsFileUploaderModalOpen(false)}
+          setEvents={setExtractedEvents}
+        />
+        <IcsUploaderModal
+          isOpen={isIcsUploaderModalOpen}
+          onClose={() => setIsIcsUploaderModalOpen(false)}
           setEvents={setExtractedEvents}
         />
       </div>
