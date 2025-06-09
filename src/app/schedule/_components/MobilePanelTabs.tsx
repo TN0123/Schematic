@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Calendar, Target, Plus, FileUp } from "lucide-react";
+import { Calendar, Target, Plus, FileUp, Mic } from "lucide-react";
 import { Goal, GoalDuration } from "./GoalsPanel";
 import GoalCard from "./GoalCard";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 
 interface MobilePanelTabsProps {
   inputText: string;
@@ -32,6 +35,28 @@ export default function MobilePanelTabs({
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
   const { data: session } = useSession();
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+
+  useEffect(() => {
+    if (transcript) {
+      setInputText(transcript);
+    }
+  }, [transcript, setInputText]);
+
+  const handleListen = () => {
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      SpeechRecognition.startListening({ continuous: false });
+    }
+  };
 
   useEffect(() => {
     if (activeTab === "goals") {
@@ -132,13 +157,32 @@ export default function MobilePanelTabs({
               <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
                 Generate with AI
               </h3>
-              <textarea
-                className="w-full p-3 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Describe your schedule to generate events..."
-                rows={4}
-              />
+              <div className="relative">
+                <textarea
+                  className="w-full p-3 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Describe your schedule to generate events..."
+                  rows={4}
+                />
+                <button
+                  className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-colors duration-200 ${
+                    listening
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                  }`}
+                  onClick={handleListen}
+                >
+                  <Mic
+                    size={16}
+                    className={
+                      listening
+                        ? "text-white"
+                        : "text-black dark:text-dark-textPrimary"
+                    }
+                  />
+                </button>
+              </div>
               <button
                 className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 disabled={loading}

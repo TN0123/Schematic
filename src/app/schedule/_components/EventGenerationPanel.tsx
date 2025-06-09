@@ -50,8 +50,12 @@ export default function EventGenerationPanel({
   }, [transcript, setInputText]);
 
   const handleListen = () => {
-    resetTranscript();
-    SpeechRecognition.startListening({ continuous: false });
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      SpeechRecognition.startListening({ continuous: false });
+    }
   };
 
   return (
@@ -118,12 +122,20 @@ export default function EventGenerationPanel({
               placeholder="Enter your schedule here..."
             />
             <button
-              className="absolute bottom-2 right-2 p-1 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover rounded-full transition-colors duration-200"
+              className={`absolute bottom-2 right-2 p-1 rounded-full transition-colors duration-200 ${
+                listening
+                  ? "bg-red-500 hover:bg-red-600"
+                  : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+              }`}
               onClick={handleListen}
             >
               <Mic
                 size={16}
-                className="text-black dark:text-dark-textPrimary"
+                className={
+                  listening
+                    ? "text-white"
+                    : "text-black dark:text-dark-textPrimary"
+                }
               />
             </button>
           </div>
