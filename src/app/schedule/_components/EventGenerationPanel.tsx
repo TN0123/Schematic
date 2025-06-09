@@ -63,10 +63,6 @@ export default function EventGenerationPanel({
     SpeechRecognition.startListening({ continuous: false });
   };
 
-  if (!browserSupportsSpeechRecognition) {
-    return <p>Your browser does not support speech recognition.</p>;
-  }
-
   const MobileToggle = () => (
     <button
       id="event-panel-toggle"
