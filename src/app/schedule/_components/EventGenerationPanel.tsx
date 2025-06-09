@@ -63,20 +63,6 @@ export default function EventGenerationPanel({
     SpeechRecognition.startListening({ continuous: false });
   };
 
-  const MobileToggle = () => (
-    <button
-      id="event-panel-toggle"
-      onClick={handleToggle}
-      className="md:hidden fixed top-[9rem] right-4 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
-      aria-label="Open event panel"
-    >
-      <PanelRightOpen
-        size={20}
-        className="text-gray-700 dark:text-dark-textSecondary"
-      />
-    </button>
-  );
-
   return (
     <>
       <aside

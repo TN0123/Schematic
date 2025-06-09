@@ -146,7 +146,7 @@ function MobilePanelTabs({
           className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
             activeTab === "events"
               ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover"
           }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -159,7 +159,7 @@ function MobilePanelTabs({
           className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
             activeTab === "goals"
               ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-              : "text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary"
+              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover"
           }`}
         >
           <div className="flex items-center justify-center gap-2">
@@ -170,45 +170,23 @@ function MobilePanelTabs({
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         {activeTab === "events" ? (
-          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
-                onClick={() => setShowModal(true)}
-              >
-                <Plus size={16} />
-                Add Event
-              </button>
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
-                onClick={() => setIsFileUploaderModalOpen(true)}
-              >
-                <FileUp size={16} />
-                Upload
-              </button>
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200"
-                onClick={() => setIsIcsUploaderModalOpen(true)}
-              >
-                <FileUp size={16} />
-                Import
-              </button>
-            </div>
-
+          <div className="p-4 flex flex-col gap-6">
             {/* Event Generation */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+                Generate with AI
+              </h3>
               <textarea
-                className="w-full p-3 bg-gray-100 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Enter your schedule here..."
-                rows={3}
+                placeholder="Describe your schedule to generate events..."
+                rows={4}
               />
               <button
-                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 disabled={loading}
                 onClick={handleSubmit}
               >
@@ -216,87 +194,132 @@ function MobilePanelTabs({
               </button>
             </div>
 
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+                Actions
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  onClick={() => setShowModal(true)}
+                >
+                  <Plus size={16} />
+                  Add Event
+                </button>
+                <button
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  onClick={() => setIsFileUploaderModalOpen(true)}
+                >
+                  <FileUp size={16} />
+                  Upload
+                </button>
+                <button
+                  className="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  onClick={() => setIsIcsUploaderModalOpen(true)}
+                >
+                  <Calendar size={16} />
+                  Import from .ics
+                </button>
+              </div>
+            </div>
+
             {/* Suggested Events */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <Target
+                  size={18}
+                  className="text-blue-600 dark:text-blue-400"
+                />
+                <h3 className="font-semibold text-blue-800 dark:text-blue-400">
                   AI Suggestions
                 </h3>
               </div>
-              <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
-                Click the refresh icon in the calendar header to get
-                suggestions. They will appear on your calendar.
+              <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">
+                Tap the refresh icon on the calendar to get smart suggestions
+                for your day.
               </p>
             </div>
           </div>
         ) : (
-          <div className="h-full p-4 flex flex-col gap-4 overflow-y-auto">
-            {/* Goal Filters */}
-            <div className="flex gap-2 flex-wrap">
-              {Object.values(GoalDuration).map((duration) => (
-                <button
-                  key={duration}
-                  className={`text-xs font-medium px-3 py-1 rounded-full border transition-all duration-200 ${
-                    filters.includes(duration)
-                      ? "bg-gray-900 text-white border-gray-900 dark:bg-dark-actionHover dark:border-dark-actionHover"
-                      : "text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover"
-                  }`}
-                  onClick={() => handleFilterChange(duration)}
-                >
-                  {duration}
-                </button>
-              ))}
-            </div>
-
+          <div className="p-4 flex flex-col gap-6">
             {/* Add Goal */}
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <select
-                  value={currentDuration}
-                  onChange={(e) =>
-                    setCurrentDuration(e.target.value as GoalDuration)
-                  }
-                  className="px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+                Add New Goal
+              </h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={goalToAdd}
+                    onChange={(e) => setGoalToAdd(e.target.value)}
+                    placeholder="Enter goal title..."
+                    className="flex-1 px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <select
+                    value={currentDuration}
+                    onChange={(e) =>
+                      setCurrentDuration(e.target.value as GoalDuration)
+                    }
+                    className="px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Object.values(GoalDuration).map((duration) => (
+                      <option key={duration} value={duration}>
+                        {duration}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={addGoal}
+                  disabled={!goalToAdd.trim()}
+                  className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {Object.values(GoalDuration).map((duration) => (
-                    <option key={duration} value={duration}>
-                      {duration}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="text"
-                  value={goalToAdd}
-                  onChange={(e) => setGoalToAdd(e.target.value)}
-                  placeholder="Enter goal title..."
-                  className="flex-1 px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  Add Goal
+                </button>
               </div>
-              <button
-                onClick={addGoal}
-                disabled={!goalToAdd.trim()}
-                className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add Goal
-              </button>
             </div>
 
             {/* Goals List */}
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {filteredGoals.length > 0 ? (
-                filteredGoals.map((goal) => (
-                  <GoalCard
-                    key={goal.id}
-                    goal={goal}
-                    handleGoalClick={deleteGoal}
-                    removing={removingGoals.includes(goal.id)}
-                  />
-                ))
-              ) : (
-                <p className="text-gray-500 dark:text-dark-textSecondary text-sm text-center py-4">
-                  No goals yet. Add one above!
-                </p>
-              )}
+            <div className="flex flex-col gap-3">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+                Your Goals
+              </h3>
+              {/* Goal Filters */}
+              <div className="flex gap-2 flex-wrap">
+                {Object.values(GoalDuration).map((duration) => (
+                  <button
+                    key={duration}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-200 ${
+                      filters.includes(duration)
+                        ? "bg-gray-900 text-white border-gray-900 dark:bg-blue-500 dark:text-white dark:border-blue-500"
+                        : "text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover"
+                    }`}
+                    onClick={() => handleFilterChange(duration)}
+                  >
+                    {duration}
+                  </button>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {filteredGoals.length > 0 ? (
+                  filteredGoals.map((goal) => (
+                    <GoalCard
+                      key={goal.id}
+                      goal={goal}
+                      handleGoalClick={deleteGoal}
+                      removing={removingGoals.includes(goal.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-dark-textSecondary text-sm">
+                      No goals yet. Add one above!
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1322,7 +1345,7 @@ export default function CalendarApp() {
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
+              initialView="timeGridDay"
               events={events}
               eventClick={handleEventClick}
               eventContent={renderEventContent}
@@ -1332,6 +1355,16 @@ export default function CalendarApp() {
                   text: "",
                   click: fetchSuggestions,
                 },
+              }}
+              headerToolbar={{
+                start: "title",
+                center: "",
+                end: "prev,next",
+              }}
+              footerToolbar={{
+                start: "today",
+                center: "dayGridMonth,timeGridWeek,timeGridDay",
+                end: "refresh",
               }}
               eventClassNames={(eventInfo) => {
                 const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
@@ -1347,6 +1380,7 @@ export default function CalendarApp() {
                     "border-dashed",
                     "border-blue-400",
                     "rounded-md",
+                    "text-xs",
                   ];
                   if (isSelected) {
                     copiedClasses.push("ring-2", "ring-blue-500");
@@ -1362,6 +1396,7 @@ export default function CalendarApp() {
                   "rounded-md",
                   "border-transparent",
                   "overflow-visible",
+                  "text-xs",
                 ];
 
                 if (isSuggestion) {
@@ -1375,23 +1410,24 @@ export default function CalendarApp() {
               }}
               buttonText={{
                 today: "Today",
-                month: "Month",
-                week: "Week",
-                day: "Day",
+                month: "M",
+                week: "W",
+                day: "D",
               }}
               dayMaxEventRows={2}
               views={{
                 dayGridMonth: {
-                  titleFormat: { year: "numeric", month: "short" },
+                  titleFormat: { year: "numeric", month: "long" },
                   dayHeaderFormat: { weekday: "narrow" },
                 },
               }}
               themeSystem="standard"
               dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
-              dayHeaderClassNames="text-gray-700 font-semibold py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
+              dayHeaderClassNames="text-gray-600 font-medium py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
               nowIndicator={true}
               nowIndicatorClassNames="border-red-500 dark:border-red-900"
               scrollTimeReset={false}
+              scrollTime={`${new Date().getHours()}:00:00`}
               allDaySlot={false}
               editable={true}
               select={handleSelect}
