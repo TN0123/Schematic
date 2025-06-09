@@ -778,18 +778,16 @@ export default function CalendarApp() {
           throw new Error("Failed to save events to database");
         }
 
-        const createdEvents = formattedEvents.map(
-          (event: Event, index: number) => {
-            return {
-              id: `${Date.now()}-${index}`,
-              title: event.title,
-              start: event.start,
-              end: event.end,
-            };
-          }
-        );
+        const createdEventsWithIds = await res.json();
 
-        setEvents([...events, ...createdEvents]);
+        const newEvents = createdEventsWithIds.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }));
+
+        setEvents((prevEvents) => [...prevEvents, ...newEvents]);
         setInputText("");
       }
     } catch (error) {

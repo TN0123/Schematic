@@ -19,16 +19,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const createdEvents = await prisma.event.createMany({
-      data: events.map((event) => ({
-        title: event.title,
-        start: new Date(event.start),
-        end: new Date(event.end),
-        userId: session.user.id,
-      })),
-    });
+    const createdEvents = await prisma.$transaction(
+      events.map((event) =>
+        prisma.event.create({
+          data: {
+            title: event.title,
+            start: new Date(event.start),
+            end: new Date(event.end),
+            userId: session.user.id!,
+          },
+        })
+      )
+    );
 
-    return NextResponse.json({ count: createdEvents.count }, { status: 201 });
+    return NextResponse.json(createdEvents, { status: 201 });
   } catch (error) {
     console.error("Error creating multiple events:", error);
     return NextResponse.json(
