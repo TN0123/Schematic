@@ -71,6 +71,7 @@ export default function WriteEditor({
     visible: boolean;
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [suggestion, setSuggestion] = useState("");
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -82,6 +83,56 @@ export default function WriteEditor({
       setTimeout(() => setIsSavingContent(false), 500);
     }
   }, 1000);
+
+  const debouncedFetchAutocomplete = useDebouncedCallback(
+    async (text: string) => {
+      if (
+        !text.trim() ||
+        textareaRef.current?.selectionStart !== text.length ||
+        text.length < 10
+      ) {
+        setSuggestion("");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/autocomplete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ currentText: text }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let newSuggestion = data.result || "";
+
+          if (inputText.endsWith(" ") && newSuggestion.startsWith(" ")) {
+            newSuggestion = newSuggestion.substring(1);
+          }
+
+          if (newSuggestion) {
+            setSuggestion(newSuggestion);
+          } else {
+            setSuggestion("");
+          }
+        } else {
+          setSuggestion("");
+        }
+      } catch (error) {
+        console.error("Autocomplete error:", error);
+        setSuggestion("");
+      }
+    },
+    300
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedFetchAutocomplete.cancel();
+    };
+  }, [debouncedFetchAutocomplete]);
 
   // Add effect to sync input with document content
   useEffect(() => {
@@ -116,6 +167,7 @@ export default function WriteEditor({
         const selectionEnd = textareaRef.current.selectionEnd;
         textareaRef.current.selectionStart = selectionEnd;
       }
+      clearSuggestionAndCancel();
     }
   }, [isImproving]);
 
@@ -173,9 +225,15 @@ export default function WriteEditor({
     setTooltipState((p) => ({ ...p, visible: false }));
   }, [selectionStart, selectionEnd, inputText]);
 
+  const clearSuggestionAndCancel = () => {
+    setSuggestion("");
+    debouncedFetchAutocomplete.cancel();
+  };
+
   const handleContinue = async () => {
     try {
       setError("");
+      clearSuggestionAndCancel();
       const liveCursor =
         textareaRef.current?.selectionStart ?? inputText.length;
 
@@ -243,6 +301,7 @@ export default function WriteEditor({
   );
 
   const applyChange = (original: string, replacement: string) => {
+    clearSuggestionAndCancel();
     const updated = inputText.replace(original, replacement);
     setInputText(updated);
     setInput(updated);
@@ -252,12 +311,14 @@ export default function WriteEditor({
   };
 
   const rejectChange = (original: string) => {
+    clearSuggestionAndCancel();
     const updatedChanges = { ...pendingChanges };
     delete updatedChanges[original];
     setPendingChanges(updatedChanges);
   };
 
   const acceptAllChanges = () => {
+    clearSuggestionAndCancel();
     let updatedText = inputText;
     for (const [original, replacement] of Object.entries(pendingChanges)) {
       if (original === "!ADD_TO_END!") {
@@ -272,6 +333,7 @@ export default function WriteEditor({
   };
 
   const rejectAllChanges = () => {
+    clearSuggestionAndCancel();
     setPendingChanges({});
   };
 
@@ -333,6 +395,7 @@ export default function WriteEditor({
   };
 
   const appendChange = (newText: string) => {
+    clearSuggestionAndCancel();
     const updatedText = inputText + newText;
     setInputText(updatedText);
     setInput(updatedText);
@@ -396,6 +459,11 @@ export default function WriteEditor({
     setGeneratedStart(null);
     setGeneratedEnd(null);
     updateTextareaHeight();
+
+    clearSuggestionAndCancel();
+    if (cursorPos === newValue.length && newValue.trim().length > 0) {
+      debouncedFetchAutocomplete(newValue);
+    }
   };
 
   useEffect(() => {
@@ -416,6 +484,34 @@ export default function WriteEditor({
       textareaRef.current.focus();
     }
   }, [inputText, generatedStart, generatedEnd]);
+
+  let displayHtml: string;
+
+  if (activeHighlight !== null) {
+    displayHtml = getHighlightedHTML(inputText, activeHighlight);
+  } else if (
+    selectionStart !== null &&
+    selectionEnd !== null &&
+    selectionStart !== selectionEnd
+  ) {
+    displayHtml = getHighlightedHTMLWithRange(
+      inputText,
+      selectionStart,
+      selectionEnd,
+      "selection"
+    );
+  } else {
+    displayHtml = getHighlightedHTMLWithRange(
+      inputText,
+      generatedStart,
+      generatedEnd,
+      "generated"
+    );
+  }
+
+  if (suggestion) {
+    displayHtml += `<span class="text-gray-400 dark:text-gray-500">${suggestion}</span>`;
+  }
 
   return (
     <div className="w-full flex flex-col justify-center items-center h-full">
@@ -490,22 +586,7 @@ export default function WriteEditor({
                   className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
                   aria-hidden="true"
                   dangerouslySetInnerHTML={{
-                    __html:
-                      activeHighlight !== null
-                        ? getHighlightedHTML(inputText, activeHighlight)
-                        : selectionStart !== null && selectionEnd !== null
-                        ? getHighlightedHTMLWithRange(
-                            inputText,
-                            selectionStart,
-                            selectionEnd,
-                            "selection"
-                          )
-                        : getHighlightedHTMLWithRange(
-                            inputText,
-                            generatedStart,
-                            generatedEnd,
-                            "generated"
-                          ),
+                    __html: displayHtml,
                   }}
                 />
                 <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
@@ -561,6 +642,13 @@ export default function WriteEditor({
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
 
+                    if (
+                      start !== inputText.length ||
+                      end !== inputText.length
+                    ) {
+                      setSuggestion("");
+                    }
+
                     cursorPositionRef.current = start;
                     setSelectionStart(start);
                     setSelectionEnd(end);
@@ -570,22 +658,41 @@ export default function WriteEditor({
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Tab") {
-                      e.preventDefault();
-                      const textarea = textareaRef.current;
-                      if (textarea) {
-                        const start = textarea.selectionStart;
-                        const end = textarea.selectionEnd;
-                        const newValue =
-                          inputText.substring(0, start) +
-                          "\t" +
-                          inputText.substring(end);
+                      if (suggestion) {
+                        e.preventDefault();
+                        const newValue = inputText + suggestion;
                         setInputText(newValue);
                         setInput(newValue);
-                        cursorPositionRef.current = start + 1;
+                        debouncedSaveContent(newValue);
+
+                        clearSuggestionAndCancel();
+
                         setTimeout(() => {
-                          textarea.selectionStart = textarea.selectionEnd =
-                            start + 1;
+                          if (textareaRef.current) {
+                            textareaRef.current.selectionStart =
+                              textareaRef.current.selectionEnd =
+                                newValue.length;
+                            debouncedFetchAutocomplete(newValue);
+                          }
                         }, 0);
+                      } else {
+                        e.preventDefault();
+                        const textarea = textareaRef.current;
+                        if (textarea) {
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const newValue =
+                            inputText.substring(0, start) +
+                            "\t" +
+                            inputText.substring(end);
+                          setInputText(newValue);
+                          setInput(newValue);
+                          cursorPositionRef.current = start + 1;
+                          setTimeout(() => {
+                            textarea.selectionStart = textarea.selectionEnd =
+                              start + 1;
+                          }, 0);
+                        }
                       }
                     }
                   }}
