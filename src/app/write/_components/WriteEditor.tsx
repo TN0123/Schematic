@@ -139,7 +139,7 @@ export default function WriteEditor({
     if (currentDocument) {
       setInputText(currentDocument.content);
     }
-  }, [currentDocument?.content]);
+  }, [currentDocument?.id]);
 
   const updateTextareaHeight = () => {
     if (textareaRef.current) {
@@ -187,7 +187,7 @@ export default function WriteEditor({
 
   useEffect(() => {
     setTitle(currentDocument?.title || "Untitled Document");
-  }, [currentDocument?.title]);
+  }, [currentDocument?.id]);
 
   // Debounced save for title
   const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
