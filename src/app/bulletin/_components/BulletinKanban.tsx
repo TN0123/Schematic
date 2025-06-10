@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useReducer,
+  memo,
+} from "react";
 import {
   DndContext,
   closestCenter,
@@ -39,6 +46,79 @@ interface KanbanCard {
 interface KanbanColumn {
   id: string;
   title: string;
+}
+
+type KanbanState = {
+  columns: KanbanColumn[];
+  cards: KanbanCard[];
+};
+
+type KanbanAction =
+  | {
+      type: "SET_STATE";
+      payload: { columns?: KanbanColumn[]; cards?: KanbanCard[] };
+    }
+  | { type: "ADD_COLUMN"; payload: KanbanColumn }
+  | {
+      type: "UPDATE_COLUMN";
+      payload: { id: string; updates: Partial<KanbanColumn> };
+    }
+  | { type: "REMOVE_COLUMN"; payload: { id: string } }
+  | { type: "SET_COLUMNS"; payload: KanbanColumn[] }
+  | { type: "ADD_CARD"; payload: KanbanCard }
+  | {
+      type: "UPDATE_CARD";
+      payload: { id: string; updates: Partial<KanbanCard> };
+    }
+  | { type: "REMOVE_CARD"; payload: { id: string } }
+  | { type: "SET_CARDS"; payload: KanbanCard[] };
+
+function kanbanReducer(state: KanbanState, action: KanbanAction): KanbanState {
+  switch (action.type) {
+    case "SET_STATE":
+      return { ...state, ...action.payload };
+    case "ADD_COLUMN":
+      return { ...state, columns: [...state.columns, action.payload] };
+    case "UPDATE_COLUMN":
+      return {
+        ...state,
+        columns: state.columns.map((col) =>
+          col.id === action.payload.id
+            ? { ...col, ...action.payload.updates }
+            : col
+        ),
+      };
+    case "REMOVE_COLUMN":
+      return {
+        ...state,
+        columns: state.columns.filter((col) => col.id !== action.payload.id),
+        cards: state.cards.filter(
+          (card) => card.columnId !== action.payload.id
+        ),
+      };
+    case "SET_COLUMNS":
+      return { ...state, columns: action.payload };
+    case "ADD_CARD":
+      return { ...state, cards: [...state.cards, action.payload] };
+    case "UPDATE_CARD":
+      return {
+        ...state,
+        cards: state.cards.map((card) =>
+          card.id === action.payload.id
+            ? { ...card, ...action.payload.updates }
+            : card
+        ),
+      };
+    case "REMOVE_CARD":
+      return {
+        ...state,
+        cards: state.cards.filter((card) => card.id !== action.payload.id),
+      };
+    case "SET_CARDS":
+      return { ...state, cards: action.payload };
+    default:
+      return state;
+  }
 }
 
 interface BulletinKanbanProps {
@@ -147,6 +227,8 @@ function SortableCard({
   );
 }
 
+const MemoizedSortableCard = memo(SortableCard);
+
 function SortableColumn({
   column,
   cards,
@@ -250,7 +332,7 @@ function SortableColumn({
         >
           <ul className="flex flex-col gap-2 sm:gap-3 px-1">
             {cards.map((card) => (
-              <SortableCard
+              <MemoizedSortableCard
                 key={card.id}
                 card={card}
                 onChange={(text) => onUpdateCard(card.id, { text })}
@@ -275,6 +357,8 @@ function SortableColumn({
   );
 }
 
+const MemoizedSortableColumn = memo(SortableColumn);
+
 export default function BulletinKanban({
   id,
   title: initialTitle,
@@ -285,14 +369,19 @@ export default function BulletinKanban({
   isSaving: externalIsSaving = false,
 }: BulletinKanbanProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [columns, setColumns] = useState<KanbanColumn[]>(
-    data?.columns || [
+
+  const initialState: KanbanState = {
+    columns: data?.columns || [
       { id: "todo", title: "To Do" },
       { id: "in-progress", title: "In Progress" },
       { id: "done", title: "Done" },
-    ]
-  );
-  const [cards, setCards] = useState<KanbanCard[]>(data?.cards || []);
+    ],
+    cards: data?.cards || [],
+  };
+
+  const [state, dispatch] = useReducer(kanbanReducer, initialState);
+  const { columns, cards } = state;
+
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -305,11 +394,20 @@ export default function BulletinKanban({
 
   const lastSaved = useRef({
     title: initialTitle,
-    columns: data?.columns || columns,
-    cards: data?.cards || [],
+    columns: initialState.columns,
+    cards: initialState.cards,
   });
 
   const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => {
+    const titleChanged = title !== lastSaved.current.title;
+    const columnsChanged =
+      JSON.stringify(columns) !== JSON.stringify(lastSaved.current.columns);
+    const cardsChanged =
+      JSON.stringify(cards) !== JSON.stringify(lastSaved.current.cards);
+    setHasUnsavedChanges(titleChanged || columnsChanged || cardsChanged);
+  }, [title, columns, cards]);
 
   // Debounced save for title
   const debouncedSaveTitle = useDebouncedCallback(async (newTitle: string) => {
@@ -318,14 +416,6 @@ export default function BulletinKanban({
       try {
         await onSave(id, { title: newTitle });
         lastSaved.current.title = newTitle;
-
-        // Update hasUnsavedChanges based on title, columns, and cards
-        const titleChanged = newTitle !== lastSaved.current.title;
-        const columnsChanged =
-          JSON.stringify(columns) !== JSON.stringify(lastSaved.current.columns);
-        const cardsChanged =
-          JSON.stringify(cards) !== JSON.stringify(lastSaved.current.cards);
-        setHasUnsavedChanges(titleChanged || columnsChanged || cardsChanged);
       } catch (error) {
         console.error("Failed to auto-save title:", error);
       } finally {
@@ -349,18 +439,6 @@ export default function BulletinKanban({
           await onSave(id, { data: { columns: newColumns, cards: newCards } });
           lastSaved.current.columns = newColumns;
           lastSaved.current.cards = newCards;
-
-          // Update hasUnsavedChanges based on title, columns, and cards
-          const titleChanged = title !== lastSaved.current.title;
-          const stillColumnsChanged =
-            JSON.stringify(newColumns) !==
-            JSON.stringify(lastSaved.current.columns);
-          const stillCardsChanged =
-            JSON.stringify(newCards) !==
-            JSON.stringify(lastSaved.current.cards);
-          setHasUnsavedChanges(
-            titleChanged || stillColumnsChanged || stillCardsChanged
-          );
         } catch (error) {
           console.error("Failed to auto-save data:", error);
         } finally {
@@ -371,29 +449,22 @@ export default function BulletinKanban({
     1000
   );
 
+  useEffect(() => {
+    debouncedSaveData(columns, cards);
+  }, [columns, cards, debouncedSaveData]);
+
   const addCard = (columnId: string) => {
-    const newCardId = crypto.randomUUID();
-    const newCards = [...cards, { id: newCardId, text: "", columnId }];
-    setCards(newCards);
-    setHasUnsavedChanges(true);
-    setActiveId(newCardId);
-    debouncedSaveData(columns, newCards);
+    const newCard = { id: crypto.randomUUID(), text: "", columnId };
+    dispatch({ type: "ADD_CARD", payload: newCard });
+    setActiveId(newCard.id);
   };
 
   const updateCard = (id: string, updates: Partial<KanbanCard>) => {
-    const newCards = cards.map((card) =>
-      card.id === id ? { ...card, ...updates } : card
-    );
-    setCards(newCards);
-    setHasUnsavedChanges(true);
-    debouncedSaveData(columns, newCards);
+    dispatch({ type: "UPDATE_CARD", payload: { id, updates } });
   };
 
   const removeCard = (id: string) => {
-    const newCards = cards.filter((card) => card.id !== id);
-    setCards(newCards);
-    setHasUnsavedChanges(true);
-    debouncedSaveData(columns, newCards);
+    dispatch({ type: "REMOVE_CARD", payload: { id } });
   };
 
   const addColumn = () => {
@@ -401,36 +472,27 @@ export default function BulletinKanban({
       id: crypto.randomUUID(),
       title: "New Column",
     };
-    const newColumns = [...columns, newColumn];
-    setColumns(newColumns);
-    setHasUnsavedChanges(true);
-    debouncedSaveData(newColumns, cards);
+    dispatch({ type: "ADD_COLUMN", payload: newColumn });
   };
 
   const updateColumn = (id: string, updates: Partial<KanbanColumn>) => {
-    const newColumns = columns.map((column) =>
-      column.id === id ? { ...column, ...updates } : column
-    );
-    setColumns(newColumns);
-    setHasUnsavedChanges(true);
-    debouncedSaveData(newColumns, cards);
+    dispatch({ type: "UPDATE_COLUMN", payload: { id, updates } });
   };
 
   const removeColumn = (id: string) => {
-    const newColumns = columns.filter((column) => column.id !== id);
-    const newCards = cards.filter((card) => card.columnId !== id);
-    setColumns(newColumns);
-    setCards(newCards);
-    setHasUnsavedChanges(true);
-    debouncedSaveData(newColumns, newCards);
+    dispatch({ type: "REMOVE_COLUMN", payload: { id } });
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    await onSave(id, { title, data: { columns, cards } });
-    lastSaved.current = { title, columns, cards };
-    setHasUnsavedChanges(false);
-    setIsSaving(false);
+    try {
+      await onSave(id, { title, data: { columns, cards } });
+      lastSaved.current = { title, columns, cards };
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDragStart = (event: any) => {
@@ -441,62 +503,72 @@ export default function BulletinKanban({
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
+    if (!over || active.id === over.id) return;
 
     // Handle column reordering
-    if (active.id.startsWith("column-")) {
-      const activeColumnId = active.id.replace("column-", "");
-      const overColumnId = over.id.replace("column-", "");
-
-      if (activeColumnId !== overColumnId) {
-        const oldIndex = columns.findIndex((col) => col.id === activeColumnId);
-        const newIndex = columns.findIndex((col) => col.id === overColumnId);
-        const newColumns = arrayMove(columns, oldIndex, newIndex);
-        setColumns(newColumns);
-        setHasUnsavedChanges(true);
-        debouncedSaveData(newColumns, cards);
+    if (active.id.startsWith("column-") && over.id.startsWith("column-")) {
+      const oldIndex = columns.findIndex((c) => `column-${c.id}` === active.id);
+      const newIndex = columns.findIndex((c) => `column-${c.id}` === over.id);
+      if (oldIndex !== newIndex) {
+        dispatch({
+          type: "SET_COLUMNS",
+          payload: arrayMove(columns, oldIndex, newIndex),
+        });
       }
       return;
     }
 
-    // Handle card reordering and moving between columns
-    const activeCard = cards.find((card) => card.id === active.id);
-    if (!activeCard) return;
+    // Handle card dragging. Active is a card.
+    const oldIndex = cards.findIndex((c) => c.id === active.id);
+    if (oldIndex === -1) return;
 
-    // Check if dropping onto a column
+    const activeCard = cards[oldIndex];
+    let newIndex;
+    let newColumnId: string;
+
     if (over.id.startsWith("column-")) {
-      const targetColumnId = over.id.replace("column-", "");
-      if (activeCard.columnId !== targetColumnId) {
-        const updatedCards = cards.map((card) =>
-          card.id === active.id ? { ...card, columnId: targetColumnId } : card
-        );
-        setCards(updatedCards);
-        setHasUnsavedChanges(true);
-        debouncedSaveData(columns, updatedCards);
+      // Dropped on a column
+      newColumnId = over.id.replace("column-", "");
+      // If column is not the same, we'll move it. We want to place it at the end of the target column.
+      const cardsInTargetColumn = cards.filter(
+        (c) => c.id !== active.id && c.columnId === newColumnId
+      );
+      if (cardsInTargetColumn.length > 0) {
+        // find index of last card in column
+        const lastCard = cardsInTargetColumn[cardsInTargetColumn.length - 1];
+        newIndex = cards.findIndex((c) => c.id === lastCard.id);
+      } else {
+        // dropping in an empty column.
+        if (activeCard.columnId !== newColumnId) {
+          const newCards = cards.map((c) =>
+            c.id === active.id ? { ...c, columnId: newColumnId } : c
+          );
+          dispatch({ type: "SET_CARDS", payload: newCards });
+        }
+        return;
       }
-      return;
+    } else {
+      // Dropped on a card
+      newIndex = cards.findIndex((c) => c.id === over.id);
+      if (newIndex === -1) return;
+      newColumnId = cards[newIndex].columnId;
     }
 
-    // Handle dropping onto another card
-    const overCard = cards.find((card) => card.id === over.id);
-    if (!overCard) return;
-
-    if (activeCard.columnId !== overCard.columnId) {
-      // Moving to a different column
-      const updatedCards = cards.map((card) =>
-        card.id === active.id ? { ...card, columnId: overCard.columnId } : card
-      );
-      setCards(updatedCards);
-      setHasUnsavedChanges(true);
-      debouncedSaveData(columns, updatedCards);
+    if (activeCard.columnId === newColumnId) {
+      if (oldIndex !== newIndex) {
+        dispatch({
+          type: "SET_CARDS",
+          payload: arrayMove(cards, oldIndex, newIndex),
+        });
+      }
     } else {
-      // Reordering within the same column
-      const oldIndex = cards.findIndex((card) => card.id === active.id);
-      const newIndex = cards.findIndex((card) => card.id === over.id);
-      const updatedCards = arrayMove(cards, oldIndex, newIndex);
-      setCards(updatedCards);
-      setHasUnsavedChanges(true);
-      debouncedSaveData(columns, updatedCards);
+      const newCards = cards.map((c) =>
+        c.id === active.id ? { ...c, columnId: newColumnId } : c
+      );
+      dispatch({
+        type: "SET_CARDS",
+        payload: arrayMove(newCards, oldIndex, newIndex),
+      });
     }
   };
 
@@ -611,7 +683,7 @@ export default function BulletinKanban({
                   strategy={horizontalListSortingStrategy}
                 >
                   {columns.map((column) => (
-                    <SortableColumn
+                    <MemoizedSortableColumn
                       key={column.id}
                       column={column}
                       cards={cards.filter(
