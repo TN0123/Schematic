@@ -130,7 +130,7 @@ export default function BulletinNote({
     }
 
     return (
-      <div className="border-y py-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
+      <div className="border-y p-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
@@ -242,9 +242,9 @@ export default function BulletinNote({
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-3 h-full flex flex-col">
+      <div className="h-full flex flex-col">
         <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center w-full">
+          <div className="flex items-center w-full p-2">
             <NotepadText className="h-10 w-10 mx-4 text-green-500" />
             <div className="flex flex-col w-full">
               <input
@@ -303,7 +303,7 @@ export default function BulletinNote({
           <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert`}
+            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert p-3`}
           />
         </div>
       </div>
