@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useLayoutEffect,
+} from "react";
 import { ChangeHandler } from "./ChangeHandler";
 import { Info, FileUp, FileText, Loader2, ArrowLeft } from "lucide-react";
 import jsPDF from "jspdf";
@@ -29,6 +35,7 @@ export default function WriteEditor({
   currentDocument,
   onSaveDocument,
   isSaving,
+  isImproving,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -41,6 +48,7 @@ export default function WriteEditor({
   currentDocument: Document | null;
   onSaveDocument: () => void;
   isSaving: boolean;
+  isImproving: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,6 +65,12 @@ export default function WriteEditor({
   const [title, setTitle] = useState(
     currentDocument?.title || "Untitled Document"
   );
+  const [tooltipState, setTooltipState] = useState<{
+    top: number;
+    left: number;
+    visible: boolean;
+  }>({ top: 0, left: 0, visible: false });
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -94,8 +108,21 @@ export default function WriteEditor({
   }, [inputText]);
 
   useEffect(() => {
+    if (isImproving) {
+      setTooltipState((p) => ({ ...p, visible: false }));
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      if (textareaRef.current) {
+        const selectionEnd = textareaRef.current.selectionEnd;
+        textareaRef.current.selectionStart = selectionEnd;
+      }
+    }
+  }, [isImproving]);
+
+  useEffect(() => {
     if (changes && Object.keys(changes).length > 0) {
       setPendingChanges(changes);
+      setTooltipState((p) => ({ ...p, visible: false }));
     }
   }, [changes]);
 
@@ -118,6 +145,33 @@ export default function WriteEditor({
       onSaveDocument();
     }
   }, 800);
+
+  useLayoutEffect(() => {
+    if (
+      selectionStart !== null &&
+      selectionEnd !== null &&
+      selectionStart !== selectionEnd
+    ) {
+      const highlightElement = document.getElementById("selection-highlight");
+      if (highlightElement && editorContainerRef.current) {
+        const highlightRect = highlightElement.getBoundingClientRect();
+        const containerRect =
+          editorContainerRef.current.getBoundingClientRect();
+
+        const top = highlightRect.top - containerRect.top - 35; // Position above the highlight
+        const left =
+          highlightRect.left - containerRect.left + highlightRect.width / 2;
+
+        setTooltipState({
+          top,
+          left,
+          visible: true,
+        });
+        return;
+      }
+    }
+    setTooltipState((p) => ({ ...p, visible: false }));
+  }, [selectionStart, selectionEnd, inputText]);
 
   const handleContinue = async () => {
     try {
@@ -319,6 +373,14 @@ export default function WriteEditor({
     const highlight = text.slice(start!, end!);
     const after = text.slice(end!);
 
+    if (variant === "selection") {
+      return (
+        before +
+        `<mark id="selection-highlight" class="${highlightClass}">${highlight}</mark>` +
+        after
+      );
+    }
+
     return (
       before + `<mark class="${highlightClass}">${highlight}</mark>` + after
     );
@@ -403,7 +465,26 @@ export default function WriteEditor({
           id="write-editor"
         >
           <div className="w-full flex flex-col gap-6 px-2">
-            <div className="relative">
+            <div className="relative" ref={editorContainerRef}>
+              {tooltipState.visible && (
+                <div
+                  className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-neutral-800 dark:text-neutral-200 whitespace-nowrap pointer-events-none"
+                  style={{
+                    top: tooltipState.top,
+                    left: tooltipState.left,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200">
+                    Ctrl
+                  </kbd>
+                  <span>+</span>
+                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200">
+                    I
+                  </kbd>
+                  <span className="text-neutral-400">to improve</span>
+                </div>
+              )}
               <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
                 <div
                   className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
@@ -461,6 +542,11 @@ export default function WriteEditor({
                   {loading && (
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       Generating...
+                    </div>
+                  )}
+                  {isImproving && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" />
                     </div>
                   )}
                 </div>

@@ -31,6 +31,7 @@ export default function DocumentEditorPage() {
   >(null);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const [isSaving, setIsSaving] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
   const { startNextStep } = useNextStep();
 
   useEffect(() => {
@@ -81,6 +82,14 @@ export default function DocumentEditorPage() {
     }
     fetchDocument();
   }, [documentId, router]);
+
+  useEffect(() => {
+    if (Object.keys(changes).length > 0 && isImproving) {
+      setTimeout(() => {
+        setIsImproving(false);
+      }, 500);
+    }
+  }, [changes, isImproving]);
 
   const handleSaveDocument = async () => {
     if (!document) return;
@@ -143,6 +152,7 @@ export default function DocumentEditorPage() {
           currentDocument={document}
           onSaveDocument={handleSaveDocument}
           isSaving={isSaving}
+          isImproving={isImproving}
         />
       </div>
       <WritePanel
@@ -156,6 +166,10 @@ export default function DocumentEditorPage() {
         premiumRemainingUses={premiumRemainingUses}
         setPremiumRemainingUses={setPremiumRemainingUses}
         onModelChange={setSelectedModel}
+        onImproveStart={() => {
+          setIsImproving(true);
+          setSelected("");
+        }}
       />
     </div>
   );

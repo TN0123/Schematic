@@ -55,6 +55,7 @@ export default function WritePanel({
   premiumRemainingUses,
   setPremiumRemainingUses,
   onModelChange,
+  onImproveStart,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -78,6 +79,7 @@ export default function WritePanel({
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
   onModelChange: (model: ModelType) => void;
+  onImproveStart: () => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -145,6 +147,8 @@ export default function WritePanel({
   };
 
   const handleImprove = async () => {
+    if (!selected) return;
+    onImproveStart();
     setIsImproving(true); // Start loading animation
     try {
       const getSurroundingWords = (
@@ -301,45 +305,16 @@ export default function WritePanel({
               <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
                 AI Writing Assistant
               </h2>
-              <AnimatePresence mode="wait">
-                {selected ? (
-                  <motion.p
-                    key="selected"
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-xs text-purple-600 dark:text-purple-400 text-center mt-1"
-                  >
-                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                      ctrl
-                    </kbd>{" "}
-                    +{" "}
-                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                      i
-                    </kbd>{" "}
-                    to improve selected text
-                  </motion.p>
-                ) : (
-                  <motion.p
-                    key="default"
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-xs text-center mt-1"
-                  >
-                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                      ctrl
-                    </kbd>{" "}
-                    +{" "}
-                    <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                      enter
-                    </kbd>{" "}
-                    to continue writing
-                  </motion.p>
-                )}
-              </AnimatePresence>
+              <p className="text-xs text-center mt-1">
+                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                  ctrl
+                </kbd>{" "}
+                +{" "}
+                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
+                  enter
+                </kbd>{" "}
+                to continue writing
+              </p>
             </div>
           )}
         </div>
