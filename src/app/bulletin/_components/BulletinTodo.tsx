@@ -43,111 +43,61 @@ export default function BulletinTodo({
 }: BulletinTodoProps) {
   const [title, setTitle] = useState(initialTitle);
   const [items, setItems] = useState<TodoItem[]>(data?.items || []);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const lastSaved = useRef({ title: initialTitle, items: data?.items || [] });
 
-  // Debounced save for title
-  const debouncedSaveTitle = useDebouncedCallback(async (newTitle: string) => {
-    if (newTitle !== lastSaved.current.title) {
-      setIsAutoSaving(true);
-      try {
-        await onSave(id, { title: newTitle });
-        lastSaved.current.title = newTitle;
+  const hasUnsavedChanges =
+    title !== lastSaved.current.title ||
+    JSON.stringify(items) !== JSON.stringify(lastSaved.current.items);
 
-        // Update hasUnsavedChanges based on both title and items
-        const titleChanged = newTitle !== lastSaved.current.title;
-        const itemsChanged =
-          JSON.stringify(items) !== JSON.stringify(lastSaved.current.items);
-        setHasUnsavedChanges(titleChanged || itemsChanged);
-      } catch (error) {
-        console.error("Failed to auto-save title:", error);
-      } finally {
-        setIsAutoSaving(false);
-      }
+  const debouncedSave = useDebouncedCallback(async () => {
+    if (!hasUnsavedChanges) return;
+
+    setIsAutoSaving(true);
+    try {
+      await onSave(id, { title, data: { items } });
+      lastSaved.current = { title, items };
+    } catch (error) {
+      console.error("Failed to auto-save:", error);
+    } finally {
+      setIsAutoSaving(false);
     }
-  }, 800);
+  }, 1000);
 
-  // Debounced save for items
-  const debouncedSaveItems = useDebouncedCallback(
-    async (newItems: TodoItem[]) => {
-      if (
-        JSON.stringify(newItems) !== JSON.stringify(lastSaved.current.items)
-      ) {
-        setIsAutoSaving(true);
-        try {
-          await onSave(id, { data: { items: newItems } });
-          lastSaved.current.items = newItems;
-
-          // Update hasUnsavedChanges based on both title and items
-          const titleChanged = title !== lastSaved.current.title;
-          const itemsChanged =
-            JSON.stringify(newItems) !==
-            JSON.stringify(lastSaved.current.items);
-          setHasUnsavedChanges(titleChanged || itemsChanged);
-        } catch (error) {
-          console.error("Failed to auto-save items:", error);
-        } finally {
-          setIsAutoSaving(false);
-        }
-      }
-    },
-    1000
-  );
+  useEffect(() => {
+    debouncedSave();
+  }, [title, items, debouncedSave]);
 
   const addItem = () => {
-    const newItems = [
-      ...items,
-      { id: crypto.randomUUID(), text: "", checked: false },
-    ];
+    const newItemId = crypto.randomUUID();
+    const newItems = [...items, { id: newItemId, text: "", checked: false }];
     setItems(newItems);
-    setHasUnsavedChanges(true);
-    debouncedSaveItems(newItems);
     setTimeout(() => {
-      inputRef.current?.focus();
+      const input = document.querySelector<HTMLInputElement>(
+        `input[data-item-id="${newItemId}"]`
+      );
+      input?.focus();
     }, 0);
   };
 
   const updateItem = (id: string, updates: Partial<TodoItem>) => {
-    let newItems: TodoItem[];
-    if (updates.checked) {
-      newItems = items.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      );
-      setItems(newItems);
-
-      setTimeout(() => {
-        const filteredItems: TodoItem[] = newItems.filter(
-          (item) => item.id !== id
-        );
-        setItems(filteredItems);
-        debouncedSaveItems(filteredItems);
-      }, 800);
-    } else {
-      newItems = items.map((item) =>
-        item.id === id ? { ...item, ...updates } : item
-      );
-      setItems(newItems);
-      debouncedSaveItems(newItems);
-    }
-    setHasUnsavedChanges(true);
+    const newItems = items.map((item) =>
+      item.id === id ? { ...item, ...updates } : item
+    );
+    setItems(newItems);
   };
 
   const removeItem = (id: string) => {
     const newItems = items.filter((item) => item.id !== id);
     setItems(newItems);
-    setHasUnsavedChanges(true);
-    debouncedSaveItems(newItems);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     await onSave(id, { title, data: { items } });
     lastSaved.current = { title, items };
-    setHasUnsavedChanges(false);
     setIsSaving(false);
   };
 
@@ -155,10 +105,12 @@ export default function BulletinTodo({
     (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key === "s") {
         event.preventDefault();
-        handleSave();
+        if (hasUnsavedChanges) {
+          handleSave();
+        }
       }
     },
-    [handleSave]
+    [hasUnsavedChanges, handleSave]
   );
 
   useEffect(() => {
@@ -168,9 +120,9 @@ export default function BulletinTodo({
 
   const handleInputKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
-    index: number
+    isLastUnchecked: boolean
   ) => {
-    if (e.key === "Enter" && index === items.length - 1) {
+    if (e.key === "Enter" && isLastUnchecked) {
       addItem();
     }
   };
@@ -181,53 +133,39 @@ export default function BulletinTodo({
         handleSave();
       }
     };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        handleSave();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [hasUnsavedChanges, handleSave]);
 
+  const uncheckedItems = items.filter((item) => !item.checked);
+  const checkedItems = items.filter((item) => item.checked);
+
   return (
-    <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-4 h-full flex flex-col items-center">
-        {/* Title & Actions */}
-        <div className="flex justify-center items-center w-full md:w-1/2 mt-16 mb-4">
-          <div className="flex-shrink-0">
-            <ClipboardList className="h-8 w-8 text-green-500" />
+    <div className="w-full h-full dark:bg-dark-background transition-colors">
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8 h-full flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-6 gap-4">
+          <div className="flex items-center gap-3 flex-grow">
+            <ClipboardList className="h-8 w-8 text-green-500 flex-shrink-0" />
+            <input
+              className="font-semibold tracking-tight text-2xl bg-transparent focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 w-full dark:text-dark-textPrimary dark:focus:ring-dark-accent"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Untitled To Do List"
+              aria-label="Todo list title"
+            />
           </div>
-          <input
-            className="font-semibold truncate tracking-tight text-2xl mb-1 w-full text-left focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
-            value={title}
-            onChange={(e) => {
-              const newTitle = e.target.value;
-              setTitle(newTitle);
-              setHasUnsavedChanges(true);
-              debouncedSaveTitle(newTitle);
-            }}
-            placeholder="Untitled To Do List"
-            aria-label="Todo list title"
-          />
-          <div className="flex gap-2 ml-2">
-            {hasUnsavedChanges && (
+          <div className="flex items-center gap-2 pt-2 flex-shrink-0">
+            {isAutoSaving && (
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            )}
+            {hasUnsavedChanges && !isAutoSaving && (
               <button
                 onClick={handleSave}
                 disabled={isSaving || externalIsSaving}
-                className={`p-2 rounded-lg transition-colors
-                  dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${
-                    isSaving || externalIsSaving
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
+                className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Save changes"
               >
                 {isSaving || externalIsSaving ? (
@@ -239,7 +177,7 @@ export default function BulletinTodo({
             )}
             <button
               onClick={onDelete}
-              className="p-2 hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
               aria-label="Delete list"
             >
               <Trash2 className="h-5 w-5" />
@@ -248,74 +186,116 @@ export default function BulletinTodo({
         </div>
 
         {/* Todo Items */}
-        <div className="flex flex-col w-full md:w-1/2 border rounded-lg px-4 py-3 gap-3 dark:bg-dark-secondary dark:border-dark-divider">
-          {items.length === 0 ? (
-            <div className="text-center text-gray-500 italic dark:text-dark-textSecondary">
-              No tasks yet. Start by adding one below 👇
-            </div>
-          ) : (
-            <ul
-              className={`flex flex-col gap-3 ${
-                items.length > 7 ? "overflow-y-scroll max-h-[60dvh]" : ""
-              }`}
-            >
-              {items.map((item, index) => (
-                <li
-                  key={item.id}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2 dark:border-dark-divider dark:hover:bg-dark-hover
-                  ${item.checked ? "bg-green-50 dark:bg-green-900" : ""}
-                  transition-all duration-200`}
-                >
-                  <button
-                    onClick={() =>
-                      updateItem(item.id, { checked: !item.checked })
-                    }
-                    aria-label={item.checked ? "Uncheck task" : "Check task"}
-                    className="text-gray-500"
+        <div className="flex-grow flex flex-col bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-xl shadow-sm overflow-hidden">
+          <div className="flex-grow p-4 space-y-2 overflow-y-auto">
+            {items.length === 0 && (
+              <div className="text-center text-gray-500 py-10 italic dark:text-dark-textSecondary">
+                No tasks yet. Start by adding one below 👇
+              </div>
+            )}
+
+            {/* Unchecked Items */}
+            {uncheckedItems.length > 0 && (
+              <ul className="space-y-2">
+                {uncheckedItems.map((item, index) => (
+                  <li
+                    key={item.id}
+                    className="group flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
                   >
-                    {item.checked ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <Circle className="w-5 h-5" />
-                    )}
-                  </button>
-                  <input
-                    ref={index === items.length - 1 ? inputRef : null}
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      updateItem(item.id, { text: e.target.value })
-                    }
-                    onKeyDown={(e) => handleInputKeyDown(e, index)}
-                    placeholder="Todo item..."
-                    className={`flex-grow bg-transparent dark:border-dark-divider px-2 py-1 text-sm focus:outline-none dark:text-dark-textPrimary ${
-                      item.checked
-                        ? "line-through text-gray-400 dark:text-gray-500"
-                        : ""
-                    }`}
-                    aria-label="Todo item text"
-                  />
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 rounded-full p-1 text-gray-500 transition-opacity hover:bg-gray-200 dark:hover:bg-dark-hover"
-                    aria-label="Delete item"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                    <button
+                      onClick={() => updateItem(item.id, { checked: true })}
+                      aria-label="Check task"
+                      className="p-1"
+                    >
+                      <Circle className="w-5 h-5 text-gray-400 group-hover:text-green-500 transition-colors" />
+                    </button>
+                    <input
+                      data-item-id={item.id}
+                      type="text"
+                      value={item.text}
+                      onChange={(e) =>
+                        updateItem(item.id, { text: e.target.value })
+                      }
+                      onKeyDown={(e) =>
+                        handleInputKeyDown(
+                          e,
+                          index === uncheckedItems.length - 1
+                        )
+                      }
+                      placeholder="To-do item..."
+                      className="flex-grow bg-transparent focus:outline-none dark:text-dark-textPrimary"
+                      aria-label="Todo item text"
+                    />
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="opacity-0 group-hover:opacity-100 rounded-full p-1 text-gray-500 transition-opacity hover:bg-gray-200 dark:hover:bg-dark-hover"
+                      aria-label="Delete item"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Checked Items */}
+            {checkedItems.length > 0 && (
+              <>
+                <div className="flex items-center gap-3 py-2">
+                  <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
+                  <span className="text-xs font-medium text-gray-400 dark:text-dark-textSecondary">
+                    Completed ({checkedItems.length})
+                  </span>
+                  <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
+                </div>
+                <ul className="space-y-2">
+                  {checkedItems.map((item) => (
+                    <li
+                      key={item.id}
+                      className="group flex items-center gap-3 rounded-lg px-3 py-2"
+                    >
+                      <button
+                        onClick={() => updateItem(item.id, { checked: false })}
+                        aria-label="Uncheck task"
+                        className="p-1"
+                      >
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      </button>
+                      <input
+                        data-item-id={item.id}
+                        type="text"
+                        value={item.text}
+                        onChange={(e) =>
+                          updateItem(item.id, { text: e.target.value })
+                        }
+                        className="flex-grow bg-transparent focus:outline-none line-through text-gray-400 dark:text-gray-500"
+                        aria-label="Todo item text"
+                      />
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        className="opacity-0 group-hover:opacity-100 rounded-full p-1 text-gray-500 transition-opacity hover:bg-gray-200 dark:hover:bg-dark-hover"
+                        aria-label="Delete item"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
 
           {/* Add Item Button */}
-          <button
-            onClick={addItem}
-            className="self-end mt-2 flex items-center gap-1 px-3 py-1 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 text-sm rounded-full transition"
-            aria-label="Add new todo item"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
+          <div className="border-t border-gray-200 dark:border-dark-divider p-2">
+            <button
+              onClick={addItem}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+              aria-label="Add new todo item"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
