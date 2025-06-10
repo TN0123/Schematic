@@ -243,8 +243,8 @@ export default function BulletinNote({
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center w-full p-2">
+        <div className="flex justify-between items-center mb-2 p-2">
+          <div className="flex items-center w-full">
             <NotepadText className="h-10 w-10 mx-4 text-green-500" />
             <div className="flex flex-col w-full">
               <input
