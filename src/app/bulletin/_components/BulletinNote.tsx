@@ -10,11 +10,15 @@ import {
   Loader2,
   NotepadText,
   Clock,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
+import TextAlign from "@tiptap/extension-text-align";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -101,6 +105,9 @@ export default function BulletinNote({
       }),
       Underline,
       TextStyle,
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
     ],
     content: initialContent,
     onUpdate: ({ editor }) => {
@@ -172,6 +179,48 @@ export default function BulletinNote({
           }`}
         >
           <UnderlineIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().setTextAlign("left").run();
+          }}
+          className={`p-2 rounded ${
+            editor.isActive({ textAlign: "left" })
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+          }`}
+        >
+          <AlignLeft className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().setTextAlign("center").run();
+          }}
+          className={`p-2 rounded ${
+            editor.isActive({ textAlign: "center" })
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+          }`}
+        >
+          <AlignCenter className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().setTextAlign("right").run();
+          }}
+          className={`p-2 rounded ${
+            editor.isActive({ textAlign: "right" })
+              ? "bg-light-active dark:bg-dark-active"
+              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+          }`}
+        >
+          <AlignRight className="h-4 w-4" />
         </button>
       </div>
     );
