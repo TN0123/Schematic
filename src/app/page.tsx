@@ -11,6 +11,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import WriteSection from "./_components/WriteSection";
+import EventTime from "./_components/EventTime";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -131,10 +132,7 @@ export default async function Home() {
                         {event.title}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                        {new Date(event.start).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        <EventTime startTime={event.start} />
                       </p>
                     </div>
                   </div>
