@@ -88,7 +88,7 @@ export default async function Home() {
                 {bulletinNotes.map((note) => (
                   <TransitionLink
                     key={note.id}
-                    href={`/bulletin/${note.id}`}
+                    href={`/bulletin`}
                     className="block p-3 rounded-md bg-gray-50 dark:bg-dark-background hover:bg-gray-100 dark:hover:bg-gray-800/60"
                   >
                     <p className="text-gray-800 dark:text-dark-textSecondary">
