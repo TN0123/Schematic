@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Calendar, Target, Plus, FileUp, Mic } from "lucide-react";
+import { Calendar, Target, Plus, FileUp, Mic, RefreshCw } from "lucide-react";
 import { Goal, GoalDuration } from "./GoalsPanel";
 import GoalCard from "./GoalCard";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MobilePanelTabsProps {
   inputText: string;
@@ -15,6 +18,9 @@ interface MobilePanelTabsProps {
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
   setIsIcsUploaderModalOpen: (open: boolean) => void;
+  dailySummary: string;
+  dailySummaryDate: Date | null;
+  dailySummaryLoading: boolean;
 }
 
 export default function MobilePanelTabs({
@@ -25,6 +31,9 @@ export default function MobilePanelTabs({
   setShowModal,
   setIsFileUploaderModalOpen,
   setIsIcsUploaderModalOpen,
+  dailySummary,
+  dailySummaryDate,
+  dailySummaryLoading,
 }: MobilePanelTabsProps) {
   const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -221,6 +230,52 @@ export default function MobilePanelTabs({
                 </button>
               </div>
             </div>
+
+            <AnimatePresence>
+              {dailySummary && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="flex flex-col gap-2"
+                >
+                  <div className="text-center">
+                    <p className="text-lg text-gray-500 font-bold dark:text-dark-textSecondary">
+                      Daily Summary
+                    </p>
+                    {dailySummaryDate && (
+                      <p className="text-sm text-gray-400 dark:text-dark-textDisabled">
+                        {dailySummaryDate.toLocaleDateString(undefined, {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  {dailySummaryLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                      <RefreshCw
+                        size={24}
+                        className="animate-spin text-gray-500 dark:text-dark-textSecondary"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: (props) => <p {...props} className="mt-4" />,
+                        }}
+                      >
+                        {dailySummary}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Suggested Events */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-lg p-3">

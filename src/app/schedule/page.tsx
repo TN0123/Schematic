@@ -49,6 +49,15 @@ interface GeneratedEvent {
   end: string;
 }
 
+const isSameDay = (d1: Date | null, d2: Date | null) => {
+  if (!d1 || !d2) return false;
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+};
+
 export default function CalendarApp() {
   const { data: session, status } = useSession({
     required: true,
@@ -89,7 +98,10 @@ export default function CalendarApp() {
   const [copiedEvents, setCopiedEvents] = useState<Event[]>([]);
   const [lastClickedDate, setLastClickedDate] = useState<Date | null>(null);
   const [dailySummary, setDailySummary] = useState("");
-  const [hasFetchedDailySummary, setHasFetchedDailySummary] = useState(false);
+  const [dailySummaryDate, setDailySummaryDate] = useState<Date | null>(
+    new Date()
+  );
+  const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -490,6 +502,10 @@ export default function CalendarApp() {
     setSelectedEventIds(new Set(eventsInRange.map((e) => e.id)));
   };
 
+  const handleUnselect = () => {
+    setSelectedEventIds(new Set());
+  };
+
   const handleSubmit = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
@@ -556,56 +572,77 @@ export default function CalendarApp() {
   }, [events]);
 
   useEffect(() => {
-    if (todaysEvents.length > 0 && !hasFetchedDailySummary) {
-      const fetchDailySummary = async () => {
-        try {
-          const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fetchDailySummary = async (date: Date) => {
+      setDailySummaryLoading(true);
+      try {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
 
-          const eventSummary = todaysEvents
-            .map((event) => {
-              const options: Intl.DateTimeFormatOptions = {
-                hour: "numeric",
-                minute: "numeric",
-                hour12: true,
-                timeZone: userTimezone,
-              };
-              const start = new Date(event.start).toLocaleTimeString(
-                "en-US",
-                options
-              );
-              const end = new Date(event.end).toLocaleTimeString(
-                "en-US",
-                options
-              );
-              return `- ${event.title}: ${start} - ${end}`;
-            })
-            .join("\n");
-
-          const response = await fetch("/api/daily-summary", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              existingEvents: todaysEvents,
-              timezone: userTimezone,
-              userId: userId,
-            }),
+        const eventsForDay = events
+          .filter((event) => !event.isSuggestion)
+          .filter((event) => {
+            const eventStart = new Date(event.start);
+            return eventStart >= startOfDay && eventStart <= endOfDay;
           });
-          if (!response.ok) {
-            throw new Error("Failed to fetch daily summary");
-          }
-          const data = await response.json();
-          setDailySummary(`${eventSummary}\n\n${data.result}`);
-          setHasFetchedDailySummary(true);
-        } catch (error) {
-          console.error("Error fetching daily summary:", error);
-          setDailySummary("Could not load summary.");
+
+        if (eventsForDay.length === 0) {
+          setDailySummary("No events scheduled for this day.");
+          return;
         }
-      };
-      fetchDailySummary();
+
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        const eventSummary = eventsForDay
+          .map((event) => {
+            const options: Intl.DateTimeFormatOptions = {
+              hour: "numeric",
+              minute: "numeric",
+              hour12: true,
+              timeZone: userTimezone,
+            };
+            const start = new Date(event.start).toLocaleTimeString(
+              "en-US",
+              options
+            );
+            const end = new Date(event.end).toLocaleTimeString(
+              "en-US",
+              options
+            );
+            return `- ${event.title}: ${start} - ${end}`;
+          })
+          .join("\n");
+
+        const response = await fetch("/api/daily-summary", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            existingEvents: eventsForDay,
+            timezone: userTimezone,
+            userId: userId,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch daily summary");
+        }
+        const data = await response.json();
+        setDailySummary(`${eventSummary}\n\n${data.result}`);
+      } catch (error) {
+        console.error("Error fetching daily summary:", error);
+        setDailySummary("Could not load summary.");
+      } finally {
+        setDailySummaryLoading(false);
+      }
+    };
+    if (dailySummaryDate && userId) {
+      fetchDailySummary(dailySummaryDate);
+    } else {
+      setDailySummary("");
     }
-  }, [todaysEvents, hasFetchedDailySummary, userId]);
+  }, [dailySummaryDate, userId, events]);
 
   const fetchSuggestions = async () => {
     if (!userId) {
@@ -994,9 +1031,14 @@ export default function CalendarApp() {
               scrollTime={`${new Date().getHours()}:00:00`}
               editable={true}
               select={handleSelect}
-              unselectAuto={false}
+              unselect={handleUnselect}
+              unselectAuto={true}
               selectable={true}
               dateClick={(clickInfo) => {
+                const clickedDate = new Date(clickInfo.date);
+                if (!isSameDay(clickedDate, dailySummaryDate)) {
+                  setDailySummaryDate(clickedDate);
+                }
                 setLastClickedDate(new Date(clickInfo.date));
               }}
               eventResize={handleEventUpdate}
@@ -1037,6 +1079,8 @@ export default function CalendarApp() {
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
             dailySummary={dailySummary}
+            dailySummaryDate={dailySummaryDate}
+            dailySummaryLoading={dailySummaryLoading}
           />
         </div>
 
@@ -1152,9 +1196,14 @@ export default function CalendarApp() {
               allDaySlot={false}
               editable={true}
               select={handleSelect}
-              unselectAuto={false}
+              unselect={handleUnselect}
+              unselectAuto={true}
               selectable={true}
               dateClick={(clickInfo) => {
+                const clickedDate = new Date(clickInfo.date);
+                if (!isSameDay(clickedDate, dailySummaryDate)) {
+                  setDailySummaryDate(clickedDate);
+                }
                 setLastClickedDate(new Date(clickInfo.date));
               }}
               eventResize={handleEventUpdate}
@@ -1195,6 +1244,9 @@ export default function CalendarApp() {
               setShowModal={setShowCreationModal}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
               setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
+              dailySummary={dailySummary}
+              dailySummaryDate={dailySummaryDate}
+              dailySummaryLoading={dailySummaryLoading}
             />
           </div>
         </div>
