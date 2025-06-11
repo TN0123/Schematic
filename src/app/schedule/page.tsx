@@ -17,15 +17,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import {
-  RefreshCw,
-  Plus,
-  FileUp,
-  Calendar,
-  Target,
-  Check,
-  X,
-} from "lucide-react";
+import { RefreshCw, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
