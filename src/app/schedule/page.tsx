@@ -20,7 +20,7 @@ import { redirect } from "next/navigation";
 import { RefreshCw, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
-import GoalsPanel, { Goal, GoalDuration } from "./_components/GoalsPanel";
+import GoalsPanel from "./_components/GoalsPanel";
 import FileUploaderModal from "./_components/FileUploaderModal";
 import IcsUploaderModal from "./_components/IcsUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
@@ -602,7 +602,7 @@ export default function CalendarApp() {
               "en-US",
               options
             );
-            return `- ${event.title}: ${start} - ${end}`;
+            return `${event.title}: ${start} - ${end}`;
           })
           .join("\n");
 
@@ -621,7 +621,7 @@ export default function CalendarApp() {
           throw new Error("Failed to fetch daily summary");
         }
         const data = await response.json();
-        setDailySummary(`${eventSummary}\n\n${data.result}`);
+        setDailySummary(`${eventSummary}ADVICE${data.result}`);
       } catch (error) {
         console.error("Error fetching daily summary:", error);
         setDailySummary("Could not load summary.");
@@ -659,7 +659,7 @@ export default function CalendarApp() {
             options
           );
           const end = new Date(event.end).toLocaleTimeString("en-US", options);
-          return `- ${event.title}: ${start} - ${end}`;
+          return `${event.title}: ${start} - ${end}`;
         })
         .join("\n");
 

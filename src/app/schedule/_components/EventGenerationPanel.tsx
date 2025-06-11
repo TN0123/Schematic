@@ -42,6 +42,8 @@ export default function EventGenerationPanel({
   dailySummaryLoading,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const eventList = dailySummary.split("ADVICE")[0];
+  const advice = dailySummary.split("ADVICE")[1];
 
   const handleToggle = () => {
     setIsMobileOpen(!isMobileOpen);
@@ -194,14 +196,15 @@ export default function EventGenerationPanel({
                   />
                 </div>
               ) : (
-                <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert">
+                <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line">
+                  <span>{eventList}</span>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       p: (props) => <p {...props} className="mt-4" />,
                     }}
                   >
-                    {dailySummary}
+                    {advice}
                   </ReactMarkdown>
                 </div>
               )}
