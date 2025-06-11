@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, JSX } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import BulletinNote from "./_components/BulletinNote";
 import BulletinTodo from "./_components/BulletinTodo";
 import BulletinLinkCollection from "./_components/BulletinLinkCollection";
@@ -68,6 +69,9 @@ export default function Bulletin() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Add scroll lock effect
   useEffect(() => {
@@ -108,6 +112,29 @@ export default function Bulletin() {
   }, [hasFetched, userId]);
 
   useEffect(() => {
+    const noteId = searchParams.get("noteId");
+    setExpandedItemId(noteId);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (items.length === 0) {
+      if (searchParams.get("noteId")) {
+        router.replace(pathname);
+      }
+      return;
+    }
+
+    const noteId = searchParams.get("noteId");
+    const noteExists = noteId && items.some((item) => item.id === noteId);
+
+    if (!noteExists) {
+      router.replace(`${pathname}?noteId=${items[0].id}`);
+    }
+  }, [items, loading, searchParams, pathname, router]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const dropdownContainer = document.querySelector(
@@ -126,8 +153,8 @@ export default function Bulletin() {
     const response = await fetch("/api/bulletins");
     const data = await response.json();
     setItems(data);
-    setExpandedItemId(data.length > 0 ? data[0].id : null);
     setLoading(false);
+    setHasFetched(true);
   };
 
   const saveItem = async (
@@ -201,14 +228,27 @@ export default function Bulletin() {
     const newBulletin = await response.json();
     setItems([...items, newBulletin]);
     setExpandedItemId(newBulletin.id);
+    router.push(`${pathname}?noteId=${newBulletin.id}`);
   };
 
   const deleteItem = async (id: string) => {
+    const newItems = items.filter((item) => item.id !== id);
+    setItems(newItems);
+
+    if (expandedItemId === id) {
+      if (newItems.length > 0) {
+        const newExpandedId = newItems[0].id;
+        setExpandedItemId(newExpandedId);
+        router.replace(`${pathname}?noteId=${newExpandedId}`);
+      } else {
+        setExpandedItemId(null);
+        router.replace(pathname);
+      }
+    }
+
     await fetch(`/api/bulletins/${id}`, {
       method: "DELETE",
     });
-
-    setItems(items.filter((item) => item.id !== id));
   };
 
   const stripHtml = (html: string) => {
@@ -426,6 +466,7 @@ export default function Bulletin() {
                     }`}
                     onClick={() => {
                       setExpandedItemId(item.id);
+                      router.push(`${pathname}?noteId=${item.id}`);
                       // Close sidebar on mobile after selection
                       if (window.innerWidth < 768) {
                         // 768px is the md breakpoint
@@ -507,7 +548,6 @@ export default function Bulletin() {
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
-                        setExpandedItemId(null);
                       }}
                       isSaving={savingItems.has(item.id)}
                     />
@@ -523,7 +563,6 @@ export default function Bulletin() {
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
-                        setExpandedItemId(null);
                       }}
                       isSaving={savingItems.has(item.id)}
                     />
@@ -538,7 +577,6 @@ export default function Bulletin() {
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
-                        setExpandedItemId(null);
                       }}
                     />
                   );
@@ -554,7 +592,6 @@ export default function Bulletin() {
                       onSave={saveItem}
                       onDelete={() => {
                         deleteItem(item.id);
-                        setExpandedItemId(null);
                       }}
                       isSaving={savingItems.has(item.id)}
                     />
