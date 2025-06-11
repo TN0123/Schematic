@@ -1,7 +1,7 @@
 "use client";
 import Link, { LinkProps } from "next/link";
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface TransitionLinkProps extends LinkProps {
   children: React.ReactNode;
@@ -19,10 +19,14 @@ export const TransitionLink = ({
   ...props
 }: TransitionLinkProps) => {
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleTransition = async (
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
   ) => {
+    if (pathname === href) {
+      return;
+    }
     e.preventDefault();
     const mainContent = document.querySelector("main");
 
