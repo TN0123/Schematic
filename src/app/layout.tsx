@@ -9,6 +9,7 @@ import NextStepWrapper from "@/components/NextStepWrapper";
 import Script from "next/script";
 import PageTransition from "@/components/PageTransition";
 import MainWrapper from "@/components/MainWrapper";
+import PostHogProvider from "@/components/PostHogProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,9 +55,11 @@ export default function RootLayout({
           <NextStepProvider>
             <NextStepWrapper>
               <AuthProvider>
-                <Navigation />
-                <MainWrapper>{children}</MainWrapper>
-                <PageTransition />
+                <PostHogProvider>
+                  <Navigation />
+                  <MainWrapper>{children}</MainWrapper>
+                  <PageTransition />
+                </PostHogProvider>
               </AuthProvider>
             </NextStepWrapper>
           </NextStepProvider>
