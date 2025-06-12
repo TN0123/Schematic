@@ -3,8 +3,8 @@ import { generate_events } from "@/scripts/schedule/generate-events";
 
 export async function POST(req: Request) {
   try {
-    const { text, timezone } = await req.json();
-    const result = await generate_events(text, timezone);
+    const { text, timezone, userId } = await req.json();
+    const result = await generate_events(text, timezone, userId);
 
     const cleanedResult = result.replace(/```json|```/g, "").trim();
     const events = JSON.parse(cleanedResult);

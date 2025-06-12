@@ -1,4 +1,12 @@
-export async function generate_events(text: string, timezone: string) {
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+export async function generate_events(
+  text: string,
+  timezone: string,
+  userId: string
+) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -19,18 +27,24 @@ export async function generate_events(text: string, timezone: string) {
     hour12: false,
   }).format(new Date());
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { scheduleContext: true },
+  });
+
   const prompt = `
       You are an AI that extracts structured event details from text. Your goal is to generate a JSON array of event objects.
       
       **Rules:**
       1. Identify event names, dates, and times in the input.
       2. If no date is mentioned, assume today's date: **${currentDate}**.
-      3. If am/pm is not specified, assume that the event's start time is past this datetime: **${currentDateTime}**.
-      4. If am/pm is not specified, decide which one the user means based on the name of the event and with common 
-      sense (for example breakfast is more likely 9am-10am than 9pm-10pm). Always assume the user is using 12hr format by default.
-      5. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
-      6. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
-      7. If an event has no end time, assume a default duration of **1 hour**.
+      3. If am/pm is not specified, decide which one the user means based on the name of the event and with common 
+      sense (for example breakfast is more likely 9am-10am than 9pm-10pm). Always assume the user is using 12hr format 
+      by default. Another thing you can use to determine which time the user means is the current time: ${currentDateTime}.
+      They may be more likely to mean the time that is after the current time.
+      4. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
+      5. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
+      6. If an event has no end time, assume a default duration of **1 hour**.
       
       **Output Format (JSON array only, no extra text):**
       [
@@ -65,11 +79,17 @@ export async function generate_events(text: string, timezone: string) {
       **Here is the input text:**  
       ${text}
 
-      **FINAL VERIFICATION BEFORE RETURNING RESPONSE:** 
-        - IF AM/PM IS NOT SPECIFIED, ENSURE THE START TIME IS STRICTLY AFTER ${currentDateTime}. 
+      Here is some context about the user's schedule that may or may not be relevant to the input text, 
+      use it if applicable, otherwise ignore it.
+      
+      BEGIN CONTEXT
+      ${user?.scheduleContext}
+      END CONTEXT
+
+      Generate the events in the output format.
     `;
 
-  // console.log("PROMPT: ", prompt);
+  console.log("PROMPT: ", prompt);
 
   //Multiple calls retry mechanism with exponential backoff
   let retries = 3;

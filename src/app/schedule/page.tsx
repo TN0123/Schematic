@@ -508,7 +508,11 @@ export default function CalendarApp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text: inputText, timezone: userTimezone }),
+        body: JSON.stringify({
+          text: inputText,
+          timezone: userTimezone,
+          userId: userId,
+        }),
       });
       const data = await response.json();
       if (data.events) {
