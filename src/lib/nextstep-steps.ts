@@ -34,8 +34,19 @@ export const steps: Tour[] = [
       },
       {
         icon: "",
+        title: "AI Context",
+        content:
+          "You can edit the context that the AI has to work with to help it better understand your intentions and get better results.",
+        selector: "#event-menu-bar-context-button",
+        side: "bottom-right",
+        pointerRadius: 10,
+        pointerPadding: 20,
+        showSkip: true,
+      },
+      {
+        icon: "",
         title: "Add Goals",
-        content: "Keep track of what's important.",
+        content: "A simple way to keep track of what's important.",
         selector: "#goals-panel",
         side: "right",
         pointerRadius: 0,

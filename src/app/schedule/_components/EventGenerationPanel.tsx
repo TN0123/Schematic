@@ -83,7 +83,7 @@ export default function EventGenerationPanel({
         className={`hidden md:flex fixed md:relative z-30 h-full w-80 md:w-96 bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300`}
       >
         {/* Menu Bar */}
-        <div className="flex" id="event-menu-bar">
+        <div className="flex justify-between" id="event-menu-bar">
           {isMobileOpen && (
             <button
               onClick={handleToggle}
@@ -95,40 +95,43 @@ export default function EventGenerationPanel({
               />
             </button>
           )}
-          <button
-            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-            onClick={() => {
-              setShowModal(true);
-              setIsMobileOpen(false);
-            }}
-          >
-            <Plus size={20} />
-          </button>
-          <button
-            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-            onClick={() => {
-              setIsFileUploaderModalOpen(true);
-              setIsMobileOpen(false);
-            }}
-          >
-            <FileUp size={20} />
-          </button>
-          <button
-            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-            onClick={() => {
-              setIsIcsUploaderModalOpen(true);
-              setIsMobileOpen(false);
-            }}
-          >
-            <CalendarPlus size={20} />
-          </button>
+          <div className="flex">
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setShowModal(true);
+                setIsMobileOpen(false);
+              }}
+            >
+              <Plus size={20} />
+            </button>
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setIsFileUploaderModalOpen(true);
+                setIsMobileOpen(false);
+              }}
+            >
+              <FileUp size={20} />
+            </button>
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setIsIcsUploaderModalOpen(true);
+                setIsMobileOpen(false);
+              }}
+            >
+              <CalendarPlus size={20} />
+            </button>
+          </div>
           <button
             className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
             onClick={() => {
               setIsScheduleContextModalOpen(true);
               setIsMobileOpen(false);
             }}
-            title="Edit Schedule Context"
+            id="event-menu-bar-context-button"
+            title="Edit AI Context"
           >
             <UserPen size={20} />
           </button>
