@@ -63,6 +63,11 @@ export async function suggest_events(
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { scheduleContext: true },
+  });
+
   const bulletins = await prisma.bulletin.findMany({
     where: { userId },
     orderBy: {
@@ -117,6 +122,9 @@ export async function suggest_events(
     **EXISTING EVENTS FOR TODAY (don't repeat tasks that the user is already going to do today!):**
     ${eventSummary}
 
+    **USER CONTEXT (if available):**
+    ${user?.scheduleContext}
+
     ---
 
     **OUTPUT FORMAT (JSON only):**
@@ -136,7 +144,7 @@ export async function suggest_events(
     - Make sure to not suggest events that are already on the schedule
   `;
 
-  // console.log(prompt);
+  console.log(prompt);
 
   let retries = 3;
   let delay = 1000;
