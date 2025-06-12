@@ -22,9 +22,20 @@ export async function daily_summary(
     select: { title: true, type: true },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { scheduleContext: true },
+  });
+
   let prompt = `
     You are a helpful assistant that provides some short and specific advice on how the user 
     can best utilize their time for the day based on their events and goals.
+    
+    Here is some context around the user's schedule (if available):
+    BEGIN CONTEXT
+    ${user?.scheduleContext}
+    END CONTEXT
+
     Don't mention any specific times, instead use words like "morning", "afternoon", "evening", etc.
     
     Return just the advice with no additional text. Use markdown formatting. Don't label

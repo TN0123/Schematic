@@ -1073,6 +1073,7 @@ export default function CalendarApp() {
             dailySummary={dailySummary}
             dailySummaryDate={dailySummaryDate}
             dailySummaryLoading={dailySummaryLoading}
+            userId={userId || ""}
           />
         </div>
 

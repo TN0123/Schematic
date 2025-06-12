@@ -22,6 +22,7 @@ model User {
   goals                    Goal[]
   sessions                 Session[]
   documents                Document[]
+  scheduleContext          String         @default("")
 }
 
 model Account {

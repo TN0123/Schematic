@@ -7,6 +7,7 @@ import {
   Mic,
   CalendarPlus,
   RefreshCw,
+  UserPen,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
@@ -15,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import ScheduleContextModal from "./ScheduleContextModal";
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -27,6 +29,7 @@ interface EventGenerationPanelProps {
   dailySummary: string;
   dailySummaryDate: Date | null;
   dailySummaryLoading: boolean;
+  userId: string;
 }
 
 export default function EventGenerationPanel({
@@ -40,8 +43,11 @@ export default function EventGenerationPanel({
   dailySummary,
   dailySummaryDate,
   dailySummaryLoading,
+  userId,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
+    useState(false);
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
 
@@ -115,6 +121,16 @@ export default function EventGenerationPanel({
             }}
           >
             <CalendarPlus size={20} />
+          </button>
+          <button
+            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+            onClick={() => {
+              setIsScheduleContextModalOpen(true);
+              setIsMobileOpen(false);
+            }}
+            title="Edit Schedule Context"
+          >
+            <UserPen size={20} />
           </button>
         </div>
 
@@ -212,6 +228,11 @@ export default function EventGenerationPanel({
           )}
         </AnimatePresence>
       </aside>
+      <ScheduleContextModal
+        isOpen={isScheduleContextModalOpen}
+        onClose={() => setIsScheduleContextModalOpen(false)}
+        userId={userId}
+      />
     </>
   );
 }
