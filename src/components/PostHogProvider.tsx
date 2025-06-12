@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import posthog from "posthog-js";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { PostHogPageviewTracker } from "./PostHogPageviewTracker";
 
 if (typeof window !== "undefined") {
@@ -36,7 +36,9 @@ export default function PostHogProvider({
 
   return (
     <>
-      <PostHogPageviewTracker />
+      <Suspense fallback={null}>
+        <PostHogPageviewTracker />
+      </Suspense>
       {children}
     </>
   );
