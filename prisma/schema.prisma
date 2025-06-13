@@ -66,6 +66,7 @@ model Bulletin {
   content   String
   type      String   @default("text")
   data      Json?
+  schema    Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String

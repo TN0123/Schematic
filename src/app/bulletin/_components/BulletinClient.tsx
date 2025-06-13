@@ -5,6 +5,8 @@ import BulletinNote from "./BulletinNote";
 import BulletinTodo from "./BulletinTodo";
 import BulletinLinkCollection, { LinkPreview } from "./BulletinLinkCollection";
 import BulletinKanban from "./BulletinKanban";
+import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
+import DynamicNoteCreator from "./DynamicNoteCreator";
 import { useSession } from "next-auth/react";
 import {
   Plus,
@@ -17,6 +19,7 @@ import {
   Link,
   Columns,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,6 +57,7 @@ type BulletinItem = {
   | { type: "priority-queue"; data: { items: QueueItem[] } }
   | { type: "link-collection"; data: { links: LinkPreview[] } }
   | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
+  | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
 );
 
 export default function BulletinClient() {
@@ -68,6 +72,7 @@ export default function BulletinClient() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
+  const [showDynamicCreator, setShowDynamicCreator] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -102,6 +107,9 @@ export default function BulletinClient() {
       <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
+    dynamic: (
+      <Sparkles className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
   };
 
   useEffect(() => {
@@ -161,7 +169,8 @@ export default function BulletinClient() {
     updates: {
       title?: string;
       content?: string;
-      data?: { links?: LinkPreview[] };
+      data?: { links?: LinkPreview[] } | Record<string, any>;
+      schema?: DynamicSchema;
     }
   ) => {
     // Add item to saving set
@@ -221,6 +230,25 @@ export default function BulletinClient() {
                 cards: [],
               }
             : undefined,
+      }),
+    });
+
+    const newBulletin = await response.json();
+    setItems([...items, newBulletin]);
+    setExpandedItemId(newBulletin.id);
+    router.push(`${pathname}?noteId=${newBulletin.id}`);
+  };
+
+  const createDynamicNote = async (title: string, schema: DynamicSchema) => {
+    const response = await fetch("/api/bulletins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        content: "",
+        type: "dynamic",
+        data: {},
+        schema,
       }),
     });
 
@@ -380,6 +408,19 @@ export default function BulletinClient() {
                             new
                           </span>
                         </button>
+                        <button
+                          onClick={() => {
+                            setShowDynamicCreator(true);
+                            setShowDropdown(false);
+                          }}
+                          className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                          title="Dynamic Note"
+                        >
+                          <Sparkles />
+                          <span className="absolute right-1 top-1 text-[8px] bg-green-500/70 text-white px-1 rounded-sm leading-[1.3]">
+                            new
+                          </span>
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -424,8 +465,18 @@ export default function BulletinClient() {
                         >
                           <Link />
                           Link Collection
-                          <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
-                            new
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDynamicCreator(true);
+                            setShowDropdown(false);
+                          }}
+                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                        >
+                          <Sparkles />
+                          Dynamic Note
+                          <span className="absolute right-0 top-0 text-[9px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                            experimental
                           </span>
                         </button>
                       </div>
@@ -579,6 +630,22 @@ export default function BulletinClient() {
                       }}
                     />
                   );
+                case "dynamic":
+                  return (
+                    <BulletinDynamic
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialSchema={item.schema}
+                      initialData={item.data}
+                      updatedAt={item.updatedAt}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                      isSaving={savingItems.has(item.id)}
+                    />
+                  );
                 case "text":
                 default:
                   return (
@@ -611,6 +678,13 @@ export default function BulletinClient() {
           </>
         )}
       </div>
+
+      {/* Dynamic Note Creator Modal */}
+      <DynamicNoteCreator
+        isOpen={showDynamicCreator}
+        onClose={() => setShowDynamicCreator(false)}
+        onCreateNote={createDynamicNote}
+      />
     </div>
   );
 }
