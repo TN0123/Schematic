@@ -1,7 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { Plus, Trash2, ArrowDown, Square, Circle, Diamond } from "lucide-react";
+import React, { useState, useRef, useCallback } from "react";
+import {
+  Plus,
+  Trash2,
+  ArrowDown,
+  Square,
+  Circle,
+  Diamond,
+  Move,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+} from "lucide-react";
 
 export interface FlowNode {
   id: string;
@@ -35,6 +46,18 @@ export default function InteractiveFlowchart({
   const [showAddNode, setShowAddNode] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSource, setConnectionSource] = useState<string | null>(null);
+
+  // Viewport state
+  const [viewBox, setViewBox] = useState({
+    x: 0,
+    y: 0,
+    width: 800,
+    height: 600,
+  });
+  const [zoom, setZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // Initialize with default data if empty
   const flowData =
@@ -93,6 +116,95 @@ export default function InteractiveFlowchart({
         }
       : data;
 
+  // Convert screen coordinates to SVG coordinates
+  const screenToSVG = useCallback(
+    (screenX: number, screenY: number) => {
+      if (!svgRef.current) return { x: screenX, y: screenY };
+
+      const rect = svgRef.current.getBoundingClientRect();
+      const x =
+        ((screenX - rect.left) / rect.width) * viewBox.width + viewBox.x;
+      const y =
+        ((screenY - rect.top) / rect.height) * viewBox.height + viewBox.y;
+      return { x, y };
+    },
+    [viewBox]
+  );
+
+  // Panning handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0 && !(e.target as Element).closest(".flowchart-node")) {
+      // Left mouse button and not on a node
+      setIsPanning(true);
+      const svgCoords = screenToSVG(e.clientX, e.clientY);
+      setPanStart(svgCoords);
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const svgCoords = screenToSVG(e.clientX, e.clientY);
+      const dx = panStart.x - svgCoords.x;
+      const dy = panStart.y - svgCoords.y;
+
+      setViewBox((prev) => ({
+        ...prev,
+        x: prev.x + dx,
+        y: prev.y + dy,
+      }));
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+  };
+
+  // Prevent all scrolling over the flowchart
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+  };
+
+  // Reset view
+  const resetView = () => {
+    setZoom(1);
+    setViewBox({ x: 0, y: 0, width: 800, height: 600 });
+  };
+
+  // Zoom controls
+  const zoomIn = () => {
+    const newZoom = Math.min(5, zoom * 1.2);
+    const centerX = viewBox.x + viewBox.width / 2;
+    const centerY = viewBox.y + viewBox.height / 2;
+    const newWidth = viewBox.width * (zoom / newZoom);
+    const newHeight = viewBox.height * (zoom / newZoom);
+
+    setZoom(newZoom);
+    setViewBox({
+      x: centerX - newWidth / 2,
+      y: centerY - newHeight / 2,
+      width: newWidth,
+      height: newHeight,
+    });
+  };
+
+  const zoomOut = () => {
+    const newZoom = Math.max(0.1, zoom * 0.8);
+    const centerX = viewBox.x + viewBox.width / 2;
+    const centerY = viewBox.y + viewBox.height / 2;
+    const newWidth = viewBox.width * (zoom / newZoom);
+    const newHeight = viewBox.height * (zoom / newZoom);
+
+    setZoom(newZoom);
+    setViewBox({
+      x: centerX - newWidth / 2,
+      y: centerY - newHeight / 2,
+      width: newWidth,
+      height: newHeight,
+    });
+  };
+
   const addNode = () => {
     if (!newNodeText.trim()) return;
 
@@ -100,8 +212,8 @@ export default function InteractiveFlowchart({
       id: Date.now().toString(),
       text: newNodeText.trim(),
       type: newNodeType,
-      x: Math.random() * 300 + 50,
-      y: Math.random() * 200 + 100,
+      x: viewBox.x + viewBox.width / 2 + (Math.random() - 0.5) * 100,
+      y: viewBox.y + viewBox.height / 2 + (Math.random() - 0.5) * 100,
       connections: [],
     };
 
@@ -174,7 +286,7 @@ export default function InteractiveFlowchart({
             fill={node.type === "start" ? "#10b981" : "#ef4444"}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
-            className="cursor-pointer"
+            className="cursor-pointer flowchart-node"
           />
         );
       case "decision":
@@ -186,7 +298,7 @@ export default function InteractiveFlowchart({
             fill="#f59e0b"
             stroke={strokeColor}
             strokeWidth={strokeWidth}
-            className="cursor-pointer"
+            className="cursor-pointer flowchart-node"
           />
         );
       default: // process
@@ -200,7 +312,7 @@ export default function InteractiveFlowchart({
             stroke={strokeColor}
             strokeWidth={strokeWidth}
             rx={5}
-            className="cursor-pointer"
+            className="cursor-pointer flowchart-node"
           />
         );
     }
@@ -248,12 +360,41 @@ export default function InteractiveFlowchart({
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm transition-colors ${
               isConnecting
                 ? "bg-blue-500 text-white hover:bg-blue-600"
-                : "bg-gray-200 dark:bg-dark-tertiary text-gray-700 dark:text-dark-textSecondary hover:bg-gray-300 dark:hover:bg-gray-600"
+                : "bg-gray-200 dark:bg-dark-background text-gray-700 dark:text-dark-textSecondary hover:bg-gray-300 dark:hover:bg-gray-600"
             }`}
           >
             <ArrowDown className="w-4 h-4" />
             {isConnecting ? "Cancel Connect" : "Connect Nodes"}
           </button>
+
+          {/* Viewport controls */}
+          <div className="flex items-center gap-1 border-l dark:border-dark-divider pl-2 ml-2">
+            <button
+              onClick={zoomIn}
+              className="p-1 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+            <button
+              onClick={zoomOut}
+              className="p-1 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              onClick={resetView}
+              className="p-1 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+              title="Reset View"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+            <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+
           {selectedNode && (
             <button
               onClick={() => deleteNode(selectedNode)}
@@ -272,7 +413,7 @@ export default function InteractiveFlowchart({
               value={newNodeText}
               onChange={(e) => setNewNodeText(e.target.value)}
               placeholder="Node text..."
-              className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+              className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-background dark:text-dark-textPrimary"
               onKeyDown={(e) => e.key === "Enter" && addNode()}
               autoFocus
             />
@@ -281,7 +422,7 @@ export default function InteractiveFlowchart({
               <select
                 value={newNodeType}
                 onChange={(e) => setNewNodeType(e.target.value as any)}
-                className="px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+                className="px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-background dark:text-dark-textPrimary"
               >
                 <option value="start">Start</option>
                 <option value="process">Process</option>
@@ -313,11 +454,18 @@ export default function InteractiveFlowchart({
         )}
       </div>
 
-      <div style={{ height, overflow: "auto" }}>
+      <div style={{ height, overflow: "hidden" }}>
         <svg
+          ref={svgRef}
           width="100%"
           height={height}
-          className="bg-white dark:bg-dark-background"
+          className="bg-white dark:bg-dark-background cursor-move"
+          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onWheel={handleWheel}
         >
           <defs>
             <marker
@@ -342,7 +490,7 @@ export default function InteractiveFlowchart({
                 y={node.y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                className="text-xs font-medium fill-white pointer-events-none"
+                className="text-xs font-medium fill-white pointer-events-none flowchart-node"
                 style={{ fontSize: "11px" }}
               >
                 {node.text.length > 10
@@ -365,7 +513,7 @@ export default function InteractiveFlowchart({
               flowData.nodes.find((n) => n.id === selectedNode)?.text || ""
             }
             onChange={(e) => updateNodeText(selectedNode, e.target.value)}
-            className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+            className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-background dark:text-dark-textPrimary"
           />
         </div>
       )}
@@ -383,6 +531,10 @@ export default function InteractiveFlowchart({
           <div className="flex items-center gap-1">
             <Diamond className="w-3 h-3 text-yellow-500" />
             Decision
+          </div>
+          <div className="flex items-center gap-1">
+            <Move className="w-3 h-3" />
+            Drag to pan • Use zoom buttons
           </div>
           <span>Click: select • Connect mode: create arrows</span>
         </div>

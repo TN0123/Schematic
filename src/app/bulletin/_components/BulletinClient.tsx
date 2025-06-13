@@ -472,8 +472,8 @@ export default function BulletinClient() {
                         >
                           <Sparkles />
                           Dynamic Note
-                          <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
-                            new
+                          <span className="absolute right-0 top-0 text-[9px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                            experimental
                           </span>
                         </button>
                       </div>

@@ -100,14 +100,11 @@ export default function DynamicNoteCreator({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Example: 'A daily planner with a checklist for tasks, a section for goals, and a notes area for thoughts'"
+              placeholder="Describe what your note should look like"
               rows={4}
               className="w-full p-4 border border-light-border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-background text-light-heading dark:text-dark-textPrimary placeholder:text-light-subtle dark:placeholder:text-dark-textSecondary focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 resize-vertical"
               disabled={isGenerating}
             />
-            <p className="mt-2 text-xs text-light-subtle dark:text-dark-textSecondary">
-              Be specific about the sections, input types, and layout you want.
-            </p>
           </div>
 
           {error && (

@@ -23,7 +23,7 @@ Available component types:
 - "checklist": Interactive todo-style list with checkboxes
 - "table": Interactive editable table with configurable dimensions (include rows and cols in config)
 - "graph": Interactive knowledge graph for connecting concepts and ideas
-- "tree": Hierarchical tree structure for organizing information
+- "tree": Hierarchical file tree for organizing information
 - "flowchart": Process flowchart for documenting workflows
 - "mindmap": Interactive mind map for brainstorming and visual thinking
 

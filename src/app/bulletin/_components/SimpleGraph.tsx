@@ -142,7 +142,7 @@ export default function SimpleGraph({
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm transition-colors ${
               isConnecting
                 ? "bg-blue-500 text-white hover:bg-blue-600"
-                : "bg-gray-200 dark:bg-dark-tertiary text-gray-700 dark:text-dark-textSecondary hover:bg-gray-300"
+                : "bg-gray-200 dark:bg-dark-background text-gray-700 dark:text-dark-textSecondary hover:bg-gray-300"
             }`}
           >
             <Link2 className="w-4 h-4" />
@@ -166,7 +166,7 @@ export default function SimpleGraph({
               value={newNodeName}
               onChange={(e) => setNewNodeName(e.target.value)}
               placeholder="Node name..."
-              className="flex-1 px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+              className="flex-1 px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-secondary dark:text-dark-textPrimary"
               onKeyDown={(e) => e.key === "Enter" && addNode()}
               autoFocus
             />

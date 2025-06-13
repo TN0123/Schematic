@@ -155,7 +155,7 @@ export default function InteractiveTree({
     return (
       <div key={node.id} className="select-none">
         <div
-          className={`flex items-center py-1 px-2 hover:bg-gray-100 dark:hover:bg-dark-tertiary cursor-pointer rounded transition-colors ${
+          className={`flex items-center py-1 px-2 hover:bg-gray-100 dark:hover:bg-dark-secondary cursor-pointer rounded transition-colors ${
             selectedNode === node.id ? "bg-blue-100 dark:bg-blue-900/20" : ""
           }`}
           style={{ paddingLeft: `${12 + indent}px` }}
@@ -248,7 +248,7 @@ export default function InteractiveTree({
               value={newNodeName}
               onChange={(e) => setNewNodeName(e.target.value)}
               placeholder="Node name..."
-              className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+              className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-secondary dark:text-dark-textPrimary"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && selectedNode) {
                   addChildNode(selectedNode);
@@ -293,7 +293,7 @@ export default function InteractiveTree({
             type="text"
             value={findNodeName(selectedNode)}
             onChange={(e) => updateNodeName(selectedNode, e.target.value)}
-            className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-tertiary dark:text-dark-textPrimary"
+            className="w-full px-2 py-1 border dark:border-dark-divider rounded text-sm dark:bg-dark-secondary dark:text-dark-textPrimary"
           />
         </div>
       )}
