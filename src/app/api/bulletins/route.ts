@@ -41,7 +41,13 @@ export async function POST(request: Request) {
     return new NextResponse("User not found", { status: 404 });
   }
 
-  const { title, content, type = "text", data = null } = await request.json();
+  const {
+    title,
+    content,
+    type = "text",
+    data = null,
+    schema = null,
+  } = await request.json();
 
   const bulletin = await prisma.bulletin.create({
     data: {
@@ -49,6 +55,7 @@ export async function POST(request: Request) {
       content,
       type,
       data,
+      schema,
       userId: user.id,
     },
   });
