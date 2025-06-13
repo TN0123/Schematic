@@ -399,25 +399,28 @@ export default function BulletinDynamic({
         );
 
       case "table":
-        const { rows, cols } = component.config || { rows: 4, cols: 4 };
+        const { cols } = component.config || { cols: 4 };
 
         // Ensure we have properly initialized table data
         let tableData: string[][];
         if (!value || !Array.isArray(value)) {
-          // Initialize with empty strings for all cells
-          tableData = Array.from({ length: rows }, () =>
-            Array.from({ length: cols }, () => "")
-          );
+          // Initialize with one row of empty strings
+          tableData = [Array.from({ length: cols }, () => "")];
         } else {
-          // Ensure existing data matches the required dimensions
-          tableData = Array.from({ length: rows }, (_, rowIndex) =>
+          // Ensure existing data has proper column structure
+          tableData = value.map((row) =>
             Array.from(
               { length: cols },
-              (_, colIndex) =>
-                (value[rowIndex] && value[rowIndex][colIndex]) || ""
+              (_, colIndex) => (row && row[colIndex]) || ""
             )
           );
+          // Ensure we have at least one row
+          if (tableData.length === 0) {
+            tableData = [Array.from({ length: cols }, () => "")];
+          }
         }
+
+        const currentRows = tableData.length;
 
         const handleTableCellChange = (
           rowIndex: number,
@@ -436,28 +439,74 @@ export default function BulletinDynamic({
           handleDataChange(component.id, newTableData);
         };
 
+        const addRow = () => {
+          const newRow = Array.from({ length: cols }, () => "");
+          const newTableData = [...tableData, newRow];
+          handleDataChange(component.id, newTableData);
+        };
+
+        const removeRow = () => {
+          // Don't allow removing the last row
+          if (tableData.length <= 1) return;
+
+          const newTableData = tableData.slice(0, -1); // Remove last row
+          handleDataChange(component.id, newTableData);
+        };
+
+        const addColumn = () => {
+          const newCols = cols + 1;
+          const newTableData = tableData.map((row) => [...row, ""]);
+
+          // Update the component config and data
+          const newConfig = { ...component.config, cols: newCols };
+          const newSchema = {
+            ...schema,
+            components: schema.components.map((comp) =>
+              comp.id === component.id ? { ...comp, config: newConfig } : comp
+            ),
+          };
+          setSchema(newSchema);
+          handleDataChange(component.id, newTableData);
+        };
+
+        const removeColumn = () => {
+          // Don't allow removing the last column
+          if (cols <= 1) return;
+
+          const newCols = cols - 1;
+          const newTableData = tableData.map((row) => row.slice(0, -1)); // Remove last column
+
+          // Update the component config and data
+          const newConfig = { ...component.config, cols: newCols };
+          const newSchema = {
+            ...schema,
+            components: schema.components.map((comp) =>
+              comp.id === component.id ? { ...comp, config: newConfig } : comp
+            ),
+          };
+          setSchema(newSchema);
+          handleDataChange(component.id, newTableData);
+        };
+
         return (
           <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Table className="inline w-4 h-4 mr-1" />
               {component.label}
-              <span className="text-xs text-gray-400 dark:text-gray-600 ml-2">
-                ({rows}×{cols} editable table)
-              </span>
             </label>
             <div className="overflow-x-auto border dark:border-dark-divider rounded-lg">
               <table className="w-full border-collapse min-w-max">
                 <tbody>
-                  {Array.from({ length: rows }).map((_, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {Array.from({ length: cols }).map((_, colIndex) => (
+                  {tableData.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="transition-colors">
+                      {row.map((cell, colIndex) => (
                         <td
                           key={colIndex}
                           className="border-r border-b dark:border-dark-divider last:border-r-0 p-0 min-w-[120px] h-10"
                         >
                           <input
                             type="text"
-                            value={tableData[rowIndex][colIndex] || ""}
+                            value={cell || ""}
                             onChange={(e) =>
                               handleTableCellChange(
                                 rowIndex,
@@ -471,7 +520,7 @@ export default function BulletinDynamic({
                                 const nextCol = (colIndex + 1) % cols;
                                 const nextRow =
                                   nextCol === 0
-                                    ? (rowIndex + 1) % rows
+                                    ? (rowIndex + 1) % currentRows
                                     : rowIndex;
                                 const nextInput = document.querySelector(
                                   `[data-table-cell="${component.id}-${nextRow}-${nextCol}"]`
@@ -479,14 +528,14 @@ export default function BulletinDynamic({
                                 nextInput?.focus();
                               } else if (e.key === "Enter") {
                                 e.preventDefault();
-                                const nextRow = (rowIndex + 1) % rows;
+                                const nextRow = (rowIndex + 1) % currentRows;
                                 const nextInput = document.querySelector(
                                   `[data-table-cell="${component.id}-${nextRow}-${colIndex}"]`
                                 ) as HTMLInputElement;
                                 nextInput?.focus();
                               }
                             }}
-                            className="w-full h-full px-3 py-2 dark:bg-dark-secondary dark:text-dark-textPrimary border-none outline-none focus:bg-green-50 dark:focus:bg-neutral-900/20 transition-colors"
+                            className="w-full h-full px-3 py-2 bg-transparent dark:bg-dark-secondary dark:text-dark-textPrimary border-none outline-none focus:bg-green-50 dark:focus:bg-neutral-900/20 transition-colors"
                             placeholder={`Cell ${String.fromCharCode(
                               65 + colIndex
                             )}${rowIndex + 1}`}
@@ -500,9 +549,37 @@ export default function BulletinDynamic({
                 </tbody>
               </table>
             </div>
-            <div className="mt-2 text-xs text-gray-400 dark:text-gray-600">
-              Click any cell to edit. Use Tab to navigate right/down, Enter to
-              move to next row.
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={addRow}
+                className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium text-sm hover:bg-green-50 dark:hover:bg-green-900/20 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Row
+              </button>
+              <button
+                onClick={removeRow}
+                disabled={tableData.length <= 1}
+                className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium text-sm hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove Row
+              </button>
+              <button
+                onClick={addColumn}
+                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add Column
+              </button>
+              <button
+                onClick={removeColumn}
+                disabled={cols <= 1}
+                className="flex items-center gap-2 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 font-medium text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-4 h-4" />
+                Remove Column
+              </button>
             </div>
           </div>
         );
