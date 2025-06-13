@@ -235,6 +235,35 @@ export default function BulletinDynamic({
     }
   };
 
+  const handleDeleteComponent = async (componentId: string) => {
+    // Remove component from schema
+    const newSchema = {
+      ...schema,
+      components: schema.components.filter((comp) => comp.id !== componentId),
+    };
+
+    // Remove component data
+    const newData = { ...data };
+    delete newData[componentId];
+
+    // Update state
+    setSchema(newSchema);
+    setData(newData);
+    setHasUnsavedChanges(true);
+
+    // Auto-save the changes
+    setIsAutoSaving(true);
+    try {
+      await onSave(id, { schema: newSchema, data: newData });
+      lastSavedState.current.data = newData;
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error("Failed to delete component:", error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  };
+
   // Component renderers for different types
   const renderComponent = (component: DynamicComponent) => {
     const value = data[component.id] || "";
@@ -242,7 +271,15 @@ export default function BulletinDynamic({
     switch (component.type) {
       case "title":
         return (
-          <div key={component.id} className="mb-4">
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <input
               type="text"
               value={value}
@@ -255,7 +292,15 @@ export default function BulletinDynamic({
 
       case "text":
         return (
-          <div key={component.id} className="mb-4">
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Type className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -272,7 +317,15 @@ export default function BulletinDynamic({
 
       case "textarea":
         return (
-          <div key={component.id} className="mb-4">
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <List className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -289,7 +342,15 @@ export default function BulletinDynamic({
 
       case "number":
         return (
-          <div key={component.id} className="mb-4">
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Hash className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -308,7 +369,15 @@ export default function BulletinDynamic({
 
       case "date":
         return (
-          <div key={component.id} className="mb-4">
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Calendar className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -350,7 +419,15 @@ export default function BulletinDynamic({
         };
 
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Check className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -489,7 +566,15 @@ export default function BulletinDynamic({
         };
 
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Table className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -586,7 +671,15 @@ export default function BulletinDynamic({
 
       case "graph":
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Share2 className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -604,7 +697,15 @@ export default function BulletinDynamic({
 
       case "tree":
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <GitBranch className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -622,7 +723,15 @@ export default function BulletinDynamic({
 
       case "flowchart":
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Workflow className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -640,7 +749,15 @@ export default function BulletinDynamic({
 
       case "mindmap":
         return (
-          <div key={component.id} className="mb-6">
+          <div key={component.id} className="mb-6 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Brain className="inline w-4 h-4 mr-1" />
               {component.label}
