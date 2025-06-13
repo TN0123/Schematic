@@ -21,7 +21,7 @@ Available component types:
 - "number": Numeric input field
 - "date": Date picker input
 - "checklist": Interactive todo-style list with checkboxes
-- "table": Interactive editable table with configurable dimensions (include rows and cols in config)
+- "table": Interactive editable table with configurable dimensions (include rows and cols in config). Useful for keeping track of multiple entries.
 - "graph": Interactive knowledge graph for connecting concepts and ideas
 - "tree": Hierarchical file tree for organizing information
 - "flowchart": Process flowchart for documenting workflows

@@ -107,7 +107,9 @@ export default function BulletinClient() {
       <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
-    dynamic: <Sparkles className="w-4 h-4 text-green-500" />,
+    dynamic: (
+      <Sparkles className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
   };
 
   useEffect(() => {

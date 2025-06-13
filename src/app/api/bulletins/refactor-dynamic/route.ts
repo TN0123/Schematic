@@ -132,6 +132,7 @@ Generate the refactored schema and data mapping now:`;
         .replace(/```\n?/g, "")
         .trim();
 
+      console.log(cleanedResponse);
       parsedResponse = JSON.parse(cleanedResponse);
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", responseText);
