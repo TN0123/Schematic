@@ -27,7 +27,7 @@ Rules:
 1. Always return valid JSON with no additional text or formatting
 2. Create 3-8 components maximum for good UX
 3. Use clear, descriptive labels
-4. Add helpful placeholders where appropriate
+4. Add helpful placeholders where appropriate but leave them empty if not needed
 5. Generate a concise but descriptive title for the note
 6. Use semantic component IDs (e.g., "task-list", "meeting-date", "notes")
 7. Consider the logical flow and grouping of information

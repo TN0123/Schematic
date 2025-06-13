@@ -107,7 +107,7 @@ export default function BulletinClient() {
       <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
-    dynamic: <Sparkles className="w-4 h-4 text-purple-500" />,
+    dynamic: <Sparkles className="w-4 h-4 text-green-500" />,
   };
 
   useEffect(() => {
@@ -414,8 +414,8 @@ export default function BulletinClient() {
                           title="Dynamic Note"
                         >
                           <Sparkles />
-                          <span className="absolute right-1 top-1 text-[8px] bg-purple-500/70 text-white px-1 rounded-sm leading-[1.3]">
-                            AI
+                          <span className="absolute right-1 top-1 text-[8px] bg-green-500/70 text-white px-1 rounded-sm leading-[1.3]">
+                            new
                           </span>
                         </button>
                       </div>
@@ -462,9 +462,6 @@ export default function BulletinClient() {
                         >
                           <Link />
                           Link Collection
-                          <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
-                            new
-                          </span>
                         </button>
                         <button
                           onClick={() => {
@@ -475,8 +472,8 @@ export default function BulletinClient() {
                         >
                           <Sparkles />
                           Dynamic Note
-                          <span className="absolute right-0 top-0 text-[10px] bg-purple-500/70 text-white px-2 rounded-sm leading-[1.3]">
-                            AI
+                          <span className="absolute right-0 top-0 text-[10px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                            new
                           </span>
                         </button>
                       </div>

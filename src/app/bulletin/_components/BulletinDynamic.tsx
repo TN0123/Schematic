@@ -192,7 +192,7 @@ export default function BulletinDynamic({
               value={value}
               onChange={(e) => handleDataChange(component.id, e.target.value)}
               placeholder={component.placeholder}
-              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-editorBackground dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             />
           </div>
         );
@@ -209,7 +209,7 @@ export default function BulletinDynamic({
               onChange={(e) => handleDataChange(component.id, e.target.value)}
               placeholder={component.placeholder}
               rows={4}
-              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-editorBackground dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 resize-vertical"
+              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 resize-vertical"
             />
           </div>
         );
@@ -228,7 +228,7 @@ export default function BulletinDynamic({
                 handleDataChange(component.id, parseFloat(e.target.value) || 0)
               }
               placeholder={component.placeholder}
-              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-editorBackground dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             />
           </div>
         );
@@ -244,7 +244,7 @@ export default function BulletinDynamic({
               type="date"
               value={value}
               onChange={(e) => handleDataChange(component.id, e.target.value)}
-              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-editorBackground dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+              className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             />
           </div>
         );
@@ -293,7 +293,7 @@ export default function BulletinDynamic({
                         checked: e.target.checked,
                       })
                     }
-                    className="w-4 h-4 text-green-600 dark:bg-dark-editorBackground dark:border-dark-divider rounded focus:ring-green-500 dark:focus:ring-green-400"
+                    className="w-4 h-4 text-green-600 dark:bg-dark-secondary dark:border-dark-divider rounded focus:ring-green-500 dark:focus:ring-green-400"
                   />
                   <input
                     type="text"
@@ -302,7 +302,7 @@ export default function BulletinDynamic({
                       updateChecklistItem(item.id, { text: e.target.value })
                     }
                     placeholder="Add item..."
-                    className={`flex-1 p-2 border dark:border-dark-divider rounded dark:bg-dark-editorBackground dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-400 ${
+                    className={`flex-1 p-2 border dark:border-dark-divider rounded dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-green-500 dark:focus:ring-green-400 ${
                       item.checked ? "line-through opacity-60" : ""
                     }`}
                   />
@@ -413,7 +413,7 @@ export default function BulletinDynamic({
                                 nextInput?.focus();
                               }
                             }}
-                            className="w-full h-full px-3 py-2 dark:bg-dark-editorBackground dark:text-dark-textPrimary border-none outline-none focus:bg-green-50 dark:focus:bg-green-900/20 transition-colors"
+                            className="w-full h-full px-3 py-2 dark:bg-dark-secondary dark:text-dark-textPrimary border-none outline-none focus:bg-green-50 dark:focus:bg-neutral-900/20 transition-colors"
                             placeholder={`Cell ${String.fromCharCode(
                               65 + colIndex
                             )}${rowIndex + 1}`}
@@ -451,42 +451,38 @@ export default function BulletinDynamic({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {(hasUnsavedChanges || isAutoSaving) && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                {isAutoSaving ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-3 h-3" />
-                    Unsaved changes
-                  </>
-                )}
-              </div>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={isSaving || externalIsSaving || isAutoSaving}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-green-500 dark:hover:bg-green-600"
-            >
-              {isSaving || externalIsSaving ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Save className="w-3 h-3" />
+            <div className="flex gap-2">
+              {hasUnsavedChanges && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || externalIsSaving || isAutoSaving}
+                  className={`p-2 rounded-lg transition-colors
+                    text-light-icon hover:text-light-accent hover:bg-light-hover
+                    dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
+                    ${
+                      isSaving || externalIsSaving || isAutoSaving
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
+                  aria-label="Save changes"
+                >
+                  {isSaving || externalIsSaving ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Save className="h-5 w-5" />
+                  )}
+                </button>
               )}
-              Save
-            </button>
-            {onDelete && (
-              <button
-                onClick={onDelete}
-                className="flex items-center gap-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
-              >
-                <Trash2 className="w-3 h-3" />
-                Delete
-              </button>
-            )}
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
+                  aria-label="Delete item"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <div className="mt-3">
