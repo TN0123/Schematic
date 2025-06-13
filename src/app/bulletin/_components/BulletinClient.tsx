@@ -168,6 +168,7 @@ export default function BulletinClient() {
       title?: string;
       content?: string;
       data?: { links?: LinkPreview[] } | Record<string, any>;
+      schema?: DynamicSchema;
     }
   ) => {
     // Add item to saving set

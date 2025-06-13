@@ -19,6 +19,7 @@ import {
   GitBranch,
   Workflow,
   Brain,
+  PencilRuler,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
@@ -26,6 +27,7 @@ import dynamic from "next/dynamic";
 import InteractiveTree, { TreeNode } from "./InteractiveTree";
 import InteractiveFlowchart, { FlowchartData } from "./InteractiveFlowchart";
 import InteractiveMindMap, { MindMapData } from "./InteractiveMindMap";
+import NoteRefactorModal from "./NoteRefactorModal";
 
 // Dynamically import graph component with SSR disabled due to browser dependencies
 const SimpleGraph = dynamic(() => import("./SimpleGraph"), {
@@ -88,7 +90,11 @@ interface BulletinDynamicProps {
   updatedAt: Date;
   onSave: (
     id: string,
-    updates: { title?: string; data?: Record<string, any> }
+    updates: {
+      title?: string;
+      data?: Record<string, any>;
+      schema?: DynamicSchema;
+    }
   ) => Promise<void>;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -112,10 +118,11 @@ export default function BulletinDynamic({
 }: BulletinDynamicProps) {
   const [title, setTitle] = useState(initialTitle);
   const [data, setData] = useState<Record<string, any>>(initialData || {});
-  const [schema] = useState<DynamicSchema>(initialSchema);
+  const [schema, setSchema] = useState<DynamicSchema>(initialSchema);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [isRefactorModalOpen, setIsRefactorModalOpen] = useState(false);
 
   const lastSavedState = useRef({
     title: initialTitle,
@@ -197,6 +204,32 @@ export default function BulletinDynamic({
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Failed to save:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRefactor = async (
+    newTitle: string,
+    newSchema: DynamicSchema,
+    mappedData: Record<string, any>
+  ) => {
+    setIsSaving(true);
+    try {
+      await onSave(id, {
+        title: newTitle,
+        schema: newSchema,
+        data: mappedData,
+      });
+      setTitle(newTitle);
+      setSchema(newSchema);
+      setData(mappedData);
+      lastSavedState.current = { title: newTitle, data: mappedData };
+      setHasUnsavedChanges(false);
+      setIsRefactorModalOpen(false);
+    } catch (error) {
+      console.error("Failed to refactor note:", error);
+      throw error;
     } finally {
       setIsSaving(false);
     }
@@ -564,6 +597,22 @@ export default function BulletinDynamic({
           </div>
           <div className="flex items-center gap-2">
             <div className="flex gap-2">
+              <button
+                onClick={() => setIsRefactorModalOpen(true)}
+                disabled={isSaving || externalIsSaving || isAutoSaving}
+                className={`p-2 rounded-lg transition-colors
+                  text-light-icon hover:text-light-accent hover:bg-light-hover
+                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
+                  ${
+                    isSaving || externalIsSaving || isAutoSaving
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                aria-label="Refactor note structure"
+                title="Refactor note structure"
+              >
+                <PencilRuler className="h-5 w-5" />
+              </button>
               {hasUnsavedChanges && (
                 <button
                   onClick={handleSave}
@@ -617,6 +666,16 @@ export default function BulletinDynamic({
           {schema.components.map(renderComponent)}
         </div>
       </div>
+
+      {/* Refactor Modal */}
+      <NoteRefactorModal
+        isOpen={isRefactorModalOpen}
+        onClose={() => setIsRefactorModalOpen(false)}
+        currentTitle={title}
+        currentSchema={schema}
+        currentData={data}
+        onRefactor={handleRefactor}
+      />
     </div>
   );
 }
