@@ -39,6 +39,10 @@ Available component types:
 - "date": Date picker input
 - "checklist": Interactive todo-style list with checkboxes
 - "table": Interactive table with editable cells (include rows and cols in config)
+- "graph": Interactive knowledge graph for connecting concepts and ideas
+- "tree": Hierarchical tree structure for organizing information
+- "flowchart": Process flowchart for documenting workflows
+- "mindmap": Interactive mind map for brainstorming and visual thinking
 
 Rules:
 1. Always return valid JSON with no additional text or formatting
@@ -112,6 +116,10 @@ Generate the schema now:`;
       "date",
       "checklist",
       "table",
+      "graph",
+      "tree",
+      "flowchart",
+      "mindmap",
     ];
     const components = parsedResponse.schema.components;
 

@@ -15,9 +15,45 @@ import {
   List,
   Hash,
   Table,
+  Share2,
+  GitBranch,
+  Workflow,
+  Brain,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
+import dynamic from "next/dynamic";
+import InteractiveTree, { TreeNode } from "./InteractiveTree";
+import InteractiveFlowchart, { FlowchartData } from "./InteractiveFlowchart";
+import InteractiveMindMap, { MindMapData } from "./InteractiveMindMap";
+
+// Dynamically import graph component with SSR disabled due to browser dependencies
+const SimpleGraph = dynamic(() => import("./SimpleGraph"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96 border dark:border-dark-divider rounded-lg">
+      <div className="text-center">
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Loading graph...
+        </p>
+      </div>
+    </div>
+  ),
+});
+
+// Define types for dynamic import
+export interface GraphData {
+  nodes: Array<{
+    id: string;
+    name: string;
+    color?: string;
+  }>;
+  links: Array<{
+    source: string;
+    target: string;
+  }>;
+}
 
 // Define the schema types for dynamic components
 export interface DynamicComponent {
@@ -29,7 +65,11 @@ export interface DynamicComponent {
     | "checklist"
     | "number"
     | "date"
-    | "table";
+    | "table"
+    | "graph"
+    | "tree"
+    | "flowchart"
+    | "mindmap";
   label: string;
   placeholder?: string;
   required?: boolean;
@@ -431,6 +471,78 @@ export default function BulletinDynamic({
               Click any cell to edit. Use Tab to navigate right/down, Enter to
               move to next row.
             </div>
+          </div>
+        );
+
+      case "graph":
+        return (
+          <div key={component.id} className="mb-6">
+            <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
+              <Share2 className="inline w-4 h-4 mr-1" />
+              {component.label}
+              <span className="text-xs text-gray-400 dark:text-gray-600 ml-2">
+                (Interactive knowledge graph)
+              </span>
+            </label>
+            <SimpleGraph
+              data={value || { nodes: [], links: [] }}
+              onChange={(newData) => handleDataChange(component.id, newData)}
+              height={component.config?.height || 400}
+            />
+          </div>
+        );
+
+      case "tree":
+        return (
+          <div key={component.id} className="mb-6">
+            <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
+              <GitBranch className="inline w-4 h-4 mr-1" />
+              {component.label}
+              <span className="text-xs text-gray-400 dark:text-gray-600 ml-2">
+                (Hierarchical tree structure)
+              </span>
+            </label>
+            <InteractiveTree
+              data={value || { id: "", name: "", children: [] }}
+              onChange={(newData) => handleDataChange(component.id, newData)}
+              height={component.config?.height || 400}
+            />
+          </div>
+        );
+
+      case "flowchart":
+        return (
+          <div key={component.id} className="mb-6">
+            <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
+              <Workflow className="inline w-4 h-4 mr-1" />
+              {component.label}
+              <span className="text-xs text-gray-400 dark:text-gray-600 ml-2">
+                (Interactive process flowchart)
+              </span>
+            </label>
+            <InteractiveFlowchart
+              data={value || { nodes: [] }}
+              onChange={(newData) => handleDataChange(component.id, newData)}
+              height={component.config?.height || 400}
+            />
+          </div>
+        );
+
+      case "mindmap":
+        return (
+          <div key={component.id} className="mb-6">
+            <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
+              <Brain className="inline w-4 h-4 mr-1" />
+              {component.label}
+              <span className="text-xs text-gray-400 dark:text-gray-600 ml-2">
+                (Interactive mind map)
+              </span>
+            </label>
+            <InteractiveMindMap
+              data={value || { centerNode: "", nodes: [] }}
+              onChange={(newData) => handleDataChange(component.id, newData)}
+              height={component.config?.height || 400}
+            />
           </div>
         );
 
