@@ -9,8 +9,9 @@ import {
   RefreshCw,
   UserPen,
   MessageCircle,
+  Send,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +19,11 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import ScheduleContextModal from "./ScheduleContextModal";
+
+interface ChatMessage {
+  role: "user" | "model";
+  content: string;
+}
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -50,6 +56,10 @@ export default function EventGenerationPanel({
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
     useState(false);
   const [activeTab, setActiveTab] = useState<"generate" | "chat">("generate");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
@@ -71,12 +81,62 @@ export default function EventGenerationPanel({
     }
   }, [transcript, setInputText]);
 
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
   const handleListen = () => {
     if (listening) {
       SpeechRecognition.stopListening();
     } else {
       resetTranscript();
       SpeechRecognition.startListening({ continuous: false });
+    }
+  };
+
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const newMessages: ChatMessage[] = [
+      ...chatMessages,
+      { role: "user", content: chatInput },
+    ];
+    setChatMessages(newMessages);
+    const currentChatInput = chatInput;
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch("/api/schedule/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          instructions: currentChatInput,
+          history: chatMessages,
+          userId,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to get response from AI");
+      }
+
+      const { response } = await res.json();
+      setChatMessages([...newMessages, { role: "model", content: response }]);
+    } catch (error) {
+      console.error(error);
+      setChatMessages([
+        ...newMessages,
+        {
+          role: "model",
+          content:
+            "Sorry, I'm having trouble connecting. Please try again later.",
+        },
+      ]);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -266,25 +326,76 @@ export default function EventGenerationPanel({
         )}
 
         {activeTab === "chat" && (
-          <div className="flex-1 flex flex-col gap-4">
-            {/* AI Chat Interface Placeholder */}
-            <div className="flex flex-col items-center justify-center flex-1 text-center">
-              <MessageCircle
-                size={48}
-                className="text-gray-400 dark:text-dark-textDisabled mb-4"
-              />
-              <h3 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary mb-2">
-                AI Life Assistant
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
-                Chat with your AI assistant to manage your schedule, get
-                recommendations, and more.
-              </p>
-              <div className="mt-6 w-full">
-                <div className="text-xs text-gray-400 dark:text-dark-textDisabled">
-                  Coming soon...
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            <div
+              ref={chatContainerRef}
+              className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2"
+            >
+              {chatMessages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+                      message.role === "user"
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200 dark:bg-dark-secondary"
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {chatMessages.length === 0 && !isChatLoading && (
+                <div className="flex flex-col items-center justify-center flex-1 text-center">
+                  <MessageCircle
+                    size={48}
+                    className="text-gray-400 dark:text-dark-textDisabled mb-4"
+                  />
+                  <h3 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary mb-2">
+                    AI Life Assistant
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
+                    Chat with your AI assistant to manage your schedule, get
+                    recommendations, and more.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <textarea
+                className="flex w-full p-4 pr-12 h-auto max-h-40 resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit();
+                  }
+                }}
+                placeholder="Chat with your AI assistant..."
+              />
+              <button
+                className="absolute bottom-3 right-3 p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                onClick={handleChatSubmit}
+                disabled={isChatLoading || !chatInput.trim()}
+              >
+                <Send size={16} className="text-white" />
+              </button>
             </div>
           </div>
         )}
