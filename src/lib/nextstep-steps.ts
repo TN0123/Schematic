@@ -13,10 +13,11 @@ export const steps: Tour[] = [
       },
       {
         icon: "",
-        title: "Add Events",
-        content: "Type out your events and let the AI do the rest.",
+        title: "AI-Powered Event Creation",
+        content:
+          "Simply type your schedule or tasks and let AI do the rest. Try '9-10 breakfast, 11-12 meeting' or 'I need to study, grocery shop, and exercise today - find me times that work!'",
         selector: "#event-adder",
-        side: "left",
+        side: "bottom-left",
         pointerRadius: 10,
         pointerPadding: 20,
         showSkip: true,
@@ -25,7 +26,7 @@ export const steps: Tour[] = [
         icon: "",
         title: "Add Events",
         content:
-          "You can also add events manually, through uploading a file containing your events, or through importing your events from a .ics file from another calendar app.",
+          "You can also add events by hand, through a pdf/image upload that mentions some events, or through a .ics file from another calendar app.",
         selector: "#event-menu-bar",
         side: "bottom-left",
         pointerRadius: 10,
@@ -46,7 +47,8 @@ export const steps: Tour[] = [
       {
         icon: "",
         title: "Add Goals",
-        content: "A simple way to keep track of what's important.",
+        content:
+          "A simple way for you to keep track of your goals and priorities. It is also used by the AI to help it understand your intentions and get better results.",
         selector: "#goals-panel",
         side: "right",
         pointerRadius: 0,
