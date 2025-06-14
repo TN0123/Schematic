@@ -638,7 +638,7 @@ export default function CalendarApp() {
     } else {
       setDailySummary("");
     }
-  }, [dailySummaryDate, userId, events]);
+  }, [dailySummaryDate, userId]);
 
   const fetchSuggestions = async () => {
     if (!userId) {
