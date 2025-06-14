@@ -12,9 +12,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const { response } = await scheduleChat(instructions, history, userId);
+    const { response, contextUpdated } = await scheduleChat(
+      instructions,
+      history,
+      userId
+    );
 
-    return NextResponse.json({ response }, { status: 200 });
+    return NextResponse.json({ response, contextUpdated }, { status: 200 });
   } catch (error) {
     console.error("Error in schedule chat API:", error);
     return NextResponse.json(

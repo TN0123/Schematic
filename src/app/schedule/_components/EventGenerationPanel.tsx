@@ -23,6 +23,7 @@ import ScheduleContextModal from "./ScheduleContextModal";
 interface ChatMessage {
   role: "user" | "model";
   content: string;
+  contextUpdated?: boolean;
 }
 
 interface EventGenerationPanelProps {
@@ -123,8 +124,11 @@ export default function EventGenerationPanel({
         throw new Error("Failed to get response from AI");
       }
 
-      const { response } = await res.json();
-      setChatMessages([...newMessages, { role: "model", content: response }]);
+      const { response, contextUpdated } = await res.json();
+      setChatMessages([
+        ...newMessages,
+        { role: "model", content: response, contextUpdated },
+      ]);
     } catch (error) {
       console.error(error);
       setChatMessages([
@@ -327,6 +331,20 @@ export default function EventGenerationPanel({
 
         {activeTab === "chat" && (
           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Chat Header with Context Button */}
+            <div className="flex justify-start">
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
+                onClick={() => {
+                  setIsScheduleContextModalOpen(true);
+                  setIsMobileOpen(false);
+                }}
+                title="Edit AI Context"
+              >
+                <UserPen size={20} />
+              </button>
+            </div>
+
             <div
               ref={chatContainerRef}
               className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2"
@@ -346,6 +364,15 @@ export default function EventGenerationPanel({
                     }`}
                   >
                     <p className="text-sm">{message.content}</p>
+                    {message.contextUpdated && (
+                      <div
+                        className="flex items-center justify-end mt-2 text-xs text-gray-500 dark:text-dark-textDisabled"
+                        title="AI context updated"
+                      >
+                        <UserPen size={12} className="mr-1" />
+                        <span>Context Updated</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

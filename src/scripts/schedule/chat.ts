@@ -87,9 +87,11 @@ Your output MUST be a valid JSON object.
 
   //   console.log(response);
 
-  if (response.contextUpdate && userId) {
+  const shouldUpdateContext = response.contextUpdate && userId;
+
+  if (shouldUpdateContext) {
     await updateScheduleContext(userId, response.contextUpdate);
   }
 
-  return { response: response.response };
+  return { response: response.response, contextUpdated: !!shouldUpdateContext };
 }

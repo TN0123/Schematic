@@ -92,8 +92,9 @@ export default function ScheduleContextModal({
             <p className="text-sm text-gray-600 dark:text-dark-textSecondary mb-4">
               This context helps the AI understand your scheduling preferences
               and lifestyle to provide better event suggestions and daily
-              advice. Include information like your work schedule, personal
-              preferences, routines, and any constraints.
+              advice. It is automaticaly updated during chats by the AI. Include
+              information like your work schedule, personal preferences,
+              routines, and any constraints.
             </p>
             {isLoading ? (
               <div className="h-48 flex items-center justify-center">
