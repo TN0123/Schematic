@@ -51,17 +51,59 @@ function getAvailableTimeSlots(events: Event[], day: Date): TimeSlot[] {
   return availableSlots;
 }
 
-export async function suggest_events(
-  userId: string,
-  existingEvents: Event[],
-  eventSummary: string
-) {
+export async function suggest_events(userId: string, timezone: string) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  // Fetch today's events directly from the database
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const todaysEvents = await prisma.event.findMany({
+    where: {
+      userId,
+      start: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      start: true,
+      end: true,
+    },
+  });
+
+  // Convert to the Event interface format
+  const existingEvents: Event[] = todaysEvents.map((event) => ({
+    id: event.id,
+    title: event.title,
+    start: event.start,
+    end: event.end,
+  }));
+
+  // Generate event summary for the prompt
+  const eventSummary = existingEvents
+    .map((event) => {
+      const options: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+        timeZone: timezone,
+      };
+      const start = new Date(event.start).toLocaleTimeString("en-US", options);
+      const end = new Date(event.end).toLocaleTimeString("en-US", options);
+      return `${event.title}: ${start} - ${end}`;
+    })
+    .join("\n");
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

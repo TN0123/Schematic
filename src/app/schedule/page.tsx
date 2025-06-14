@@ -650,22 +650,6 @@ export default function CalendarApp() {
       setSuggestionsLoading(true);
 
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const eventSummary = todaysEvents
-        .map((event) => {
-          const options: Intl.DateTimeFormatOptions = {
-            hour: "numeric",
-            minute: "numeric",
-            hour12: true,
-            timeZone: userTimezone,
-          };
-          const start = new Date(event.start).toLocaleTimeString(
-            "en-US",
-            options
-          );
-          const end = new Date(event.end).toLocaleTimeString("en-US", options);
-          return `${event.title}: ${start} - ${end}`;
-        })
-        .join("\n");
 
       const response = await fetch(`/api/generate-events/suggest`, {
         method: "POST",
@@ -673,9 +657,8 @@ export default function CalendarApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          existingEvents: todaysEvents,
-          eventSummary: eventSummary,
           userId: userId,
+          timezone: userTimezone,
         }),
       });
 

@@ -3,13 +3,17 @@ import { suggest_events } from "@/scripts/schedule/suggest-events";
 
 export async function POST(request: Request) {
   try {
-    const { eventSummary, userId, existingEvents } = await request.json();
+    const { userId, timezone } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    const result = await suggest_events(userId, existingEvents, eventSummary);
+    if (!timezone) {
+      return NextResponse.json({ error: "Missing timezone" }, { status: 400 });
+    }
+
+    const result = await suggest_events(userId, timezone);
     const cleanedResult = result.replace(/```json|```/g, "").trim();
     const events = JSON.parse(cleanedResult);
 
