@@ -7,6 +7,7 @@ import BulletinLinkCollection, { LinkPreview } from "./BulletinLinkCollection";
 import BulletinKanban from "./BulletinKanban";
 import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
 import DynamicNoteCreator from "./DynamicNoteCreator";
+import { KanbanCard, KanbanColumn } from "./kanban";
 import { useSession } from "next-auth/react";
 import {
   Plus,
@@ -33,17 +34,6 @@ interface QueueItem {
   id: string;
   text: string;
   priority: number;
-}
-
-interface KanbanCard {
-  id: string;
-  text: string;
-  columnId: string;
-}
-
-interface KanbanColumn {
-  id: string;
-  title: string;
 }
 
 type BulletinItem = {
@@ -226,8 +216,8 @@ export default function BulletinClient() {
                   { id: "todo", title: "To Do" },
                   { id: "in-progress", title: "In Progress" },
                   { id: "done", title: "Done" },
-                ],
-                cards: [],
+                ] as KanbanColumn[],
+                cards: [] as KanbanCard[],
               }
             : undefined,
       }),
