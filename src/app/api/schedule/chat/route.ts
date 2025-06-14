@@ -3,11 +3,11 @@ import { scheduleChat } from "@/scripts/schedule/chat";
 
 export async function POST(req: Request) {
   try {
-    const { instructions, history = [], userId } = await req.json();
+    const { instructions, history = [], userId, timezone } = await req.json();
 
-    if (!instructions || !userId) {
+    if (!instructions || !userId || !timezone) {
       return NextResponse.json(
-        { error: "Missing instructions or userId" },
+        { error: "Missing instructions, userId, or timezone" },
         { status: 400 }
       );
     }
@@ -15,7 +15,8 @@ export async function POST(req: Request) {
     const { response, contextUpdated } = await scheduleChat(
       instructions,
       history,
-      userId
+      userId,
+      timezone
     );
 
     return NextResponse.json({ response, contextUpdated }, { status: 200 });

@@ -16,14 +16,17 @@ async function updateScheduleContext(userId: string, newContext: string) {
 export async function scheduleChat(
   instructions: string,
   history: any[],
-  userId?: string
+  userId?: string,
+  timezone?: string
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
   let context = "";
-  if (userId) {
+  let goals: { title: string; type: string }[] = [];
+  let events: { title: string; start: Date; end: Date }[] = [];
+  if (userId && timezone) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -32,6 +35,29 @@ export async function scheduleChat(
       if (user && user.scheduleContext) {
         context = user.scheduleContext;
       }
+      goals = await prisma.goal.findMany({
+        where: {
+          userId,
+        },
+        select: { title: true, type: true },
+      });
+
+      const now = new Date();
+      const userTime = new Date(
+        now.toLocaleString("en-US", { timeZone: timezone })
+      );
+      const startOfDay = new Date(userTime);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      events = await prisma.event.findMany({
+        where: {
+          userId,
+          start: {
+            gte: startOfDay,
+          },
+        },
+        select: { title: true, start: true, end: true },
+      });
     } catch (e) {
       console.error("Could not find user to get schedule context");
     }
@@ -44,6 +70,24 @@ Here is the context about the user's schedule, preferences, and other relevant i
 BEGINNING OF CONTEXT
 ${context}
 END OF CONTEXT
+
+Here are the user's goals:
+${goals.map((goal) => `*   ${goal.title} (${goal.type} GOAL)`).join("\n")}
+
+Here are the user's events for the rest of the day:
+${events
+  .map((event) => {
+    const options: Intl.DateTimeFormatOptions = {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+      timeZone: timezone,
+    };
+    const start = new Date(event.start).toLocaleTimeString("en-US", options);
+    const end = new Date(event.end).toLocaleTimeString("en-US", options);
+    return `- ${event.title}: ${start} - ${end}`;
+  })
+  .join("\n")}
 
 The user is chatting with you. Your job is to be a helpful and friendly assistant.
 Based on the conversation, you must decide if the schedule context needs to be updated. For example, if the user tells you "I like to go for a run every morning" or "My work hours are 9am to 5pm", you should update the context.

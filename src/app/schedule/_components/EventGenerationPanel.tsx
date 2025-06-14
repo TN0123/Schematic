@@ -9,7 +9,7 @@ import {
   RefreshCw,
   UserPen,
   MessageCircle,
-  Send,
+  CircleArrowUp,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
@@ -111,12 +111,14 @@ export default function EventGenerationPanel({
     setIsChatLoading(true);
 
     try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const res = await fetch("/api/schedule/chat", {
         method: "POST",
         body: JSON.stringify({
           instructions: currentChatInput,
           history: chatMessages,
           userId,
+          timezone: userTimezone,
         }),
       });
 
@@ -417,11 +419,11 @@ export default function EventGenerationPanel({
                 placeholder="Chat with your AI assistant..."
               />
               <button
-                className="absolute bottom-3 right-3 p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                className="absolute bottom-3 right-3 rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-blue-500 dark:text-blue-400 transition-colors duration-200 p-2"
                 onClick={handleChatSubmit}
                 disabled={isChatLoading || !chatInput.trim()}
               >
-                <Send size={16} className="text-white" />
+                <CircleArrowUp size={20} />
               </button>
             </div>
           </div>
