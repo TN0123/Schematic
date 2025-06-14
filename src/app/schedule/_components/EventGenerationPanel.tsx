@@ -8,8 +8,10 @@ import {
   CalendarPlus,
   RefreshCw,
   UserPen,
+  MessageCircle,
+  CircleArrowUp,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +19,12 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import ScheduleContextModal from "./ScheduleContextModal";
+
+interface ChatMessage {
+  role: "user" | "model";
+  content: string;
+  contextUpdated?: boolean;
+}
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
@@ -48,6 +56,12 @@ export default function EventGenerationPanel({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
     useState(false);
+  const [activeTab, setActiveTab] = useState<"generate" | "chat">("generate");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
 
@@ -68,6 +82,13 @@ export default function EventGenerationPanel({
     }
   }, [transcript, setInputText]);
 
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
   const handleListen = () => {
     if (listening) {
       SpeechRecognition.stopListening();
@@ -77,159 +98,366 @@ export default function EventGenerationPanel({
     }
   };
 
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const newMessages: ChatMessage[] = [
+      ...chatMessages,
+      { role: "user", content: chatInput },
+    ];
+    setChatMessages(newMessages);
+    const currentChatInput = chatInput;
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const res = await fetch("/api/schedule/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          instructions: currentChatInput,
+          history: chatMessages,
+          userId,
+          timezone: userTimezone,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to get response from AI");
+      }
+
+      const { response, contextUpdated } = await res.json();
+      setChatMessages([
+        ...newMessages,
+        { role: "model", content: response, contextUpdated },
+      ]);
+    } catch (error) {
+      console.error(error);
+      setChatMessages([
+        ...newMessages,
+        {
+          role: "model",
+          content:
+            "Sorry, I'm having trouble connecting. Please try again later.",
+        },
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   return (
     <>
       <aside
         className={`hidden md:flex fixed md:relative z-30 h-full w-80 md:w-96 bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300`}
       >
-        {/* Menu Bar */}
-        <div className="flex justify-between" id="event-menu-bar">
-          {isMobileOpen && (
-            <button
-              onClick={handleToggle}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
-            >
-              <PanelRightClose
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
-            </button>
-          )}
-          <div className="flex">
-            <button
-              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-              onClick={() => {
-                setShowModal(true);
-                setIsMobileOpen(false);
-              }}
-            >
-              <Plus size={20} />
-            </button>
-            <button
-              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-              onClick={() => {
-                setIsFileUploaderModalOpen(true);
-                setIsMobileOpen(false);
-              }}
-            >
-              <FileUp size={20} />
-            </button>
-            <button
-              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-              onClick={() => {
-                setIsIcsUploaderModalOpen(true);
-                setIsMobileOpen(false);
-              }}
-            >
-              <CalendarPlus size={20} />
-            </button>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex border-b dark:border-dark-divider">
           <button
-            className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-            onClick={() => {
-              setIsScheduleContextModalOpen(true);
-              setIsMobileOpen(false);
-            }}
-            id="event-menu-bar-context-button"
-            title="Edit AI Context"
+            onClick={() => setActiveTab("generate")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all duration-200 ${
+              activeTab === "generate"
+                ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary hover:border-gray-300 dark:hover:border-dark-divider"
+            }`}
           >
-            <UserPen size={20} />
+            <CalendarPlus size={16} />
+            Generate
+          </button>
+          <button
+            onClick={() => setActiveTab("chat")}
+            id="ai-chat-tab-button"
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all duration-200 ${
+              activeTab === "chat"
+                ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary hover:border-gray-300 dark:hover:border-dark-divider"
+            }`}
+          >
+            <MessageCircle size={16} />
+            AI Chat
           </button>
         </div>
 
-        <div id="event-adder">
-          <div className="relative">
-            <textarea
-              className="flex w-full p-4 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onInput={(e) => {
-                const textarea = e.target as HTMLTextAreaElement;
-                textarea.style.height = "auto";
-                textarea.style.height = `${Math.min(
-                  textarea.scrollHeight,
-                  300
-                )}px`;
-              }}
-              placeholder="Enter your schedule here..."
-            />
-            <button
-              className={`absolute bottom-2 right-2 p-1 rounded-full transition-colors duration-200 ${
-                listening
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
-              }`}
-              onClick={handleListen}
-            >
-              <Mic
-                size={16}
-                className={
-                  listening
-                    ? "text-white"
-                    : "text-black dark:text-dark-textPrimary"
-                }
-              />
-            </button>
-          </div>
-
-          <button
-            className="w-full py-2 mt-2 rounded-lg bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            disabled={loading}
-            onClick={() => {
-              handleSubmit();
-              setIsMobileOpen(false);
-            }}
-          >
-            {loading ? "Generating..." : "Generate"}
-          </button>
-        </div>
-
-        <AnimatePresence>
-          {dailySummary && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="flex flex-col gap-2 mt-4"
-            >
-              <div className="text-center">
-                <p className="text-lg text-gray-500 font-bold dark:text-dark-textSecondary">
-                  Daily Summary
-                </p>
-                {dailySummaryDate && (
-                  <p className="text-sm text-gray-400 dark:text-dark-textDisabled">
-                    {dailySummaryDate.toLocaleDateString(undefined, {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
-                )}
-              </div>
-              {dailySummaryLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <RefreshCw
+        {/* Tab Content */}
+        {activeTab === "generate" && (
+          <>
+            {/* Menu Bar */}
+            <div className="flex justify-between" id="event-menu-bar">
+              {isMobileOpen && (
+                <button
+                  onClick={handleToggle}
+                  className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
+                >
+                  <PanelRightClose
                     size={24}
-                    className="animate-spin text-gray-500 dark:text-dark-textSecondary"
+                    className="text-gray-700 dark:text-dark-textSecondary"
                   />
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line">
-                  <span>{eventList}</span>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: (props) => <p {...props} className="mt-4" />,
+                </button>
+              )}
+              <div className="flex">
+                <button
+                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+                  onClick={() => {
+                    setShowModal(true);
+                    setIsMobileOpen(false);
+                  }}
+                >
+                  <Plus size={20} />
+                </button>
+                <button
+                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+                  onClick={() => {
+                    setIsFileUploaderModalOpen(true);
+                    setIsMobileOpen(false);
+                  }}
+                >
+                  <FileUp size={20} />
+                </button>
+                <button
+                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+                  onClick={() => {
+                    setIsIcsUploaderModalOpen(true);
+                    setIsMobileOpen(false);
+                  }}
+                >
+                  <CalendarPlus size={20} />
+                </button>
+              </div>
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+                onClick={() => {
+                  setIsScheduleContextModalOpen(true);
+                  setIsMobileOpen(false);
+                }}
+                id="event-menu-bar-context-button"
+                title="Edit AI Context"
+              >
+                <UserPen size={20} />
+              </button>
+            </div>
+
+            <div id="event-adder">
+              <div className="relative">
+                <textarea
+                  className="flex w-full p-4 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onInput={(e) => {
+                    const textarea = e.target as HTMLTextAreaElement;
+                    textarea.style.height = "auto";
+                    textarea.style.height = `${Math.min(
+                      textarea.scrollHeight,
+                      300
+                    )}px`;
+                  }}
+                  placeholder="Enter your schedule here..."
+                />
+                <button
+                  className={`absolute bottom-2 right-2 p-1 rounded-full transition-colors duration-200 ${
+                    listening
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                  }`}
+                  onClick={handleListen}
+                >
+                  <Mic
+                    size={16}
+                    className={
+                      listening
+                        ? "text-white"
+                        : "text-black dark:text-dark-textPrimary"
+                    }
+                  />
+                </button>
+              </div>
+
+              <button
+                className="w-full py-2 mt-2 rounded-lg bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                disabled={loading}
+                onClick={() => {
+                  handleSubmit();
+                  setIsMobileOpen(false);
+                }}
+              >
+                {loading ? "Generating..." : "Generate"}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {dailySummary && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="flex flex-col gap-2 mt-4"
+                >
+                  <div className="text-center">
+                    <p className="text-lg text-gray-500 font-bold dark:text-dark-textSecondary">
+                      Daily Summary
+                    </p>
+                    {dailySummaryDate && (
+                      <p className="text-sm text-gray-400 dark:text-dark-textDisabled">
+                        {dailySummaryDate.toLocaleDateString(undefined, {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  {dailySummaryLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                      <RefreshCw
+                        size={24}
+                        className="animate-spin text-gray-500 dark:text-dark-textSecondary"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line">
+                      <span>{eventList}</span>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: (props) => <p {...props} className="mt-4" />,
+                        }}
+                      >
+                        {advice}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+
+        {activeTab === "chat" && (
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Chat Header with Context Button */}
+            <div className="flex justify-start">
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
+                onClick={() => {
+                  setIsScheduleContextModalOpen(true);
+                  setIsMobileOpen(false);
+                }}
+                title="Edit AI Context"
+              >
+                <UserPen size={20} />
+              </button>
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
+                onClick={() => setChatMessages([])}
+                title="Clear chat"
+              >
+                <RefreshCw size={20} />
+              </button>
+            </div>
+
+            <div
+              ref={chatContainerRef}
+              className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2"
+            >
+              <AnimatePresence>
+                {chatMessages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                    transition={{
+                      opacity: { duration: 0.2 },
+                      layout: {
+                        type: "spring",
+                        bounce: 0.4,
+                        duration: 0.3,
+                      },
                     }}
+                    style={{
+                      originX: message.role === "user" ? 1 : 0,
+                    }}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    {advice}
-                  </ReactMarkdown>
+                    <div
+                      className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+                        message.role === "user"
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-200 dark:bg-dark-secondary"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      {message.contextUpdated && (
+                        <div
+                          className="flex items-center justify-end mt-2 text-xs text-gray-500 dark:text-dark-textDisabled"
+                          title="AI context updated"
+                        >
+                          <UserPen size={12} className="mr-1" />
+                          <span>Context Updated</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
+                  >
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </motion.div>
                 </div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {chatMessages.length === 0 && !isChatLoading && (
+                <div className="flex flex-col items-center justify-center flex-1 text-center">
+                  <MessageCircle
+                    size={48}
+                    className="text-gray-400 dark:text-dark-textDisabled mb-4"
+                  />
+                  <h3 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary mb-2">
+                    AI Life Assistant
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
+                    Chat with your AI assistant to manage your schedule, get
+                    recommendations, and more.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <textarea
+                className="flex w-full p-4 pr-12 h-auto max-h-40 resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit();
+                  }
+                }}
+                placeholder="Chat with your AI assistant..."
+              />
+              <button
+                className="absolute bottom-3 right-3 rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-blue-500 dark:text-blue-400 transition-colors duration-200 p-2"
+                onClick={handleChatSubmit}
+                disabled={isChatLoading || !chatInput.trim()}
+              >
+                <CircleArrowUp size={20} />
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
       <ScheduleContextModal
         isOpen={isScheduleContextModalOpen}

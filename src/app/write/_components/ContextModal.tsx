@@ -91,9 +91,9 @@ export default function ContextModal({
             </div>
             <p className="text-sm text-gray-600 dark:text-dark-textSecondary mb-4">
               This context helps the AI understand what you are writing about.
-              It is automatically maintained by the AI during chats to help it
-              stay up to date with your intentions when writing. Modifying it
-              will change how the AI responds and assists you.
+              It is automatically updated by the AI during chats to help it stay
+              up to date with your intentions when writing. Modifying it will
+              change how the AI responds and assists you.
             </p>
             {isLoading ? (
               <div className="h-48 flex items-center justify-center">
