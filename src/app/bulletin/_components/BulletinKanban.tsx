@@ -33,24 +33,61 @@ import {
   GripVertical,
   Pencil,
   Columns,
-  Clock,
+  Search,
+  Filter,
+  Calendar,
+  User,
+  AlertCircle,
+  CheckCircle2,
+  Circle,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
+
+type Priority = "low" | "medium" | "high";
+type CardStatus = "todo" | "in-progress" | "done" | "blocked";
 
 interface KanbanCard {
   id: string;
   text: string;
+  description?: string;
   columnId: string;
+  priority: Priority;
+  dueDate?: string;
+  assignee?: string;
+  tags: string[];
+  createdAt: string;
+  status: CardStatus;
 }
 
 interface KanbanColumn {
   id: string;
   title: string;
+  color?: string;
+  limit?: number;
+}
+
+interface ProjectStats {
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  highPriorityTasks: number;
+  completionRate: number;
 }
 
 type KanbanState = {
   columns: KanbanColumn[];
   cards: KanbanCard[];
+  filters: {
+    search: string;
+    priority: Priority | "all";
+    assignee: string | "all";
+    dueDate: "all" | "overdue" | "today" | "week";
+  };
+  showFilters: boolean;
+  showOverview: boolean;
 };
 
 type KanbanAction =
@@ -71,7 +108,10 @@ type KanbanAction =
       payload: { id: string; updates: Partial<KanbanCard> };
     }
   | { type: "REMOVE_CARD"; payload: { id: string } }
-  | { type: "SET_CARDS"; payload: KanbanCard[] };
+  | { type: "SET_CARDS"; payload: KanbanCard[] }
+  | { type: "UPDATE_FILTERS"; payload: Partial<KanbanState["filters"]> }
+  | { type: "TOGGLE_FILTERS" }
+  | { type: "TOGGLE_OVERVIEW" };
 
 function kanbanReducer(state: KanbanState, action: KanbanAction): KanbanState {
   switch (action.type) {
@@ -116,6 +156,15 @@ function kanbanReducer(state: KanbanState, action: KanbanAction): KanbanState {
       };
     case "SET_CARDS":
       return { ...state, cards: action.payload };
+    case "UPDATE_FILTERS":
+      return {
+        ...state,
+        filters: { ...state.filters, ...action.payload },
+      };
+    case "TOGGLE_FILTERS":
+      return { ...state, showFilters: !state.showFilters };
+    case "TOGGLE_OVERVIEW":
+      return { ...state, showOverview: !state.showOverview };
     default:
       return state;
   }
@@ -134,9 +183,267 @@ interface BulletinKanbanProps {
   isSaving?: boolean;
 }
 
+// Helper functions
+const getPriorityColor = (priority: Priority) => {
+  switch (priority) {
+    case "high":
+      return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+    case "medium":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+    case "low":
+      return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+    default:
+      return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200";
+  }
+};
+
+const isOverdue = (dueDate?: string) => {
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date();
+};
+
+const calculateStats = (cards: KanbanCard[]): ProjectStats => {
+  const totalTasks = cards.length;
+  const completedTasks = cards.filter((card) => card.status === "done").length;
+  const overdueTasks = cards.filter((card) => isOverdue(card.dueDate)).length;
+  const highPriorityTasks = cards.filter(
+    (card) => card.priority === "high"
+  ).length;
+  const completionRate =
+    totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  return {
+    totalTasks,
+    completedTasks,
+    overdueTasks,
+    highPriorityTasks,
+    completionRate,
+  };
+};
+
+const filterCards = (cards: KanbanCard[], filters: KanbanState["filters"]) => {
+  return cards.filter((card) => {
+    // Search filter
+    if (
+      filters.search &&
+      !card.text.toLowerCase().includes(filters.search.toLowerCase()) &&
+      !card.description?.toLowerCase().includes(filters.search.toLowerCase())
+    ) {
+      return false;
+    }
+
+    // Priority filter
+    if (filters.priority !== "all" && card.priority !== filters.priority) {
+      return false;
+    }
+
+    // Assignee filter
+    if (filters.assignee !== "all" && card.assignee !== filters.assignee) {
+      return false;
+    }
+
+    // Due date filter
+    if (filters.dueDate !== "all") {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      switch (filters.dueDate) {
+        case "overdue":
+          if (!isOverdue(card.dueDate)) return false;
+          break;
+        case "today":
+          if (
+            !card.dueDate ||
+            new Date(card.dueDate).toDateString() !== today.toDateString()
+          )
+            return false;
+          break;
+        case "week":
+          if (!card.dueDate || new Date(card.dueDate) > weekFromNow)
+            return false;
+          break;
+      }
+    }
+
+    return true;
+  });
+};
+
+// Stats Panel Component
+function StatsPanel({
+  stats,
+  isExpanded,
+  onToggle,
+}: {
+  stats: ProjectStats;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 mb-6 border dark:border-dark-divider">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold dark:text-dark-textPrimary flex items-center gap-2">
+          <BarChart3 className="w-5 h-5" />
+          Overview
+        </h3>
+        <button
+          onClick={onToggle}
+          className="p-1 hover:bg-gray-100 dark:hover:bg-dark-hover rounded transition-colors"
+          aria-label={isExpanded ? "Collapse overview" : "Expand overview"}
+        >
+          {isExpanded ? (
+            <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          ) : (
+            <ChevronRight className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          )}
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {stats.totalTasks}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Total Tasks
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {stats.completedTasks}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Completed
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {stats.overdueTasks}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Overdue
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              {stats.highPriorityTasks}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              High Priority
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {stats.completionRate.toFixed(0)}%
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Completion
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Filters Panel Component
+function FiltersPanel({
+  filters,
+  onUpdateFilters,
+  availableAssignees,
+}: {
+  filters: KanbanState["filters"];
+  onUpdateFilters: (updates: Partial<KanbanState["filters"]>) => void;
+  availableAssignees: string[];
+}) {
+  return (
+    <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 mb-4 border dark:border-dark-divider">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Search */}
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
+            Search
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={filters.search}
+              onChange={(e) => onUpdateFilters({ search: e.target.value })}
+              className="w-full pl-10 pr-3 py-2 border dark:border-dark-divider rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-background dark:text-dark-textPrimary"
+            />
+          </div>
+        </div>
+
+        {/* Priority Filter */}
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
+            Priority
+          </label>
+          <select
+            value={filters.priority}
+            onChange={(e) =>
+              onUpdateFilters({ priority: e.target.value as Priority | "all" })
+            }
+            className="w-full px-3 py-2 border dark:border-dark-divider rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-background dark:text-dark-textPrimary"
+          >
+            <option value="all">All Priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        {/* Assignee Filter */}
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
+            Assignee
+          </label>
+          <select
+            value={filters.assignee}
+            onChange={(e) => onUpdateFilters({ assignee: e.target.value })}
+            className="w-full px-3 py-2 border dark:border-dark-divider rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-background dark:text-dark-textPrimary"
+          >
+            <option value="all">All Assignees</option>
+            {availableAssignees.map((assignee) => (
+              <option key={assignee} value={assignee}>
+                {assignee}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Due Date Filter */}
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
+            Due Date
+          </label>
+          <select
+            value={filters.dueDate}
+            onChange={(e) =>
+              onUpdateFilters({
+                dueDate: e.target.value as "all" | "overdue" | "today" | "week",
+              })
+            }
+            className="w-full px-3 py-2 border dark:border-dark-divider rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-dark-background dark:text-dark-textPrimary"
+          >
+            <option value="all">All Dates</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Due Today</option>
+            <option value="week">Due This Week</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SortableCardProps {
   card: KanbanCard;
-  onChange: (text: string) => void;
+  onChange: (updates: Partial<KanbanCard>) => void;
   onRemove: () => void;
   activeId: string | null;
 }
@@ -164,6 +471,7 @@ function SortableCard({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (activeId === card.id) {
@@ -181,48 +489,170 @@ function SortableCard({
     }
   };
 
+  const priorityIcon = {
+    high: <AlertCircle className="w-3 h-3 text-red-500" />,
+    medium: <Circle className="w-3 h-3 text-yellow-500" />,
+    low: <CheckCircle2 className="w-3 h-3 text-green-500" />,
+  };
+
+  const isCardOverdue = isOverdue(card.dueDate);
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-md px-2 py-1.5 sm:py-2 border dark:border-dark-divider bg-white dark:bg-dark-secondary cursor-grab active:cursor-grabbing touch-manipulation h-12 sm:h-16"
+      className={`bg-white dark:bg-dark-secondary rounded-lg border dark:border-dark-divider shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing touch-manipulation
+        ${isCardOverdue ? "border-l-4 border-l-red-500" : ""}
+        ${isExpanded ? "min-h-32" : "min-h-16"}
+      `}
     >
-      {/* Grip Icon */}
-      <div className="flex-shrink-0" {...attributes} {...listeners}>
-        <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 dark:text-dark-icon" />
-      </div>
+      <div className="p-3">
+        {/* Card Header */}
+        <div className="flex items-start gap-2 mb-2">
+          {/* Grip Icon */}
+          <div className="flex-shrink-0 mt-1" {...attributes} {...listeners}>
+            <GripVertical className="w-3 h-3 text-gray-400 dark:text-dark-icon" />
+          </div>
 
-      {/* Card Content: Edit/View Toggle */}
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={card.text}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={() => setIsEditing(false)}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter card text..."
-          className="flex-grow bg-transparent w-full border-b dark:border-dark-divider text-center text-xs sm:text-sm focus:outline-none dark:text-dark-textPrimary"
-          aria-label="Edit card"
-          autoFocus
-        />
-      ) : (
+          {/* Card Content */}
+          <div className="flex-grow min-w-0">
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={card.text}
+                onChange={(e) => onChange({ text: e.target.value })}
+                onBlur={() => setIsEditing(false)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter task title..."
+                className="w-full bg-transparent border-b dark:border-dark-divider text-sm font-medium focus:outline-none dark:text-dark-textPrimary"
+                autoFocus
+              />
+            ) : (
+              <button
+                className="w-full text-left text-sm font-medium dark:text-dark-textPrimary focus:outline-none"
+                onClick={() => setIsEditing(true)}
+              >
+                {card.text || (
+                  <span className="italic text-gray-400">Untitled Task</span>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Remove Button */}
+          <button
+            onClick={onRemove}
+            className="text-gray-400 hover:text-red-500 flex-shrink-0"
+            aria-label="Delete card"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Card Meta Info */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            {/* Priority */}
+            <div className="flex items-center gap-1">
+              {priorityIcon[card.priority]}
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(
+                  card.priority
+                )}`}
+              >
+                {card.priority}
+              </span>
+            </div>
+
+            {/* Assignee */}
+            {card.assignee && (
+              <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                <User className="w-3 h-3" />
+                <span>{card.assignee}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Due Date */}
+          {card.dueDate && (
+            <div
+              className={`flex items-center gap-1 ${
+                isCardOverdue
+                  ? "text-red-500"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              <Calendar className="w-3 h-3" />
+              <span>{new Date(card.dueDate).toLocaleDateString()}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Tags */}
+        {card.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {card.tags.map((tag, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Expanded Details */}
+        {isExpanded && (
+          <div className="mt-3 pt-3 border-t dark:border-dark-divider">
+            <textarea
+              value={card.description || ""}
+              onChange={(e) => onChange({ description: e.target.value })}
+              placeholder="Add description..."
+              className="w-full text-xs text-gray-600 dark:text-gray-400 bg-transparent resize-none focus:outline-none"
+              rows={2}
+            />
+
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <select
+                value={card.priority}
+                onChange={(e) =>
+                  onChange({ priority: e.target.value as Priority })
+                }
+                className="text-xs border dark:border-dark-divider rounded px-2 py-1 dark:bg-dark-background dark:text-dark-textPrimary"
+              >
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+              </select>
+
+              <input
+                type="date"
+                value={card.dueDate || ""}
+                onChange={(e) => onChange({ dueDate: e.target.value })}
+                className="text-xs border dark:border-dark-divider rounded px-2 py-1 dark:bg-dark-background dark:text-dark-textPrimary"
+              />
+            </div>
+
+            <input
+              type="text"
+              value={card.assignee || ""}
+              onChange={(e) => onChange({ assignee: e.target.value })}
+              placeholder="Assignee"
+              className="w-full text-xs border dark:border-dark-divider rounded px-2 py-1 mt-2 dark:bg-dark-background dark:text-dark-textPrimary"
+            />
+          </div>
+        )}
+
+        {/* Expand/Collapse Button */}
         <button
-          className="flex-grow text-left text-xs sm:text-sm text-black text-center dark:text-dark-textPrimary focus:outline-none overflow-x-auto max-h-full"
-          onClick={() => setIsEditing(true)}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2"
         >
-          {card.text || <span className="italic text-gray-400">Untitled</span>}
+          {isExpanded ? "Less" : "More"}
         </button>
-      )}
-
-      {/* Delete */}
-      <button
-        onClick={onRemove}
-        className="text-red-400 hover:text-red-600 h-full flex-shrink-0"
-        aria-label="Delete card"
-      >
-        <X className="w-3 h-3 sm:w-4 sm:h-4" />
-      </button>
+      </div>
     </li>
   );
 }
@@ -273,6 +703,9 @@ function SortableColumn({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const cardCount = cards.length;
+  const isOverLimit = column.limit && cardCount > column.limit;
+
   return (
     <div
       ref={setNodeRef}
@@ -302,9 +735,21 @@ function SortableColumn({
             />
           ) : (
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <h3 className="font-semibold text-xs sm:text-sm dark:text-dark-textPrimary truncate flex-1">
-                {column.title}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-xs sm:text-sm dark:text-dark-textPrimary truncate">
+                  {column.title}
+                </h3>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    isOverLimit
+                      ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-200"
+                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {cardCount}
+                  {column.limit ? `/${column.limit}` : ""}
+                </span>
+              </div>
               <button
                 onClick={onEditStart}
                 className="text-gray-500 hover:text-gray-700 dark:text-dark-icon dark:hover:text-dark-accent flex-shrink-0"
@@ -335,7 +780,7 @@ function SortableColumn({
               <MemoizedSortableCard
                 key={card.id}
                 card={card}
-                onChange={(text) => onUpdateCard(card.id, { text })}
+                onChange={(updates) => onUpdateCard(card.id, updates)}
                 onRemove={() => onRemoveCard(card.id)}
                 activeId={activeId}
               />
@@ -349,6 +794,7 @@ function SortableColumn({
         onClick={() => onAddCard(column.id)}
         className="mt-4 flex items-center justify-center gap-1 px-3 py-2 border border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 text-sm rounded transition touch-manipulation"
         type="button"
+        disabled={!!isOverLimit}
       >
         <Plus className="w-4 h-4" />
         Add Card
@@ -370,17 +816,47 @@ export default function BulletinKanban({
 }: BulletinKanbanProps) {
   const [title, setTitle] = useState(initialTitle);
 
+  // Migrate old data format to new format
+  const migrateCardData = (cards: any[]): KanbanCard[] => {
+    return cards.map((card) => ({
+      id: card.id,
+      text: card.text || "",
+      description: card.description || "",
+      columnId: card.columnId,
+      priority: card.priority || "medium",
+      dueDate: card.dueDate || "",
+      assignee: card.assignee || "",
+      tags: card.tags || [],
+      createdAt: card.createdAt || new Date().toISOString(),
+      status:
+        card.status ||
+        (card.columnId === "done"
+          ? "done"
+          : card.columnId === "in-progress"
+          ? "in-progress"
+          : "todo"),
+    }));
+  };
+
   const initialState: KanbanState = {
     columns: data?.columns || [
       { id: "todo", title: "To Do" },
       { id: "in-progress", title: "In Progress" },
       { id: "done", title: "Done" },
     ],
-    cards: data?.cards || [],
+    cards: data?.cards ? migrateCardData(data.cards) : [],
+    filters: {
+      search: "",
+      priority: "all",
+      assignee: "all",
+      dueDate: "all",
+    },
+    showFilters: false,
+    showOverview: true,
   };
 
   const [state, dispatch] = useReducer(kanbanReducer, initialState);
-  const { columns, cards } = state;
+  const { columns, cards, filters, showFilters, showOverview } = state;
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -400,6 +876,21 @@ export default function BulletinKanban({
 
   const sensors = useSensors(useSensor(PointerSensor));
 
+  // Calculate project statistics
+  const stats = calculateStats(cards);
+
+  // Get available assignees for filter
+  const availableAssignees = Array.from(
+    new Set(
+      cards
+        .map((card) => card.assignee)
+        .filter((assignee): assignee is string => Boolean(assignee))
+    )
+  );
+
+  // Filter cards based on current filters
+  const filteredCards = filterCards(cards, filters);
+
   useEffect(() => {
     const titleChanged = title !== lastSaved.current.title;
     const columnsChanged =
@@ -416,6 +907,13 @@ export default function BulletinKanban({
       try {
         await onSave(id, { title: newTitle });
         lastSaved.current.title = newTitle;
+
+        // Update hasUnsavedChanges based on both title and data
+        const columnsChanged =
+          JSON.stringify(columns) !== JSON.stringify(lastSaved.current.columns);
+        const cardsChanged =
+          JSON.stringify(cards) !== JSON.stringify(lastSaved.current.cards);
+        setHasUnsavedChanges(columnsChanged || cardsChanged);
       } catch (error) {
         console.error("Failed to auto-save title:", error);
       } finally {
@@ -439,6 +937,10 @@ export default function BulletinKanban({
           await onSave(id, { data: { columns: newColumns, cards: newCards } });
           lastSaved.current.columns = newColumns;
           lastSaved.current.cards = newCards;
+
+          // Update hasUnsavedChanges based on both title and data
+          const titleChanged = title !== lastSaved.current.title;
+          setHasUnsavedChanges(titleChanged);
         } catch (error) {
           console.error("Failed to auto-save data:", error);
         } finally {
@@ -454,7 +956,23 @@ export default function BulletinKanban({
   }, [columns, cards, debouncedSaveData]);
 
   const addCard = (columnId: string) => {
-    const newCard = { id: crypto.randomUUID(), text: "", columnId };
+    const newCard: KanbanCard = {
+      id: crypto.randomUUID(),
+      text: "",
+      description: "",
+      columnId,
+      priority: "medium",
+      dueDate: "",
+      assignee: "",
+      tags: [],
+      createdAt: new Date().toISOString(),
+      status:
+        columnId === "done"
+          ? "done"
+          : columnId === "in-progress"
+          ? "in-progress"
+          : "todo",
+    };
     dispatch({ type: "ADD_CARD", payload: newCard });
     setActiveId(newCard.id);
   };
@@ -483,11 +1001,24 @@ export default function BulletinKanban({
     dispatch({ type: "REMOVE_COLUMN", payload: { id } });
   };
 
+  const updateFilters = (updates: Partial<KanbanState["filters"]>) => {
+    dispatch({ type: "UPDATE_FILTERS", payload: updates });
+  };
+
+  const toggleFilters = () => {
+    dispatch({ type: "TOGGLE_FILTERS" });
+  };
+
+  const toggleOverview = () => {
+    dispatch({ type: "TOGGLE_OVERVIEW" });
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await onSave(id, { title, data: { columns, cards } });
       lastSaved.current = { title, columns, cards };
+      setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Failed to save:", error);
     } finally {
@@ -540,8 +1071,16 @@ export default function BulletinKanban({
       } else {
         // dropping in an empty column.
         if (activeCard.columnId !== newColumnId) {
+          const newStatus: CardStatus =
+            newColumnId === "done"
+              ? "done"
+              : newColumnId === "in-progress"
+              ? "in-progress"
+              : "todo";
           const newCards = cards.map((c) =>
-            c.id === active.id ? { ...c, columnId: newColumnId } : c
+            c.id === active.id
+              ? { ...c, columnId: newColumnId, status: newStatus }
+              : c
           );
           dispatch({ type: "SET_CARDS", payload: newCards });
         }
@@ -562,8 +1101,16 @@ export default function BulletinKanban({
         });
       }
     } else {
+      const newStatus: CardStatus =
+        newColumnId === "done"
+          ? "done"
+          : newColumnId === "in-progress"
+          ? "in-progress"
+          : "todo";
       const newCards = cards.map((c) =>
-        c.id === active.id ? { ...c, columnId: newColumnId } : c
+        c.id === active.id
+          ? { ...c, columnId: newColumnId, status: newStatus }
+          : c
       );
       dispatch({
         type: "SET_CARDS",
@@ -612,9 +1159,9 @@ export default function BulletinKanban({
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="p-4 h-full flex flex-col">
         {/* Title & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 mb-4">
           <input
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 mb-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
+            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
             value={title}
             onChange={(e) => {
               const newTitle = e.target.value;
@@ -622,10 +1169,23 @@ export default function BulletinKanban({
               setHasUnsavedChanges(true);
               debouncedSaveTitle(newTitle);
             }}
-            placeholder="Untitled Kanban Board"
+            placeholder="Untitled Project Board"
             aria-label="Board title"
           />
           <div className="flex gap-2 ml-2">
+            <button
+              onClick={toggleFilters}
+              className={`p-2 rounded-lg transition-all ${
+                showFilters
+                  ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
+                  : "text-light-icon hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover"
+              }`}
+              aria-label="Toggle filters"
+              title="Filters"
+              type="button"
+            >
+              <Filter className="h-5 w-5" />
+            </button>
             <button
               onClick={addColumn}
               className="p-2 text-light-icon hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover rounded-lg transition-all"
@@ -668,6 +1228,22 @@ export default function BulletinKanban({
           </div>
         </div>
 
+        {/* Stats Panel */}
+        <StatsPanel
+          stats={stats}
+          isExpanded={showOverview}
+          onToggle={toggleOverview}
+        />
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <FiltersPanel
+            filters={filters}
+            onUpdateFilters={updateFilters}
+            availableAssignees={availableAssignees}
+          />
+        )}
+
         {/* Kanban Board */}
         <div className="relative border h-full rounded-lg p-3 flex flex-col dark:border-dark-divider overflow-y-auto">
           <div className="flex-1 overflow-x-auto">
@@ -682,50 +1258,53 @@ export default function BulletinKanban({
                   items={columns.map((col) => `column-${col.id}`)}
                   strategy={horizontalListSortingStrategy}
                 >
-                  {columns.map((column) => (
-                    <MemoizedSortableColumn
-                      key={column.id}
-                      column={column}
-                      cards={cards.filter(
-                        (card) => card.columnId === column.id
-                      )}
-                      onAddCard={addCard}
-                      onRemoveCard={removeCard}
-                      onUpdateCard={updateCard}
-                      onRemoveColumn={removeColumn}
-                      onUpdateColumn={updateColumn}
-                      isEditing={editingColumn === column.id}
-                      onEditStart={() => {
-                        setEditingColumn(column.id);
-                        setColumnNameEdits((prev) => ({
-                          ...prev,
-                          [column.id]: column.title,
-                        }));
-                      }}
-                      onEditEnd={() => {
-                        const newTitle = columnNameEdits[column.id]?.trim();
-                        if (newTitle) {
-                          updateColumn(column.id, { title: newTitle });
+                  {columns.map((column) => {
+                    const columnCards = filteredCards.filter(
+                      (card) => card.columnId === column.id
+                    );
+                    return (
+                      <MemoizedSortableColumn
+                        key={column.id}
+                        column={column}
+                        cards={columnCards}
+                        onAddCard={addCard}
+                        onRemoveCard={removeCard}
+                        onUpdateCard={updateCard}
+                        onRemoveColumn={removeColumn}
+                        onUpdateColumn={updateColumn}
+                        isEditing={editingColumn === column.id}
+                        onEditStart={() => {
+                          setEditingColumn(column.id);
+                          setColumnNameEdits((prev) => ({
+                            ...prev,
+                            [column.id]: column.title,
+                          }));
+                        }}
+                        onEditEnd={() => {
+                          const newTitle = columnNameEdits[column.id]?.trim();
+                          if (newTitle) {
+                            updateColumn(column.id, { title: newTitle });
+                          }
+                          setEditingColumn(null);
+                          setColumnNameEdits((prev) => {
+                            const copy = { ...prev };
+                            delete copy[column.id];
+                            return copy;
+                          });
+                        }}
+                        columnNameEdit={
+                          columnNameEdits[column.id] ?? column.title
                         }
-                        setEditingColumn(null);
-                        setColumnNameEdits((prev) => {
-                          const copy = { ...prev };
-                          delete copy[column.id];
-                          return copy;
-                        });
-                      }}
-                      columnNameEdit={
-                        columnNameEdits[column.id] ?? column.title
-                      }
-                      onColumnNameEditChange={(value) =>
-                        setColumnNameEdits((prev) => ({
-                          ...prev,
-                          [column.id]: value,
-                        }))
-                      }
-                      activeId={activeId}
-                    />
-                  ))}
+                        onColumnNameEditChange={(value) =>
+                          setColumnNameEdits((prev) => ({
+                            ...prev,
+                            [column.id]: value,
+                          }))
+                        }
+                        activeId={activeId}
+                      />
+                    );
+                  })}
                 </SortableContext>
               </div>
 
