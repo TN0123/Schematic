@@ -46,6 +46,17 @@ export const steps: Tour[] = [
       },
       {
         icon: "",
+        title: "AI Chat",
+        content:
+          "Click the 'AI Chat' tab to talk with an assistant that can help you manage your schedule, get recommendations, and more.",
+        selector: "#ai-chat-tab-button",
+        side: "bottom-right",
+        pointerRadius: 10,
+        pointerPadding: 20,
+        showSkip: true,
+      },
+      {
+        icon: "",
         title: "Add Goals",
         content:
           "A simple way for you to keep track of your goals and priorities. It is also used by the AI to help it understand your intentions and get better results.",
