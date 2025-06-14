@@ -345,48 +345,77 @@ export default function EventGenerationPanel({
               >
                 <UserPen size={20} />
               </button>
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
+                onClick={() => setChatMessages([])}
+                title="Clear chat"
+              >
+                <RefreshCw size={20} />
+              </button>
             </div>
 
             <div
               ref={chatContainerRef}
               className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2"
             >
-              {chatMessages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
-                      message.role === "user"
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 dark:bg-dark-secondary"
+              <AnimatePresence>
+                {chatMessages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                    transition={{
+                      opacity: { duration: 0.2 },
+                      layout: {
+                        type: "spring",
+                        bounce: 0.4,
+                        duration: 0.3,
+                      },
+                    }}
+                    style={{
+                      originX: message.role === "user" ? 1 : 0,
+                    }}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
-                    {message.contextUpdated && (
-                      <div
-                        className="flex items-center justify-end mt-2 text-xs text-gray-500 dark:text-dark-textDisabled"
-                        title="AI context updated"
-                      >
-                        <UserPen size={12} className="mr-1" />
-                        <span>Context Updated</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    <div
+                      className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+                        message.role === "user"
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-200 dark:bg-dark-secondary"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      {message.contextUpdated && (
+                        <div
+                          className="flex items-center justify-end mt-2 text-xs text-gray-500 dark:text-dark-textDisabled"
+                          title="AI context updated"
+                        >
+                          <UserPen size={12} className="mr-1" />
+                          <span>Context Updated</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               {isChatLoading && (
                 <div className="flex justify-start">
-                  <div className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
+                  >
                     <div className="typing-indicator">
                       <span></span>
                       <span></span>
                       <span></span>
                     </div>
-                  </div>
+                  </motion.div>
                 </div>
               )}
               {chatMessages.length === 0 && !isChatLoading && (
