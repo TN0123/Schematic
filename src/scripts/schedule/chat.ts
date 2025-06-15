@@ -13,6 +13,46 @@ async function updateScheduleContext(userId: string, newContext: string) {
   }
 }
 
+async function getCalendarEvents(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.error("Invalid date format provided.");
+      return { error: "Invalid date format. Please use ISO 8601 format." };
+    }
+
+    // For a single day, set end to end of day to capture all events on that day
+    // Use UTC methods to ensure we get the full day regardless of timezone
+    const endOfDay = new Date(end);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    const events = await prisma.event.findMany({
+      where: {
+        userId,
+        // Events that start before end of period AND end after start of period
+        start: {
+          lte: endOfDay,
+        },
+        end: {
+          gte: start,
+        },
+      },
+      select: { title: true, start: true, end: true },
+    });
+
+    return events;
+  } catch (error) {
+    console.error("Error fetching calendar events:", error);
+    return { error: "Failed to fetch calendar events." };
+  }
+}
+
 export async function scheduleChat(
   instructions: string,
   history: any[],
@@ -64,17 +104,15 @@ export async function scheduleChat(
   }
 
   const systemPrompt = `
-You are an AI life assistant. A user is chatting with you to manage their schedule.
+You are an AI life assistant helping a user manage their schedule.
+Current date: ${new Date().toISOString()}.
 
-Here is the context about the user's schedule, preferences, and other relevant information. Use this to inform your responses and be a helpful assistant.
-BEGINNING OF CONTEXT
-${context}
-END OF CONTEXT
+User context: ${context}
 
-Here are the user's goals:
-${goals.map((goal) => `*   ${goal.title} (${goal.type} GOAL)`).join("\n")}
+User goals:
+${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}
 
-Here are the user's events for the rest of the day:
+Today's remaining events:
 ${events
   .map((event) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -89,23 +127,65 @@ ${events
   })
   .join("\n")}
 
-The user is chatting with you. Your job is to be a helpful and friendly assistant.
-Based on the conversation, you must decide if the schedule context needs to be updated. For example, if the user tells you "I like to go for a run every morning" or "My work hours are 9am to 5pm", you should update the context.
+FUNCTION CALLING RULES:
+- If user mentions "yesterday" → call get_calendar_events with startDate and endDate both set to ${
+    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  }
+- If user mentions "tomorrow" → call get_calendar_events with tomorrow's date  
+- If user mentions any specific date → call get_calendar_events with that date
+- DO NOT say "I need to retrieve" - just call the function immediately
 
-You must return a JSON object with two properties:
-- "response": (string) Your chat response to the user. This will be displayed in the chat.
-- "contextUpdate": (string | null) If you think the context needs to be updated based on the conversation, provide the new, updated context here. If not, this should be null. The new context should be a complete replacement for the old one, so make sure to include all relevant information, both old and new.
+Today: ${new Date().toISOString().split("T")[0]}
+Yesterday: ${
+    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  }
 
-Your response to the user should be natural and conversational. Do not mention the context update in your response to the user.
-Do not use Markdown in your "response" to the user.
-Your output MUST be a valid JSON object.
+WORKFLOW:
+1. If user asks about non-today dates: First call get_calendar_events function
+2. After getting function results: Return JSON response with the information
+3. If no function call needed: Return JSON response directly
+
+JSON format:
+{
+  "response": "your conversational response to the user",
+  "contextUpdate": null or "updated context if user shared new preferences"
+}
 `;
 
   const userPrompt = instructions;
 
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const geminiModel = genAI.getGenerativeModel({
+
+  const tools = [
+    {
+      functionDeclarations: [
+        {
+          name: "get_calendar_events",
+          description:
+            "Get calendar events for a specific date or date range. Use this when user asks about their schedule for any day other than today.",
+          parameters: {
+            type: "object",
+            properties: {
+              startDate: {
+                type: "string",
+                description: "Start date in ISO 8601 format (YYYY-MM-DD)",
+              },
+              endDate: {
+                type: "string",
+                description: "End date in ISO 8601 format (YYYY-MM-DD)",
+              },
+            },
+            required: ["startDate", "endDate"],
+          },
+        },
+      ],
+    },
+  ];
+
+  const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
+    systemInstruction: systemPrompt,
+    tools: tools,
   });
 
   const formattedHistory = history.map(
@@ -115,21 +195,75 @@ Your output MUST be a valid JSON object.
     })
   );
 
-  const chatSession = geminiModel.startChat({
-    history: [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      ...formattedHistory,
-    ],
+  const chatSession = model.startChat({
+    history: formattedHistory,
     generationConfig: {
-      responseMimeType: "application/json",
+      temperature: 0, // Make responses more deterministic
     },
   });
 
-  const result = await chatSession.sendMessage(userPrompt);
-  const responseText = await result.response.text();
-  const response = JSON.parse(responseText);
+  let result = await chatSession.sendMessage(userPrompt);
 
-  //   console.log(response);
+  let _continue = true;
+  while (_continue) {
+    const toolCalls = result.response.functionCalls();
+
+    if (toolCalls && toolCalls.length > 0) {
+      const toolCall = toolCalls[0];
+      const { name, args } = toolCall;
+      if (name === "get_calendar_events" && userId) {
+        const { startDate, endDate } = args;
+        const toolResult = await getCalendarEvents(userId, startDate, endDate);
+
+        // Check if result has an error property
+        if (
+          toolResult &&
+          typeof toolResult === "object" &&
+          "error" in toolResult
+        ) {
+          console.error("Error in get_calendar_events:", toolResult.error);
+        }
+
+        // Send the function response back to the model
+        const functionResponseMessage = `Function ${name} returned: ${JSON.stringify(
+          toolResult
+        )}`;
+        result = await chatSession.sendMessage(functionResponseMessage);
+      } else {
+        _continue = false;
+      }
+    } else {
+      _continue = false;
+    }
+  }
+
+  const responseText = result.response.text();
+
+  if (!responseText || responseText.trim() === "") {
+    console.error("Empty response text received");
+    return {
+      response: "I apologize, but I couldn't process your request properly.",
+      contextUpdated: false,
+    };
+  }
+
+  let response;
+  try {
+    // Strip markdown code blocks if present
+    const cleanedResponseText = responseText
+      .replace(/^```json\s*/, "")
+      .replace(/\s*```$/, "")
+      .trim();
+
+    response = JSON.parse(cleanedResponseText);
+  } catch (error) {
+    console.error("Failed to parse JSON response:", error);
+    return {
+      response:
+        "I apologize, but I encountered an error processing your request.",
+      contextUpdated: false,
+    };
+  }
 
   const shouldUpdateContext = response.contextUpdate && userId;
 
