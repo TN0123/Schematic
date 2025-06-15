@@ -16,7 +16,8 @@ async function updateScheduleContext(userId: string, newContext: string) {
 async function getCalendarEvents(
   userId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  timezone?: string
 ) {
   try {
     const start = new Date(startDate);
@@ -27,20 +28,25 @@ async function getCalendarEvents(
       return { error: "Invalid date format. Please use ISO 8601 format." };
     }
 
-    // For a single day, set end to end of day to capture all events on that day
-    // Use UTC methods to ensure we get the full day regardless of timezone
-    const endOfDay = new Date(end);
-    endOfDay.setUTCHours(23, 59, 59, 999);
+    // Convert user's local date to proper UTC boundaries
+    // If timezone is provided, use it to set proper day boundaries
+    let startUTC: Date;
+    let endUTC: Date;
+
+    // Create proper day boundaries - start of day to end of day
+    // Since the AI now provides timezone-aware dates, we can use them directly
+    startUTC = new Date(`${startDate}T00:00:00.000Z`);
+    endUTC = new Date(`${endDate}T23:59:59.999Z`);
 
     const events = await prisma.event.findMany({
       where: {
         userId,
         // Events that start before end of period AND end after start of period
         start: {
-          lte: endOfDay,
+          lte: endUTC,
         },
         end: {
-          gte: start,
+          gte: startUTC,
         },
       },
       select: { title: true, start: true, end: true },
@@ -66,6 +72,17 @@ export async function scheduleChat(
   let context = "";
   let goals: { title: string; type: string }[] = [];
   let events: { title: string; start: Date; end: Date }[] = [];
+
+  // Calculate dates in user's timezone
+  const now = new Date();
+  const userNow = new Date(
+    now.toLocaleString("en-US", { timeZone: timezone || "UTC" })
+  );
+  const yesterdayInUserTz = new Date(userNow);
+  yesterdayInUserTz.setDate(yesterdayInUserTz.getDate() - 1);
+  const tomorrowInUserTz = new Date(userNow);
+  tomorrowInUserTz.setDate(tomorrowInUserTz.getDate() + 1);
+
   if (userId && timezone) {
     try {
       const user = await prisma.user.findUnique({
@@ -82,11 +99,7 @@ export async function scheduleChat(
         select: { title: true, type: true },
       });
 
-      const now = new Date();
-      const userTime = new Date(
-        now.toLocaleString("en-US", { timeZone: timezone })
-      );
-      const startOfDay = new Date(userTime);
+      const startOfDay = new Date(userNow);
       startOfDay.setHours(0, 0, 0, 0);
 
       events = await prisma.event.findMany({
@@ -129,16 +142,14 @@ ${events
 
 FUNCTION CALLING RULES:
 - If user mentions "yesterday" → call get_calendar_events with startDate and endDate both set to ${
-    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+    yesterdayInUserTz.toISOString().split("T")[0]
   }
 - If user mentions "tomorrow" → call get_calendar_events with tomorrow's date  
 - If user mentions any specific date → call get_calendar_events with that date
 - DO NOT say "I need to retrieve" - just call the function immediately
 
-Today: ${new Date().toISOString().split("T")[0]}
-Yesterday: ${
-    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  }
+Today: ${userNow.toISOString().split("T")[0]}
+Yesterday: ${yesterdayInUserTz.toISOString().split("T")[0]}
 
 WORKFLOW:
 1. If user asks about non-today dates: First call get_calendar_events function
@@ -219,7 +230,12 @@ JSON format:
       const { name, args } = toolCall;
       if (name === "get_calendar_events" && userId) {
         const { startDate, endDate } = args;
-        const toolResult = await getCalendarEvents(userId, startDate, endDate);
+        const toolResult = await getCalendarEvents(
+          userId,
+          startDate,
+          endDate,
+          timezone
+        );
 
         // Track this tool call for UI display
         const startDateFormatted = new Date(startDate).toLocaleDateString(
