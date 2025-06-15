@@ -238,16 +238,20 @@ JSON format:
         );
 
         // Track this tool call for UI display
-        const startDateFormatted = new Date(startDate).toLocaleDateString(
-          "en-US",
-          {
-            month: "numeric",
-            day: "numeric",
-          }
-        );
-        const endDateFormatted = new Date(endDate).toLocaleDateString("en-US", {
+        // Use the user's timezone for proper date formatting
+        const startDateFormatted = new Date(
+          startDate + "T12:00:00"
+        ).toLocaleDateString("en-US", {
           month: "numeric",
           day: "numeric",
+          timeZone: timezone,
+        });
+        const endDateFormatted = new Date(
+          endDate + "T12:00:00"
+        ).toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          timeZone: timezone,
         });
 
         let description = `Read events from ${startDateFormatted}`;
