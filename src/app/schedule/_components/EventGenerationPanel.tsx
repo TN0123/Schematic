@@ -10,6 +10,7 @@ import {
   UserPen,
   MessageCircle,
   CircleArrowUp,
+  Eye,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
@@ -24,6 +25,10 @@ interface ChatMessage {
   role: "user" | "model";
   content: string;
   contextUpdated?: boolean;
+  toolCalls?: Array<{
+    name: string;
+    description: string;
+  }>;
 }
 
 interface EventGenerationPanelProps {
@@ -126,10 +131,10 @@ export default function EventGenerationPanel({
         throw new Error("Failed to get response from AI");
       }
 
-      const { response, contextUpdated } = await res.json();
+      const { response, contextUpdated, toolCalls } = await res.json();
       setChatMessages([
         ...newMessages,
-        { role: "model", content: response, contextUpdated },
+        { role: "model", content: response, contextUpdated, toolCalls },
       ]);
     } catch (error) {
       console.error(error);
@@ -390,15 +395,31 @@ export default function EventGenerationPanel({
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
-                      {message.contextUpdated && (
-                        <div
-                          className="flex items-center justify-end mt-2 text-xs text-gray-500 dark:text-dark-textDisabled"
-                          title="AI context updated"
-                        >
-                          <UserPen size={12} className="mr-1" />
-                          <span>Context Updated</span>
-                        </div>
-                      )}
+                      <div className="flex flex-col gap-1 mt-2">
+                        {message.toolCalls && message.toolCalls.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {message.toolCalls.map((toolCall, toolIndex) => (
+                              <div
+                                key={toolIndex}
+                                className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
+                                title={`Tool used: ${toolCall.name}`}
+                              >
+                                <Eye size={10} className="mr-1" />
+                                <span>{toolCall.description}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {message.contextUpdated && (
+                          <div
+                            className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled"
+                            title="AI context updated"
+                          >
+                            <UserPen size={12} className="mr-1" />
+                            <span>Context Updated</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))}

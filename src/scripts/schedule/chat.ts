@@ -204,6 +204,12 @@ JSON format:
 
   let result = await chatSession.sendMessage(userPrompt);
 
+  // Track tool calls for UI display
+  const toolCallsExecuted: Array<{
+    name: string;
+    description: string;
+  }> = [];
+
   let _continue = true;
   while (_continue) {
     const toolCalls = result.response.functionCalls();
@@ -214,6 +220,29 @@ JSON format:
       if (name === "get_calendar_events" && userId) {
         const { startDate, endDate } = args;
         const toolResult = await getCalendarEvents(userId, startDate, endDate);
+
+        // Track this tool call for UI display
+        const startDateFormatted = new Date(startDate).toLocaleDateString(
+          "en-US",
+          {
+            month: "numeric",
+            day: "numeric",
+          }
+        );
+        const endDateFormatted = new Date(endDate).toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+        });
+
+        let description = `Read events from ${startDateFormatted}`;
+        if (startDate !== endDate) {
+          description = `Read events from ${startDateFormatted} - ${endDateFormatted}`;
+        }
+
+        toolCallsExecuted.push({
+          name: "get_calendar_events",
+          description,
+        });
 
         // Check if result has an error property
         if (
@@ -271,5 +300,9 @@ JSON format:
     await updateScheduleContext(userId, response.contextUpdate);
   }
 
-  return { response: response.response, contextUpdated: !!shouldUpdateContext };
+  return {
+    response: response.response,
+    contextUpdated: !!shouldUpdateContext,
+    toolCalls: toolCallsExecuted,
+  };
 }
