@@ -158,7 +158,7 @@ WORKFLOW:
 
 JSON format:
 {
-  "response": "your conversational response to the user",
+  "response": "your conversational response to the user. Whenever you mention times use 12 hour format",
   "contextUpdate": null or "updated context if user shared new preferences"
 }
 `;
