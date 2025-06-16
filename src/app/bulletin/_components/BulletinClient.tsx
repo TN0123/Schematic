@@ -15,8 +15,8 @@ import {
   ClipboardList,
   NotepadText,
   Logs,
-  PanelLeftClose,
-  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Link,
   Columns,
   Search,
@@ -278,10 +278,140 @@ export default function BulletinClient() {
 
   return (
     <div className="h-screen flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
+      {/* Mobile button */}
+      <button
+        className={`md:hidden fixed top-4 right-20 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
+          isSidebarOpen ? "hidden" : "block"
+        }`}
+        onClick={() => setIsSidebarOpen(true)}
+      >
+        <PanelRightOpen className="w-6 h-6" />
+      </button>
+
+      {/* Main content */}
+      <div className="flex-1">
+        {loading ? (
+          <AnimatePresence>
+            {loading && (
+              <motion.div
+                className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-light-secondary to-light-tertiary bg-opacity-90 dark:from-dark-primary dark:to-dark-secondary"
+                initial={{ opacity: 0, scale: 1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              >
+                <Loader2
+                  className="animate-spin text-light-icon dark:text-dark-textSecondary"
+                  size={48}
+                />
+                <p className="mt-4 text-light-heading font-medium text-lg dark:text-dark-textSecondary">
+                  Loading notes...
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        ) : (
+          <>
+            {items.map((item) => {
+              if (item.id !== expandedItemId) return null;
+
+              switch (item.type) {
+                case "todo":
+                  return (
+                    <BulletinTodo
+                      key={item.id}
+                      id={item.id}
+                      title={item.title}
+                      data={item.data}
+                      updatedAt={item.updatedAt}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                      isSaving={savingItems.has(item.id)}
+                    />
+                  );
+                case "kanban":
+                  return (
+                    <BulletinKanban
+                      key={item.id}
+                      id={item.id}
+                      title={item.title}
+                      data={item.data}
+                      updatedAt={item.updatedAt}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                      isSaving={savingItems.has(item.id)}
+                    />
+                  );
+                case "link-collection":
+                  return (
+                    <BulletinLinkCollection
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialLinks={item.data?.links}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                    />
+                  );
+                case "dynamic":
+                  return (
+                    <BulletinDynamic
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialSchema={item.schema}
+                      initialData={item.data}
+                      updatedAt={item.updatedAt}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                      isSaving={savingItems.has(item.id)}
+                    />
+                  );
+                case "text":
+                default:
+                  return (
+                    <BulletinNote
+                      key={item.id}
+                      id={item.id}
+                      initialTitle={item.title}
+                      initialContent={item.content}
+                      updatedAt={item.updatedAt}
+                      onSave={saveItem}
+                      onDelete={() => {
+                        deleteItem(item.id);
+                      }}
+                      isSaving={savingItems.has(item.id)}
+                    />
+                  );
+              }
+            })}
+
+            {expandedItemId === null && (
+              <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
+                <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
+                  No note selected
+                </p>
+                <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
+                  Tap on a note from the sidebar or create a new note
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-50 top-0 left-16 md:left-0 h-full bg-white dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        className={`fixed md:static z-50 top-0 right-16 md:right-0 h-full bg-white dark:bg-dark-background dark:text-dark-textPrimary md:border-l md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"
         } ${
           isCollapsed ? "md:w-14" : "md:w-80"
         } w-[calc(100%-4rem)] flex flex-col`}
@@ -296,7 +426,7 @@ export default function BulletinClient() {
               onClick={() => setIsSidebarOpen(false)}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover"
             >
-              <PanelLeftClose className="w-6 h-6" />
+              <PanelRightClose className="w-6 h-6" />
             </button>
           </div>
 
@@ -312,12 +442,12 @@ export default function BulletinClient() {
                 className="p-2 hidden md:block rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
               >
                 {isCollapsed ? (
-                  <PanelLeftOpen
+                  <PanelRightOpen
                     size={24}
                     className="text-gray-700 dark:text-dark-textSecondary"
                   />
                 ) : (
-                  <PanelLeftClose
+                  <PanelRightClose
                     size={24}
                     className="text-gray-700 dark:text-dark-textSecondary"
                   />
@@ -536,138 +666,10 @@ export default function BulletinClient() {
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden left-16"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden right-16"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-
-      <button
-        className={`md:hidden fixed top-4 left-20 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
-          isSidebarOpen ? "hidden" : "block"
-        }`}
-        onClick={() => setIsSidebarOpen(true)}
-      >
-        <PanelLeftOpen className="w-6 h-6" />
-      </button>
-      {/* Main content */}
-      <div className="flex-1">
-        {loading ? (
-          <AnimatePresence>
-            {loading && (
-              <motion.div
-                className="absolute inset-0 flex flex-col justify-center items-center bg-gradient-to-b from-light-secondary to-light-tertiary bg-opacity-90 dark:from-dark-primary dark:to-dark-secondary"
-                initial={{ opacity: 0, scale: 1 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-              >
-                <Loader2
-                  className="animate-spin text-light-icon dark:text-dark-textSecondary"
-                  size={48}
-                />
-                <p className="mt-4 text-light-heading font-medium text-lg dark:text-dark-textSecondary">
-                  Loading notes...
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        ) : (
-          <>
-            {items.map((item) => {
-              if (item.id !== expandedItemId) return null;
-
-              switch (item.type) {
-                case "todo":
-                  return (
-                    <BulletinTodo
-                      key={item.id}
-                      id={item.id}
-                      title={item.title}
-                      data={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "kanban":
-                  return (
-                    <BulletinKanban
-                      key={item.id}
-                      id={item.id}
-                      title={item.title}
-                      data={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "link-collection":
-                  return (
-                    <BulletinLinkCollection
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialLinks={item.data?.links}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
-                    />
-                  );
-                case "dynamic":
-                  return (
-                    <BulletinDynamic
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialSchema={item.schema}
-                      initialData={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "text":
-                default:
-                  return (
-                    <BulletinNote
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialContent={item.content}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-              }
-            })}
-
-            {expandedItemId === null && (
-              <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
-                <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
-                  No note selected
-                </p>
-                <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
-                  Tap on a note from the sidebar or create a new note
-                </p>
-              </div>
-            )}
-          </>
-        )}
-      </div>
 
       {/* Dynamic Note Creator Modal */}
       <DynamicNoteCreator
