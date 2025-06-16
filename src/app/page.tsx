@@ -48,7 +48,7 @@ export default async function Home() {
       }),
       prisma.bulletin.findMany({
         where: { userId },
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         take: 3,
         select: { title: true, id: true },
       }),
