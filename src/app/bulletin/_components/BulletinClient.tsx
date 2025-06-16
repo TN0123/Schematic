@@ -283,7 +283,7 @@ export default function BulletinClient() {
         className={`fixed md:static z-50 top-0 left-16 md:left-0 h-full bg-white dark:bg-dark-background dark:text-dark-textPrimary md:border-r md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         } ${
-          isCollapsed ? "md:w-14" : "md:w-1/4"
+          isCollapsed ? "md:w-14" : "md:w-80"
         } w-[calc(100%-4rem)] flex flex-col`}
       >
         <div className="p-4">
@@ -550,7 +550,7 @@ export default function BulletinClient() {
         <PanelLeftOpen className="w-6 h-6" />
       </button>
       {/* Main content */}
-      <div className="w-full md:w-3/4 flex-1">
+      <div className="flex-1">
         {loading ? (
           <AnimatePresence>
             {loading && (
