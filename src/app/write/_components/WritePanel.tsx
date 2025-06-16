@@ -141,6 +141,7 @@ export default function WritePanel({
       setChanges(data.result[1]);
       setInstructions("");
       setHistory(data.history);
+      setInstructions("");
     } catch (error) {
       console.error(error);
     }
@@ -333,6 +334,12 @@ export default function WritePanel({
                   textarea.scrollHeight,
                   200
                 )}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
               }}
               placeholder="Ask anything"
               rows={3}
