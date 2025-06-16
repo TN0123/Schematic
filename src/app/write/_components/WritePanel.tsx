@@ -7,7 +7,7 @@ import {
   UserPen,
   Info,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import ContextModal from "./ContextModal";
@@ -90,10 +90,19 @@ export default function WritePanel({
   >([]);
   const [isImproving, setIsImproving] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     onModelChange(selectedModel);
   }, [selectedModel, onModelChange]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
@@ -107,6 +116,7 @@ export default function WritePanel({
 
     const userMessage = { message: instructions, role: "user" as const };
     setMessages((prev) => [...prev, userMessage]);
+    setInstructions("");
 
     try {
       const response = await fetch("/api/chat", {
@@ -139,9 +149,7 @@ export default function WritePanel({
       setLastRequest(requestPayload);
       setMessages((prev) => [...prev, assistantMessage]);
       setChanges(data.result[1]);
-      setInstructions("");
       setHistory(data.history);
-      setInstructions("");
     } catch (error) {
       console.error(error);
     }
@@ -447,6 +455,7 @@ export default function WritePanel({
             {messages.map((msg, index) => (
               <Message key={index} message={msg.message} role={msg.role} />
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </div>
       )}
