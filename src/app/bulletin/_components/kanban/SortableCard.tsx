@@ -118,11 +118,19 @@ export function SortableCard({
             <div className="flex items-center gap-1">
               <PriorityIcon className="w-3 h-3 text-current" />
               <span
-                className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(
-                  card.priority
-                )}`}
+                className={`px-1 rounded-full text-[10px] bg-gray-100 dark:bg-neutral-700 ${
+                  card.priority === "high"
+                    ? "text-red-600 dark:text-red-400"
+                    : card.priority === "medium"
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-green-600 dark:text-green-400"
+                }`}
               >
-                {card.priority}
+                {card.priority === "high"
+                  ? "H"
+                  : card.priority === "medium"
+                  ? "M"
+                  : "L"}
               </span>
             </div>
 
