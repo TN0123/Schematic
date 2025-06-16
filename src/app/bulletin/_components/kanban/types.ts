@@ -39,7 +39,6 @@ export type KanbanState = {
     dueDate: "all" | "overdue" | "today" | "week";
   };
   showFilters: boolean;
-  showOverview: boolean;
 };
 
 export type KanbanAction =
@@ -62,8 +61,7 @@ export type KanbanAction =
   | { type: "REMOVE_CARD"; payload: { id: string } }
   | { type: "SET_CARDS"; payload: KanbanCard[] }
   | { type: "UPDATE_FILTERS"; payload: Partial<KanbanState["filters"]> }
-  | { type: "TOGGLE_FILTERS" }
-  | { type: "TOGGLE_OVERVIEW" };
+  | { type: "TOGGLE_FILTERS" };
 
 export interface BulletinKanbanProps {
   id: string;

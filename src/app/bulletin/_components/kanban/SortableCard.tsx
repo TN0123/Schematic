@@ -116,7 +116,6 @@ export function SortableCard({
           <div className="flex items-center gap-2">
             {/* Priority */}
             <div className="flex items-center gap-1">
-              <PriorityIcon className="w-3 h-3 text-current" />
               <span
                 className={`px-1 rounded-full text-[10px] bg-gray-100 dark:bg-neutral-700 ${
                   card.priority === "high"

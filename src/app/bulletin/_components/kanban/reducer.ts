@@ -53,8 +53,7 @@ export function kanbanReducer(
       };
     case "TOGGLE_FILTERS":
       return { ...state, showFilters: !state.showFilters };
-    case "TOGGLE_OVERVIEW":
-      return { ...state, showOverview: !state.showOverview };
+
     default:
       return state;
   }

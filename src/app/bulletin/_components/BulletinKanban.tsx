@@ -55,11 +55,10 @@ export default function BulletinKanban({
       dueDate: "all",
     },
     showFilters: false,
-    showOverview: true,
   };
 
   const [state, dispatch] = useReducer(kanbanReducer, initialState);
-  const { columns, cards, filters, showFilters, showOverview } = state;
+  const { columns, cards, filters, showFilters } = state;
 
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -210,10 +209,6 @@ export default function BulletinKanban({
 
   const toggleFilters = () => {
     dispatch({ type: "TOGGLE_FILTERS" });
-  };
-
-  const toggleOverview = () => {
-    dispatch({ type: "TOGGLE_OVERVIEW" });
   };
 
   const handleSave = async () => {
@@ -432,11 +427,7 @@ export default function BulletinKanban({
         </div>
 
         {/* Stats Panel */}
-        <StatsPanel
-          stats={stats}
-          isExpanded={showOverview}
-          onToggle={toggleOverview}
-        />
+        <StatsPanel stats={stats} />
 
         {/* Filters Panel */}
         {showFilters && (
