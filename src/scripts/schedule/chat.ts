@@ -151,6 +151,22 @@ FUNCTION CALLING RULES:
 Today: ${userNow.toISOString().split("T")[0]}
 Yesterday: ${yesterdayInUserTz.toISOString().split("T")[0]}
 
+CONTEXT UPDATE RULES:
+You must automatically detect when the user shares information that should be saved to their context. Look for:
+- Daily routines, habits, or patterns (wake up time, work hours, meal times, etc.)
+- Scheduling preferences (preferred meeting times, break preferences, etc.)
+- Personal constraints (commute time, family obligations, etc.)
+- Work patterns (focus time preferences, meeting preferences, etc.)
+- Location information (work from home days, office location, etc.)
+- Health or wellness routines (exercise time, sleep schedule, etc.)
+- Goals (work goals, personal goals, etc.)
+
+CRITICAL: When updating context, make INCREMENTAL changes only:
+- If the existing context already contains related information, modify or add to it rather than replacing it
+- Preserve all existing context unless it directly contradicts new information
+- Add new information by appending or integrating it with existing content
+- Only replace specific pieces of information that are being updated
+
 WORKFLOW:
 1. If user asks about non-today dates: First call get_calendar_events function
 2. After getting function results: Return JSON response with the information
@@ -159,7 +175,7 @@ WORKFLOW:
 JSON format:
 {
   "response": "your conversational response to the user. Whenever you mention times use 12 hour format",
-  "contextUpdate": null or "updated context if user shared new preferences"
+  "contextUpdate": null or "incrementally updated context preserving existing information"
 }
 `;
 
