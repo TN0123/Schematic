@@ -21,6 +21,8 @@ import {
   Columns,
   Search,
   Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -50,6 +52,89 @@ type BulletinItem = {
   | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
 );
 
+// Confirmation Modal Component
+function DeleteConfirmationModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  itemTitle,
+  isDeleting,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  itemTitle: string;
+  isDeleting: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-md w-full p-6"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Delete Note
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
+                This action cannot be undone
+              </p>
+            </div>
+          </div>
+
+          <p className="text-gray-700 dark:text-dark-textPrimary mb-6">
+            Are you sure you want to delete{" "}
+            <span className="font-medium">"{itemTitle || "Untitled"}"</span>?
+          </p>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              disabled={isDeleting}
+              className="px-4 py-2 text-gray-700 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isDeleting}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export default function BulletinClient() {
   const [items, setItems] = useState<BulletinItem[]>([]);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -63,6 +148,12 @@ export default function BulletinClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
   const [showDynamicCreator, setShowDynamicCreator] = useState(false);
+
+  // Delete confirmation modal state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<BulletinItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -196,6 +287,45 @@ export default function BulletinClient() {
     }
   };
 
+  const handleDeleteRequest = (id: string) => {
+    const item = items.find((item) => item.id === id);
+    if (item) {
+      setItemToDelete(item);
+      setShowDeleteConfirmation(true);
+    }
+  };
+
+  const deleteItem = async (id: string) => {
+    setIsDeleting(true);
+
+    try {
+      const newItems = items.filter((item) => item.id !== id);
+      setItems(newItems);
+
+      if (expandedItemId === id) {
+        if (newItems.length > 0) {
+          const newExpandedId = newItems[0].id;
+          setExpandedItemId(newExpandedId);
+          router.replace(`${pathname}?noteId=${newExpandedId}`);
+        } else {
+          setExpandedItemId(null);
+          router.replace(pathname);
+        }
+      }
+
+      await fetch(`/api/bulletins/${id}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      console.error("Failed to delete item:", error);
+      // Optionally, you could revert the UI state here and show an error message
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirmation(false);
+      setItemToDelete(null);
+    }
+  };
+
   const addItem = async (type = "text") => {
     const response = await fetch("/api/bulletins", {
       method: "POST",
@@ -246,26 +376,6 @@ export default function BulletinClient() {
     setItems([...items, newBulletin]);
     setExpandedItemId(newBulletin.id);
     router.push(`${pathname}?noteId=${newBulletin.id}`);
-  };
-
-  const deleteItem = async (id: string) => {
-    const newItems = items.filter((item) => item.id !== id);
-    setItems(newItems);
-
-    if (expandedItemId === id) {
-      if (newItems.length > 0) {
-        const newExpandedId = newItems[0].id;
-        setExpandedItemId(newExpandedId);
-        router.replace(`${pathname}?noteId=${newExpandedId}`);
-      } else {
-        setExpandedItemId(null);
-        router.replace(pathname);
-      }
-    }
-
-    await fetch(`/api/bulletins/${id}`, {
-      method: "DELETE",
-    });
   };
 
   const stripHtml = (html: string) => {
@@ -325,9 +435,7 @@ export default function BulletinClient() {
                       data={item.data}
                       updatedAt={item.updatedAt}
                       onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
+                      onDelete={() => handleDeleteRequest(item.id)}
                       isSaving={savingItems.has(item.id)}
                     />
                   );
@@ -340,9 +448,7 @@ export default function BulletinClient() {
                       data={item.data}
                       updatedAt={item.updatedAt}
                       onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
+                      onDelete={() => handleDeleteRequest(item.id)}
                       isSaving={savingItems.has(item.id)}
                     />
                   );
@@ -354,9 +460,7 @@ export default function BulletinClient() {
                       initialTitle={item.title}
                       initialLinks={item.data?.links}
                       onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
+                      onDelete={() => handleDeleteRequest(item.id)}
                     />
                   );
                 case "dynamic":
@@ -369,9 +473,7 @@ export default function BulletinClient() {
                       initialData={item.data}
                       updatedAt={item.updatedAt}
                       onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
+                      onDelete={() => handleDeleteRequest(item.id)}
                       isSaving={savingItems.has(item.id)}
                     />
                   );
@@ -385,9 +487,7 @@ export default function BulletinClient() {
                       initialContent={item.content}
                       updatedAt={item.updatedAt}
                       onSave={saveItem}
-                      onDelete={() => {
-                        deleteItem(item.id);
-                      }}
+                      onDelete={() => handleDeleteRequest(item.id)}
                       isSaving={savingItems.has(item.id)}
                     />
                   );
@@ -676,6 +776,20 @@ export default function BulletinClient() {
         isOpen={showDynamicCreator}
         onClose={() => setShowDynamicCreator(false)}
         onCreateNote={createDynamicNote}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
+          if (!isDeleting) {
+            setShowDeleteConfirmation(false);
+            setItemToDelete(null);
+          }
+        }}
+        onConfirm={() => itemToDelete && deleteItem(itemToDelete.id)}
+        itemTitle={itemToDelete?.title || ""}
+        isDeleting={isDeleting}
       />
     </div>
   );
