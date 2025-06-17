@@ -117,7 +117,7 @@ export async function scheduleChat(
   }
 
   const systemPrompt = `
-You are an AI life assistant helping a user manage their schedule.
+You are an AI life assistant helping a user manage their schedule and providing helpful advice to the user.
 Current date: ${new Date().toISOString()}.
 
 User context: ${context}

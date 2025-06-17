@@ -29,6 +29,9 @@ interface ChatMessage {
     name: string;
     description: string;
   }>;
+  isError?: boolean;
+  isRetryable?: boolean;
+  originalInput?: string;
 }
 
 interface EventGenerationPanelProps {
@@ -128,7 +131,10 @@ export default function EventGenerationPanel({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to get response from AI");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `HTTP ${res.status}: ${res.statusText}`
+        );
       }
 
       const { response, contextUpdated, toolCalls } = await res.json();
@@ -137,18 +143,53 @@ export default function EventGenerationPanel({
         { role: "model", content: response, contextUpdated, toolCalls },
       ]);
     } catch (error) {
-      console.error(error);
+      console.error("Chat error:", error);
+
+      let errorMessage =
+        "Sorry, I'm having trouble connecting. Please try again later.";
+      let isRetryable = true;
+
+      if (error instanceof Error) {
+        if (
+          error.message.includes("Missing instructions, userId, or timezone")
+        ) {
+          errorMessage =
+            "There was a configuration error. Please refresh the page and try again.";
+          isRetryable = false;
+        } else if (error.message.includes("HTTP 500")) {
+          errorMessage =
+            "The AI service is temporarily unavailable. Please try again in a moment.";
+        } else if (error.message.includes("HTTP 400")) {
+          errorMessage =
+            "There was an issue with your request. Please try rephrasing your message.";
+        } else if (
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError")
+        ) {
+          errorMessage =
+            "Network connection error. Please check your internet connection and try again.";
+        }
+      }
+
       setChatMessages([
         ...newMessages,
         {
           role: "model",
-          content:
-            "Sorry, I'm having trouble connecting. Please try again later.",
+          content: errorMessage,
+          isError: true,
+          isRetryable,
+          originalInput: currentChatInput,
         },
       ]);
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  const handleRetryMessage = (originalInput: string) => {
+    setChatInput(originalInput);
+    // Remove the error message and retry
+    setChatMessages((prev) => prev.slice(0, -1));
   };
 
   return (
@@ -391,10 +432,80 @@ export default function EventGenerationPanel({
                       className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
                         message.role === "user"
                           ? "bg-blue-500 text-white"
+                          : message.isError
+                          ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700"
                           : "bg-gray-200 dark:bg-dark-secondary"
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
+                      <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: (props) => (
+                              <p
+                                {...props}
+                                className={`mb-2 last:mb-0 ${
+                                  message.isError
+                                    ? "text-red-800 dark:text-red-200"
+                                    : ""
+                                }`}
+                              />
+                            ),
+                            ul: (props) => (
+                              <ul {...props} className="mb-2 last:mb-0 pl-4" />
+                            ),
+                            ol: (props) => (
+                              <ol {...props} className="mb-2 last:mb-0 pl-4" />
+                            ),
+                            li: (props) => <li {...props} className="mb-1" />,
+                            code: (props) => (
+                              <code
+                                {...props}
+                                className={`px-1 py-0.5 rounded text-xs ${
+                                  message.role === "user"
+                                    ? "bg-blue-600 text-blue-100"
+                                    : "bg-gray-300 dark:bg-dark-background text-gray-800 dark:text-dark-textPrimary"
+                                }`}
+                              />
+                            ),
+                            pre: (props) => (
+                              <pre
+                                {...props}
+                                className={`p-2 rounded text-xs overflow-x-auto ${
+                                  message.role === "user"
+                                    ? "bg-blue-600"
+                                    : "bg-gray-300 dark:bg-dark-background"
+                                }`}
+                              />
+                            ),
+                            blockquote: (props) => (
+                              <blockquote
+                                {...props}
+                                className={`border-l-2 pl-2 italic ${
+                                  message.role === "user"
+                                    ? "border-blue-300"
+                                    : "border-gray-400 dark:border-dark-divider"
+                                }`}
+                              />
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      {message.isError &&
+                        message.isRetryable &&
+                        message.originalInput && (
+                          <button
+                            onClick={() =>
+                              handleRetryMessage(message.originalInput!)
+                            }
+                            className="mt-2 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-md transition-colors duration-200 flex items-center gap-1"
+                          >
+                            <RefreshCw size={12} />
+                            Retry
+                          </button>
+                        )}
                       <div className="flex flex-col gap-1 mt-2">
                         {message.toolCalls && message.toolCalls.length > 0 && (
                           <div className="flex flex-wrap gap-1">
