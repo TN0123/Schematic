@@ -12,15 +12,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { response, contextUpdated, toolCalls } = await scheduleChat(
-      instructions,
-      history,
-      userId,
-      timezone
-    );
+    const { response, contextUpdated, toolCalls, contextChange } =
+      await scheduleChat(instructions, history, userId, timezone);
 
     return NextResponse.json(
-      { response, contextUpdated, toolCalls },
+      { response, contextUpdated, toolCalls, contextChange },
       { status: 200 }
     );
   } catch (error) {

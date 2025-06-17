@@ -29,6 +29,10 @@ interface ChatMessage {
     name: string;
     description: string;
   }>;
+  contextChange?: {
+    before: string;
+    after: string;
+  };
   isError?: boolean;
   isRetryable?: boolean;
   originalInput?: string;
@@ -69,6 +73,11 @@ export default function EventGenerationPanel({
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [contextDiffModal, setContextDiffModal] = useState<{
+    isOpen: boolean;
+    before: string;
+    after: string;
+  }>({ isOpen: false, before: "", after: "" });
 
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
@@ -137,10 +146,17 @@ export default function EventGenerationPanel({
         );
       }
 
-      const { response, contextUpdated, toolCalls } = await res.json();
+      const { response, contextUpdated, toolCalls, contextChange } =
+        await res.json();
       setChatMessages([
         ...newMessages,
-        { role: "model", content: response, contextUpdated, toolCalls },
+        {
+          role: "model",
+          content: response,
+          contextUpdated,
+          toolCalls,
+          contextChange,
+        },
       ]);
     } catch (error) {
       console.error("Chat error:", error);
@@ -522,13 +538,22 @@ export default function EventGenerationPanel({
                           </div>
                         )}
                         {message.contextUpdated && (
-                          <div
-                            className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled"
-                            title="AI context updated"
+                          <button
+                            className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+                            title="Click to see context changes"
+                            onClick={() => {
+                              if (message.contextChange) {
+                                setContextDiffModal({
+                                  isOpen: true,
+                                  before: message.contextChange.before,
+                                  after: message.contextChange.after,
+                                });
+                              }
+                            }}
                           >
                             <UserPen size={12} className="mr-1" />
                             <span>Context Updated</span>
-                          </div>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -591,6 +616,65 @@ export default function EventGenerationPanel({
           </div>
         )}
       </aside>
+      {/* Context Diff Modal */}
+      {contextDiffModal.isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setContextDiffModal({ isOpen: false, before: "", after: "" });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setContextDiffModal({ isOpen: false, before: "", after: "" });
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b dark:border-dark-divider">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Context Changes
+              </h2>
+              <button
+                onClick={() =>
+                  setContextDiffModal({ isOpen: false, before: "", after: "" })
+                }
+                className="text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
+                    <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                    Before
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[200px] border">
+                    {contextDiffModal.before || "No previous context"}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
+                    <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    After
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[200px] border">
+                    {contextDiffModal.after}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ScheduleContextModal
         isOpen={isScheduleContextModalOpen}
         onClose={() => setIsScheduleContextModalOpen(false)}

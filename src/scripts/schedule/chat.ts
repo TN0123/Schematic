@@ -83,6 +83,9 @@ export async function scheduleChat(
   const tomorrowInUserTz = new Date(userNow);
   tomorrowInUserTz.setDate(tomorrowInUserTz.getDate() + 1);
 
+  // Store original context for before/after comparison
+  let originalContext = "";
+
   if (userId && timezone) {
     try {
       const user = await prisma.user.findUnique({
@@ -91,6 +94,7 @@ export async function scheduleChat(
       });
       if (user && user.scheduleContext) {
         context = user.scheduleContext;
+        originalContext = user.scheduleContext;
       }
       goals = await prisma.goal.findMany({
         where: {
@@ -162,21 +166,41 @@ You must automatically detect when the user shares information that should be sa
 - Goals (work goals, personal goals, etc.)
 
 CRITICAL: When updating context, make INCREMENTAL changes only:
+- Always preserve all the information contained in the original context
 - If the existing context already contains related information, modify or add to it rather than replacing it
 - Preserve all existing context unless it directly contradicts new information
 - Add new information by appending or integrating it with existing content
 - Only replace specific pieces of information that are being updated
+
+CRITICAL: You MUST ALWAYS respond with valid JSON format. Never respond with plain text.
 
 WORKFLOW:
 1. If user asks about non-today dates: First call get_calendar_events function
 2. After getting function results: Return JSON response with the information
 3. If no function call needed: Return JSON response directly
 
-JSON format:
+REQUIRED JSON FORMAT (this is mandatory - never deviate from this format):
 {
   "response": "your conversational response to the user. Whenever you mention times use 12 hour format",
   "contextUpdate": null or "incrementally updated context preserving existing information"
 }
+
+EXAMPLES OF CORRECT RESPONSES:
+{
+  "response": "I see you have a meeting at 2:00 PM today. That sounds important!",
+  "contextUpdate": null
+}
+
+{
+  "response": "I'll remember that you prefer morning workouts. That's great for starting your day energized!",
+  "contextUpdate": "User preferences: Prefers morning workouts around 7:00 AM to start the day energized."
+}
+
+IMPORTANT: 
+- Always wrap your response in the JSON structure above
+- Use proper JSON syntax with double quotes
+- Escape any quotes within strings
+- Never include markdown code blocks or additional text outside the JSON
 `;
 
   const userPrompt = instructions;
@@ -226,6 +250,10 @@ JSON format:
     history: formattedHistory,
     generationConfig: {
       temperature: 0, // Make responses more deterministic
+      candidateCount: 1,
+      maxOutputTokens: 2048,
+      topP: 0.1,
+      topK: 1,
     },
   });
 
@@ -315,18 +343,45 @@ JSON format:
   let response;
   try {
     // Strip markdown code blocks if present
-    const cleanedResponseText = responseText
+    let cleanedResponseText = responseText
       .replace(/^```json\s*/, "")
       .replace(/\s*```$/, "")
       .trim();
 
+    // If the response doesn't start with '{', try to extract JSON from the text
+    if (!cleanedResponseText.startsWith("{")) {
+      const jsonMatch = cleanedResponseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanedResponseText = jsonMatch[0];
+      } else {
+        // If no JSON found, create a fallback response
+        console.warn("No JSON found in response, creating fallback");
+        cleanedResponseText = JSON.stringify({
+          response:
+            cleanedResponseText ||
+            "I apologize, but I encountered an error processing your request.",
+          contextUpdate: null,
+        });
+      }
+    }
+
     response = JSON.parse(cleanedResponseText);
+
+    // Validate the response structure
+    if (!response.response || typeof response.response !== "string") {
+      throw new Error(
+        "Invalid response structure - missing or invalid 'response' field"
+      );
+    }
   } catch (error) {
     console.error("Failed to parse JSON response:", error);
-    return {
+    console.error("Original response text:", responseText);
+
+    // Create a safe fallback response
+    response = {
       response:
-        "I apologize, but I encountered an error processing your request.",
-      contextUpdated: false,
+        "I apologize, but I encountered an error processing your request. Please try again.",
+      contextUpdate: null,
     };
   }
 
@@ -340,5 +395,11 @@ JSON format:
     response: response.response,
     contextUpdated: !!shouldUpdateContext,
     toolCalls: toolCallsExecuted,
+    contextChange: shouldUpdateContext
+      ? {
+          before: originalContext || "",
+          after: response.contextUpdate,
+        }
+      : undefined,
   };
 }
