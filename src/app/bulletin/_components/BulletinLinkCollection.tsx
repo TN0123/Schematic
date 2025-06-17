@@ -398,7 +398,7 @@ function GraphView({
   const highlightedNodeId = hoveredNode?.id;
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full max-w-full overflow-hidden">
       {/* Legend */}
       <div className="absolute left-4 top-4 z-5">
         <Legend categories={categories} categoryColorMap={categoryColorMap} />
@@ -584,6 +584,8 @@ function GraphView({
         ref={graphRef}
         graphData={graphData}
         nodeLabel={"title"}
+        width={undefined}
+        height={undefined}
         d3Charge={() => -1000}
         d3ForceInit={(fg: any) => {
           fg.d3Force("collide", d3.forceCollide().radius(38));
@@ -964,12 +966,12 @@ export default function BulletinLinkCollection({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-3 h-full flex flex-col">
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center w-full">
-            <NotepadText className="h-10 w-10 mx-4 text-green-500" />
-            <div className="flex flex-col w-full">
+    <div className="w-full h-full max-w-full dark:bg-dark-background transition-all overflow-hidden">
+      <div className="h-full flex flex-col max-w-full">
+        <div className="flex justify-between items-center mb-2 p-2 min-w-0">
+          <div className="flex items-center w-full min-w-0">
+            <NotepadText className="h-10 w-10 mx-4 text-green-500 flex-shrink-0" />
+            <div className="flex flex-col w-full min-w-0">
               <input
                 type="text"
                 value={title}
@@ -977,7 +979,7 @@ export default function BulletinLinkCollection({
                   setTitle(e.target.value);
                   setHasUnsavedChanges(true);
                 }}
-                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
+                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate min-w-0"
                 placeholder="Enter title..."
               />
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
@@ -987,7 +989,7 @@ export default function BulletinLinkCollection({
               </div>
             </div>
           </div>
-          <div className="flex gap-2 ml-2">
+          <div className="flex gap-2 ml-2 flex-shrink-0">
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
@@ -1015,47 +1017,51 @@ export default function BulletinLinkCollection({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 mb-4">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={newLink}
-              onChange={(e) => {
-                setNewLink(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter a URL..."
-              className={`flex-1 p-2 border-b dark:border-dark-divider dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none ${
-                error ? "border-red-500 dark:border-red-500" : ""
-              }`}
-            />
-            <button
-              onClick={handleAddLink}
-              disabled={isLoading}
-              className="p-2 bg-light-accent dark:bg-dark-accent text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <LinkIcon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
-          {error && (
-            <div className="flex items-center gap-2 text-red-500 text-sm">
-              <AlertCircle className="h-4 w-4" />
-              <span>{error}</span>
+        <div className="relative rounded-lg flex-grow flex flex-col dark:border-dark-divider max-w-full overflow-hidden">
+          <div className="border-y p-2 mb-2 flex flex-col gap-2 dark:border-dark-divider transition-all">
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={newLink}
+                onChange={(e) => {
+                  setNewLink(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter a URL..."
+                className={`flex-1 p-2 border-b dark:border-dark-divider dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none min-w-0 ${
+                  error ? "border-red-500 dark:border-red-500" : ""
+                }`}
+              />
+              <button
+                onClick={handleAddLink}
+                disabled={isLoading}
+                className="p-2 bg-light-accent dark:bg-dark-accent text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LinkIcon className="h-5 w-5" />
+                )}
+              </button>
             </div>
-          )}
-        </div>
+            {error && (
+              <div className="flex items-center gap-2 text-red-500 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
 
-        <div className="flex-1 overflow-hidden rounded-lg border dark:border-dark-divider">
-          <GraphView
-            links={links}
-            onDelete={handleDeleteLink}
-            onCategoryChange={handleCategoryChange}
-          />
+          <div className="flex-grow overflow-hidden p-3 max-w-full">
+            <div className="w-full h-full overflow-hidden rounded-lg border dark:border-dark-divider max-w-full">
+              <GraphView
+                links={links}
+                onDelete={handleDeleteLink}
+                onCategoryChange={handleCategoryChange}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
