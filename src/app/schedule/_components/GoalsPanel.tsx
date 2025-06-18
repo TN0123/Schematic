@@ -27,6 +27,48 @@ export default function GoalsPanel() {
   const { data: session } = useSession();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
+  const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
+    const durationOrder = {
+      [GoalDuration.DAILY]: 1,
+      [GoalDuration.WEEKLY]: 2,
+      [GoalDuration.MONTHLY]: 3,
+      [GoalDuration.YEARLY]: 4,
+    };
+
+    return [...goalsToSort].sort((a, b) => {
+      const orderA = durationOrder[a.type];
+      const orderB = durationOrder[b.type];
+      return orderA - orderB;
+    });
+  };
+
+  // Efficiently insert a goal at the correct position without sorting the entire array
+  const insertGoalInOrder = (goalsList: Goal[], newGoal: Goal): Goal[] => {
+    const durationOrder = {
+      [GoalDuration.DAILY]: 1,
+      [GoalDuration.WEEKLY]: 2,
+      [GoalDuration.MONTHLY]: 3,
+      [GoalDuration.YEARLY]: 4,
+    };
+
+    const newGoalOrder = durationOrder[newGoal.type];
+
+    // Find the correct insertion position
+    let insertIndex = goalsList.length;
+    for (let i = 0; i < goalsList.length; i++) {
+      if (durationOrder[goalsList[i].type] > newGoalOrder) {
+        insertIndex = i;
+        break;
+      }
+    }
+
+    // Insert the goal at the correct position
+    const updatedGoals = [...goalsList];
+    updatedGoals.splice(insertIndex, 0, newGoal);
+    return updatedGoals;
+  };
+
   useEffect(() => {
     fetchGoals();
   }, []);
@@ -77,7 +119,7 @@ export default function GoalsPanel() {
         throw new Error("Failed to fetch goals");
       }
       const data = await response.json();
-      setGoals(data);
+      setGoals(sortGoalsByDuration(data));
     } catch (error) {
       console.error("Error fetching goals:", error);
     }
@@ -94,7 +136,7 @@ export default function GoalsPanel() {
     });
 
     const newGoal = await response.json();
-    setGoals([...goals, newGoal]);
+    setGoals(insertGoalInOrder(goals, newGoal));
   };
 
   const deleteGoal = async (id: string) => {
