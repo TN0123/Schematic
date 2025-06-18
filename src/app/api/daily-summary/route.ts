@@ -3,9 +3,9 @@ import { daily_summary } from "@/scripts/schedule/daily-summary";
 
 export async function POST(request: Request) {
   try {
-    const { existingEvents, timezone, userId } = await request.json();
+    const { date, timezone, userId } = await request.json();
 
-    const result = await daily_summary(existingEvents, timezone, userId);
+    const result = await daily_summary(new Date(date), timezone, userId);
 
     return NextResponse.json({ result }, { status: 200 });
   } catch (error) {

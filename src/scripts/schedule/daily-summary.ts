@@ -1,10 +1,9 @@
-import { Event } from "@/app/schedule/page";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 export async function daily_summary(
-  existingEvents: Event[],
+  date: Date,
   timezone: string,
   userId: string
 ) {
@@ -14,6 +13,30 @@ export async function daily_summary(
 
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  // Fetch events for the specific day from the database
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const eventsForDay = await prisma.event.findMany({
+    where: {
+      userId,
+      start: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    select: {
+      title: true,
+      start: true,
+      end: true,
+    },
+    orderBy: {
+      start: "asc",
+    },
+  });
 
   const goals = await prisma.goal.findMany({
     where: {
@@ -26,6 +49,26 @@ export async function daily_summary(
     where: { id: userId },
     select: { scheduleContext: true },
   });
+
+  // If no events for the day, return a simple message
+  if (eventsForDay.length === 0) {
+    return "No events scheduled for this day.";
+  }
+
+  // Create the event summary with times
+  const eventSummary = eventsForDay
+    .map((event) => {
+      const options: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+        timeZone: timezone,
+      };
+      const start = new Date(event.start).toLocaleTimeString("en-US", options);
+      const end = new Date(event.end).toLocaleTimeString("en-US", options);
+      return `${event.title}: ${start} - ${end}`;
+    })
+    .join("\n");
 
   let prompt = `
     You are a helpful assistant that provides some short and specific advice on how the user 
@@ -43,7 +86,7 @@ export async function daily_summary(
 
     Here are the user's existing events for the day:
 
-    ${existingEvents
+    ${eventsForDay
       .map((event) => {
         const options: Intl.DateTimeFormatOptions = {
           hour: "numeric",
@@ -68,5 +111,5 @@ export async function daily_summary(
   // console.log(prompt);
 
   const result = await model.generateContent(prompt);
-  return result.response.text();
+  return `${eventSummary}ADVICE${result.response.text()}`;
 }

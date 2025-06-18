@@ -571,44 +571,7 @@ export default function CalendarApp() {
     const fetchDailySummary = async (date: Date) => {
       setDailySummaryLoading(true);
       try {
-        const startOfDay = new Date(date);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        const eventsForDay = events
-          .filter((event) => !event.isSuggestion)
-          .filter((event) => {
-            const eventStart = new Date(event.start);
-            return eventStart >= startOfDay && eventStart <= endOfDay;
-          });
-
-        if (eventsForDay.length === 0) {
-          setDailySummary("No events scheduled for this day.");
-          return;
-        }
-
         const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        const eventSummary = eventsForDay
-          .map((event) => {
-            const options: Intl.DateTimeFormatOptions = {
-              hour: "numeric",
-              minute: "numeric",
-              hour12: true,
-              timeZone: userTimezone,
-            };
-            const start = new Date(event.start).toLocaleTimeString(
-              "en-US",
-              options
-            );
-            const end = new Date(event.end).toLocaleTimeString(
-              "en-US",
-              options
-            );
-            return `${event.title}: ${start} - ${end}`;
-          })
-          .join("\n");
 
         const response = await fetch("/api/daily-summary", {
           method: "POST",
@@ -616,7 +579,7 @@ export default function CalendarApp() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            existingEvents: eventsForDay,
+            date: date.toISOString(),
             timezone: userTimezone,
             userId: userId,
           }),
@@ -625,7 +588,7 @@ export default function CalendarApp() {
           throw new Error("Failed to fetch daily summary");
         }
         const data = await response.json();
-        setDailySummary(`${eventSummary}ADVICE${data.result}`);
+        setDailySummary(data.result);
       } catch (error) {
         console.error("Error fetching daily summary:", error);
         setDailySummary("Could not load summary.");
