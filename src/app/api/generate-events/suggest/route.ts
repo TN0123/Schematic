@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import { suggest_events } from "@/scripts/schedule/suggest-events";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
@@ -33,26 +30,19 @@ export async function POST(request: Request) {
       reminders = parsedResult.reminders || [];
     }
 
-    // Save AI-suggested reminders to database
-    const savedReminders = [];
-    if (reminders.length > 0) {
-      for (const reminder of reminders) {
-        const savedReminder = await prisma.reminder.create({
-          data: {
-            text: reminder.text,
-            time: new Date(reminder.time),
-            isAISuggested: true,
-            userId: userId,
-          },
-        });
-        savedReminders.push(savedReminder);
-      }
-    }
+    // Format reminders for local state (don't save to database)
+    const formattedReminders = reminders.map((reminder: any) => ({
+      id: `ai-suggestion-${Date.now()}-${Math.random()}`, // Generate temporary ID
+      text: reminder.text,
+      time: new Date(reminder.time),
+      isAISuggested: true,
+      isRead: false,
+    }));
 
     return NextResponse.json(
       {
         events,
-        reminders: savedReminders,
+        reminders: formattedReminders,
       },
       { status: 200 }
     );

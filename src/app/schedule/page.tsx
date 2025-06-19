@@ -160,23 +160,40 @@ export default function CalendarApp() {
   };
 
   const handleDismissReminder = async (reminderId: string) => {
-    try {
-      const response = await fetch(`/api/reminders?id=${reminderId}`, {
-        method: "DELETE",
-      });
+    // Check if this is an AI-suggested reminder (not saved to database)
+    const reminder = reminders.find((r) => r.id === reminderId);
+    const isAISuggested =
+      reminder?.isAISuggested && reminderId.startsWith("ai-suggestion-");
 
-      if (!response.ok) {
-        throw new Error("Failed to dismiss reminder");
-      }
-
-      // Update local state to mark as read
+    if (isAISuggested) {
+      // For AI-suggested reminders, just update local state
       setReminders((prev) =>
         prev.map((reminder) =>
           reminder.id === reminderId ? { ...reminder, isRead: true } : reminder
         )
       );
-    } catch (error) {
-      console.error("Error dismissing reminder:", error);
+    } else {
+      // For database reminders, call the API
+      try {
+        const response = await fetch(`/api/reminders?id=${reminderId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to dismiss reminder");
+        }
+
+        // Update local state to mark as read
+        setReminders((prev) =>
+          prev.map((reminder) =>
+            reminder.id === reminderId
+              ? { ...reminder, isRead: true }
+              : reminder
+          )
+        );
+      } catch (error) {
+        console.error("Error dismissing reminder:", error);
+      }
     }
   };
 
