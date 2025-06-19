@@ -96,6 +96,8 @@ export default function CalendarApp() {
   );
   const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
+  const [showCalendarHeader, setShowCalendarHeader] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
@@ -137,7 +139,47 @@ export default function CalendarApp() {
   }, []);
 
   const handleToggleReminders = () => {
-    setShowReminders(!showReminders);
+    if (isTransitioning) return; // Prevent multiple rapid toggles
+
+    setIsTransitioning(true);
+
+    // Add transitioning attribute to calendar container for CSS transitions
+    if (calendarContainerRef.current) {
+      const fcElement = calendarContainerRef.current.querySelector(".fc");
+      if (fcElement) {
+        fcElement.setAttribute("data-transitioning", "true");
+      }
+    }
+
+    if (showReminders) {
+      // Going from reminders back to calendar
+      setShowReminders(false);
+      // Wait for reminders to fade out before showing calendar header
+      setTimeout(() => {
+        setShowCalendarHeader(true);
+        setIsTransitioning(false);
+        if (calendarContainerRef.current) {
+          const fcElement = calendarContainerRef.current.querySelector(".fc");
+          if (fcElement) {
+            fcElement.removeAttribute("data-transitioning");
+          }
+        }
+      }, 250); // Match the reminders bar exit duration
+    } else {
+      // Going from calendar to reminders
+      setShowCalendarHeader(false);
+      // Start showing reminders after a small delay for smooth transition
+      setTimeout(() => {
+        setShowReminders(true);
+        setIsTransitioning(false);
+        if (calendarContainerRef.current) {
+          const fcElement = calendarContainerRef.current.querySelector(".fc");
+          if (fcElement) {
+            fcElement.removeAttribute("data-transitioning");
+          }
+        }
+      }, 50); // Smaller delay for smoother transition
+    }
   };
 
   const handleDismissReminder = (reminderId: string) => {
@@ -153,45 +195,50 @@ export default function CalendarApp() {
   }, [reminders]);
 
   useEffect(() => {
-    const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
-    const remindersIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
+    // Add a small delay to ensure the DOM has updated after reminders bar toggle
+    const timeoutId = setTimeout(() => {
+      const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
+      const remindersIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
 
-    const buttons = document.querySelectorAll(".fc-refresh-button");
-    buttons.forEach((button) => {
-      button.innerHTML = refreshIcon;
-    });
+      const buttons = document.querySelectorAll(".fc-refresh-button");
+      buttons.forEach((button) => {
+        button.innerHTML = refreshIcon;
+      });
 
-    const reminderButtons = document.querySelectorAll(".fc-reminders-button");
-    reminderButtons.forEach((button) => {
-      const iconContainer = document.createElement("div");
-      iconContainer.style.position = "relative";
-      iconContainer.style.display = "inline-flex";
-      iconContainer.style.alignItems = "center";
-      iconContainer.innerHTML = remindersIcon;
+      const reminderButtons = document.querySelectorAll(".fc-reminders-button");
+      reminderButtons.forEach((button) => {
+        const iconContainer = document.createElement("div");
+        iconContainer.style.position = "relative";
+        iconContainer.style.display = "inline-flex";
+        iconContainer.style.alignItems = "center";
+        iconContainer.innerHTML = remindersIcon;
 
-      if (unreadReminders.length > 0) {
-        const badge = document.createElement("div");
-        badge.style.position = "absolute";
-        badge.style.top = "-4px";
-        badge.style.right = "-6px";
-        badge.style.backgroundColor = "#ef4444";
-        badge.style.color = "white";
-        badge.style.fontSize = "9px";
-        badge.style.fontWeight = "bold";
-        badge.style.borderRadius = "50%";
-        badge.style.width = "14px";
-        badge.style.height = "14px";
-        badge.style.display = "flex";
-        badge.style.alignItems = "center";
-        badge.style.justifyContent = "center";
-        badge.textContent = unreadReminders.length.toString();
-        iconContainer.appendChild(badge);
-      }
+        if (unreadReminders.length > 0) {
+          const badge = document.createElement("div");
+          badge.style.position = "absolute";
+          badge.style.top = "-4px";
+          badge.style.right = "-6px";
+          badge.style.backgroundColor = "#ef4444";
+          badge.style.color = "white";
+          badge.style.fontSize = "9px";
+          badge.style.fontWeight = "bold";
+          badge.style.borderRadius = "50%";
+          badge.style.width = "14px";
+          badge.style.height = "14px";
+          badge.style.display = "flex";
+          badge.style.alignItems = "center";
+          badge.style.justifyContent = "center";
+          badge.textContent = unreadReminders.length.toString();
+          iconContainer.appendChild(badge);
+        }
 
-      button.innerHTML = "";
-      button.appendChild(iconContainer);
-    });
-  }, [suggestionsLoading, unreadReminders]);
+        button.innerHTML = "";
+        button.appendChild(iconContainer);
+      });
+    }, 200); // Slightly longer delay to ensure smooth header transition
+
+    return () => clearTimeout(timeoutId);
+  }, [suggestionsLoading, unreadReminders, showCalendarHeader]);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -988,7 +1035,20 @@ export default function CalendarApp() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex-1 relative">
+            <motion.div
+              className="flex-1 relative"
+              initial={false}
+              animate={{
+                opacity: isTransitioning ? 0.95 : 1,
+                scale: isTransitioning ? 0.99 : 1,
+              }}
+              transition={{
+                duration: 0.25,
+                ease: [0.4, 0.0, 0.2, 1],
+                opacity: { duration: 0.15 },
+                scale: { duration: 0.2 },
+              }}
+            >
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1055,7 +1115,7 @@ export default function CalendarApp() {
                   return classes.filter(Boolean);
                 }}
                 headerToolbar={
-                  showReminders
+                  !showCalendarHeader
                     ? false
                     : {
                         start: "prev,next today",
@@ -1123,7 +1183,7 @@ export default function CalendarApp() {
                   }
                 }}
               />
-            </div>
+            </motion.div>
           </div>
 
           {/* Side Panel */}
@@ -1176,7 +1236,20 @@ export default function CalendarApp() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex-1 relative">
+            <motion.div
+              className="flex-1 relative"
+              initial={false}
+              animate={{
+                opacity: isTransitioning ? 0.95 : 1,
+                scale: isTransitioning ? 0.99 : 1,
+              }}
+              transition={{
+                duration: 0.25,
+                ease: [0.4, 0.0, 0.2, 1],
+                opacity: { duration: 0.15 },
+                scale: { duration: 0.2 },
+              }}
+            >
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1192,7 +1265,7 @@ export default function CalendarApp() {
                   },
                 }}
                 headerToolbar={
-                  showReminders
+                  !showCalendarHeader
                     ? false
                     : {
                         start: "title",
@@ -1201,7 +1274,7 @@ export default function CalendarApp() {
                       }
                 }
                 footerToolbar={
-                  showReminders
+                  !showCalendarHeader
                     ? false
                     : {
                         start: "today",
@@ -1311,7 +1384,7 @@ export default function CalendarApp() {
                   }
                 }}
               />
-            </div>
+            </motion.div>
           </div>
 
           {/* Bottom Panel Section - Mobile */}
