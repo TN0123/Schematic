@@ -88,134 +88,133 @@ export default function RemindersBar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2, ease: "easeInOut" }}
-      className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b dark:border-dark-divider px-4 py-3"
+      initial={{ opacity: 0, x: "100%" }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: "-100%" }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="absolute top-0 left-0 w-full z-10 flex items-center bg-gray-50 dark:bg-dark-background border-b border-gray-200 dark:border-dark-divider px-4 h-14"
     >
       {unreadReminders.length === 0 ? (
-        <div className="flex items-center justify-between">
-          {/* Back Arrow */}
-          <button
-            onClick={onToggle}
-            className="flex items-center px-3 py-1.5 rounded-md hover:bg-white/50 dark:hover:bg-dark-actionHover transition-all duration-200"
+        <div className="flex items-center justify-between w-full">
+          <div
+            className="flex items-center justify-start"
+            style={{ minWidth: "80px" }}
           >
-            <ArrowLeft
-              size={16}
-              className="mr-2 text-gray-600 dark:text-dark-textSecondary"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
-              Back
-            </span>
-          </button>
-          {/* No reminders message */}
+            <button
+              onClick={onToggle}
+              className="flex items-center px-3 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200"
+            >
+              <ArrowLeft
+                size={16}
+                className="mr-2 text-gray-600 dark:text-dark-textSecondary"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
+                Back
+              </span>
+            </button>
+          </div>
           <div className="flex-1 text-center text-gray-500 dark:text-dark-textSecondary">
             <Bell size={20} className="inline mr-2 opacity-50" />
             <span className="text-sm">No new reminders</span>
           </div>
-          <div className="w-16"></div> {/* Spacer for balance */}
+          <div
+            className="flex items-center justify-end"
+            style={{ minWidth: "100px" }}
+          ></div>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
-          {/* Back Arrow */}
-          <button
-            onClick={onToggle}
-            className="flex items-center px-3 py-1.5 rounded-md hover:bg-white/50 dark:hover:bg-dark-actionHover transition-all duration-200"
+        <div className="flex items-center justify-between w-full">
+          <div
+            className="flex items-center justify-start"
+            style={{ minWidth: "80px" }}
           >
-            <ArrowLeft
-              size={16}
-              className="mr-2 text-gray-600 dark:text-dark-textSecondary"
-            />
-            <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
-              Back
-            </span>
-          </button>
-
-          {/* Navigation Arrow - Left */}
-          <button
-            onClick={handlePrev}
-            disabled={currentReminderIndex === 0}
-            className="p-2 rounded-full hover:bg-white/50 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            <ChevronLeft
-              size={20}
-              className="text-gray-600 dark:text-dark-textSecondary"
-            />
-          </button>
-
-          {/* Current Reminder */}
-          <div className="flex-1 mx-4">
-            {currentReminder && (
-              <motion.div
-                key={currentReminder.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="text-center"
-              >
-                <div className="flex items-center justify-center mb-1">
-                  <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
-                    {formatDate(currentReminder.time)} at{" "}
-                    {formatTime(currentReminder.time)}
-                  </span>
-                  {currentReminder.isAISuggested && (
-                    <div className="ml-2 flex items-center px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                      <Bot
-                        size={12}
-                        className="text-purple-600 dark:text-purple-400 mr-1"
-                      />
-                      <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                        AI
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-gray-800 dark:text-dark-textPrimary font-medium">
-                  {currentReminder.text}
-                </p>
-                <div className="mt-2 flex items-center justify-center space-x-2">
-                  <span className="text-xs text-gray-500 dark:text-dark-textSecondary">
-                    {currentReminderIndex + 1} of {unreadReminders.length}
-                  </span>
-                  <div className="flex space-x-1">
-                    {unreadReminders.map((_, index) => (
-                      <div
-                        key={index}
-                        className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                          index === currentReminderIndex
-                            ? "bg-blue-500"
-                            : "bg-gray-300 dark:bg-gray-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
+            <button
+              onClick={onToggle}
+              className="flex items-center px-3 py-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-200"
+            >
+              <ArrowLeft
+                size={16}
+                className="mr-2 text-gray-600 dark:text-dark-textSecondary"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
+                Back
+              </span>
+            </button>
           </div>
 
-          {/* Navigation Arrow - Right */}
-          <button
-            onClick={handleNext}
-            disabled={currentReminderIndex === unreadReminders.length - 1}
-            className="p-2 rounded-full hover:bg-white/50 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            <ChevronRight
-              size={20}
-              className="text-gray-600 dark:text-dark-textSecondary"
-            />
-          </button>
+          <div className="flex items-center justify-center flex-1">
+            <button
+              onClick={handlePrev}
+              disabled={currentReminderIndex === 0}
+              className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <ChevronLeft
+                size={16}
+                className="text-gray-600 dark:text-dark-textSecondary"
+              />
+            </button>
 
-          {/* Dismiss Button */}
-          <button
-            onClick={handleDismiss}
-            className="ml-2 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-all duration-200"
-            title="Dismiss reminder"
+            <div className="flex-1 mx-2 min-w-0">
+              {currentReminder && (
+                <motion.div
+                  key={currentReminder.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-center"
+                >
+                  <div className="flex items-center justify-center mb-0.5">
+                    <span className="text-xs font-medium text-gray-600 dark:text-dark-textSecondary truncate">
+                      {formatDate(currentReminder.time)} at{" "}
+                      {formatTime(currentReminder.time)}
+                    </span>
+                    {currentReminder.isAISuggested && (
+                      <div className="ml-2 flex items-center px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                        <Bot
+                          size={12}
+                          className="text-blue-600 dark:text-blue-400 mr-1"
+                        />
+                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          AI
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-800 dark:text-dark-textPrimary font-medium truncate">
+                    {currentReminder.text}
+                  </p>
+                </motion.div>
+              )}
+            </div>
+
+            <button
+              onClick={handleNext}
+              disabled={currentReminderIndex === unreadReminders.length - 1}
+              className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              <ChevronRight
+                size={16}
+                className="text-gray-600 dark:text-dark-textSecondary"
+              />
+            </button>
+          </div>
+
+          <div
+            className="flex items-center justify-end"
+            style={{ minWidth: "80px" }}
           >
-            <X size={18} />
-          </button>
+            <span className="text-xs font-medium text-gray-500 dark:text-dark-textSecondary mr-2">
+              {currentReminderIndex + 1}/{unreadReminders.length}
+            </span>
+            <button
+              onClick={handleDismiss}
+              className="p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-all duration-200"
+              title="Dismiss reminder"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
       )}
     </motion.div>
