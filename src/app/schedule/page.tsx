@@ -120,9 +120,18 @@ export default function CalendarApp() {
       }));
       setReminders(formattedReminders);
 
-      // Set initial UI state based on whether there are unread reminders
-      const hasUnreadReminders = formattedReminders.some((r: any) => !r.isRead);
-      if (hasUnreadReminders) {
+      // Set initial UI state based on whether there are unread, non-AI suggested reminders within 7 days
+      const currentDate = new Date();
+      const sevenDaysFromNow = new Date(
+        currentDate.getTime() + 7 * 24 * 60 * 60 * 1000
+      );
+
+      const hasRelevantUnreadReminders = formattedReminders.some(
+        (r: any) =>
+          !r.isRead && !r.isAISuggested && new Date(r.time) <= sevenDaysFromNow
+      );
+
+      if (hasRelevantUnreadReminders) {
         setShowReminders(true);
         setShowCalendarHeader(false);
       }
@@ -229,6 +238,10 @@ export default function CalendarApp() {
     return reminders.filter((r) => !r.isRead);
   }, [reminders]);
 
+  const unreadNonAIReminders = useMemo(() => {
+    return reminders.filter((r) => !r.isRead && !r.isAISuggested);
+  }, [reminders]);
+
   useEffect(() => {
     // Add a small delay to ensure the DOM has updated after reminders bar toggle
     const timeoutId = setTimeout(() => {
@@ -248,7 +261,7 @@ export default function CalendarApp() {
         iconContainer.style.alignItems = "center";
         iconContainer.innerHTML = remindersIcon;
 
-        if (unreadReminders.length > 0) {
+        if (unreadNonAIReminders.length > 0) {
           const badge = document.createElement("div");
           badge.style.position = "absolute";
           badge.style.top = "-4px";
@@ -263,7 +276,7 @@ export default function CalendarApp() {
           badge.style.display = "flex";
           badge.style.alignItems = "center";
           badge.style.justifyContent = "center";
-          badge.textContent = unreadReminders.length.toString();
+          badge.textContent = unreadNonAIReminders.length.toString();
           iconContainer.appendChild(badge);
         }
 
@@ -273,7 +286,7 @@ export default function CalendarApp() {
     }, 200); // Slightly longer delay to ensure smooth header transition
 
     return () => clearTimeout(timeoutId);
-  }, [suggestionsLoading, unreadReminders, showCalendarHeader]);
+  }, [suggestionsLoading, unreadNonAIReminders, showCalendarHeader]);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -725,8 +738,17 @@ export default function CalendarApp() {
         }));
         setReminders((prev) => [...prev, ...formattedReminders]);
 
-        // Show reminders bar if new reminders were created
-        if (formattedReminders.length > 0) {
+        // Show reminders bar only if there are non-AI suggested reminders within 7 days
+        const currentDate = new Date();
+        const sevenDaysFromNow = new Date(
+          currentDate.getTime() + 7 * 24 * 60 * 60 * 1000
+        );
+
+        const hasRelevantReminders = formattedReminders.some(
+          (r: any) => !r.isAISuggested && new Date(r.time) <= sevenDaysFromNow
+        );
+
+        if (hasRelevantReminders) {
           setShowReminders(true);
           setShowCalendarHeader(false);
         }
@@ -839,8 +861,17 @@ export default function CalendarApp() {
         }));
         setReminders((prev) => [...prev, ...formattedReminders]);
 
-        // Show reminders bar if new reminders were created
-        if (formattedReminders.length > 0) {
+        // Show reminders bar only if there are non-AI suggested reminders within 7 days
+        const currentDate = new Date();
+        const sevenDaysFromNow = new Date(
+          currentDate.getTime() + 7 * 24 * 60 * 60 * 1000
+        );
+
+        const hasRelevantReminders = formattedReminders.some(
+          (r: any) => !r.isAISuggested && new Date(r.time) <= sevenDaysFromNow
+        );
+
+        if (hasRelevantReminders) {
           setShowReminders(true);
           setShowCalendarHeader(false);
         }
@@ -1138,8 +1169,8 @@ export default function CalendarApp() {
                     text: "",
                     click: handleToggleReminders,
                     hint: `${
-                      unreadReminders.length > 0
-                        ? `${unreadReminders.length} `
+                      unreadNonAIReminders.length > 0
+                        ? `${unreadNonAIReminders.length} `
                         : ""
                     }Reminders`,
                   },
