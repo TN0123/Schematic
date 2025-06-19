@@ -22,6 +22,7 @@ model User {
   goals                    Goal[]
   sessions                 Session[]
   documents                Document[]
+  reminders                Reminder[]
   scheduleContext          String         @default("")
 }
 
@@ -93,7 +94,20 @@ model Document {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-} 
+}
+
+model Reminder {
+  id            String   @id @default(cuid())
+  text          String
+  time          DateTime
+  isAISuggested Boolean  @default(false)
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
 
 enum GoalType {
   DAILY

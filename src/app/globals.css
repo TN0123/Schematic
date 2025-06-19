@@ -75,6 +75,44 @@ main {
 
 
 /* Custom styles for FullCalendar */
+
+/* Smooth toolbar transitions using position-based animation */
+.fc-toolbar {
+    transition: opacity 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    will-change: opacity, transform !important;
+}
+
+/* Hide header smoothly when reminders are shown */
+.calendar-header-hidden .fc-toolbar {
+    opacity: 0 !important;
+    transform: translateY(-64px) !important;
+    pointer-events: none !important;
+}
+
+/* Show header smoothly when reminders are hidden */
+.calendar-header-visible .fc-toolbar {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+/* Smooth transitions for all toolbar elements */
+.fc-toolbar-title,
+.fc-button-group,
+.fc-button {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Calendar container smooth transitions */
+.fc {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Enhanced transitions for calendar layout changes */
+.fc-view-harness {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 .fc-day-today {
     background-color: #f7fafc !important;
     }  
@@ -150,6 +188,27 @@ main {
 
 .fc-refresh-button:hover {
     background-color: #f0f0f0 !important;
+}
+
+.fc-reminders-button {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important; 
+    background-color: white !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    color: black !important;
+    margin: 0 5px !important;
+    transition: all 0.2s ease-in-out !important;
+    position: relative !important;
+}
+
+.fc-reminders-button:hover {
+    background-color: #f0f0f0 !important;
+    transform: scale(1.05) !important;
 }
 
 .fc-daygrid-day-top {
@@ -266,6 +325,17 @@ html.dark .fc-refresh-button {
 
 html.dark .fc-refresh-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .fc-reminders-button {
+    background-color: #1e1e1e !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+
+html.dark .fc-reminders-button:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transform: scale(1.05) !important;
 }
 
 html.dark .fc-daygrid-day-top {

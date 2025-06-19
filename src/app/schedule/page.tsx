@@ -26,6 +26,7 @@ import IcsUploaderModal from "./_components/IcsUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
 import MobilePanelTabs from "./_components/MobilePanelTabs";
+import RemindersBar, { Reminder } from "./_components/RemindersBar";
 
 export interface Event {
   id: string;
@@ -94,17 +95,168 @@ export default function CalendarApp() {
     new Date()
   );
   const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
+  const [showCalendarHeader, setShowCalendarHeader] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [modalInitialTab, setModalInitialTab] = useState<"event" | "reminder">(
+    "event"
+  );
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
+  // Fetch reminders from database
+  const fetchReminders = async () => {
+    try {
+      const response = await fetch("/api/reminders");
+      if (!response.ok) {
+        throw new Error("Failed to fetch reminders");
+      }
+      const data = await response.json();
+      const formattedReminders = data.map((reminder: any) => ({
+        ...reminder,
+        time: new Date(reminder.time),
+      }));
+      setReminders(formattedReminders);
+
+      // Set initial UI state based on whether there are unread reminders
+      const hasUnreadReminders = formattedReminders.some((r: any) => !r.isRead);
+      if (hasUnreadReminders) {
+        setShowReminders(true);
+        setShowCalendarHeader(false);
+      }
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+    }
+  };
+
   useEffect(() => {
-    const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
-    const buttons = document.querySelectorAll(".fc-refresh-button");
-    buttons.forEach((button) => {
-      button.innerHTML = refreshIcon;
-    });
-  }, [suggestionsLoading]);
+    if (userId) {
+      fetchReminders();
+    }
+  }, [userId]);
+
+  const handleToggleReminders = () => {
+    if (isTransitioning) return; // Prevent multiple rapid toggles
+
+    setIsTransitioning(true);
+
+    if (showReminders) {
+      // Going from reminders back to calendar - start both transitions simultaneously
+      setShowReminders(false);
+      setShowCalendarHeader(true);
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 350);
+    } else {
+      // Going from calendar to reminders - start both transitions simultaneously
+      setShowCalendarHeader(false);
+      setShowReminders(true);
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, 350);
+    }
+  };
+
+  const handleDismissReminder = async (reminderId: string) => {
+    try {
+      const response = await fetch(`/api/reminders?id=${reminderId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to dismiss reminder");
+      }
+
+      // Update local state to mark as read
+      setReminders((prev) =>
+        prev.map((reminder) =>
+          reminder.id === reminderId ? { ...reminder, isRead: true } : reminder
+        )
+      );
+    } catch (error) {
+      console.error("Error dismissing reminder:", error);
+    }
+  };
+
+  const handleCreateReminder = async (
+    reminderData: Omit<Reminder, "id" | "isRead">
+  ) => {
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reminderData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create reminder");
+      }
+
+      const newReminder = await response.json();
+      const formattedReminder = {
+        ...newReminder,
+        time: new Date(newReminder.time),
+      };
+
+      setReminders((prev) => [...prev, formattedReminder]);
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+    }
+  };
+
+  const unreadReminders = useMemo(() => {
+    return reminders.filter((r) => !r.isRead);
+  }, [reminders]);
+
+  useEffect(() => {
+    // Add a small delay to ensure the DOM has updated after reminders bar toggle
+    const timeoutId = setTimeout(() => {
+      const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
+      const remindersIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
+
+      const buttons = document.querySelectorAll(".fc-refresh-button");
+      buttons.forEach((button) => {
+        button.innerHTML = refreshIcon;
+      });
+
+      const reminderButtons = document.querySelectorAll(".fc-reminders-button");
+      reminderButtons.forEach((button) => {
+        const iconContainer = document.createElement("div");
+        iconContainer.style.position = "relative";
+        iconContainer.style.display = "inline-flex";
+        iconContainer.style.alignItems = "center";
+        iconContainer.innerHTML = remindersIcon;
+
+        if (unreadReminders.length > 0) {
+          const badge = document.createElement("div");
+          badge.style.position = "absolute";
+          badge.style.top = "-4px";
+          badge.style.right = "-6px";
+          badge.style.backgroundColor = "#ef4444";
+          badge.style.color = "white";
+          badge.style.fontSize = "9px";
+          badge.style.fontWeight = "bold";
+          badge.style.borderRadius = "50%";
+          badge.style.width = "14px";
+          badge.style.height = "14px";
+          badge.style.display = "flex";
+          badge.style.alignItems = "center";
+          badge.style.justifyContent = "center";
+          badge.textContent = unreadReminders.length.toString();
+          iconContainer.appendChild(badge);
+        }
+
+        button.innerHTML = "";
+        button.appendChild(iconContainer);
+      });
+    }, 200); // Slightly longer delay to ensure smooth header transition
+
+    return () => clearTimeout(timeoutId);
+  }, [suggestionsLoading, unreadReminders, showCalendarHeader]);
 
   const fetchEvents = async (startStr: string, endStr: string) => {
     setCalendarLoading(true);
@@ -872,8 +1024,23 @@ export default function CalendarApp() {
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 justify-center items-center p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className={`flex-1 flex flex-col p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+              showCalendarHeader
+                ? "calendar-header-visible"
+                : "calendar-header-hidden"
+            }`}
           >
+            {/* Reminders Bar - replaces calendar header when visible */}
+            <AnimatePresence mode="wait">
+              {showReminders && (
+                <RemindersBar
+                  isVisible={showReminders}
+                  onToggle={handleToggleReminders}
+                  reminders={reminders}
+                  onDismissReminder={handleDismissReminder}
+                />
+              )}
+            </AnimatePresence>
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div
@@ -890,125 +1057,148 @@ export default function CalendarApp() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="timeGridWeek"
-              events={events}
-              eventClick={handleEventClick}
-              eventContent={renderEventContent}
-              height="100%"
-              customButtons={{
-                refresh: {
-                  text: "",
-                  click: fetchSuggestions,
-                  hint: "Refresh Suggestions",
-                },
+            <motion.div
+              className="flex-1 relative overflow-hidden"
+              initial={false}
+              animate={{
+                opacity: 1,
               }}
-              eventClassNames={(eventInfo) => {
-                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
-                const isCopied = copiedEvents.some(
-                  (e) => e.id === eventInfo.event.id
-                );
-                const isSelected = selectedEventIds.has(eventInfo.event.id);
+              transition={{
+                duration: 0.35,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+            >
+              <FullCalendar
+                ref={calendarRef}
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                events={events}
+                eventClick={handleEventClick}
+                eventContent={renderEventContent}
+                height="100%"
+                customButtons={{
+                  refresh: {
+                    text: "",
+                    click: fetchSuggestions,
+                    hint: "Refresh Suggestions",
+                  },
+                  reminders: {
+                    text: "",
+                    click: handleToggleReminders,
+                    hint: `${
+                      unreadReminders.length > 0
+                        ? `${unreadReminders.length} `
+                        : ""
+                    }Reminders`,
+                  },
+                }}
+                eventClassNames={(eventInfo) => {
+                  const isSuggestion =
+                    eventInfo.event.extendedProps.isSuggestion;
+                  const isCopied = copiedEvents.some(
+                    (e) => e.id === eventInfo.event.id
+                  );
+                  const isSelected = selectedEventIds.has(eventInfo.event.id);
 
-                if (!isSuggestion && isCopied) {
-                  const copiedClasses = [
-                    "opacity-60",
-                    "border-2",
-                    "border-dashed",
-                    "border-blue-400",
-                    "rounded-md",
-                  ];
-                  if (isSelected) {
-                    copiedClasses.push("ring-2", "ring-blue-500");
+                  if (!isSuggestion && isCopied) {
+                    const copiedClasses = [
+                      "opacity-60",
+                      "border-2",
+                      "border-dashed",
+                      "border-blue-400",
+                      "rounded-md",
+                    ];
+                    if (isSelected) {
+                      copiedClasses.push("ring-2", "ring-blue-500");
+                    }
+                    return copiedClasses;
                   }
-                  return copiedClasses;
-                }
 
-                const classes = [
-                  "dark:bg-blue-900/80",
-                  "dark:border-blue-500",
-                  "border-l-4",
-                  "text-white dark:text-blue-200",
-                  "rounded-md",
-                  "border-transparent",
-                  "overflow-visible",
-                ];
+                  const classes = [
+                    "dark:bg-blue-900/80",
+                    "dark:border-blue-500",
+                    "border-l-4",
+                    "text-white dark:text-blue-200",
+                    "rounded-md",
+                    "border-transparent",
+                    "overflow-visible",
+                  ];
 
-                if (isSuggestion) {
-                  classes.push("opacity-70");
-                }
+                  if (isSuggestion) {
+                    classes.push("opacity-70");
+                  }
 
-                if (isSelected) {
-                  classes.push("ring-2", "ring-blue-500");
-                }
-                return classes.filter(Boolean);
-              }}
-              headerToolbar={{
-                start: "prev,next today",
-                center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay,refresh",
-              }}
-              buttonText={{
-                today: "Today",
-                month: "Month",
-                week: "Week",
-                day: "Day",
-              }}
-              dayMaxEventRows={3}
-              views={{
-                dayGridMonth: {
-                  titleFormat: { year: "numeric", month: "long" },
-                  dayHeaderFormat: { weekday: "short" },
-                },
-              }}
-              themeSystem="standard"
-              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
-              dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
-              nowIndicator={true}
-              nowIndicatorClassNames="border-red-500 dark:border-red-900"
-              scrollTimeReset={false}
-              allDaySlot={false}
-              scrollTime={`${new Date().getHours()}:00:00`}
-              editable={true}
-              select={handleSelect}
-              unselect={handleUnselect}
-              unselectAuto={true}
-              selectable={true}
-              dateClick={(clickInfo) => {
-                const clickedDate = new Date(clickInfo.date);
-                if (!isSameDay(clickedDate, dailySummaryDate)) {
-                  setDailySummaryDate(clickedDate);
-                }
-                setLastClickedDate(new Date(clickInfo.date));
-              }}
-              eventResize={handleEventUpdate}
-              eventDrop={handleEventUpdate}
-              datesSet={(dateInfo) => {
-                const visibleStart = new Date(dateInfo.startStr);
-                const visibleEnd = new Date(dateInfo.endStr);
+                  if (isSelected) {
+                    classes.push("ring-2", "ring-blue-500");
+                  }
+                  return classes.filter(Boolean);
+                }}
+                headerToolbar={{
+                  start: "prev,next today",
+                  center: "title",
+                  right:
+                    "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders",
+                }}
+                buttonText={{
+                  today: "Today",
+                  month: "Month",
+                  week: "Week",
+                  day: "Day",
+                }}
+                dayMaxEventRows={3}
+                views={{
+                  dayGridMonth: {
+                    titleFormat: { year: "numeric", month: "long" },
+                    dayHeaderFormat: { weekday: "short" },
+                  },
+                }}
+                themeSystem="standard"
+                dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+                dayHeaderClassNames="text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
+                nowIndicator={true}
+                nowIndicatorClassNames="border-red-500 dark:border-red-900"
+                scrollTimeReset={false}
+                allDaySlot={false}
+                scrollTime={`${new Date().getHours()}:00:00`}
+                editable={true}
+                select={handleSelect}
+                unselect={handleUnselect}
+                unselectAuto={true}
+                selectable={true}
+                dateClick={(clickInfo) => {
+                  const clickedDate = new Date(clickInfo.date);
+                  if (!isSameDay(clickedDate, dailySummaryDate)) {
+                    setDailySummaryDate(clickedDate);
+                  }
+                  setLastClickedDate(new Date(clickInfo.date));
+                }}
+                eventResize={handleEventUpdate}
+                eventDrop={handleEventUpdate}
+                datesSet={(dateInfo) => {
+                  const visibleStart = new Date(dateInfo.startStr);
+                  const visibleEnd = new Date(dateInfo.endStr);
 
-                const bufferStart = new Date(visibleStart);
-                bufferStart.setMonth(bufferStart.getMonth() - 2);
+                  const bufferStart = new Date(visibleStart);
+                  bufferStart.setMonth(bufferStart.getMonth() - 2);
 
-                const bufferEnd = new Date(visibleEnd);
-                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
+                  const bufferEnd = new Date(visibleEnd);
+                  bufferEnd.setMonth(bufferEnd.getMonth() + 2);
 
-                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
-                  console.log(
-                    "Fetching events for range:",
-                    bufferStart,
-                    bufferEnd
-                  );
-                  fetchEvents(
-                    bufferStart.toISOString(),
-                    bufferEnd.toISOString()
-                  );
-                  setFetchedRange({ start: bufferStart, end: bufferEnd });
-                }
-              }}
-            />
+                  if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                    console.log(
+                      "Fetching events for range:",
+                      bufferStart,
+                      bufferEnd
+                    );
+                    fetchEvents(
+                      bufferStart.toISOString(),
+                      bufferEnd.toISOString()
+                    );
+                    setFetchedRange({ start: bufferStart, end: bufferEnd });
+                  }
+                }}
+              />
+            </motion.div>
           </div>
 
           {/* Side Panel */}
@@ -1017,7 +1207,12 @@ export default function CalendarApp() {
             setInputText={setInputText}
             loading={loading}
             handleSubmit={handleSubmit}
-            setShowModal={setShowCreationModal}
+            setShowModal={(show) => {
+              if (show) {
+                setModalInitialTab("event");
+              }
+              setShowCreationModal(show);
+            }}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
             dailySummary={dailySummary}
@@ -1032,8 +1227,23 @@ export default function CalendarApp() {
           {/* Calendar Section - Top */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 justify-center items-center p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className={`flex-1 flex flex-col p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+              showCalendarHeader
+                ? "calendar-header-visible"
+                : "calendar-header-hidden"
+            }`}
           >
+            {/* Reminders Bar - Mobile */}
+            <AnimatePresence mode="wait">
+              {showReminders && (
+                <RemindersBar
+                  isVisible={showReminders}
+                  onToggle={handleToggleReminders}
+                  reminders={reminders}
+                  onDismissReminder={handleDismissReminder}
+                />
+              )}
+            </AnimatePresence>
             <AnimatePresence>
               {calendarLoading && (
                 <motion.div
@@ -1050,131 +1260,148 @@ export default function CalendarApp() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="timeGridDay"
-              events={events}
-              eventClick={handleEventClick}
-              eventContent={renderEventContent}
-              height="100%"
-              customButtons={{
-                refresh: {
-                  text: "",
-                  click: fetchSuggestions,
-                },
+            <motion.div
+              className="flex-1 relative overflow-hidden"
+              initial={false}
+              animate={{
+                opacity: 1,
               }}
-              headerToolbar={{
-                start: "title",
-                center: "",
-                end: "prev,next",
+              transition={{
+                duration: 0.35,
+                ease: [0.25, 0.46, 0.45, 0.94],
               }}
-              footerToolbar={{
-                start: "today",
-                center: "dayGridMonth,timeGridWeek,timeGridDay",
-                end: "refresh",
-              }}
-              eventClassNames={(eventInfo) => {
-                const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
-                const isCopied = copiedEvents.some(
-                  (e) => e.id === eventInfo.event.id
-                );
-                const isSelected = selectedEventIds.has(eventInfo.event.id);
+            >
+              <FullCalendar
+                ref={calendarRef}
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridDay"
+                events={events}
+                eventClick={handleEventClick}
+                eventContent={renderEventContent}
+                height="100%"
+                customButtons={{
+                  refresh: {
+                    text: "",
+                    click: fetchSuggestions,
+                  },
+                  reminders: {
+                    text: "",
+                    click: handleToggleReminders,
+                  },
+                }}
+                headerToolbar={{
+                  start: "title",
+                  center: "",
+                  end: "prev,next,reminders",
+                }}
+                footerToolbar={{
+                  start: "today",
+                  center: "dayGridMonth,timeGridWeek,timeGridDay",
+                  end: "refresh",
+                }}
+                eventClassNames={(eventInfo) => {
+                  const isSuggestion =
+                    eventInfo.event.extendedProps.isSuggestion;
+                  const isCopied = copiedEvents.some(
+                    (e) => e.id === eventInfo.event.id
+                  );
+                  const isSelected = selectedEventIds.has(eventInfo.event.id);
 
-                if (!isSuggestion && isCopied) {
-                  const copiedClasses = [
-                    "opacity-60",
-                    "border-2",
-                    "border-dashed",
-                    "border-blue-400",
+                  if (!isSuggestion && isCopied) {
+                    const copiedClasses = [
+                      "opacity-60",
+                      "border-2",
+                      "border-dashed",
+                      "border-blue-400",
+                      "rounded-md",
+                      "text-xs",
+                    ];
+                    if (isSelected) {
+                      copiedClasses.push("ring-2", "ring-blue-500");
+                    }
+                    return copiedClasses;
+                  }
+
+                  const classes = [
+                    "dark:bg-blue-900/80",
+                    "dark:border-blue-500",
+                    "border-l-4",
+                    "text-white dark:text-blue-200",
                     "rounded-md",
+                    "border-transparent",
+                    "overflow-visible",
                     "text-xs",
                   ];
-                  if (isSelected) {
-                    copiedClasses.push("ring-2", "ring-blue-500");
+
+                  if (isSuggestion) {
+                    classes.push("opacity-70");
                   }
-                  return copiedClasses;
-                }
 
-                const classes = [
-                  "dark:bg-blue-900/80",
-                  "dark:border-blue-500",
-                  "border-l-4",
-                  "text-white dark:text-blue-200",
-                  "rounded-md",
-                  "border-transparent",
-                  "overflow-visible",
-                  "text-xs",
-                ];
+                  if (isSelected) {
+                    classes.push("ring-2", "ring-blue-500");
+                  }
+                  return classes.filter(Boolean);
+                }}
+                buttonText={{
+                  today: "Today",
+                  month: "M",
+                  week: "W",
+                  day: "D",
+                }}
+                dayMaxEventRows={2}
+                views={{
+                  dayGridMonth: {
+                    titleFormat: { year: "numeric", month: "long" },
+                    dayHeaderFormat: { weekday: "narrow" },
+                  },
+                }}
+                themeSystem="standard"
+                dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+                dayHeaderClassNames="text-gray-600 font-medium py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
+                nowIndicator={true}
+                nowIndicatorClassNames="border-red-500 dark:border-red-900"
+                scrollTimeReset={false}
+                scrollTime={`${new Date().getHours()}:00:00`}
+                allDaySlot={false}
+                editable={true}
+                select={handleSelect}
+                unselect={handleUnselect}
+                unselectAuto={true}
+                selectable={true}
+                dateClick={(clickInfo) => {
+                  const clickedDate = new Date(clickInfo.date);
+                  if (!isSameDay(clickedDate, dailySummaryDate)) {
+                    setDailySummaryDate(clickedDate);
+                  }
+                  setLastClickedDate(new Date(clickInfo.date));
+                }}
+                eventResize={handleEventUpdate}
+                eventDrop={handleEventUpdate}
+                datesSet={(dateInfo) => {
+                  const visibleStart = new Date(dateInfo.startStr);
+                  const visibleEnd = new Date(dateInfo.endStr);
 
-                if (isSuggestion) {
-                  classes.push("opacity-70");
-                }
+                  const bufferStart = new Date(visibleStart);
+                  bufferStart.setMonth(bufferStart.getMonth() - 2);
 
-                if (isSelected) {
-                  classes.push("ring-2", "ring-blue-500");
-                }
-                return classes.filter(Boolean);
-              }}
-              buttonText={{
-                today: "Today",
-                month: "M",
-                week: "W",
-                day: "D",
-              }}
-              dayMaxEventRows={2}
-              views={{
-                dayGridMonth: {
-                  titleFormat: { year: "numeric", month: "long" },
-                  dayHeaderFormat: { weekday: "narrow" },
-                },
-              }}
-              themeSystem="standard"
-              dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
-              dayHeaderClassNames="text-gray-600 font-medium py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
-              nowIndicator={true}
-              nowIndicatorClassNames="border-red-500 dark:border-red-900"
-              scrollTimeReset={false}
-              scrollTime={`${new Date().getHours()}:00:00`}
-              allDaySlot={false}
-              editable={true}
-              select={handleSelect}
-              unselect={handleUnselect}
-              unselectAuto={true}
-              selectable={true}
-              dateClick={(clickInfo) => {
-                const clickedDate = new Date(clickInfo.date);
-                if (!isSameDay(clickedDate, dailySummaryDate)) {
-                  setDailySummaryDate(clickedDate);
-                }
-                setLastClickedDate(new Date(clickInfo.date));
-              }}
-              eventResize={handleEventUpdate}
-              eventDrop={handleEventUpdate}
-              datesSet={(dateInfo) => {
-                const visibleStart = new Date(dateInfo.startStr);
-                const visibleEnd = new Date(dateInfo.endStr);
+                  const bufferEnd = new Date(visibleEnd);
+                  bufferEnd.setMonth(bufferEnd.getMonth() + 2);
 
-                const bufferStart = new Date(visibleStart);
-                bufferStart.setMonth(bufferStart.getMonth() - 2);
-
-                const bufferEnd = new Date(visibleEnd);
-                bufferEnd.setMonth(bufferEnd.getMonth() + 2);
-
-                if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
-                  console.log(
-                    "Fetching events for range:",
-                    bufferStart,
-                    bufferEnd
-                  );
-                  fetchEvents(
-                    bufferStart.toISOString(),
-                    bufferEnd.toISOString()
-                  );
-                  setFetchedRange({ start: bufferStart, end: bufferEnd });
-                }
-              }}
-            />
+                  if (!isRangeInsideFetched(visibleStart, visibleEnd)) {
+                    console.log(
+                      "Fetching events for range:",
+                      bufferStart,
+                      bufferEnd
+                    );
+                    fetchEvents(
+                      bufferStart.toISOString(),
+                      bufferEnd.toISOString()
+                    );
+                    setFetchedRange({ start: bufferStart, end: bufferEnd });
+                  }
+                }}
+              />
+            </motion.div>
           </div>
 
           {/* Bottom Panel Section - Mobile */}
@@ -1184,7 +1411,12 @@ export default function CalendarApp() {
               setInputText={setInputText}
               loading={loading}
               handleSubmit={handleSubmit}
-              setShowModal={setShowCreationModal}
+              setShowModal={(show) => {
+                if (show) {
+                  setModalInitialTab("event");
+                }
+                setShowCreationModal(show);
+              }}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
               setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
               dailySummary={dailySummary}
@@ -1198,8 +1430,15 @@ export default function CalendarApp() {
           <EventCreationModal
             newEvent={newEvent}
             setNewEvent={setNewEvent}
-            setShowModal={setShowCreationModal}
+            setShowModal={(show) => {
+              if (!show) {
+                setModalInitialTab("event"); // Reset to event tab when modal closes
+              }
+              setShowCreationModal(show);
+            }}
             handleAddEvent={handleAddEvent}
+            onCreateReminder={handleCreateReminder}
+            initialTab={modalInitialTab}
           />
         )}
 
