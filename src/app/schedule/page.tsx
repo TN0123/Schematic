@@ -736,7 +736,11 @@ export default function CalendarApp() {
           ...reminder,
           time: new Date(reminder.time),
         }));
-        setReminders((prev) => [...prev, ...formattedReminders]);
+        // Replace AI-suggested reminders while keeping user-created ones
+        setReminders((prev) => [
+          ...prev.filter((r) => !r.isAISuggested),
+          ...formattedReminders,
+        ]);
 
         // Show reminders bar only if there are non-AI suggested reminders within 7 days
         const currentDate = new Date();
@@ -859,7 +863,11 @@ export default function CalendarApp() {
           ...reminder,
           time: new Date(reminder.time),
         }));
-        setReminders((prev) => [...prev, ...formattedReminders]);
+        // Replace AI-suggested reminders while keeping user-created ones
+        setReminders((prev) => [
+          ...prev.filter((r) => !r.isAISuggested),
+          ...formattedReminders,
+        ]);
 
         // Show reminders bar only if there are non-AI suggested reminders within 7 days
         const currentDate = new Date();
