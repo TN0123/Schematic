@@ -34,7 +34,16 @@ export default function RemindersBar({
 }: RemindersBarProps) {
   const [currentReminderIndex, setCurrentReminderIndex] = useState(0);
 
-  const unreadReminders = reminders.filter((r) => !r.isRead);
+  const unreadReminders = reminders
+    .filter((r) => !r.isRead)
+    .sort((a, b) => {
+      // First sort by AI suggestion status (non-AI first)
+      if (a.isAISuggested !== b.isAISuggested) {
+        return a.isAISuggested ? 1 : -1;
+      }
+      // Then sort by time (earliest first)
+      return a.time.getTime() - b.time.getTime();
+    });
   const currentReminder = unreadReminders[currentReminderIndex];
 
   const handleNext = () => {
