@@ -102,15 +102,12 @@ export default function RemindersBar({
           <div className="flex items-center justify-start min-w-[120px]">
             <button
               onClick={onToggle}
-              className="group flex items-center px-4 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <ArrowLeft
                 size={18}
-                className="mr-2 text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
+                className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
-              <span className="text-sm font-semibold text-gray-700 dark:text-dark-textPrimary group-hover:text-gray-900 dark:group-hover:text-white">
-                Back
-              </span>
             </button>
           </div>
           <motion.div
@@ -136,15 +133,12 @@ export default function RemindersBar({
           <div className="flex items-center justify-start min-w-[120px]">
             <button
               onClick={onToggle}
-              className="group flex items-center px-4 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <ArrowLeft
                 size={18}
-                className="mr-2 text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
+                className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
-              <span className="text-sm font-semibold text-gray-700 dark:text-dark-textPrimary group-hover:text-gray-900 dark:group-hover:text-white">
-                Back
-              </span>
             </button>
           </div>
 
@@ -200,9 +194,18 @@ export default function RemindersBar({
                         </motion.div>
                       )}
                     </div>
-                    <p className="text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-2">
-                      {currentReminder.text}
-                    </p>
+                    <div className="relative flex items-center justify-center group">
+                      <p className="text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-2 text-center">
+                        {currentReminder.text}
+                      </p>
+                      <button
+                        onClick={handleDismiss}
+                        className="absolute right-0 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
+                        title="Dismiss reminder"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -220,7 +223,7 @@ export default function RemindersBar({
             </button>
           </div>
 
-          <div className="flex items-center justify-end min-w-[120px] space-x-2">
+          <div className="flex items-center justify-end min-w-[120px]">
             <motion.span
               key={`${currentReminderIndex + 1}/${unreadReminders.length}`}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -230,16 +233,6 @@ export default function RemindersBar({
             >
               {currentReminderIndex + 1}/{unreadReminders.length}
             </motion.span>
-            <button
-              onClick={handleDismiss}
-              className="group p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-all duration-300 hover:scale-110 active:scale-95"
-              title="Dismiss reminder"
-            >
-              <X
-                size={16}
-                className="group-hover:rotate-90 transition-transform duration-200"
-              />
-            </button>
           </div>
         </div>
       )}

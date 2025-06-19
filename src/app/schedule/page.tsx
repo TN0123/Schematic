@@ -99,6 +99,7 @@ export default function CalendarApp() {
   const [showCalendarHeader, setShowCalendarHeader] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [hasInitializedReminders, setHasInitializedReminders] = useState(false);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -136,6 +137,7 @@ export default function CalendarApp() {
       },
     ];
     setReminders(dummyReminders);
+    setHasInitializedReminders(true);
   }, []);
 
   const handleToggleReminders = () => {
@@ -171,6 +173,18 @@ export default function CalendarApp() {
   const unreadReminders = useMemo(() => {
     return reminders.filter((r) => !r.isRead);
   }, [reminders]);
+
+  // Auto-open reminders bar if there are unread reminders on initial load
+  useEffect(() => {
+    if (
+      hasInitializedReminders &&
+      unreadReminders.length > 0 &&
+      !showReminders
+    ) {
+      setShowCalendarHeader(false);
+      setShowReminders(true);
+    }
+  }, [hasInitializedReminders, unreadReminders.length, showReminders]);
 
   useEffect(() => {
     // Add a small delay to ensure the DOM has updated after reminders bar toggle
