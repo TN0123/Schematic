@@ -376,7 +376,7 @@ export default function EventGenerationPanel({
                       />
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line">
+                    <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line max-h-64 overflow-y-auto">
                       <span>{eventList}</span>
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
