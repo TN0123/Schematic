@@ -88,14 +88,14 @@ export default function RemindersBar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -64, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -32, scale: 0.98 }}
+      initial={{ opacity: 0, y: -64 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -64 }}
       transition={{
-        duration: 0.25,
-        ease: [0.4, 0.0, 0.2, 1],
+        duration: 0.35,
+        ease: [0.25, 0.46, 0.45, 0.94],
       }}
-      className="w-full z-20 flex items-center bg-gray-50/95 dark:bg-dark-background/95 backdrop-blur-sm px-6 h-16 shadow-lg shadow-black/5 dark:shadow-black/20"
+      className="absolute top-0 left-0 right-0 z-30 h-16 flex items-center bg-gray-50/95 dark:bg-dark-background/95 backdrop-blur-sm px-6 shadow-lg shadow-black/5 dark:shadow-black/20"
     >
       {unreadReminders.length === 0 ? (
         <div className="flex items-center justify-between w-full">

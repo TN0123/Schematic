@@ -143,42 +143,20 @@ export default function CalendarApp() {
 
     setIsTransitioning(true);
 
-    // Add transitioning attribute to calendar container for CSS transitions
-    if (calendarContainerRef.current) {
-      const fcElement = calendarContainerRef.current.querySelector(".fc");
-      if (fcElement) {
-        fcElement.setAttribute("data-transitioning", "true");
-      }
-    }
-
     if (showReminders) {
-      // Going from reminders back to calendar
+      // Going from reminders back to calendar - start both transitions simultaneously
       setShowReminders(false);
-      // Wait for reminders to fade out before showing calendar header
+      setShowCalendarHeader(true);
       setTimeout(() => {
-        setShowCalendarHeader(true);
         setIsTransitioning(false);
-        if (calendarContainerRef.current) {
-          const fcElement = calendarContainerRef.current.querySelector(".fc");
-          if (fcElement) {
-            fcElement.removeAttribute("data-transitioning");
-          }
-        }
-      }, 250); // Match the reminders bar exit duration
+      }, 350);
     } else {
-      // Going from calendar to reminders
+      // Going from calendar to reminders - start both transitions simultaneously
       setShowCalendarHeader(false);
-      // Start showing reminders after a small delay for smooth transition
+      setShowReminders(true);
       setTimeout(() => {
-        setShowReminders(true);
         setIsTransitioning(false);
-        if (calendarContainerRef.current) {
-          const fcElement = calendarContainerRef.current.querySelector(".fc");
-          if (fcElement) {
-            fcElement.removeAttribute("data-transitioning");
-          }
-        }
-      }, 50); // Smaller delay for smoother transition
+      }, 350);
     }
   };
 
@@ -1006,10 +984,14 @@ export default function CalendarApp() {
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 flex flex-col p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className={`flex-1 flex flex-col p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+              showCalendarHeader
+                ? "calendar-header-visible"
+                : "calendar-header-hidden"
+            }`}
           >
             {/* Reminders Bar - replaces calendar header when visible */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {showReminders && (
                 <RemindersBar
                   isVisible={showReminders}
@@ -1036,17 +1018,14 @@ export default function CalendarApp() {
               )}
             </AnimatePresence>
             <motion.div
-              className="flex-1 relative"
+              className="flex-1 relative overflow-hidden"
               initial={false}
               animate={{
-                opacity: isTransitioning ? 0.95 : 1,
-                scale: isTransitioning ? 0.99 : 1,
+                opacity: 1,
               }}
               transition={{
-                duration: 0.25,
-                ease: [0.4, 0.0, 0.2, 1],
-                opacity: { duration: 0.15 },
-                scale: { duration: 0.2 },
+                duration: 0.35,
+                ease: [0.25, 0.46, 0.45, 0.94],
               }}
             >
               <FullCalendar
@@ -1114,16 +1093,12 @@ export default function CalendarApp() {
                   }
                   return classes.filter(Boolean);
                 }}
-                headerToolbar={
-                  !showCalendarHeader
-                    ? false
-                    : {
-                        start: "prev,next today",
-                        center: "title",
-                        right:
-                          "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders",
-                      }
-                }
+                headerToolbar={{
+                  start: "prev,next today",
+                  center: "title",
+                  right:
+                    "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders",
+                }}
                 buttonText={{
                   today: "Today",
                   month: "Month",
@@ -1207,10 +1182,14 @@ export default function CalendarApp() {
           {/* Calendar Section - Top */}
           <div
             ref={calendarContainerRef}
-            className="flex-1 flex flex-col p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary"
+            className={`flex-1 flex flex-col p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+              showCalendarHeader
+                ? "calendar-header-visible"
+                : "calendar-header-hidden"
+            }`}
           >
             {/* Reminders Bar - Mobile */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {showReminders && (
                 <RemindersBar
                   isVisible={showReminders}
@@ -1237,17 +1216,14 @@ export default function CalendarApp() {
               )}
             </AnimatePresence>
             <motion.div
-              className="flex-1 relative"
+              className="flex-1 relative overflow-hidden"
               initial={false}
               animate={{
-                opacity: isTransitioning ? 0.95 : 1,
-                scale: isTransitioning ? 0.99 : 1,
+                opacity: 1,
               }}
               transition={{
-                duration: 0.25,
-                ease: [0.4, 0.0, 0.2, 1],
-                opacity: { duration: 0.15 },
-                scale: { duration: 0.2 },
+                duration: 0.35,
+                ease: [0.25, 0.46, 0.45, 0.94],
               }}
             >
               <FullCalendar
@@ -1263,25 +1239,21 @@ export default function CalendarApp() {
                     text: "",
                     click: fetchSuggestions,
                   },
+                  reminders: {
+                    text: "",
+                    click: handleToggleReminders,
+                  },
                 }}
-                headerToolbar={
-                  !showCalendarHeader
-                    ? false
-                    : {
-                        start: "title",
-                        center: "",
-                        end: "prev,next,reminders",
-                      }
-                }
-                footerToolbar={
-                  !showCalendarHeader
-                    ? false
-                    : {
-                        start: "today",
-                        center: "dayGridMonth,timeGridWeek,timeGridDay",
-                        end: "refresh",
-                      }
-                }
+                headerToolbar={{
+                  start: "title",
+                  center: "",
+                  end: "prev,next,reminders",
+                }}
+                footerToolbar={{
+                  start: "today",
+                  center: "dayGridMonth,timeGridWeek,timeGridDay",
+                  end: "refresh",
+                }}
                 eventClassNames={(eventInfo) => {
                   const isSuggestion =
                     eventInfo.event.extendedProps.isSuggestion;

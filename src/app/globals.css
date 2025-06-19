@@ -76,51 +76,41 @@ main {
 
 /* Custom styles for FullCalendar */
 
-/* Smooth transitions for toolbar appearance/disappearance */
+/* Smooth toolbar transitions using position-based animation */
 .fc-toolbar {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    opacity: 1 !important;
-    transform: translateY(0) !important;
+    transition: opacity 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    will-change: opacity, transform !important;
 }
 
-.fc-toolbar.fc-toolbar-hide {
+/* Hide header smoothly when reminders are shown */
+.calendar-header-hidden .fc-toolbar {
     opacity: 0 !important;
-    transform: translateY(-10px) !important;
+    transform: translateY(-64px) !important;
     pointer-events: none !important;
+}
+
+/* Show header smoothly when reminders are hidden */
+.calendar-header-visible .fc-toolbar {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
 }
 
 /* Smooth transitions for all toolbar elements */
 .fc-toolbar-title,
 .fc-button-group,
 .fc-button {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Calendar container smooth transitions */
 .fc {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Enhanced transitions for calendar layout changes */
 .fc-view-harness {
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Smoother transitions when toolbar is hidden/shown */
-.fc-header-toolbar {
-    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-                transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                height 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    overflow: hidden !important;
-}
-
-/* Animation for when toolbar disappears */
-.fc[data-transitioning="true"] .fc-toolbar {
-    opacity: 0 !important;
-    transform: translateY(-20px) scale(0.95) !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-day-today {
