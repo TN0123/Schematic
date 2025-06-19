@@ -99,46 +99,43 @@ export default function CalendarApp() {
   const [showCalendarHeader, setShowCalendarHeader] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [hasInitializedReminders, setHasInitializedReminders] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<"event" | "reminder">(
+    "event"
+  );
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize dummy reminders data
+  // Fetch reminders from database
+  const fetchReminders = async () => {
+    try {
+      const response = await fetch("/api/reminders");
+      if (!response.ok) {
+        throw new Error("Failed to fetch reminders");
+      }
+      const data = await response.json();
+      const formattedReminders = data.map((reminder: any) => ({
+        ...reminder,
+        time: new Date(reminder.time),
+      }));
+      setReminders(formattedReminders);
+
+      // Set initial UI state based on whether there are unread reminders
+      const hasUnreadReminders = formattedReminders.some((r: any) => !r.isRead);
+      if (hasUnreadReminders) {
+        setShowReminders(true);
+        setShowCalendarHeader(false);
+      }
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+    }
+  };
+
   useEffect(() => {
-    const dummyReminders: Reminder[] = [
-      {
-        id: "1",
-        text: "Team standup meeting in 15 minutes",
-        time: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
-        isAISuggested: false,
-        isRead: false,
-      },
-      {
-        id: "2",
-        text: "Review quarterly report before client call",
-        time: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-        isAISuggested: true,
-        isRead: false,
-      },
-      {
-        id: "3",
-        text: "Doctor appointment reminder",
-        time: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-        isAISuggested: false,
-        isRead: false,
-      },
-      {
-        id: "4",
-        text: "Prepare presentation slides for tomorrow's demo",
-        time: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
-        isAISuggested: true,
-        isRead: false,
-      },
-    ];
-    setReminders(dummyReminders);
-    setHasInitializedReminders(true);
-  }, []);
+    if (userId) {
+      fetchReminders();
+    }
+  }, [userId]);
 
   const handleToggleReminders = () => {
     if (isTransitioning) return; // Prevent multiple rapid toggles
@@ -162,29 +159,58 @@ export default function CalendarApp() {
     }
   };
 
-  const handleDismissReminder = (reminderId: string) => {
-    setReminders((prev) =>
-      prev.map((reminder) =>
-        reminder.id === reminderId ? { ...reminder, isRead: true } : reminder
-      )
-    );
+  const handleDismissReminder = async (reminderId: string) => {
+    try {
+      const response = await fetch(`/api/reminders?id=${reminderId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to dismiss reminder");
+      }
+
+      // Update local state to mark as read
+      setReminders((prev) =>
+        prev.map((reminder) =>
+          reminder.id === reminderId ? { ...reminder, isRead: true } : reminder
+        )
+      );
+    } catch (error) {
+      console.error("Error dismissing reminder:", error);
+    }
+  };
+
+  const handleCreateReminder = async (
+    reminderData: Omit<Reminder, "id" | "isRead">
+  ) => {
+    try {
+      const response = await fetch("/api/reminders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reminderData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create reminder");
+      }
+
+      const newReminder = await response.json();
+      const formattedReminder = {
+        ...newReminder,
+        time: new Date(newReminder.time),
+      };
+
+      setReminders((prev) => [...prev, formattedReminder]);
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+    }
   };
 
   const unreadReminders = useMemo(() => {
     return reminders.filter((r) => !r.isRead);
   }, [reminders]);
-
-  // Auto-open reminders bar if there are unread reminders on initial load
-  useEffect(() => {
-    if (
-      hasInitializedReminders &&
-      unreadReminders.length > 0 &&
-      !showReminders
-    ) {
-      setShowCalendarHeader(false);
-      setShowReminders(true);
-    }
-  }, [hasInitializedReminders, unreadReminders.length, showReminders]);
 
   useEffect(() => {
     // Add a small delay to ensure the DOM has updated after reminders bar toggle
@@ -1181,7 +1207,12 @@ export default function CalendarApp() {
             setInputText={setInputText}
             loading={loading}
             handleSubmit={handleSubmit}
-            setShowModal={setShowCreationModal}
+            setShowModal={(show) => {
+              if (show) {
+                setModalInitialTab("event");
+              }
+              setShowCreationModal(show);
+            }}
             setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
             setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
             dailySummary={dailySummary}
@@ -1380,7 +1411,12 @@ export default function CalendarApp() {
               setInputText={setInputText}
               loading={loading}
               handleSubmit={handleSubmit}
-              setShowModal={setShowCreationModal}
+              setShowModal={(show) => {
+                if (show) {
+                  setModalInitialTab("event");
+                }
+                setShowCreationModal(show);
+              }}
               setIsFileUploaderModalOpen={setIsFileUploaderModalOpen}
               setIsIcsUploaderModalOpen={setIsIcsUploaderModalOpen}
               dailySummary={dailySummary}
@@ -1394,8 +1430,15 @@ export default function CalendarApp() {
           <EventCreationModal
             newEvent={newEvent}
             setNewEvent={setNewEvent}
-            setShowModal={setShowCreationModal}
+            setShowModal={(show) => {
+              if (!show) {
+                setModalInitialTab("event"); // Reset to event tab when modal closes
+              }
+              setShowCreationModal(show);
+            }}
             handleAddEvent={handleAddEvent}
+            onCreateReminder={handleCreateReminder}
+            initialTab={modalInitialTab}
           />
         )}
 
