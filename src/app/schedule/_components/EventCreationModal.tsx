@@ -169,12 +169,6 @@ export default function EventCreationModal({
                 onChange={(e) => setIsAISuggested(e.target.checked)}
                 className="mr-2"
               />
-              <label
-                htmlFor="isAISuggested"
-                className="text-gray-700 dark:text-dark-textSecondary text-sm"
-              >
-                Mark as AI suggested
-              </label>
             </div>
             <div className="flex justify-between">
               <button
