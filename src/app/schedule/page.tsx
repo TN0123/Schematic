@@ -667,7 +667,9 @@ export default function CalendarApp() {
         }),
       });
       const data = await response.json();
-      if (data.events) {
+
+      // Handle events
+      if (data.events && data.events.length > 0) {
         const formattedEvents = data.events.map((event: GeneratedEvent) => ({
           title: event.title,
           start: new Date(event.start),
@@ -696,8 +698,24 @@ export default function CalendarApp() {
         }));
 
         setEvents((prevEvents) => [...prevEvents, ...newEvents]);
-        setInputText("");
       }
+
+      // Handle reminders
+      if (data.reminders && data.reminders.length > 0) {
+        const formattedReminders = data.reminders.map((reminder: any) => ({
+          ...reminder,
+          time: new Date(reminder.time),
+        }));
+        setReminders((prev) => [...prev, ...formattedReminders]);
+
+        // Show reminders bar if new reminders were created
+        if (formattedReminders.length > 0) {
+          setShowReminders(true);
+          setShowCalendarHeader(false);
+        }
+      }
+
+      setInputText("");
     } catch (error) {
       console.error("Error generating events:", error);
     } finally {

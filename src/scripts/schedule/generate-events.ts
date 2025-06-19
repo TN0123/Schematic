@@ -33,48 +33,76 @@ export async function generate_events(
   });
 
   const prompt = `
-      You are an AI that extracts structured event details from text. Your goal is to generate a JSON array of event objects.
+      You are an AI that extracts structured event and reminder details from text. Your goal is to generate a JSON object containing both events and reminders.
       
       **Rules:**
-      1. Identify event names, dates, and times in the input.
-      2. If no date is mentioned, assume today's date: **${currentDate}**.
-      3. If am/pm is not specified, decide which one the user means based on the name of the event and with common 
+      1. Identify event names, dates, and times in the input for EVENTS.
+      2. Identify reminders, alerts, or notifications with their times for REMINDERS.
+      3. If no date is mentioned, assume today's date: **${currentDate}**.
+      4. If am/pm is not specified, decide which one the user means based on the name of the event/reminder and with common 
       sense (for example breakfast is more likely 9am-10am than 9pm-10pm). Always assume the user is using 12hr format 
       by default. Another thing you can use to determine which time the user means is the current time: ${currentDateTime}.
       They may be more likely to mean the time that is after the current time.
-      4. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
-      5. If the input specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
-      6. If an event has no end time, assume a default duration of **1 hour**.
+      5. Convert times into **ISO 8601 format** (YYYY-MM-DDTHH:mm:ss).
+      6. If an event specifies a time range (e.g., **3pm-4pm**), use it as **start and end times**.
+      7. If an event has no end time, assume a default duration of **1 hour**.
+      8. For reminders, use the exact time specified - reminders are notifications, not events with durations.
       
-      **Output Format (JSON array only, no extra text):**
-      [
-        {
-          "id": "unique-string",
-          "title": "Event Title",
-          "start": "ISO8601 DateTime",
-          "end": "ISO8601 DateTime"
-        }
-      ]
+      **What counts as an EVENT vs REMINDER:**
+      - EVENTS: Things that happen at a specific time and have a duration (meetings, appointments, activities, work sessions, etc.)
+      - REMINDERS: Notifications, alerts, or things to remember at a specific time (take medication, call someone, check something, etc.)
+      
+      **Output Format (JSON object only, no extra text):**
+      {
+        "events": [
+          {
+            "id": "unique-string",
+            "title": "Event Title",
+            "start": "ISO8601 DateTime",
+            "end": "ISO8601 DateTime"
+          }
+        ],
+        "reminders": [
+          {
+            "text": "Reminder text",
+            "time": "ISO8601 DateTime"
+          }
+        ]
+      }
       
       **Example Input:**
-      3pm-4pm Lunch  
-      5pm-6pm Meeting  
+      3pm-4pm Lunch
+      5pm-6pm Meeting
+      Remind me to take medicine at 9am
+      Call mom at 2pm reminder
 
       **Expected Output:**
-      [
-        {
-          "id": "lunch",
-          "title": "Lunch",
-          "start": "${currentDate}T15:00:00",
-          "end": "${currentDate}T16:00:00"
-        },
-        {
-          "id": "meeting",
-          "title": "Meeting",
-          "start": "${currentDate}T17:00:00",
-          "end": "${currentDate}T18:00:00"
-        }
-      ]
+      {
+        "events": [
+          {
+            "id": "lunch",
+            "title": "Lunch",
+            "start": "${currentDate}T15:00:00",
+            "end": "${currentDate}T16:00:00"
+          },
+          {
+            "id": "meeting",
+            "title": "Meeting",
+            "start": "${currentDate}T17:00:00",
+            "end": "${currentDate}T18:00:00"
+          }
+        ],
+        "reminders": [
+          {
+            "text": "Take medicine",
+            "time": "${currentDate}T09:00:00"
+          },
+          {
+            "text": "Call mom",
+            "time": "${currentDate}T14:00:00"
+          }
+        ]
+      }
 
       **Here is the input text:**  
       ${text}
@@ -86,10 +114,10 @@ export async function generate_events(
       ${user?.scheduleContext}
       END CONTEXT
 
-      Generate the events in the output format.
+      Generate the events and reminders in the output format.
     `;
 
-  console.log("PROMPT: ", prompt);
+  // console.log("PROMPT: ", prompt);
 
   //Multiple calls retry mechanism with exponential backoff
   let retries = 3;

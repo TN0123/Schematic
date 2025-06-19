@@ -312,7 +312,7 @@ export default function EventGenerationPanel({
                       300
                     )}px`;
                   }}
-                  placeholder="Enter your schedule here..."
+                  placeholder="Enter your events and reminders here..."
                 />
                 <button
                   className={`absolute bottom-2 right-2 p-1 rounded-full transition-colors duration-200 ${
