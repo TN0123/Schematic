@@ -145,6 +145,22 @@ export async function suggest_events(userId: string, timezone: string) {
     end: event.end,
   }));
 
+  // Get existing reminders for today
+  const todaysReminders = await prisma.reminder.findMany({
+    where: {
+      userId,
+      time: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    select: {
+      id: true,
+      text: true,
+      time: true,
+    },
+  });
+
   // Generate event summary for the prompt
   const eventSummary = existingEvents
     .map((event) => {
@@ -157,6 +173,20 @@ export async function suggest_events(userId: string, timezone: string) {
       const start = new Date(event.start).toLocaleTimeString("en-US", options);
       const end = new Date(event.end).toLocaleTimeString("en-US", options);
       return `${event.title}: ${start} - ${end}`;
+    })
+    .join("\n");
+
+  // Generate reminder summary for the prompt
+  const reminderSummary = todaysReminders
+    .map((reminder) => {
+      const options: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+        timeZone: timezone,
+      };
+      const time = new Date(reminder.time).toLocaleTimeString("en-US", options);
+      return `${reminder.text}: ${time}`;
     })
     .join("\n");
 
@@ -216,27 +246,24 @@ export async function suggest_events(userId: string, timezone: string) {
     .join("\n\n");
 
   const prompt = `
-    You are a helpful AI assistant that suggests a person up to three productive tasks for a 
-    single day. Your goal is to return a JSON array of task objects that fit into the person's 
-    **available time slots** today.
+    You are a helpful AI assistant that suggests productive tasks and helpful reminders for a 
+    single day. Your goal is to return a JSON object with both events and reminders.
 
     ---
 
     **STRICTLY ENFORCED RULES (NO EXCEPTIONS):**
-    1. All tasks must occur within the **available time slots**.
-    2. You must return:
-      - At **least 1** task
-      - At **most 3** tasks
-    3. Prefer tasks related to the person's bulletin items or daily goals when possible.
-    4. Make sure to not suggest events that are already on the schedule. This means not 
-    repeating the times or the titles of existing events. It is okay to suggest fewer 
-    tasks than the maximum if you cannot find come up with tasks that are not already 
-    on the schedule.
-    5. Output must be a **JSON array only** — no extra text.
+    1. **EVENTS:** All events must occur within the **available time slots**.
+    2. **EVENTS:** You must suggest 0-3 events (at least 1 if time slots are available).
+    3. **REMINDERS:** You must suggest 0-3 helpful reminders for today.
+    4. **REMINDERS:** Reminders should be short notifications/alerts, not full events.
+    5. **REMINDERS:** Reminder times can be any time today (not restricted to available slots).
+    6. Prefer suggestions related to the person's bulletin items or daily goals when possible.
+    7. Make sure to not suggest events/reminders that are already scheduled.
+    8. Output must be a **JSON object only** — no extra text.
 
     ---
 
-    **AVAILABLE TIME SLOTS** (you may only schedule tasks within these ranges):
+    **AVAILABLE TIME SLOTS** (events may only be scheduled within these ranges):
     ${formattedTimeSlots}
 
     **BULLETIN ITEMS (optional task ideas):**
@@ -245,8 +272,11 @@ export async function suggest_events(userId: string, timezone: string) {
     **DAILY GOALS (priorities for today):**
     ${JSON.stringify(goals, null, 2)}
 
-    **EXISTING EVENTS FOR TODAY (don't repeat tasks that the user is already going to do today!):**
+    **EXISTING EVENTS FOR TODAY (don't repeat!):**
     ${eventSummary}
+
+    **EXISTING REMINDERS FOR TODAY (don't repeat!):**
+    ${reminderSummary}
 
     **USER CONTEXT (if available):**
     ${user?.scheduleContext}
@@ -254,20 +284,37 @@ export async function suggest_events(userId: string, timezone: string) {
     ---
 
     **OUTPUT FORMAT (JSON only):**
-    [
-      {
-        "id": "unique-string",
-        "title": "Event Title",
-        "start": "ISO8601 DateTime",
-        "end": "ISO8601 DateTime"
-      }
-    ]
+    {
+      "events": [
+        {
+          "id": "unique-string",
+          "title": "Event Title",
+          "start": "ISO8601 DateTime",
+          "end": "ISO8601 DateTime"
+        }
+      ],
+      "reminders": [
+        {
+          "text": "Reminder text",
+          "time": "ISO8601 DateTime",
+          "isAISuggested": true
+        }
+      ]
+    }
+
+    **REMINDER EXAMPLES:**
+    - "Take a 5-minute break" at 2:30 PM
+    - "Drink water" at 10:00 AM
+    - "Prepare for tomorrow's meeting" at 4:00 PM
+    - "Review daily goals" at 9:00 AM
+    - "Check on project X progress" at 3:00 PM
 
     ---
 
     **FINAL VERIFICATION BEFORE RETURNING:**
-    - All tasks must fall within the **availableTimeSlots**
-    - Make sure to not suggest events that are already on the schedule
+    - All events must fall within the **availableTimeSlots**
+    - Don't suggest events/reminders that already exist
+    - Reminders are brief and actionable
   `;
 
   // console.log(prompt);
@@ -288,7 +335,9 @@ export async function suggest_events(userId: string, timezone: string) {
       }
 
       if (i === retries - 1) {
-        throw new Error("Failed to suggest events after multiple attempts.");
+        throw new Error(
+          "Failed to suggest events and reminders after multiple attempts."
+        );
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2;

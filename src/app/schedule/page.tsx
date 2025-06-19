@@ -798,7 +798,9 @@ export default function CalendarApp() {
       if (!response.ok) throw new Error("Failed to fetch suggestions");
 
       const data = await response.json();
-      if (data.events) {
+
+      // Handle suggested events
+      if (data.events && data.events.length > 0) {
         const newSuggestions = data.events.map((event: any) => ({
           id: event.id || `suggestion-${Date.now()}-${Math.random()}`,
           title: event.title,
@@ -811,8 +813,23 @@ export default function CalendarApp() {
           ...newSuggestions,
         ]);
       }
+
+      // Handle suggested reminders
+      if (data.reminders && data.reminders.length > 0) {
+        const formattedReminders = data.reminders.map((reminder: any) => ({
+          ...reminder,
+          time: new Date(reminder.time),
+        }));
+        setReminders((prev) => [...prev, ...formattedReminders]);
+
+        // Show reminders bar if new reminders were created
+        if (formattedReminders.length > 0) {
+          setShowReminders(true);
+          setShowCalendarHeader(false);
+        }
+      }
     } catch (error) {
-      console.error("Error suggesting events:", error);
+      console.error("Error suggesting events and reminders:", error);
     } finally {
       setSuggestionsLoading(false);
     }
