@@ -28,6 +28,21 @@ import { useNextStep } from "nextstepjs";
 import MobilePanelTabs from "./_components/MobilePanelTabs";
 import RemindersBar, { Reminder } from "./_components/RemindersBar";
 
+interface GenerationResult {
+  eventsCount: number;
+  remindersCount: number;
+  events: Array<{
+    title: string;
+    date: string;
+    time?: string;
+  }>;
+  reminders: Array<{
+    title: string;
+    date: string;
+    time?: string;
+  }>;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -102,6 +117,8 @@ export default function CalendarApp() {
   const [modalInitialTab, setModalInitialTab] = useState<"event" | "reminder">(
     "event"
   );
+  const [generationResult, setGenerationResult] =
+    useState<GenerationResult | null>(null);
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
@@ -683,6 +700,9 @@ export default function CalendarApp() {
   const handleSubmit = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
+    // Clear previous generation result
+    setGenerationResult(null);
+
     try {
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const response = await fetch("/api/generate-events", {
@@ -697,6 +717,19 @@ export default function CalendarApp() {
         }),
       });
       const data = await response.json();
+
+      let eventsAdded = 0;
+      let remindersAdded = 0;
+      const resultEvents: Array<{
+        title: string;
+        date: string;
+        time?: string;
+      }> = [];
+      const resultReminders: Array<{
+        title: string;
+        date: string;
+        time?: string;
+      }> = [];
 
       // Handle events
       if (data.events && data.events.length > 0) {
@@ -728,6 +761,20 @@ export default function CalendarApp() {
         }));
 
         setEvents((prevEvents) => [...prevEvents, ...newEvents]);
+        eventsAdded = newEvents.length;
+
+        // Populate result events for display
+        newEvents.forEach((event: any) => {
+          const eventStart = new Date(event.start);
+          resultEvents.push({
+            title: event.title,
+            date: eventStart.toLocaleDateString(),
+            time: eventStart.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          });
+        });
       }
 
       // Handle reminders
@@ -741,6 +788,21 @@ export default function CalendarApp() {
           ...prev.filter((r) => !r.isAISuggested),
           ...formattedReminders,
         ]);
+
+        remindersAdded = formattedReminders.length;
+
+        // Populate result reminders for display
+        formattedReminders.forEach((reminder: any) => {
+          const reminderTime = new Date(reminder.time);
+          resultReminders.push({
+            title: reminder.title,
+            date: reminderTime.toLocaleDateString(),
+            time: reminderTime.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          });
+        });
 
         // Show reminders bar only if there are non-AI suggested reminders within 7 days
         const currentDate = new Date();
@@ -758,12 +820,26 @@ export default function CalendarApp() {
         }
       }
 
+      // Set generation result for display
+      if (eventsAdded > 0 || remindersAdded > 0) {
+        setGenerationResult({
+          eventsCount: eventsAdded,
+          remindersCount: remindersAdded,
+          events: resultEvents,
+          reminders: resultReminders,
+        });
+      }
+
       setInputText("");
     } catch (error) {
       console.error("Error generating events:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearGenerationResult = () => {
+    setGenerationResult(null);
   };
 
   const todaysEvents = useMemo(() => {
@@ -1310,6 +1386,8 @@ export default function CalendarApp() {
             dailySummaryDate={dailySummaryDate}
             dailySummaryLoading={dailySummaryLoading}
             userId={userId || ""}
+            generationResult={generationResult}
+            onClearGenerationResult={handleClearGenerationResult}
           />
         </div>
 

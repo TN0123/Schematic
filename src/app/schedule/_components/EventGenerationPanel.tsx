@@ -38,6 +38,21 @@ interface ChatMessage {
   originalInput?: string;
 }
 
+interface GenerationResult {
+  eventsCount: number;
+  remindersCount: number;
+  events: Array<{
+    title: string;
+    date: string;
+    time?: string;
+  }>;
+  reminders: Array<{
+    title: string;
+    date: string;
+    time?: string;
+  }>;
+}
+
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
@@ -50,6 +65,8 @@ interface EventGenerationPanelProps {
   dailySummaryDate: Date | null;
   dailySummaryLoading: boolean;
   userId: string;
+  generationResult?: GenerationResult | null;
+  onClearGenerationResult?: () => void;
 }
 
 export default function EventGenerationPanel({
@@ -64,6 +81,8 @@ export default function EventGenerationPanel({
   dailySummaryDate,
   dailySummaryLoading,
   userId,
+  generationResult,
+  onClearGenerationResult,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
@@ -78,6 +97,8 @@ export default function EventGenerationPanel({
     before: string;
     after: string;
   }>({ isOpen: false, before: "", after: "" });
+  const [isGenerationResultExpanded, setIsGenerationResultExpanded] =
+    useState(false);
 
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
@@ -351,6 +372,117 @@ export default function EventGenerationPanel({
                 {loading ? "Generating..." : "Generate"}
               </button>
             </div>
+
+            {/* Generation Result Summary */}
+            <AnimatePresence>
+              {generationResult && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3 relative"
+                >
+                  <div className="flex items-center justify-between">
+                    <button
+                      className="text-xs text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+                      onClick={() =>
+                        setIsGenerationResultExpanded(
+                          !isGenerationResultExpanded
+                        )
+                      }
+                    >
+                      Generated{" "}
+                      {generationResult.eventsCount +
+                        generationResult.remindersCount}{" "}
+                      items
+                      {generationResult.eventsCount > 0 &&
+                      generationResult.remindersCount > 0
+                        ? ` (${generationResult.eventsCount} events, ${generationResult.remindersCount} reminders)`
+                        : generationResult.eventsCount > 0
+                        ? ` (${generationResult.eventsCount} events)`
+                        : ` (${generationResult.remindersCount} reminders)`}
+                    </button>
+                    {onClearGenerationResult && (
+                      <button
+                        onClick={() => {
+                          onClearGenerationResult();
+                          setIsGenerationResultExpanded(false);
+                        }}
+                        className="text-gray-400 dark:text-dark-textDisabled hover:text-gray-600 dark:hover:text-dark-textSecondary text-xs ml-2 transition-colors duration-200"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <AnimatePresence>
+                    {isGenerationResultExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, y: -10 }}
+                        animate={{ opacity: 1, height: "auto", y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="mt-2 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md shadow-sm max-h-40 overflow-y-auto"
+                      >
+                        <div className="p-3 space-y-3">
+                          {generationResult.events.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
+                                Events
+                              </h4>
+                              <div className="space-y-1">
+                                {generationResult.events.map((event, index) => (
+                                  <div
+                                    key={index}
+                                    className="text-xs text-gray-600 dark:text-dark-textSecondary"
+                                  >
+                                    <div className="font-medium">
+                                      {event.title}
+                                    </div>
+                                    <div className="text-gray-500 dark:text-dark-textDisabled">
+                                      {event.date}
+                                      {event.time && ` at ${event.time}`}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {generationResult.reminders.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
+                                Reminders
+                              </h4>
+                              <div className="space-y-1">
+                                {generationResult.reminders.map(
+                                  (reminder, index) => (
+                                    <div
+                                      key={index}
+                                      className="text-xs text-gray-600 dark:text-dark-textSecondary"
+                                    >
+                                      <div className="font-medium">
+                                        {reminder.title}
+                                      </div>
+                                      <div className="text-gray-500 dark:text-dark-textDisabled">
+                                        {reminder.date}
+                                        {reminder.time &&
+                                          ` at ${reminder.time}`}
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence>
               {dailySummary && (
