@@ -312,6 +312,13 @@ export default function EventGenerationPanel({
                       300
                     )}px`;
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit();
+                      setIsMobileOpen(false);
+                    }
+                  }}
                   placeholder="Enter your events and reminders here..."
                 />
                 <button
