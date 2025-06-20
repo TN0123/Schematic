@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { UploadIcon, CalendarIcon, Info } from "lucide-react";
 import EventReviewModal from "./EventReviewModal";
 import { ExtractedEvent } from "./EventReviewModal";
-import { Event } from "../page";
+import { Event } from "../types";
 
 interface IcsUploaderModalProps {
   isOpen: boolean;

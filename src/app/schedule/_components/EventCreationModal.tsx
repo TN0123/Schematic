@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Event } from "../page";
+import { Event } from "../types";
 import { Reminder } from "./RemindersBar";
 
 interface EventCreationModalProps {

@@ -1,4 +1,4 @@
-import { Event } from "../page";
+import { Event } from "../types";
 import { Trash2 } from "lucide-react";
 
 function formatDateTimeLocal(date: Date) {

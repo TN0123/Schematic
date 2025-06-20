@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import formidable from "formidable";
 import ical from "node-ical";
 
 export const config = {

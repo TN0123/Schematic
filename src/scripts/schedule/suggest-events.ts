@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { Event } from "@/app/schedule/page";
+import { Event } from "@/app/schedule/types";
 
 const prisma = new PrismaClient();
 
