@@ -476,12 +476,20 @@ export default function CalendarApp() {
   };
 
   const handleEventClick = (clickInfo: EventClickArg): void => {
+    const isSuggestion = clickInfo.event.extendedProps.isSuggestion;
+
+    // Don't allow ctrl+click delete on suggested events since they're not in the database
     if (clickInfo.jsEvent.ctrlKey || clickInfo.jsEvent.metaKey) {
-      setEventToDelete(clickInfo.event);
-      setIsDeleteModalOpen(true);
+      if (!isSuggestion) {
+        setEventToDelete(clickInfo.event);
+        setIsDeleteModalOpen(true);
+      }
     } else {
-      setEventToEdit(clickInfo.event);
-      setShowEditModal(true);
+      // Don't allow editing suggested events since they have their own accept/reject buttons
+      if (!isSuggestion) {
+        setEventToEdit(clickInfo.event);
+        setShowEditModal(true);
+      }
     }
   };
 
