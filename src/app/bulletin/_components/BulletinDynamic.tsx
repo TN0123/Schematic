@@ -20,6 +20,7 @@ import {
   Workflow,
   Brain,
   PencilRuler,
+  MousePointer,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
@@ -71,7 +72,8 @@ export interface DynamicComponent {
     | "graph"
     | "tree"
     | "flowchart"
-    | "mindmap";
+    | "mindmap"
+    | "button";
   label: string;
   placeholder?: string;
   required?: boolean;
@@ -80,6 +82,26 @@ export interface DynamicComponent {
 
 export interface DynamicSchema {
   components: DynamicComponent[];
+}
+
+// Define button action types
+export interface ButtonAction {
+  type:
+    | "table-add-row"
+    | "table-remove-row"
+    | "table-add-column"
+    | "table-remove-column"
+    | "increment-number"
+    | "decrement-number"
+    | "set-value"
+    | "add-checklist-item"
+    | "toggle-checklist-item"
+    | "set-date-today"
+    | "clear-component";
+  targetComponentId: string;
+  value?: any;
+  incrementBy?: number;
+  checklistItemText?: string;
 }
 
 interface BulletinDynamicProps {
@@ -262,6 +284,160 @@ export default function BulletinDynamic({
     } finally {
       setIsAutoSaving(false);
     }
+  };
+
+  const handleButtonAction = (action: ButtonAction) => {
+    const targetComponent = schema.components.find(
+      (comp) => comp.id === action.targetComponentId
+    );
+
+    if (!targetComponent) {
+      console.error(`Target component ${action.targetComponentId} not found`);
+      return;
+    }
+
+    const currentValue = data[action.targetComponentId] || "";
+    let newValue = currentValue;
+
+    switch (action.type) {
+      case "table-add-row":
+        if (targetComponent.type === "table") {
+          const { cols } = targetComponent.config || { cols: 4 };
+          const tableData = Array.isArray(currentValue) ? currentValue : [];
+
+          // Create new row with specified value or empty cells
+          let newRow;
+          if (action.value && Array.isArray(action.value)) {
+            // Use provided row data, padding with empty strings if needed
+            newRow = Array.from(
+              { length: cols },
+              (_, i) => action.value[i] || ""
+            );
+          } else if (action.value && typeof action.value === "string") {
+            // Put the value in the first column, rest empty
+            newRow = Array.from({ length: cols }, (_, i) =>
+              i === 0 ? action.value : ""
+            );
+          } else {
+            // Default: add row with today's date in first column if not specified
+            const today = new Date().toISOString().split("T")[0];
+            newRow = Array.from({ length: cols }, (_, i) =>
+              i === 0 ? today : ""
+            );
+          }
+
+          newValue = [...tableData, newRow];
+        }
+        break;
+
+      case "table-remove-row":
+        if (targetComponent.type === "table" && Array.isArray(currentValue)) {
+          if (currentValue.length > 1) {
+            newValue = currentValue.slice(0, -1);
+          }
+        }
+        break;
+
+      case "table-add-column":
+        if (targetComponent.type === "table") {
+          const tableData = Array.isArray(currentValue) ? currentValue : [[]];
+          const newCols = (targetComponent.config?.cols || 4) + 1;
+
+          // Add empty column to each row
+          newValue = tableData.map((row) => [...(row || []), ""]);
+
+          // Update component config
+          const newSchema = {
+            ...schema,
+            components: schema.components.map((comp) =>
+              comp.id === action.targetComponentId
+                ? { ...comp, config: { ...comp.config, cols: newCols } }
+                : comp
+            ),
+          };
+          setSchema(newSchema);
+        }
+        break;
+
+      case "table-remove-column":
+        if (targetComponent.type === "table" && Array.isArray(currentValue)) {
+          const currentCols = targetComponent.config?.cols || 4;
+          if (currentCols > 1) {
+            const newCols = currentCols - 1;
+
+            // Remove last column from each row
+            newValue = currentValue.map((row) => (row || []).slice(0, -1));
+
+            // Update component config
+            const newSchema = {
+              ...schema,
+              components: schema.components.map((comp) =>
+                comp.id === action.targetComponentId
+                  ? { ...comp, config: { ...comp.config, cols: newCols } }
+                  : comp
+              ),
+            };
+            setSchema(newSchema);
+          }
+        }
+        break;
+
+      case "increment-number":
+        if (targetComponent.type === "number") {
+          const increment = action.incrementBy || 1;
+          const currentNum = parseFloat(currentValue) || 0;
+          newValue = currentNum + increment;
+        }
+        break;
+
+      case "decrement-number":
+        if (targetComponent.type === "number") {
+          const decrement = action.incrementBy || 1;
+          const currentNum = parseFloat(currentValue) || 0;
+          newValue = currentNum - decrement;
+        }
+        break;
+
+      case "set-value":
+        newValue = action.value;
+        break;
+
+      case "add-checklist-item":
+        if (targetComponent.type === "checklist") {
+          const items = Array.isArray(currentValue) ? currentValue : [];
+          const newItem = {
+            id: Date.now().toString(),
+            text: action.checklistItemText || action.value || "New item",
+            checked: false,
+          };
+          newValue = [...items, newItem];
+        }
+        break;
+
+      case "set-date-today":
+        if (targetComponent.type === "date") {
+          newValue = new Date().toISOString().split("T")[0];
+        }
+        break;
+
+      case "clear-component":
+        if (targetComponent.type === "table") {
+          const { cols } = targetComponent.config || { cols: 4 };
+          newValue = [Array.from({ length: cols }, () => "")];
+        } else if (targetComponent.type === "checklist") {
+          newValue = [];
+        } else {
+          newValue = "";
+        }
+        break;
+
+      default:
+        console.error(`Unknown button action type: ${action.type}`);
+        return;
+    }
+
+    // Update the data
+    handleDataChange(action.targetComponentId, newValue);
   };
 
   // Component renderers for different types
@@ -770,6 +946,51 @@ export default function BulletinDynamic({
               onChange={(newData) => handleDataChange(component.id, newData)}
               height={component.config?.height || 400}
             />
+          </div>
+        );
+
+      case "button":
+        const action = component.config?.action as ButtonAction;
+        if (!action) {
+          return (
+            <div key={component.id} className="mb-4 group relative">
+              <button
+                onClick={() => handleDeleteComponent(component.id)}
+                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+                aria-label={`Delete ${component.label}`}
+                title={`Delete ${component.label}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="text-red-500 dark:text-red-400 p-3 border border-red-300 dark:border-red-600 rounded-lg">
+                Button "{component.label}" has no action configured
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={component.id} className="mb-4 group relative">
+            <button
+              onClick={() => handleDeleteComponent(component.id)}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
+              aria-label={`Delete ${component.label}`}
+              title={`Delete ${component.label}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleButtonAction(action)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
+            >
+              <MousePointer className="w-4 h-4" />
+              {component.label}
+            </button>
+            {component.config?.description && (
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {component.config.description}
+              </p>
+            )}
           </div>
         );
 

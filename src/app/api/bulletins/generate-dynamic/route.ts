@@ -43,6 +43,38 @@ Available component types:
 - "tree": Hierarchical tree structure for organizing information
 - "flowchart": Process flowchart for documenting workflows
 - "mindmap": Interactive mind map for brainstorming and visual thinking
+- "button": Interactive button that can perform actions on other components
+
+Button component structure:
+For button components, you MUST include a "config" object with an "action" property that defines what the button does:
+
+{
+  "id": "button-id",
+  "type": "button",
+  "label": "Button Text",
+  "config": {
+    "action": {
+      "type": "action-type",
+      "targetComponentId": "target-component-id",
+      "value": "optional-value",
+      "incrementBy": 1,
+      "checklistItemText": "optional-text"
+    },
+    "description": "Optional description of what the button does"
+  }
+}
+
+Available button action types:
+- "table-add-row": Adds a new row to a table. Use "value" array for row data or string for first column
+- "table-remove-row": Removes the last row from a table
+- "table-add-column": Adds a new column to a table
+- "table-remove-column": Removes the last column from a table
+- "increment-number": Increases a number field. Use "incrementBy" to specify amount (default: 1)
+- "decrement-number": Decreases a number field. Use "incrementBy" to specify amount (default: 1)
+- "set-value": Sets a component to a specific value. Use "value" to specify the new value
+- "add-checklist-item": Adds a new item to a checklist. Use "checklistItemText" for the item text
+- "set-date-today": Sets a date field to today's date
+- "clear-component": Clears/resets a component's value
 
 Rules:
 1. Always return valid JSON with no additional text or formatting
@@ -120,6 +152,7 @@ Generate the schema now:`;
       "tree",
       "flowchart",
       "mindmap",
+      "button",
     ];
     const components = parsedResponse.schema.components;
 
@@ -170,6 +203,44 @@ Generate the schema now:`;
           return new NextResponse("Table dimensions must be between 1 and 20", {
             status: 500,
           });
+        }
+      }
+
+      // Validate button components have proper action config
+      if (component.type === "button") {
+        if (!component.config || !component.config.action) {
+          return new NextResponse(
+            "Button components must have config with action",
+            { status: 500 }
+          );
+        }
+
+        const action = component.config.action;
+        const validActionTypes = [
+          "table-add-row",
+          "table-remove-row",
+          "table-add-column",
+          "table-remove-column",
+          "increment-number",
+          "decrement-number",
+          "set-value",
+          "add-checklist-item",
+          "set-date-today",
+          "clear-component",
+        ];
+
+        if (!validActionTypes.includes(action.type)) {
+          return new NextResponse(
+            `Invalid button action type: ${action.type}`,
+            { status: 500 }
+          );
+        }
+
+        if (!action.targetComponentId) {
+          return new NextResponse(
+            "Button actions must have targetComponentId",
+            { status: 500 }
+          );
         }
       }
     }
