@@ -192,7 +192,7 @@ function DraggableComponent({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative ${isDragging ? "z-50" : ""}`}
+      className={`group relative h-full ${isDragging ? "z-50" : ""}`}
     >
       {/* Drag handle - only show in edit mode */}
       {isEditMode && (
@@ -326,6 +326,56 @@ export default function BulletinDynamic({
     setHasUnsavedChanges(hasChanges);
 
     debouncedSaveData(newData);
+  };
+
+  const handleSchemaChange = async (updatedSchema: DynamicSchema) => {
+    setSchema(updatedSchema);
+    setHasUnsavedChanges(true);
+
+    // Auto-save the schema changes
+    setIsAutoSaving(true);
+    try {
+      await onSave(id, { schema: updatedSchema });
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error("Failed to auto-save schema:", error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  };
+
+  const handleComponentLabelChange = (
+    componentId: string,
+    newLabel: string
+  ) => {
+    const newSchema = {
+      ...schema,
+      components: schema.components.map((comp) =>
+        comp.id === componentId ? { ...comp, label: newLabel } : comp
+      ),
+    };
+    handleSchemaChange(newSchema);
+  };
+
+  const handleComponentDescriptionChange = (
+    componentId: string,
+    newDescription: string
+  ) => {
+    const newSchema = {
+      ...schema,
+      components: schema.components.map((comp) =>
+        comp.id === componentId
+          ? {
+              ...comp,
+              config: {
+                ...comp.config,
+                description: newDescription,
+              },
+            }
+          : comp
+      ),
+    };
+    handleSchemaChange(newSchema);
   };
 
   const handleSave = async () => {
@@ -774,7 +824,9 @@ export default function BulletinDynamic({
                 items={row.components}
                 strategy={horizontalListSortingStrategy}
               >
-                <div className={`flex flex-wrap ${gapClass} items-start`}>
+                <div
+                  className={`flex flex-wrap ${gapClass} items-stretch content-start`}
+                >
                   {row.components.map((componentId) => {
                     const component = componentMap.get(componentId);
                     if (!component) {
@@ -888,7 +940,10 @@ export default function BulletinDynamic({
 
       case "number":
         return (
-          <div key={component.id} className="mb-4">
+          <div
+            key={component.id}
+            className="mb-4 h-full flex flex-col justify-center"
+          >
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Hash className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -1268,18 +1323,58 @@ export default function BulletinDynamic({
         }
 
         return (
-          <div key={component.id} className="mb-4">
-            <button
-              onClick={() => handleButtonAction(action)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
-            >
-              <MousePointer className="w-4 h-4" />
-              {component.label}
-            </button>
-            {component.config?.description && (
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {component.config.description}
-              </p>
+          <div key={component.id} className="mb-4 h-full">
+            {isEditMode ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <MousePointer className="inline w-4 h-4 mr-1" />
+                    Button Text
+                  </label>
+                  <input
+                    type="text"
+                    value={component.label}
+                    onChange={(e) =>
+                      handleComponentLabelChange(component.id, e.target.value)
+                    }
+                    placeholder="Button text..."
+                    className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Button Description (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={component.config?.description || ""}
+                    onChange={(e) =>
+                      handleComponentDescriptionChange(
+                        component.id,
+                        e.target.value
+                      )
+                    }
+                    placeholder="Describe what this button does..."
+                    className="w-full p-3 border dark:border-dark-divider rounded-lg dark:bg-dark-secondary dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col justify-center items-start">
+                <button
+                  onClick={() => handleButtonAction(action)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
+                >
+                  <MousePointer className="w-4 h-4" />
+                  {component.label}
+                </button>
+                {component.config?.description &&
+                  component.config.description.trim() && (
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      {component.config.description}
+                    </p>
+                  )}
+              </div>
             )}
           </div>
         );
