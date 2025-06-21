@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PencilRuler, Loader2, Send, X, AlertTriangle } from "lucide-react";
 import { DynamicSchema } from "./BulletinDynamic";
+import DetailedErrorDisplay, { DetailedError } from "./DetailedErrorDisplay";
 
 interface NoteRefactorModalProps {
   isOpen: boolean;
@@ -27,14 +28,14 @@ export default function NoteRefactorModal({
 }: NoteRefactorModalProps) {
   const [description, setDescription] = useState("");
   const [isRefactoring, setIsRefactoring] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<DetailedError | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
 
     setIsRefactoring(true);
-    setError("");
+    setError(null);
 
     try {
       // Call the API to refactor the schema and map data
@@ -51,7 +52,21 @@ export default function NoteRefactorModal({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to refactor note schema");
+        if (errorData.error) {
+          setError(errorData.error);
+        } else {
+          setError({
+            message: "Failed to refactor note schema",
+            details: "The server returned an error while refactoring your note",
+            code: "REFACTOR_FAILED",
+            suggestions: [
+              "Try rephrasing your refactoring description",
+              "Be more specific about the changes you want",
+              "Try again in a few moments",
+            ],
+          });
+        }
+        return;
       }
 
       const { title, schema, mappedData } = await response.json();
@@ -63,11 +78,16 @@ export default function NoteRefactorModal({
       setDescription("");
     } catch (error) {
       console.error("Error refactoring note:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to refactor note. Please try again."
-      );
+      setError({
+        message: "Failed to refactor note",
+        details: "An unexpected error occurred while refactoring your note",
+        code: "UNEXPECTED_ERROR",
+        suggestions: [
+          "Please try again",
+          "Check your internet connection",
+          "Try a simpler refactoring description",
+        ],
+      });
     } finally {
       setIsRefactoring(false);
     }
@@ -76,7 +96,7 @@ export default function NoteRefactorModal({
   const handleClose = () => {
     if (!isRefactoring) {
       setDescription("");
-      setError("");
+      setError(null);
       onClose();
     }
   };
@@ -145,8 +165,15 @@ export default function NoteRefactorModal({
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="mb-4">
+              <DetailedErrorDisplay
+                error={error}
+                onRetry={() => {
+                  setError(null);
+                  handleSubmit(new Event("submit") as any);
+                }}
+                onDismiss={() => setError(null)}
+              />
             </div>
           )}
 

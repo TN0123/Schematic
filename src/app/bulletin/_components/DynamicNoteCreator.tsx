@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sparkles, Loader2, Send, X } from "lucide-react";
 import { DynamicSchema } from "./BulletinDynamic";
+import DetailedErrorDisplay, { DetailedError } from "./DetailedErrorDisplay";
 
 interface DynamicNoteCreatorProps {
   onCreateNote: (title: string, schema: DynamicSchema) => Promise<void>;
@@ -17,14 +18,14 @@ export default function DynamicNoteCreator({
 }: DynamicNoteCreatorProps) {
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<DetailedError | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim()) return;
 
     setIsGenerating(true);
-    setError("");
+    setError(null);
 
     try {
       // Call the API to generate the schema from the description
@@ -35,7 +36,22 @@ export default function DynamicNoteCreator({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate note schema");
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.error) {
+          setError(errorData.error);
+        } else {
+          setError({
+            message: "Failed to generate note schema",
+            details: "The server returned an error while generating your note",
+            code: "GENERATION_FAILED",
+            suggestions: [
+              "Try rephrasing your description",
+              "Be more specific about the components you need",
+              "Try again in a few moments",
+            ],
+          });
+        }
+        return;
       }
 
       const { title, schema } = await response.json();
@@ -48,7 +64,16 @@ export default function DynamicNoteCreator({
       onClose();
     } catch (error) {
       console.error("Error generating dynamic note:", error);
-      setError("Failed to generate note. Please try again.");
+      setError({
+        message: "Failed to generate note",
+        details: "An unexpected error occurred while creating your note",
+        code: "UNEXPECTED_ERROR",
+        suggestions: [
+          "Please try again",
+          "Check your internet connection",
+          "Try a simpler description",
+        ],
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -57,7 +82,7 @@ export default function DynamicNoteCreator({
   const handleClose = () => {
     if (!isGenerating) {
       setDescription("");
-      setError("");
+      setError(null);
       onClose();
     }
   };
@@ -108,8 +133,15 @@ export default function DynamicNoteCreator({
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="mb-4">
+              <DetailedErrorDisplay
+                error={error}
+                onRetry={() => {
+                  setError(null);
+                  handleSubmit(new Event("submit") as any);
+                }}
+                onDismiss={() => setError(null)}
+              />
             </div>
           )}
 

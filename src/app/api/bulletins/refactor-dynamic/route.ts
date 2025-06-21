@@ -4,9 +4,27 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
+  const requestId = `ref-${Date.now()}-${Math.random()
+    .toString(36)
+    .substr(2, 9)}`;
 
   if (!session?.user?.email) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    return NextResponse.json(
+      {
+        error: {
+          message: "Authentication required",
+          details: "You must be signed in to refactor dynamic notes",
+          code: "AUTH_REQUIRED",
+          suggestions: ["Please sign in and try again"],
+          technicalInfo: {
+            endpoint: "/api/bulletins/refactor-dynamic",
+            requestId,
+            timestamp: new Date().toISOString(),
+          },
+        },
+      },
+      { status: 401 }
+    );
   }
 
   try {
@@ -14,11 +32,50 @@ export async function POST(request: Request) {
       await request.json();
 
     if (!description || typeof description !== "string") {
-      return new NextResponse("Description is required", { status: 400 });
+      return NextResponse.json(
+        {
+          error: {
+            message: "Description is required",
+            details:
+              "Please provide a description of how you want to refactor your note",
+            code: "MISSING_DESCRIPTION",
+            suggestions: [
+              "Describe the changes you want to make to the note structure",
+              "Be specific about what components to add, remove, or modify",
+              "Explain how you want to reorganize the existing fields",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              timestamp: new Date().toISOString(),
+            },
+          },
+        },
+        { status: 400 }
+      );
     }
 
     if (!currentSchema || !currentSchema.components) {
-      return new NextResponse("Current schema is required", { status: 400 });
+      return NextResponse.json(
+        {
+          error: {
+            message: "Current schema is required",
+            details:
+              "The existing note structure information is missing or invalid",
+            code: "MISSING_SCHEMA",
+            suggestions: [
+              "Try refreshing the page and attempting the refactor again",
+              "Make sure the note was properly saved before refactoring",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              timestamp: new Date().toISOString(),
+            },
+          },
+        },
+        { status: 400 }
+      );
     }
 
     const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -26,7 +83,26 @@ export async function POST(request: Request) {
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (!geminiKey) {
-      return new NextResponse("Gemini API key not configured", { status: 500 });
+      return NextResponse.json(
+        {
+          error: {
+            message: "AI service unavailable",
+            details: "The AI model configuration is missing or invalid",
+            code: "AI_CONFIG_ERROR",
+            suggestions: [
+              "Please try again later",
+              "Contact support if the problem persists",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              aiModel: "gemini-2.0-flash",
+              timestamp: new Date().toISOString(),
+            },
+          },
+        },
+        { status: 500 }
+      );
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey);
@@ -67,6 +143,16 @@ Available component types:
 - "flowchart": Process flowchart for documenting workflows
 - "mindmap": Interactive mind map for brainstorming and visual thinking
 - "button": Interactive button that can perform actions on other components
+
+Layout System:
+You can now arrange components in flexible rows and columns using a layout structure. This allows components to be placed side-by-side instead of just vertically stacked.
+
+Layout structure:
+- Each row contains an array of component IDs
+- Components in the same row will be displayed side-by-side
+- Rows are stacked vertically
+- You can specify gap size between components (1-8, default 4)
+- Layout is responsive and will wrap on smaller screens
 
 Button component structure:
 For button components, you MUST include a "config" object with an "action" property that defines what the button does:
@@ -117,6 +203,10 @@ Rules:
 7. For table components, ALWAYS include a "config" object with "rows" and "cols" properties
 8. When mapping data, consider logical transformations (e.g., text can become checklist items, tables can be restructured)
 9. If data cannot be preserved in the new structure, include it in a "notes" or "additional-info" component
+10. Create a thoughtful layout that groups related components together
+11. Use rows to place complementary components side-by-side (e.g., date and time, name and email)
+12. Keep larger components (like tables, graphs, textareas) in their own rows
+13. Smaller components (text, number, date) work well side-by-side
 
 Return a JSON object with this exact structure:
 {
@@ -129,6 +219,17 @@ Return a JSON object with this exact structure:
         "label": "Component Label",
         "placeholder": "Optional placeholder text",
         "config": { "rows": 4, "cols": 4 }
+      }
+    ],
+    "layout": [
+      {
+        "id": "row-1",
+        "components": ["component-id-1", "component-id-2"],
+        "gap": 4
+      },
+      {
+        "id": "row-2", 
+        "components": ["component-id-3"]
       }
     ]
   },
@@ -167,9 +268,36 @@ Generate the refactored schema and data mapping now:`;
       parsedResponse = JSON.parse(cleanedResponse);
     } catch (parseError) {
       console.error("Failed to parse Gemini response:", responseText);
-      return new NextResponse("Failed to generate valid refactored schema", {
-        status: 500,
-      });
+      return NextResponse.json(
+        {
+          error: {
+            message: "AI generated invalid response",
+            details:
+              "The AI model returned a response that couldn't be processed for refactoring",
+            code: "AI_PARSE_ERROR",
+            suggestions: [
+              "Try rephrasing your refactoring description",
+              "Be more specific about the changes you want",
+              "Use simpler language to describe the modifications",
+              "Try again - AI responses can vary",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              aiModel: "gemini-2.0-flash",
+              timestamp: new Date().toISOString(),
+              validationErrors: [
+                `Parse error: ${
+                  parseError instanceof Error
+                    ? parseError.message
+                    : "Unknown parsing error"
+                }`,
+              ],
+            },
+          },
+        },
+        { status: 500 }
+      );
     }
 
     // Validate the response structure
@@ -179,9 +307,40 @@ Generate the refactored schema and data mapping now:`;
       !parsedResponse.schema.components ||
       !parsedResponse.mappedData
     ) {
-      return new NextResponse("Invalid refactored schema structure generated", {
-        status: 500,
-      });
+      const missingFields = [];
+      if (!parsedResponse.title) missingFields.push("title");
+      if (!parsedResponse.schema) missingFields.push("schema");
+      if (!parsedResponse.schema?.components)
+        missingFields.push("schema.components");
+      if (!parsedResponse.mappedData) missingFields.push("mappedData");
+
+      return NextResponse.json(
+        {
+          error: {
+            message: "AI generated incomplete refactored response",
+            details: `The AI model didn't provide all required fields for refactoring: ${missingFields.join(
+              ", "
+            )}`,
+            code: "INCOMPLETE_REFACTOR_SCHEMA",
+            suggestions: [
+              "Try describing your refactoring requirements more clearly",
+              "Specify exactly what changes you want to make",
+              "Try again with a different description",
+              "Break down complex refactoring requests into smaller steps",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              aiModel: "gemini-2.0-flash",
+              timestamp: new Date().toISOString(),
+              validationErrors: [
+                `Missing required fields: ${missingFields.join(", ")}`,
+              ],
+            },
+          },
+        },
+        { status: 500 }
+      );
     }
 
     // Validate component structure
@@ -202,19 +361,51 @@ Generate the refactored schema and data mapping now:`;
     const components = parsedResponse.schema.components;
 
     if (!Array.isArray(components) || components.length === 0) {
-      return new NextResponse("No valid components generated", { status: 500 });
+      return NextResponse.json(
+        {
+          error: {
+            message: "No valid components generated during refactoring",
+            details:
+              "The AI model didn't create any usable form components in the refactored schema",
+            code: "NO_REFACTORED_COMPONENTS",
+            suggestions: [
+              "Try describing specific components you want in the refactored note",
+              "Be more detailed about the new structure you want",
+              "Provide examples of the components you need",
+              "Try a simpler refactoring description first",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              aiModel: "gemini-2.0-flash",
+              timestamp: new Date().toISOString(),
+              validationErrors: ["Component array is empty or invalid"],
+            },
+          },
+        },
+        { status: 500 }
+      );
     }
 
     // Validate each component
+    const validationErrors = [];
     for (const component of components) {
       if (!component.id || !component.type || !component.label) {
-        return new NextResponse("Invalid component structure", { status: 500 });
+        const missing = [];
+        if (!component.id) missing.push("id");
+        if (!component.type) missing.push("type");
+        if (!component.label) missing.push("label");
+        validationErrors.push(
+          `Component missing required fields: ${missing.join(", ")}`
+        );
       }
 
-      if (!validComponentTypes.includes(component.type)) {
-        return new NextResponse(`Invalid component type: ${component.type}`, {
-          status: 500,
-        });
+      if (component.type && !validComponentTypes.includes(component.type)) {
+        validationErrors.push(
+          `Invalid component type: ${
+            component.type
+          }. Valid types: ${validComponentTypes.join(", ")}`
+        );
       }
 
       // Validate table components have proper config
@@ -224,69 +415,171 @@ Generate the refactored schema and data mapping now:`;
           !component.config.rows ||
           !component.config.cols
         ) {
-          return new NextResponse(
-            "Table components must have config with rows and cols",
-            { status: 500 }
+          validationErrors.push(
+            `Table component "${component.id}" must have config with rows and cols`
           );
-        }
+        } else {
+          if (
+            typeof component.config.rows !== "number" ||
+            typeof component.config.cols !== "number"
+          ) {
+            validationErrors.push(
+              `Table component "${component.id}" rows and cols must be numbers`
+            );
+          }
 
-        if (
-          typeof component.config.rows !== "number" ||
-          typeof component.config.cols !== "number"
-        ) {
-          return new NextResponse("Table rows and cols must be numbers", {
-            status: 500,
-          });
-        }
-
-        if (
-          component.config.rows < 1 ||
-          component.config.cols < 1 ||
-          component.config.rows > 20 ||
-          component.config.cols > 20
-        ) {
-          return new NextResponse("Table dimensions must be between 1 and 20", {
-            status: 500,
-          });
+          if (
+            component.config.rows < 1 ||
+            component.config.cols < 1 ||
+            component.config.rows > 20 ||
+            component.config.cols > 20
+          ) {
+            validationErrors.push(
+              `Table component "${component.id}" dimensions must be between 1 and 20`
+            );
+          }
         }
       }
 
       // Validate button components have proper action config
       if (component.type === "button") {
         if (!component.config || !component.config.action) {
-          return new NextResponse(
-            "Button components must have config with action",
-            { status: 500 }
+          validationErrors.push(
+            `Button component "${component.id}" must have config with action`
           );
-        }
+        } else {
+          const action = component.config.action;
+          const validActionTypes = [
+            "table-add-row",
+            "table-remove-row",
+            "table-add-column",
+            "table-remove-column",
+            "increment-number",
+            "decrement-number",
+            "set-value",
+            "add-checklist-item",
+            "set-date-today",
+            "clear-component",
+          ];
 
-        const action = component.config.action;
-        const validActionTypes = [
-          "table-add-row",
-          "table-remove-row",
-          "table-add-column",
-          "table-remove-column",
-          "increment-number",
-          "decrement-number",
-          "set-value",
-          "add-checklist-item",
-          "set-date-today",
-          "clear-component",
-        ];
+          if (!validActionTypes.includes(action.type)) {
+            validationErrors.push(
+              `Button component "${component.id}" has invalid action type: ${
+                action.type
+              }. Valid types: ${validActionTypes.join(", ")}`
+            );
+          }
 
-        if (!validActionTypes.includes(action.type)) {
-          return new NextResponse(
-            `Invalid button action type: ${action.type}`,
-            { status: 500 }
-          );
+          if (!action.targetComponentId) {
+            validationErrors.push(
+              `Button component "${component.id}" action must have targetComponentId`
+            );
+          }
         }
+      }
+    }
 
-        if (!action.targetComponentId) {
-          return new NextResponse(
-            "Button actions must have targetComponentId",
-            { status: 500 }
-          );
+    // Check for validation errors after processing all components
+    if (validationErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            message: "Invalid component configuration in refactored schema",
+            details:
+              "The AI generated refactored components with validation errors",
+            code: "REFACTOR_COMPONENT_VALIDATION_ERROR",
+            suggestions: [
+              "Try simplifying your refactoring description",
+              "Focus on basic components first (text, textarea, etc.)",
+              "Avoid complex button actions initially",
+              "Try describing each component change separately",
+            ],
+            technicalInfo: {
+              endpoint: "/api/bulletins/refactor-dynamic",
+              requestId,
+              aiModel: "gemini-2.0-flash",
+              timestamp: new Date().toISOString(),
+              validationErrors,
+            },
+          },
+        },
+        { status: 500 }
+      );
+    }
+
+    // Validate layout structure if present
+    if (parsedResponse.schema.layout) {
+      const layout = parsedResponse.schema.layout;
+      const layoutValidationErrors = [];
+
+      if (!Array.isArray(layout)) {
+        layoutValidationErrors.push("Layout must be an array");
+      } else {
+        const componentIds = new Set(components.map((comp) => comp.id));
+
+        for (const row of layout) {
+          if (!row.id || !row.components) {
+            const missing = [];
+            if (!row.id) missing.push("id");
+            if (!row.components) missing.push("components");
+            layoutValidationErrors.push(
+              `Layout row missing required fields: ${missing.join(", ")}`
+            );
+          }
+
+          if (row.components && !Array.isArray(row.components)) {
+            layoutValidationErrors.push(
+              `Layout row "${row.id}" components must be an array`
+            );
+          }
+
+          // Validate that all component IDs in layout exist
+          if (Array.isArray(row.components)) {
+            for (const componentId of row.components) {
+              if (!componentIds.has(componentId)) {
+                layoutValidationErrors.push(
+                  `Layout row "${row.id}" references non-existent component: ${componentId}`
+                );
+              }
+            }
+          }
+
+          // Validate gap if present
+          if (row.gap !== undefined) {
+            if (typeof row.gap !== "number" || row.gap < 1 || row.gap > 8) {
+              layoutValidationErrors.push(
+                `Layout row "${row.id}" gap must be a number between 1 and 8`
+              );
+            }
+          }
         }
+      }
+
+      if (layoutValidationErrors.length > 0) {
+        return NextResponse.json(
+          {
+            error: {
+              message: "Invalid layout configuration in refactored schema",
+              details:
+                "The AI generated refactored layout structure has validation errors",
+              code: "REFACTOR_LAYOUT_VALIDATION_ERROR",
+              suggestions: [
+                "Try requesting a simpler layout structure for the refactored note",
+                "Focus on single-column layout first",
+                "Ensure all component references are valid in the new structure",
+                "Try refactoring without specifying custom layout",
+              ],
+              technicalInfo: {
+                endpoint: "/api/bulletins/refactor-dynamic",
+                requestId,
+                aiModel: "gemini-2.0-flash",
+                timestamp: new Date().toISOString(),
+                validationErrors: layoutValidationErrors,
+              },
+            },
+          },
+          { status: 500 }
+        );
       }
     }
 
@@ -298,6 +591,30 @@ Generate the refactored schema and data mapping now:`;
     });
   } catch (error) {
     console.error("Error refactoring dynamic schema:", error);
-    return new NextResponse("Internal server error", { status: 500 });
+    return NextResponse.json(
+      {
+        error: {
+          message: "Internal server error",
+          details:
+            "An unexpected error occurred while refactoring the note schema",
+          code: "INTERNAL_ERROR",
+          suggestions: [
+            "Please try again in a few moments",
+            "If the problem persists, try a simpler refactoring description",
+            "Contact support if you continue to experience issues",
+          ],
+          technicalInfo: {
+            endpoint: "/api/bulletins/refactor-dynamic",
+            requestId,
+            aiModel: "gemini-2.0-flash",
+            timestamp: new Date().toISOString(),
+            validationErrors: [
+              error instanceof Error ? error.message : "Unknown error",
+            ],
+          },
+        },
+      },
+      { status: 500 }
+    );
   }
 }

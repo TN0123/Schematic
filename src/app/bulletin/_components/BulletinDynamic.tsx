@@ -80,8 +80,16 @@ export interface DynamicComponent {
   config?: any;
 }
 
+// Define layout row structure
+export interface LayoutRow {
+  id: string;
+  components: string[]; // Array of component IDs in this row
+  gap?: number; // Optional gap size between components (1-8, default 4)
+}
+
 export interface DynamicSchema {
   components: DynamicComponent[];
+  layout?: LayoutRow[]; // Optional layout structure - if not provided, falls back to single column
 }
 
 // Define button action types
@@ -259,9 +267,25 @@ export default function BulletinDynamic({
 
   const handleDeleteComponent = async (componentId: string) => {
     // Remove component from schema
+    const newComponents = schema.components.filter(
+      (comp) => comp.id !== componentId
+    );
+
+    // Update layout to remove the component from any rows
+    let newLayout = schema.layout;
+    if (newLayout) {
+      newLayout = newLayout
+        .map((row) => ({
+          ...row,
+          components: row.components.filter((id) => id !== componentId),
+        }))
+        .filter((row) => row.components.length > 0); // Remove empty rows
+    }
+
     const newSchema = {
       ...schema,
-      components: schema.components.filter((comp) => comp.id !== componentId),
+      components: newComponents,
+      layout: newLayout,
     };
 
     // Remove component data
@@ -438,6 +462,84 @@ export default function BulletinDynamic({
 
     // Update the data
     handleDataChange(action.targetComponentId, newValue);
+  };
+
+  // Helper function to render components with layout
+  const renderComponentsWithLayout = () => {
+    // If no layout is defined, fall back to single column layout
+    if (!schema.layout || schema.layout.length === 0) {
+      return (
+        <div className="space-y-0">
+          {schema.components.map(renderComponent)}
+        </div>
+      );
+    }
+
+    // Create a map for quick component lookup
+    const componentMap = new Map(
+      schema.components.map((comp) => [comp.id, comp])
+    );
+
+    return (
+      <div className="space-y-6">
+        {schema.layout.map((row) => {
+          const gapSize = row.gap || 4;
+          // Map gap size to valid Tailwind classes
+          const gapClassMap = {
+            1: "gap-1",
+            2: "gap-2",
+            3: "gap-3",
+            4: "gap-4",
+            5: "gap-5",
+            6: "gap-6",
+            7: "gap-7",
+            8: "gap-8",
+          };
+          const gapClass =
+            gapClassMap[gapSize as keyof typeof gapClassMap] || "gap-4";
+
+          return (
+            <div
+              key={row.id}
+              className={`flex flex-wrap ${gapClass} items-start`}
+            >
+              {row.components.map((componentId) => {
+                const component = componentMap.get(componentId);
+                if (!component) {
+                  console.warn(
+                    `Component with ID ${componentId} not found in schema`
+                  );
+                  return null;
+                }
+
+                // Calculate flex basis for responsive layout
+                const itemCount = row.components.length;
+                let flexBasis = "flex-1"; // Default to equal width
+
+                // For 2 items, use equal width
+                if (itemCount === 2) {
+                  flexBasis = "flex-1";
+                }
+                // For 3 items, use equal width
+                else if (itemCount === 3) {
+                  flexBasis = "flex-1";
+                }
+                // For 4+ items, wrap to smaller sizes
+                else if (itemCount >= 4) {
+                  flexBasis = "flex-1 min-w-0 md:flex-none md:w-1/2 lg:w-1/3";
+                }
+
+                return (
+                  <div key={componentId} className={`${flexBasis} min-w-0`}>
+                    {renderComponent(component)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // Component renderers for different types
@@ -1077,9 +1179,7 @@ export default function BulletinDynamic({
 
       {/* Dynamic Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto">
-          {schema.components.map(renderComponent)}
-        </div>
+        <div className="max-w-4xl mx-auto">{renderComponentsWithLayout()}</div>
       </div>
 
       {/* Refactor Modal */}
