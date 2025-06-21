@@ -390,7 +390,7 @@ export default function BulletinClient() {
     <div className="h-screen flex flex-col md:flex-row dark:from-dark-primary dark:to-dark-secondary transition-all">
       {/* Mobile button */}
       <button
-        className={`md:hidden fixed top-4 right-20 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
+        className={`md:hidden fixed top-4 right-4 z-40 bg-white dark:bg-dark-background dark:text-white p-3 rounded-full shadow-lg ${
           isSidebarOpen ? "hidden" : "block"
         }`}
         onClick={() => setIsSidebarOpen(true)}
@@ -510,11 +510,11 @@ export default function BulletinClient() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static z-50 top-0 right-16 md:right-0 h-full bg-white dark:bg-dark-background dark:text-dark-textPrimary md:border-l md:border-light-border dark:md:border-dark-divider transform transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"
+        className={`fixed md:static z-50 top-0 h-full bg-white dark:bg-dark-background dark:text-dark-textPrimary md:border-l md:border-light-border dark:md:border-dark-divider transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? "right-0" : "-right-full md:right-0 md:translate-x-0"
         } ${
           isCollapsed ? "md:w-14" : "md:w-80"
-        } w-[calc(100%-4rem)] flex flex-col`}
+        } w-80 max-w-[85vw] flex flex-col`}
       >
         <div className="p-4">
           {/* Mobile header */}
@@ -522,12 +522,87 @@ export default function BulletinClient() {
             <h2 className="text-xl font-semibold text-light-heading dark:text-dark-textPrimary">
               All Notes
             </h2>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover"
-            >
-              <PanelRightClose className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="relative inline-block text-left">
+                <button
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-md hover:from-green-500 hover:to-green-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 dark:shadow-none dark:bg-dark-secondary dark:hover:bg-dark-actionHover dark:focus:ring-dark-divider"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown((prev) => !prev);
+                  }}
+                >
+                  <Plus size={16} className="stroke-current" />
+                  <span>New</span>
+                </button>
+
+                {/* Mobile Dropdown */}
+                {showDropdown && (
+                  <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          addItem("text");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <NotepadText />
+                        Text Note
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("todo");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <ClipboardList />
+                        To-Do List
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("kanban");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                      >
+                        <Columns />
+                        Kanban Board
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("link-collection");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                      >
+                        <Link />
+                        Link Collection
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDynamicCreator(true);
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                      >
+                        <Sparkles />
+                        Dynamic Note
+                        <span className="absolute right-0 top-0 text-[9px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                          experimental
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover"
+              >
+                <PanelRightClose className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {/* Desktop header */}
@@ -766,7 +841,7 @@ export default function BulletinClient() {
       {/* Mobile backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden right-16"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
