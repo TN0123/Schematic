@@ -21,10 +21,33 @@ import {
   Brain,
   PencilRuler,
   MousePointer,
+  GripVertical,
+  SquarePen,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
 import dynamic from "next/dynamic";
+import {
+  DndContext,
+  closestCenter,
+  rectIntersection,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { arrayMove } from "@dnd-kit/sortable";
 import InteractiveTree, { TreeNode } from "./InteractiveTree";
 import InteractiveFlowchart, { FlowchartData } from "./InteractiveFlowchart";
 import InteractiveMindMap, { MindMapData } from "./InteractiveMindMap";
@@ -136,6 +159,71 @@ interface ChecklistItem {
   checked: boolean;
 }
 
+// DraggableComponent wrapper for individual components
+interface DraggableComponentProps {
+  component: DynamicComponent;
+  children: React.ReactNode;
+  onDelete: () => void;
+  isEditMode: boolean;
+}
+
+function DraggableComponent({
+  component,
+  children,
+  onDelete,
+  isEditMode,
+}: DraggableComponentProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: component.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative ${isDragging ? "z-50" : ""}`}
+    >
+      {/* Drag handle - only show in edit mode */}
+      {isEditMode && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute -left-6 top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing bg-white dark:bg-dark-secondary rounded shadow-sm border dark:border-dark-divider z-20"
+          aria-label={`Drag ${component.label}`}
+          title={`Drag ${component.label}`}
+        >
+          <GripVertical className="w-4 h-4" />
+        </div>
+      )}
+
+      {/* Delete button - only show in edit mode */}
+      {isEditMode && (
+        <button
+          onClick={onDelete}
+          className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-20"
+          aria-label={`Delete ${component.label}`}
+          title={`Delete ${component.label}`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+
+      {children}
+    </div>
+  );
+}
+
 export default function BulletinDynamic({
   id,
   initialTitle,
@@ -153,11 +241,25 @@ export default function BulletinDynamic({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [isRefactorModalOpen, setIsRefactorModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const lastSavedState = useRef({
     title: initialTitle,
     data: initialData || {},
   });
+
+  // Set up drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Debounced save for data
   const debouncedSaveData = useDebouncedCallback(
@@ -464,14 +566,173 @@ export default function BulletinDynamic({
     handleDataChange(action.targetComponentId, newValue);
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const activeComponentId = active.id as string;
+    const overComponentId = over.id as string;
+
+    // Find which rows contain these components
+    let activeRowIndex = -1;
+    let activeComponentIndex = -1;
+    let overRowIndex = -1;
+    let overComponentIndex = -1;
+
+    // If no layout exists, create a simple single-column layout
+    if (!schema.layout || schema.layout.length === 0) {
+      const newLayout: LayoutRow[] = [
+        {
+          id: "default-row",
+          components: schema.components.map((comp) => comp.id),
+        },
+      ];
+      setSchema({
+        ...schema,
+        layout: newLayout,
+      });
+      return;
+    }
+
+    // Find positions of active and over components
+    schema.layout.forEach((row, rowIndex) => {
+      const activeIndex = row.components.indexOf(activeComponentId);
+      const overIndex = row.components.indexOf(overComponentId);
+
+      if (activeIndex !== -1) {
+        activeRowIndex = rowIndex;
+        activeComponentIndex = activeIndex;
+      }
+      if (overIndex !== -1) {
+        overRowIndex = rowIndex;
+        overComponentIndex = overIndex;
+      }
+    });
+
+    if (activeRowIndex === -1 || overRowIndex === -1) return;
+
+    const newLayout = [...schema.layout];
+
+    if (activeRowIndex === overRowIndex) {
+      // Same row - reorder within row
+      const row = { ...newLayout[activeRowIndex] };
+      row.components = arrayMove(
+        row.components,
+        activeComponentIndex,
+        overComponentIndex
+      );
+      newLayout[activeRowIndex] = row;
+    } else {
+      // Different rows - move between rows
+      const activeRow = { ...newLayout[activeRowIndex] };
+      const overRow = { ...newLayout[overRowIndex] };
+
+      // Remove from active row
+      activeRow.components = activeRow.components.filter(
+        (id) => id !== activeComponentId
+      );
+
+      // Add to over row at the position of the over component
+      overRow.components.splice(overComponentIndex, 0, activeComponentId);
+
+      newLayout[activeRowIndex] = activeRow;
+      newLayout[overRowIndex] = overRow;
+
+      // Remove empty rows
+      const filteredLayout = newLayout.filter(
+        (row) => row.components.length > 0
+      );
+
+      setSchema({
+        ...schema,
+        layout: filteredLayout,
+      });
+      setHasUnsavedChanges(true);
+
+      // Auto-save the layout changes
+      setIsAutoSaving(true);
+      onSave(id, { schema: { ...schema, layout: filteredLayout } })
+        .then(() => {
+          setHasUnsavedChanges(false);
+        })
+        .catch((error) => {
+          console.error("Failed to auto-save layout:", error);
+        })
+        .finally(() => {
+          setIsAutoSaving(false);
+        });
+
+      return;
+    }
+
+    setSchema({
+      ...schema,
+      layout: newLayout,
+    });
+    setHasUnsavedChanges(true);
+
+    // Auto-save the layout changes
+    setIsAutoSaving(true);
+    onSave(id, { schema: { ...schema, layout: newLayout } })
+      .then(() => {
+        setHasUnsavedChanges(false);
+      })
+      .catch((error) => {
+        console.error("Failed to auto-save layout:", error);
+      })
+      .finally(() => {
+        setIsAutoSaving(false);
+      });
+  };
+
   // Helper function to render components with layout
   const renderComponentsWithLayout = () => {
     // If no layout is defined, fall back to single column layout
     if (!schema.layout || schema.layout.length === 0) {
+      const allComponentIds = schema.components.map((comp) => comp.id);
+
       return (
-        <div className="space-y-0">
-          {schema.components.map(renderComponent)}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={rectIntersection}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={allComponentIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className={`space-y-6 ${isEditMode ? "pl-8" : ""}`}>
+              {schema.components.map((component) => (
+                <DraggableComponent
+                  key={component.id}
+                  component={component}
+                  onDelete={() => handleDeleteComponent(component.id)}
+                  isEditMode={isEditMode}
+                >
+                  {renderComponent(component)}
+                </DraggableComponent>
+              ))}
+            </div>
+          </SortableContext>
+
+          <DragOverlay>
+            {activeId ? (
+              <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg border dark:border-dark-divider">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {schema.components.find((comp) => comp.id === activeId)
+                    ?.label || "Component"}
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       );
     }
 
@@ -480,65 +741,96 @@ export default function BulletinDynamic({
       schema.components.map((comp) => [comp.id, comp])
     );
 
+    // Get all component IDs for the sortable context
+    const allComponentIds = schema.layout.flatMap((row) => row.components);
+
     return (
-      <div className="space-y-6">
-        {schema.layout.map((row) => {
-          const gapSize = row.gap || 4;
-          // Map gap size to valid Tailwind classes
-          const gapClassMap = {
-            1: "gap-1",
-            2: "gap-2",
-            3: "gap-3",
-            4: "gap-4",
-            5: "gap-5",
-            6: "gap-6",
-            7: "gap-7",
-            8: "gap-8",
-          };
-          const gapClass =
-            gapClassMap[gapSize as keyof typeof gapClassMap] || "gap-4";
+      <DndContext
+        sensors={sensors}
+        collisionDetection={rectIntersection}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className={`space-y-6 ${isEditMode ? "pl-8" : ""}`}>
+          {schema.layout.map((row) => {
+            const gapSize = row.gap || 4;
+            // Map gap size to valid Tailwind classes
+            const gapClassMap = {
+              1: "gap-1",
+              2: "gap-2",
+              3: "gap-3",
+              4: "gap-4",
+              5: "gap-5",
+              6: "gap-6",
+              7: "gap-7",
+              8: "gap-8",
+            };
+            const gapClass =
+              gapClassMap[gapSize as keyof typeof gapClassMap] || "gap-4";
 
-          return (
-            <div
-              key={row.id}
-              className={`flex flex-wrap ${gapClass} items-start`}
-            >
-              {row.components.map((componentId) => {
-                const component = componentMap.get(componentId);
-                if (!component) {
-                  console.warn(
-                    `Component with ID ${componentId} not found in schema`
-                  );
-                  return null;
-                }
+            return (
+              <SortableContext
+                key={row.id}
+                items={row.components}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className={`flex flex-wrap ${gapClass} items-start`}>
+                  {row.components.map((componentId) => {
+                    const component = componentMap.get(componentId);
+                    if (!component) {
+                      console.warn(
+                        `Component with ID ${componentId} not found in schema`
+                      );
+                      return null;
+                    }
 
-                // Calculate flex basis for responsive layout
-                const itemCount = row.components.length;
-                let flexBasis = "flex-1"; // Default to equal width
+                    // Calculate flex basis for responsive layout
+                    const itemCount = row.components.length;
+                    let flexBasis = "flex-1"; // Default to equal width
 
-                // For 2 items, use equal width
-                if (itemCount === 2) {
-                  flexBasis = "flex-1";
-                }
-                // For 3 items, use equal width
-                else if (itemCount === 3) {
-                  flexBasis = "flex-1";
-                }
-                // For 4+ items, wrap to smaller sizes
-                else if (itemCount >= 4) {
-                  flexBasis = "flex-1 min-w-0 md:flex-none md:w-1/2 lg:w-1/3";
-                }
+                    // For 2 items, use equal width
+                    if (itemCount === 2) {
+                      flexBasis = "flex-1";
+                    }
+                    // For 3 items, use equal width
+                    else if (itemCount === 3) {
+                      flexBasis = "flex-1";
+                    }
+                    // For 4+ items, wrap to smaller sizes
+                    else if (itemCount >= 4) {
+                      flexBasis =
+                        "flex-1 min-w-0 md:flex-none md:w-1/2 lg:w-1/3";
+                    }
 
-                return (
-                  <div key={componentId} className={`${flexBasis} min-w-0`}>
-                    {renderComponent(component)}
-                  </div>
-                );
-              })}
+                    return (
+                      <div key={componentId} className={`${flexBasis} min-w-0`}>
+                        <DraggableComponent
+                          component={component}
+                          onDelete={() => handleDeleteComponent(component.id)}
+                          isEditMode={isEditMode}
+                        >
+                          {renderComponent(component)}
+                        </DraggableComponent>
+                      </div>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            );
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeId ? (
+            <div className="bg-white dark:bg-dark-secondary rounded-lg p-4 shadow-lg border dark:border-dark-divider">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {schema.components.find((comp) => comp.id === activeId)
+                  ?.label || "Component"}
+              </div>
             </div>
-          );
-        })}
-      </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     );
   };
 
@@ -549,15 +841,7 @@ export default function BulletinDynamic({
     switch (component.type) {
       case "title":
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <input
               type="text"
               value={value}
@@ -570,15 +854,7 @@ export default function BulletinDynamic({
 
       case "text":
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Type className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -595,15 +871,7 @@ export default function BulletinDynamic({
 
       case "textarea":
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <List className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -620,15 +888,7 @@ export default function BulletinDynamic({
 
       case "number":
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Hash className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -647,15 +907,7 @@ export default function BulletinDynamic({
 
       case "date":
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <label className="block text-sm font-medium mb-2 dark:text-dark-textPrimary">
               <Calendar className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -697,15 +949,7 @@ export default function BulletinDynamic({
         };
 
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Check className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -844,15 +1088,7 @@ export default function BulletinDynamic({
         };
 
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Table className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -949,15 +1185,7 @@ export default function BulletinDynamic({
 
       case "graph":
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Share2 className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -975,15 +1203,7 @@ export default function BulletinDynamic({
 
       case "tree":
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <GitBranch className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -1001,15 +1221,7 @@ export default function BulletinDynamic({
 
       case "flowchart":
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Workflow className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -1027,15 +1239,7 @@ export default function BulletinDynamic({
 
       case "mindmap":
         return (
-          <div key={component.id} className="mb-6 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-6">
             <label className="block text-sm font-medium mb-3 dark:text-dark-textPrimary">
               <Brain className="inline w-4 h-4 mr-1" />
               {component.label}
@@ -1055,15 +1259,7 @@ export default function BulletinDynamic({
         const action = component.config?.action as ButtonAction;
         if (!action) {
           return (
-            <div key={component.id} className="mb-4 group relative">
-              <button
-                onClick={() => handleDeleteComponent(component.id)}
-                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-                aria-label={`Delete ${component.label}`}
-                title={`Delete ${component.label}`}
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div key={component.id} className="mb-4">
               <div className="text-red-500 dark:text-red-400 p-3 border border-red-300 dark:border-red-600 rounded-lg">
                 Button "{component.label}" has no action configured
               </div>
@@ -1072,15 +1268,7 @@ export default function BulletinDynamic({
         }
 
         return (
-          <div key={component.id} className="mb-4 group relative">
-            <button
-              onClick={() => handleDeleteComponent(component.id)}
-              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-white dark:bg-dark-secondary rounded-full shadow-sm border dark:border-dark-divider z-10"
-              aria-label={`Delete ${component.label}`}
-              title={`Delete ${component.label}`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+          <div key={component.id} className="mb-4">
             <button
               onClick={() => handleButtonAction(action)}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md"
@@ -1114,6 +1302,18 @@ export default function BulletinDynamic({
           </div>
           <div className="flex items-center gap-2">
             <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isEditMode
+                    ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300"
+                    : "text-light-icon hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover"
+                }`}
+                aria-label="Toggle edit mode"
+                title={isEditMode ? "Exit edit mode" : "Enter edit mode"}
+              >
+                <SquarePen className="h-5 w-5" />
+              </button>
               <button
                 onClick={() => setIsRefactorModalOpen(true)}
                 disabled={isSaving || externalIsSaving || isAutoSaving}
@@ -1174,6 +1374,17 @@ export default function BulletinDynamic({
         </div>
         <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
           Last updated {formatDistanceToNow(updatedAt)} ago
+          {isEditMode && (
+            <div className="mt-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="text-green-700 dark:text-green-300 text-sm font-medium">
+                Edit Mode Active
+              </div>
+              <div className="text-green-600 dark:text-green-400 text-xs mt-1">
+                Drag components by their grip handles to reorder them. Click
+                delete buttons to remove components.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
