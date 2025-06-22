@@ -27,41 +27,41 @@ export default function Login() {
   const features = [
     {
       icon: PenLine,
-      title: "AI Writing Assistant",
+      title: "Write",
       description:
         "Next-generation AI-enhanced writing editor with intelligent suggestions and seamless workflow integration.",
       color: "purple",
       highlights: [
-        "Real-time AI suggestions like Cursor",
+        "Integrated AI chat sidebar with intelligent document-level context management",
+        "Real-time AI suggestions",
         "Instant continuation with Ctrl+Enter",
         "Smart improvements with Ctrl+I",
-        "Integrated AI chat sidebar",
       ],
     },
     {
       icon: ClipboardList,
-      title: "Intelligent Note-Taking",
+      title: "Bulletin",
       description:
-        "Versatile organization system that adapts to any workflow with multiple note types and visualization.",
+        "Revolutionary note-taking system that creates custom formats on demand. Describe any layout in natural language and watch AI build it for you.",
       color: "green",
       highlights: [
+        "AI-powered custom and dynamic interactive note formats from natural language descriptions",
         "Text notes and to-do lists",
         "Dynamic Kanban boards",
-        "Link collection with knowledge graphs",
-        "Clean, focused interface",
+        "Knowledge graph based bookmarks",
       ],
     },
     {
       icon: Calendar,
-      title: "AI-Powered Scheduling",
+      title: "Schedule",
       description:
-        "Effortless calendar management with natural language processing and intelligent optimization.",
+        "Effortless calendar management with a built in personalized AI life assistant.",
       color: "blue",
       highlights: [
+        "Context-aware suggestions and reminders",
         "Natural language event creation",
-        "AI-driven schedule optimization",
-        "Real-time availability checking",
-        "Goal-oriented planning suggestions",
+        "Chat with your personal assistant for scheduling advice",
+        "Clean, minimalistic UI for goal tracking and task management",
       ],
     },
   ];
