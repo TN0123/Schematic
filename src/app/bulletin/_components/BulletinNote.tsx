@@ -13,12 +13,17 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  List,
+  ListOrdered,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
+import BulletList from "@tiptap/extension-bullet-list";
+import OrderedList from "@tiptap/extension-ordered-list";
+import ListItem from "@tiptap/extension-list-item";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
 
@@ -102,6 +107,22 @@ export default function BulletinNote({
       StarterKit.configure({
         bulletList: false,
         orderedList: false,
+        listItem: false,
+      }),
+      BulletList.configure({
+        HTMLAttributes: {
+          class: "my-bullet-list",
+        },
+      }),
+      OrderedList.configure({
+        HTMLAttributes: {
+          class: "my-ordered-list",
+        },
+      }),
+      ListItem.configure({
+        HTMLAttributes: {
+          class: "my-list-item",
+        },
       }),
       Underline,
       TextStyle,
@@ -125,7 +146,7 @@ export default function BulletinNote({
     editorProps: {
       attributes: {
         class:
-          "h-full min-h-[100px] w-full outline-none dark:bg-dark-editorBackground dark:text-dark-textPrimary",
+          "h-full min-h-[100px] w-full outline-none dark:bg-dark-editorBackground dark:text-dark-textPrimary [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1",
       },
     },
     immediatelyRender: false,
@@ -222,6 +243,35 @@ export default function BulletinNote({
           }`}
         >
           <AlignRight className="h-4 w-4" />
+        </button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleBulletList().run();
+          }}
+          className={`p-1.5 rounded-md transition-colors ${
+            editor.isActive("bulletList")
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+          }`}
+        >
+          <List className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            editor.chain().focus().toggleOrderedList().run();
+          }}
+          className={`p-1.5 rounded-md transition-colors ${
+            editor.isActive("orderedList")
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+          }`}
+        >
+          <ListOrdered className="h-4 w-4" />
         </button>
       </div>
     );
@@ -347,7 +397,12 @@ export default function BulletinNote({
           <MenuBar />
           <EditorContent
             editor={editor}
-            className={`prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert p-3`}
+            className="prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert p-3"
+            style={
+              {
+                "--list-style": "initial",
+              } as React.CSSProperties
+            }
           />
         </div>
       </div>
