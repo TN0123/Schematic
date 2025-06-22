@@ -177,7 +177,7 @@ export default function BulletinTodo({
             )}
             <button
               onClick={onDelete}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:text-dark-textPrimary dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
               aria-label="Delete list"
             >
               <Trash2 className="h-5 w-5" />

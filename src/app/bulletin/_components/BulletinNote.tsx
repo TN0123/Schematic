@@ -137,17 +137,17 @@ export default function BulletinNote({
     }
 
     return (
-      <div className="border-y p-2 mb-2 flex gap-1 flex-wrap items-center dark:border-dark-divider transition-all">
+      <div className="border-y border-gray-200 dark:border-dark-divider px-4 py-2 mb-3 flex gap-0.5 flex-wrap items-center transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
             e.preventDefault();
             editor.chain().focus().toggleBold().run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("bold")
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <Bold className="h-4 w-4" />
@@ -158,10 +158,10 @@ export default function BulletinNote({
             e.preventDefault();
             editor.chain().focus().toggleItalic().run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("italic")
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <Italic className="h-4 w-4" />
@@ -172,24 +172,25 @@ export default function BulletinNote({
             e.preventDefault();
             editor.chain().focus().toggleUnderline().run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("underline")
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <UnderlineIcon className="h-4 w-4" />
         </button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
         <button
           type="button"
           onMouseDown={(e) => {
             e.preventDefault();
             editor.chain().focus().setTextAlign("left").run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "left" })
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <AlignLeft className="h-4 w-4" />
@@ -200,10 +201,10 @@ export default function BulletinNote({
             e.preventDefault();
             editor.chain().focus().setTextAlign("center").run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "center" })
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <AlignCenter className="h-4 w-4" />
@@ -214,10 +215,10 @@ export default function BulletinNote({
             e.preventDefault();
             editor.chain().focus().setTextAlign("right").run();
           }}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "right" })
-              ? "bg-light-active dark:bg-dark-active"
-              : "hover:bg-light-hover dark:hover:bg-dark-hover"
+              ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
           }`}
         >
           <AlignRight className="h-4 w-4" />
@@ -292,9 +293,9 @@ export default function BulletinNote({
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all">
       <div className="h-full flex flex-col">
-        <div className="flex justify-between items-center mb-2 p-2">
-          <div className="flex items-center w-full">
-            <NotepadText className="h-10 w-10 mx-4 text-green-500" />
+        <div className="flex justify-between items-start mb-4 px-4 pt-4">
+          <div className="flex items-center w-full gap-3">
+            <NotepadText className="h-8 w-8 text-green-500 flex-shrink-0" />
             <div className="flex flex-col w-full">
               <input
                 type="text"
@@ -307,29 +308,23 @@ export default function BulletinNote({
                   // Trigger debounced save for title
                   debouncedSaveTitle(newTitle);
                 }}
-                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate"
-                placeholder="Enter title..."
+                className="font-semibold text-xl text-left w-full focus:outline-none border-none bg-transparent dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="Untitled"
               />
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Last modified{" "}
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
               </div>
             </div>
           </div>
-          <div className="flex gap-2 ml-2">
-            {hasUnsavedChanges && (
+          <div className="flex items-center gap-2 pt-2 flex-shrink-0">
+            {isAutoSaving && (
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            )}
+            {hasUnsavedChanges && !isAutoSaving && (
               <button
                 onClick={handleSave}
                 disabled={isSaving || externalIsSaving}
-                className={`p-2 rounded-lg transition-colors
-                  text-light-icon hover:text-light-accent hover:bg-light-hover
-                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${
-                    isSaving || externalIsSaving
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
+                className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Save changes"
               >
                 {isSaving || externalIsSaving ? (
@@ -341,8 +336,8 @@ export default function BulletinNote({
             )}
             <button
               onClick={onDelete}
-              className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
-              aria-label="Delete item"
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:text-dark-textPrimary dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
+              aria-label="Delete list"
             >
               <Trash2 className="h-5 w-5" />
             </button>

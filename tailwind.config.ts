@@ -20,6 +20,7 @@ export default {
           textPrimary: "#ffffff",
           textSecondary: "rgba(255, 255, 255, 0.7)",
           textDisabled: "rgba(255, 255, 255, 0.5)",
+          textAccent: "#00ff00",
 
           // Buttons & Actions
           actionActive: "#ffffff",
