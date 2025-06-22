@@ -658,7 +658,7 @@ export default function BulletinClient() {
               {showDropdown && (
                 <>
                   {isCollapsed ? (
-                    <div className="absolute left-2 z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
+                    <div className="absolute z-10 mt-2 w-8 origin-top-left rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-dark-background">
                       <div>
                         <button
                           onClick={() => {
@@ -699,9 +699,6 @@ export default function BulletinClient() {
                           title="Link Collection"
                         >
                           <Link />
-                          <span className="absolute right-1 top-1 text-[8px] bg-green-500/70 text-white px-1 rounded-sm leading-[1.3]">
-                            new
-                          </span>
                         </button>
                         <button
                           onClick={() => {
@@ -712,9 +709,6 @@ export default function BulletinClient() {
                           title="Dynamic Note"
                         >
                           <Sparkles />
-                          <span className="absolute right-1 top-1 text-[8px] bg-green-500/70 text-white px-1 rounded-sm leading-[1.3]">
-                            new
-                          </span>
                         </button>
                       </div>
                     </div>
