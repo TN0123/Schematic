@@ -796,7 +796,7 @@ export default function BulletinClient() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {!isCollapsed && (
-            <div className="space-y-3 p-4">
+            <div className="space-y-0 px-3 pb-4">
               {items
                 .filter((item) =>
                   item.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -804,10 +804,10 @@ export default function BulletinClient() {
                 .map((item) => (
                   <div
                     key={item.id}
-                    className={`cursor-pointer p-3 rounded-lg hover:shadow-md transition-all duration-200 ${
+                    className={`cursor-pointer px-3 py-2.5 rounded-md transition-all duration-150 ${
                       item.id === expandedItemId
-                        ? "bg-blue-50 border-2 border-blue-200 dark:bg-dark-secondary dark:border-dark-divider"
-                        : "hover:bg-light-hover border-2 border-light-border dark:hover:bg-dark-actionHover dark:border-dark-divider"
+                        ? "bg-blue-500/10 text-blue-600 dark:bg-neutral-700/50 dark:text-neutral-200"
+                        : "hover:bg-gray-100 dark:hover:bg-dark-hover text-light-heading dark:text-dark-textPrimary"
                     }`}
                     onClick={() => {
                       setExpandedItemId(item.id);
@@ -819,16 +819,34 @@ export default function BulletinClient() {
                       }
                     }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-1">
                       {typeIcons[item.type] || (
-                        <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+                        <NotepadText
+                          className={`w-4 h-4 ${
+                            item.id === expandedItemId
+                              ? "text-blue-500 dark:text-neutral-300"
+                              : "text-light-icon dark:text-dark-icon"
+                          }`}
+                        />
                       )}
-                      <h3 className="font-semibold truncate text-light-heading dark:text-dark-textPrimary">
+                      <h3
+                        className={`font-medium truncate text-sm ${
+                          item.id === expandedItemId
+                            ? "text-blue-600 dark:text-neutral-200"
+                            : "text-light-heading dark:text-dark-textPrimary"
+                        }`}
+                      >
                         {item.title || "Untitled"}
                       </h3>
                     </div>
 
-                    <p className="text-sm text-light-subtle truncate mt-1 dark:text-dark-textSecondary">
+                    <p
+                      className={`text-xs truncate leading-relaxed ${
+                        item.id === expandedItemId
+                          ? "text-blue-500/70 dark:text-neutral-400"
+                          : "text-light-subtle dark:text-dark-textSecondary"
+                      }`}
+                    >
                       {stripHtml(item.content) || ""}
                     </p>
                   </div>
