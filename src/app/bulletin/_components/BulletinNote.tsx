@@ -137,7 +137,7 @@ export default function BulletinNote({
     }
 
     return (
-      <div className="border-y border-gray-200 dark:border-dark-divider px-4 py-2 mb-3 flex gap-0.5 flex-wrap items-center transition-all">
+      <div className="border-y border-gray-200 dark:border-dark-divider px-4 py-2 flex gap-0.5 flex-wrap items-center transition-all">
         <button
           type="button"
           onMouseDown={(e) => {
