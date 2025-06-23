@@ -899,7 +899,7 @@ export default function BulletinDynamic({
               value={value}
               onChange={(e) => handleDataChange(component.id, e.target.value)}
               placeholder={component.placeholder || component.label}
-              className="w-full text-3xl font-bold bg-transparent border-none outline-none dark:text-dark-textPrimary placeholder:text-gray-300 dark:placeholder:text-gray-600 leading-tight tracking-tight hover:bg-gray-50 dark:hover:bg-gray-800/30 rounded-lg px-3 py-2 transition-all duration-200 focus:bg-white dark:focus:bg-gray-800/50 focus:shadow-sm"
+              className="w-full text-3xl font-bold bg-transparent border-none outline-none dark:text-dark-textPrimary placeholder:text-gray-300 dark:placeholder:text-neutral-400 leading-tight tracking-tight hover:bg-gray-50 dark:hover:bg-dark-secondary rounded-lg px-3 py-2 transition-all duration-200 focus:bg-white dark:focus:bg-dark-secondary focus:shadow-sm"
             />
           </div>
         );
@@ -1015,59 +1015,57 @@ export default function BulletinDynamic({
         };
 
         return (
-          <div key={component.id} className="mb-8">
-            <label className="flex items-center text-sm font-semibold mb-4 text-gray-700 dark:text-dark-textPrimary tracking-wide">
+          <div key={component.id} className="mb-6">
+            <label className="flex items-center text-sm font-medium mb-3 text-gray-700 dark:text-dark-textPrimary">
               <Check className="w-4 h-4 mr-2 text-gray-500 dark:text-dark-textSecondary" />
               {component.label}
             </label>
-            <div className="bg-white dark:bg-dark-secondary rounded-xl p-4 border border-gray-200 dark:border-dark-divider shadow-sm">
-              <div className="space-y-3">
-                {items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 group/item hover:bg-gray-50 dark:hover:bg-dark-actionHover rounded-lg p-2 -m-2 transition-colors duration-150"
-                  >
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={item.checked}
-                        onChange={(e) =>
-                          updateChecklistItem(item.id, {
-                            checked: e.target.checked,
-                          })
-                        }
-                        className="w-5 h-5 text-green-600 dark:text-green-500 bg-white dark:bg-dark-background border-2 border-gray-300 dark:border-dark-divider rounded-md focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 transition-all duration-200 cursor-pointer"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={item.text}
-                      onChange={(e) =>
-                        updateChecklistItem(item.id, { text: e.target.value })
-                      }
-                      placeholder="Add item..."
-                      className={`flex-1 px-3 py-2 bg-transparent border border-transparent rounded-md text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-200 dark:hover:border-dark-divider focus:outline-none focus:border-green-500 dark:focus:border-green-400 focus:bg-white dark:focus:bg-dark-background ${
-                        item.checked
-                          ? "line-through opacity-60 text-gray-500 dark:text-dark-textSecondary"
-                          : ""
-                      }`}
-                    />
-                    <button
-                      onClick={() => removeChecklistItem(item.id)}
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-200 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={addChecklistItem}
-                  className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium text-sm px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all duration-200 mt-2"
+            <div className="space-y-1">
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 group/item hover:bg-gray-50 dark:hover:bg-dark-actionHover rounded-lg px-1 py-1 transition-colors duration-150"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add item
-                </button>
-              </div>
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={(e) =>
+                        updateChecklistItem(item.id, {
+                          checked: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 text-green-600 dark:text-green-500 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded focus:ring-1 focus:ring-green-500/30 dark:focus:ring-green-400/30 focus:border-green-500 dark:focus:border-green-400 transition-all duration-200 cursor-pointer"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      updateChecklistItem(item.id, { text: e.target.value })
+                    }
+                    placeholder="Add item..."
+                    className={`flex-1 px-2 py-1.5 bg-transparent text-sm border-none outline-none text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 rounded ${
+                      item.checked
+                        ? "line-through opacity-60 text-gray-500 dark:text-dark-textSecondary"
+                        : ""
+                    }`}
+                  />
+                  <button
+                    onClick={() => removeChecklistItem(item.id)}
+                    className="opacity-0 group-hover/item:opacity-100 transition-opacity duration-200 p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={addChecklistItem}
+                className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm px-2 py-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-all duration-200 mt-2"
+              >
+                <Plus className="w-3 h-3" />
+                Add item
+              </button>
             </div>
           </div>
         );
@@ -1422,105 +1420,94 @@ export default function BulletinDynamic({
   return (
     <div className="h-full flex flex-col dark:bg-dark-background transition-all">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-dark-divider bg-white/80 dark:bg-dark-paper/80 backdrop-blur-sm">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-gray-700 dark:text-dark-textPrimary tracking-wide">
-                  Dynamic Note
-                </span>
-                <div className="text-xs text-gray-500 dark:text-dark-textSecondary mt-0.5">
-                  Last updated {formatDistanceToNow(updatedAt)} ago
-                  {(isAutoSaving || isSaving || externalIsSaving) && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Saving...
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setIsEditMode(!isEditMode)}
-                  className={`p-2.5 rounded-xl transition-all duration-200 ${
-                    isEditMode
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary dark:hover:bg-dark-actionHover"
+      <div className="flex-shrink-0 border-b dark:border-dark-divider p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-green-500" />
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Dynamic Note
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isEditMode
+                    ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300"
+                    : "text-light-icon hover:text-light-accent hover:bg-light-hover dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover"
+                }`}
+                aria-label="Toggle edit mode"
+                title={isEditMode ? "Exit edit mode" : "Enter edit mode"}
+              >
+                <SquarePen className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setIsRefactorModalOpen(true)}
+                disabled={isSaving || externalIsSaving || isAutoSaving}
+                className={`p-2 rounded-lg transition-colors
+                  text-light-icon hover:text-light-accent hover:bg-light-hover
+                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
+                  ${
+                    isSaving || externalIsSaving || isAutoSaving
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
                   }`}
-                  aria-label="Toggle edit mode"
-                  title={isEditMode ? "Exit edit mode" : "Enter edit mode"}
-                >
-                  <SquarePen className="h-4 w-4" />
-                </button>
+                aria-label="Refactor note structure"
+                title="Refactor note structure"
+              >
+                <PencilRuler className="h-5 w-5" />
+              </button>
+              {hasUnsavedChanges && (
                 <button
-                  onClick={() => setIsRefactorModalOpen(true)}
+                  onClick={handleSave}
                   disabled={isSaving || externalIsSaving || isAutoSaving}
-                  className={`p-2.5 rounded-xl transition-all duration-200
+                  className={`p-2 rounded-lg transition-colors
+                    text-light-icon hover:text-light-accent hover:bg-light-hover
+                    dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
                     ${
                       isSaving || externalIsSaving || isAutoSaving
-                        ? "opacity-50 cursor-not-allowed text-gray-400 dark:text-dark-textDisabled"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary dark:hover:bg-dark-actionHover"
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
                     }`}
-                  aria-label="Refactor note structure"
-                  title="Refactor note structure"
+                  aria-label="Save changes"
                 >
-                  <PencilRuler className="h-4 w-4" />
+                  {isSaving || externalIsSaving ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Save className="h-5 w-5" />
+                  )}
                 </button>
-                {hasUnsavedChanges && (
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving || externalIsSaving || isAutoSaving}
-                    className={`p-2.5 rounded-xl transition-all duration-200
-                      ${
-                        isSaving || externalIsSaving || isAutoSaving
-                          ? "opacity-50 cursor-not-allowed text-gray-400 dark:text-dark-textDisabled"
-                          : "text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
-                      }`}
-                    aria-label="Save changes"
-                  >
-                    {isSaving || externalIsSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    onClick={onDelete}
-                    className="p-2.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:text-dark-textSecondary dark:hover:text-red-400 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200"
-                    aria-label="Delete item"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              )}
+              {onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
+                  aria-label="Delete item"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
-        <div className="px-6 pb-6">
+        <div className="mt-3">
           <input
             type="text"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled note"
-            className="text-3xl font-bold bg-transparent border-none outline-none w-full text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary leading-tight tracking-tight hover:bg-gray-50 dark:hover:bg-dark-actionHover rounded-lg px-3 py-2 transition-all duration-200 focus:bg-white dark:focus:bg-dark-secondary focus:shadow-sm"
+            className="text-2xl font-bold bg-transparent border-none outline-none w-full dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
+        </div>
+        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Last updated {formatDistanceToNow(updatedAt)} ago
           {isEditMode && (
-            <div className="mt-4 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <div className="text-green-800 dark:text-green-200 text-sm font-semibold">
-                  Edit Mode Active
-                </div>
+            <div className="mt-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="text-green-700 dark:text-green-300 text-sm font-medium">
+                Edit Mode Active
               </div>
-              <div className="text-green-700 dark:text-green-300 text-xs mt-1.5 leading-relaxed">
+              <div className="text-green-600 dark:text-green-400 text-xs mt-1">
                 Drag components by their grip handles to reorder them. Click
                 delete buttons to remove components.
               </div>
