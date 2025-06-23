@@ -1443,9 +1443,9 @@ export default function BulletinDynamic({
               <div className="h-full flex flex-col justify-center items-start">
                 <button
                   onClick={() => handleButtonAction(action)}
-                  className="flex items-center gap-3 px-6 py-3 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-xl transition-all duration-200 font-semibold shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:hover:bg-dark-actionHover text-gray-700 dark:text-dark-textPrimary rounded-lg transition-all duration-200 font-medium border border-gray-200 dark:border-dark-divider hover:border-gray-300 dark:hover:border-gray-600 shadow-sm hover:shadow-md"
                 >
-                  <MousePointer className="w-4 h-4" />
+                  <MousePointer className="w-3.5 h-3.5 text-gray-500 dark:text-dark-textSecondary" />
                   {component.label}
                 </button>
                 {component.config?.description &&

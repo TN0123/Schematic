@@ -110,7 +110,9 @@ Layout structure:
 - Layout is responsive and will wrap on smaller screens
 
 Button component structure:
-For button components, if you decide to use them, you MUST include a "config" object with an "action" property that defines what the button does:
+For button components, if you decide to use them, you MUST include a "config" object with an "action" property 
+that defines what the button does. Avoid using the description property unless you think it would be significantly
+needed.
 
 {
   "id": "button-id",
@@ -183,7 +185,7 @@ Return a JSON object with this exact structure:
   }
 }
 
-Note: Only include the "config" property for table components. For table components, determine appropriate rows and cols based on the user's request.
+Note: Only include the "config" property for table and button components. For table components, determine appropriate rows and cols based on the user's request.
 
 Generate the schema now:`;
 
