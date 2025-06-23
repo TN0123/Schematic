@@ -102,9 +102,6 @@ Available component types:
 - "mindmap": Interactive mind map for brainstorming and visual thinking
 - "button": Interactive button that can perform actions on other components
 
-Layout System:
-You can now arrange components in flexible rows and columns using a layout structure. This allows components to be placed side-by-side instead of just vertically stacked.
-
 Layout structure:
 - Each row contains an array of component IDs
 - Components in the same row will be displayed side-by-side
@@ -113,7 +110,7 @@ Layout structure:
 - Layout is responsive and will wrap on smaller screens
 
 Button component structure:
-For button components, you MUST include a "config" object with an "action" property that defines what the button does:
+For button components, if you decide to use them, you MUST include a "config" object with an "action" property that defines what the button does:
 
 {
   "id": "button-id",
