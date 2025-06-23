@@ -1166,19 +1166,31 @@ export default function BulletinDynamic({
               <Table className="w-4 h-4 mr-2 text-gray-500 dark:text-dark-textSecondary" />
               {component.label}
             </label>
-            <div className="bg-white dark:bg-dark-secondary rounded-xl shadow-sm border border-gray-200 dark:border-dark-divider overflow-hidden">
+            <div className="bg-white dark:bg-dark-secondary rounded-2xl shadow-lg hover:shadow-xl border border-gray-100 dark:border-dark-divider overflow-hidden transition-all duration-300 backdrop-blur-sm">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse min-w-max">
-                  <tbody>
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-dark-background border-b border-gray-200 dark:border-dark-divider">
+                      {Array.from({ length: cols }, (_, colIndex) => (
+                        <th
+                          key={colIndex}
+                          className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-dark-textSecondary uppercase tracking-wider border-r border-gray-200 dark:border-dark-divider last:border-r-0"
+                        >
+                          {String.fromCharCode(65 + colIndex)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-dark-divider">
                     {tableData.map((row, rowIndex) => (
                       <tr
                         key={rowIndex}
-                        className="group/row hover:bg-gray-50 dark:hover:bg-dark-actionHover transition-colors duration-150"
+                        className="group/row hover:bg-gray-50 dark:hover:bg-dark-actionHover transition-all duration-200 hover:shadow-sm"
                       >
                         {row.map((cell, colIndex) => (
                           <td
                             key={colIndex}
-                            className="border-r border-b border-gray-200 dark:border-dark-divider last:border-r-0 p-0 min-w-[140px] h-12 relative"
+                            className="border-r border-gray-100 dark:border-dark-divider last:border-r-0 p-0 min-w-[160px] relative group/cell"
                           >
                             <input
                               type="text"
@@ -1211,13 +1223,22 @@ export default function BulletinDynamic({
                                   nextInput?.focus();
                                 }
                               }}
-                              className="w-full h-full px-4 py-3 bg-transparent text-gray-900 dark:text-dark-textPrimary border-none outline-none focus:bg-green-50 dark:focus:bg-green-900/10 transition-colors duration-200 placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary"
+                              className="w-full h-14 px-6 py-4 bg-transparent text-gray-800 dark:text-dark-textPrimary border-none outline-none transition-all duration-200 placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary font-medium
+                                hover:bg-blue-50 dark:hover:bg-blue-900/10
+                                focus:bg-green-50 dark:focus:bg-green-900/20
+                                focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/30 focus:ring-inset
+                                group-hover/cell:shadow-inner"
                               placeholder={`${String.fromCharCode(
                                 65 + colIndex
                               )}${rowIndex + 1}`}
                               onFocus={(e) => e.target.select()}
                               data-table-cell={`${component.id}-${rowIndex}-${colIndex}`}
                             />
+                            {/* Cell focus indicator */}
+                            <div className="absolute inset-0 pointer-events-none opacity-0 group-focus-within/cell:opacity-100 transition-opacity duration-200">
+                              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-400 to-emerald-400 transform scale-x-0 group-focus-within/cell:scale-x-100 transition-transform duration-300 origin-left"></div>
+                              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-400 to-emerald-400 transform scale-x-0 group-focus-within/cell:scale-x-100 transition-transform duration-300 origin-right delay-75"></div>
+                            </div>
                           </td>
                         ))}
                       </tr>
@@ -1225,38 +1246,64 @@ export default function BulletinDynamic({
                   </tbody>
                 </table>
               </div>
-              <div className="border-t border-gray-200 dark:border-dark-divider p-4 bg-gray-50 dark:bg-dark-background">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={addRow}
-                    className="flex items-center gap-2 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium text-sm hover:bg-green-50 dark:hover:bg-green-900/20 px-3 py-2 rounded-lg transition-all duration-200 border border-transparent hover:border-green-200 dark:hover:border-green-800"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Row
-                  </button>
-                  <button
-                    onClick={removeRow}
-                    disabled={tableData.length <= 1}
-                    className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium text-sm hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-red-200 dark:hover:border-red-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Remove Row
-                  </button>
-                  <button
-                    onClick={addColumn}
-                    className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-2 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Column
-                  </button>
-                  <button
-                    onClick={removeColumn}
-                    disabled={cols <= 1}
-                    className="flex items-center gap-2 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-medium text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-2 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Remove Column
-                  </button>
+              {/* Enhanced Control Panel */}
+              <div className="border-t border-gray-100 dark:border-dark-divider bg-gray-50 dark:bg-dark-background backdrop-blur-sm">
+                <div className="p-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    {/* Row Controls */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary uppercase tracking-wider">
+                        Rows
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={addRow}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
+                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
+                            px-3 py-2 rounded-lg transition-all duration-200"
+                        >
+                          <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200" />
+                        </button>
+                        <button
+                          onClick={removeRow}
+                          disabled={tableData.length <= 1}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
+                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
+                            px-3 py-2 rounded-lg transition-all duration-200
+                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-200" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Column Controls */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary uppercase tracking-wider">
+                        Columns
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={addColumn}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
+                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
+                            px-3 py-2 rounded-lg transition-all duration-200"
+                        >
+                          <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200" />
+                        </button>
+                        <button
+                          onClick={removeColumn}
+                          disabled={cols <= 1}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
+                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
+                            px-3 py-2 rounded-lg transition-all duration-200
+                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-200" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
