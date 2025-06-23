@@ -14,7 +14,7 @@ export async function contextUpdate(history: any[], documentId: any) {
     select: { context: true },
   });
 
-  const context = document?.context;
+  const context = document?.context || "";
 
   const prompt = `
     You are an AI writing assistant embedded in a text editor and have just helped a user with their writing.
@@ -43,6 +43,9 @@ export async function contextUpdate(history: any[], documentId: any) {
   const response = await model.generateContent(prompt);
   const updatedContext = response.response.text();
 
+  // Check if context actually changed
+  const contextChanged = context.trim() !== updatedContext.trim();
+
   await prisma.document.update({
     where: { id: documentId },
     data: { context: updatedContext },
@@ -50,4 +53,14 @@ export async function contextUpdate(history: any[], documentId: any) {
 
   // console.log("Prompt: ", prompt);
   // console.log("Updated Context: ", updatedContext);
+
+  return {
+    contextUpdated: contextChanged,
+    contextChange: contextChanged
+      ? {
+          before: context,
+          after: updatedContext,
+        }
+      : null,
+  };
 }

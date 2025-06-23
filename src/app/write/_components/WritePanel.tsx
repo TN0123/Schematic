@@ -17,9 +17,21 @@ export type ModelType = "basic" | "premium";
 interface MessageProps {
   message: string;
   role: "user" | "assistant";
+  contextUpdated?: boolean;
+  contextChange?: {
+    before: string;
+    after: string;
+  };
 }
 
-export function Message({ message, role }: MessageProps) {
+export function Message({
+  message,
+  role,
+  contextUpdated,
+  contextChange,
+}: MessageProps & {
+  onShowContextDiff?: (before: string, after: string) => void;
+}) {
   return (
     <div
       className={`flex w-full ${
@@ -39,6 +51,23 @@ export function Message({ message, role }: MessageProps) {
         <p className="text-gray-900 dark:text-dark-textPrimary text-xs">
           {message}
         </p>
+        {contextUpdated && contextChange && (
+          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-divider">
+            <button
+              className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+              title="Click to see context changes"
+              onClick={() => {
+                const event = new CustomEvent("showContextDiff", {
+                  detail: contextChange,
+                });
+                window.dispatchEvent(event);
+              }}
+            >
+              <UserPen size={12} className="mr-1" />
+              <span>Context Updated</span>
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -91,6 +120,11 @@ export default function WritePanel({
   const [isImproving, setIsImproving] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [contextDiffModal, setContextDiffModal] = useState<{
+    isOpen: boolean;
+    before: string;
+    after: string;
+  }>({ isOpen: false, before: "", after: "" });
 
   useEffect(() => {
     onModelChange(selectedModel);
@@ -103,6 +137,30 @@ export default function WritePanel({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Listen for context diff events
+  useEffect(() => {
+    const handleShowContextDiff = (event: CustomEvent) => {
+      const { before, after } = event.detail;
+      setContextDiffModal({
+        isOpen: true,
+        before,
+        after,
+      });
+    };
+
+    window.addEventListener(
+      "showContextDiff",
+      handleShowContextDiff as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "showContextDiff",
+        handleShowContextDiff as EventListener
+      );
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
@@ -145,6 +203,8 @@ export default function WritePanel({
       const assistantMessage = {
         message: data.result[0],
         role: "assistant" as const,
+        contextUpdated: data.contextUpdated,
+        contextChange: data.contextChange,
       };
       setLastRequest(requestPayload);
       setMessages((prev) => [...prev, assistantMessage]);
@@ -256,6 +316,8 @@ export default function WritePanel({
       const assistantMessage = {
         message: data.result[0],
         role: "assistant" as const,
+        contextUpdated: data.contextUpdated,
+        contextChange: data.contextChange,
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setChanges(data.result[1]);
@@ -453,7 +515,13 @@ export default function WritePanel({
           </div>
           <div className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider">
             {messages.map((msg, index) => (
-              <Message key={index} message={msg.message} role={msg.role} />
+              <Message
+                key={index}
+                message={msg.message}
+                role={msg.role}
+                contextUpdated={msg.contextUpdated}
+                contextChange={msg.contextChange}
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -464,6 +532,65 @@ export default function WritePanel({
         onClose={() => setIsContextModalOpen(false)}
         documentId={documentId}
       />
+
+      {/* Context Diff Modal */}
+      {contextDiffModal.isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setContextDiffModal({ isOpen: false, before: "", after: "" });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setContextDiffModal({ isOpen: false, before: "", after: "" });
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center p-6 border-b dark:border-dark-divider">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Context Changes
+              </h2>
+              <button
+                onClick={() =>
+                  setContextDiffModal({ isOpen: false, before: "", after: "" })
+                }
+                className="text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 max-h-[calc(80vh-120px)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+                <div className="flex flex-col">
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
+                    <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                    Before
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-200px)]">
+                    {contextDiffModal.before || "No previous context"}
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
+                    <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                    After
+                  </h3>
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-200px)]">
+                    {contextDiffModal.after}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

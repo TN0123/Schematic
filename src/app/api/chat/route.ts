@@ -21,20 +21,32 @@ export async function POST(req: Request) {
       model
     );
 
-    contextUpdate(updatedHistory, documentId);
+    const contextUpdateResult = await contextUpdate(updatedHistory, documentId);
 
     if (response.includes("```json")) {
       const cleanResult = JSON.parse(
         response.substring(7, response.length - 3)
       );
       return NextResponse.json(
-        { result: cleanResult, history: updatedHistory, remainingUses },
+        {
+          result: cleanResult,
+          history: updatedHistory,
+          remainingUses,
+          contextUpdated: contextUpdateResult.contextUpdated,
+          contextChange: contextUpdateResult.contextChange,
+        },
         { status: 200 }
       );
     }
     const cleanResult = JSON.parse(response);
     return NextResponse.json(
-      { result: cleanResult, history: updatedHistory, remainingUses },
+      {
+        result: cleanResult,
+        history: updatedHistory,
+        remainingUses,
+        contextUpdated: contextUpdateResult.contextUpdated,
+        contextChange: contextUpdateResult.contextChange,
+      },
       { status: 200 }
     );
   } catch (error) {
