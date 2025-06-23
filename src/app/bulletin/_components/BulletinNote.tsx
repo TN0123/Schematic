@@ -397,7 +397,7 @@ export default function BulletinNote({
           <MenuBar />
           <EditorContent
             editor={editor}
-            className="prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[500px] dark:prose-invert p-3"
+            className="prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[550px] dark:prose-invert p-3"
             style={
               {
                 "--list-style": "initial",

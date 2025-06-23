@@ -257,6 +257,27 @@ export default function BulletinClient() {
     // Add item to saving set
     setSavingItems((prev) => new Set([...prev, id]));
 
+    // Update local state immediately with current timestamp for real-time sorting
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, updatedAt: new Date() };
+          if (updates.title !== undefined) updatedItem.title = updates.title;
+          if (updates.content !== undefined)
+            updatedItem.content = updates.content;
+          if (updates.data !== undefined) {
+            // Type-safe assignment for data
+            (updatedItem as any).data = updates.data;
+          }
+          if (updates.schema !== undefined && "schema" in updatedItem) {
+            (updatedItem as any).schema = updates.schema;
+          }
+          return updatedItem;
+        }
+        return item;
+      })
+    );
+
     try {
       const response = await fetch(`/api/bulletins/${id}`, {
         method: "PATCH",
@@ -269,8 +290,8 @@ export default function BulletinClient() {
       }
 
       const updatedItem = await response.json();
-      setItems(
-        items.map((item) =>
+      setItems((prevItems) =>
+        prevItems.map((item) =>
           item.id === id ? { ...item, ...updatedItem } : item
         )
       );
@@ -354,7 +375,7 @@ export default function BulletinClient() {
     });
 
     const newBulletin = await response.json();
-    setItems([...items, newBulletin]);
+    setItems([newBulletin, ...items]);
     setExpandedItemId(newBulletin.id);
     router.push(`${pathname}?noteId=${newBulletin.id}`);
   };
@@ -373,7 +394,7 @@ export default function BulletinClient() {
     });
 
     const newBulletin = await response.json();
-    setItems([...items, newBulletin]);
+    setItems([newBulletin, ...items]);
     setExpandedItemId(newBulletin.id);
     router.push(`${pathname}?noteId=${newBulletin.id}`);
   };
@@ -794,6 +815,11 @@ export default function BulletinClient() {
               {items
                 .filter((item) =>
                   item.title.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .sort(
+                  (a, b) =>
+                    new Date(b.updatedAt).getTime() -
+                    new Date(a.updatedAt).getTime()
                 )
                 .map((item) => (
                   <div
