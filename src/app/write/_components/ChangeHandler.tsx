@@ -23,6 +23,7 @@ export function ChangeHandler({
   const [currentKey, setCurrentKey] = useState<string | null>(
     changeKeys[0] ?? null
   );
+  const [editedSuggestion, setEditedSuggestion] = useState<string>("");
 
   useEffect(() => {
     if (!currentKey || !changes[currentKey]) {
@@ -34,13 +35,19 @@ export function ChangeHandler({
     setActiveHighlight(currentKey ?? null);
   }, [currentKey, setActiveHighlight]);
 
+  // Update editedSuggestion when currentKey changes
+  useEffect(() => {
+    if (currentKey && changes[currentKey]) {
+      setEditedSuggestion(changes[currentKey]);
+    }
+  }, [currentKey, changes]);
+
   const handleAccept = () => {
     if (currentKey) {
       if (currentKey == "!ADD_TO_END!") {
-        appendChange(changes[currentKey]);
+        appendChange(editedSuggestion);
       } else {
-        const replacement = changes[currentKey];
-        applyChange(currentKey, replacement);
+        applyChange(currentKey, editedSuggestion);
       }
     }
   };
@@ -66,7 +73,6 @@ export function ChangeHandler({
   if (!currentKey) return null;
 
   const totalChanges = changeKeys.length;
-  const suggestion = changes[currentKey];
 
   return (
     <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
@@ -74,13 +80,16 @@ export function ChangeHandler({
         {totalChanges} Change(s) Remaining
       </h3>
 
-      <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
+      <div className="flex-grow overflow-hidden bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
         <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
           Suggested:
         </span>
-        <div className="text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap">
-          {suggestion}
-        </div>
+        <textarea
+          value={editedSuggestion}
+          onChange={(e) => setEditedSuggestion(e.target.value)}
+          className="flex-1 text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap bg-transparent border-none resize-none outline-none focus:ring-0 min-h-[100px]"
+          placeholder="Edit the suggestion before accepting..."
+        />
       </div>
 
       <div className="flex flex-col gap-2">
