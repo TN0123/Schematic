@@ -55,6 +55,7 @@ export default function CalendarApp() {
   const [inputText, setInputText] = useState("");
   const [generationResult, setGenerationResult] =
     useState<GenerationResult | null>(null);
+  const [hasUserClosedReminders, setHasUserClosedReminders] = useState(false);
 
   const { startNextStep } = useNextStep();
   const calendarRef = useRef<FullCalendar>(null);
@@ -62,6 +63,9 @@ export default function CalendarApp() {
 
   // Handle reminders UI state logic
   useEffect(() => {
+    // Don't auto-show reminders if user has manually closed them
+    if (hasUserClosedReminders) return;
+
     const currentDate = new Date();
     const sevenDaysFromNow = new Date(
       currentDate.getTime() + 7 * 24 * 60 * 60 * 1000
@@ -76,7 +80,7 @@ export default function CalendarApp() {
       calendarState.setShowReminders(true);
       calendarState.setShowCalendarHeader(false);
     }
-  }, [calendarData.reminders, calendarState]);
+  }, [calendarData.reminders, calendarState, hasUserClosedReminders]);
 
   // Update button icons and badges
   useEffect(() => {
@@ -226,6 +230,8 @@ export default function CalendarApp() {
           );
 
           if (hasRelevantReminders) {
+            // Reset the flag when new reminders are generated so they can be shown
+            setHasUserClosedReminders(false);
             calendarState.setShowReminders(true);
             calendarState.setShowCalendarHeader(false);
           }
@@ -323,6 +329,22 @@ export default function CalendarApp() {
     checkAndStartTour();
   }, [startNextStep]);
 
+  // Handle browser navigation to close reminders bar
+  useEffect(() => {
+    const handlePopState = () => {
+      if (calendarState.showReminders) {
+        calendarState.setShowReminders(false);
+        calendarState.setShowCalendarHeader(true);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [calendarState.showReminders, calendarState]);
+
   // Calendar resize observer
   useEffect(() => {
     if (!calendarContainerRef.current) return;
@@ -353,6 +375,15 @@ export default function CalendarApp() {
     }
   };
 
+  // Custom toggle function that tracks user manual closing
+  const handleToggleRemindersWithTracking = () => {
+    if (calendarState.showReminders) {
+      // User is closing the reminders bar manually
+      setHasUserClosedReminders(true);
+    }
+    calendarState.handleToggleReminders();
+  };
+
   return (
     <SessionProvider>
       <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
@@ -374,7 +405,7 @@ export default function CalendarApp() {
               {calendarState.showReminders && (
                 <RemindersBar
                   isVisible={calendarState.showReminders}
-                  onToggle={calendarState.handleToggleReminders}
+                  onToggle={handleToggleRemindersWithTracking}
                   reminders={calendarData.reminders}
                   onDismissReminder={calendarData.dismissReminder}
                 />
@@ -417,7 +448,7 @@ export default function CalendarApp() {
                 onDateClick={calendarState.handleDateClick}
                 onDatesSet={calendarState.handleDatesSet}
                 onRefresh={handleFetchSuggestions}
-                onToggleReminders={calendarState.handleToggleReminders}
+                onToggleReminders={handleToggleRemindersWithTracking}
                 selectedEventIds={calendarState.selectedEventIds}
                 copiedEvents={calendarState.copiedEvents}
                 unreadNonAIReminders={calendarState.unreadNonAIReminders}
@@ -468,7 +499,7 @@ export default function CalendarApp() {
               {calendarState.showReminders && (
                 <RemindersBar
                   isVisible={calendarState.showReminders}
-                  onToggle={calendarState.handleToggleReminders}
+                  onToggle={handleToggleRemindersWithTracking}
                   reminders={calendarData.reminders}
                   onDismissReminder={calendarData.dismissReminder}
                 />
@@ -511,7 +542,7 @@ export default function CalendarApp() {
                 onDateClick={calendarState.handleDateClick}
                 onDatesSet={calendarState.handleDatesSet}
                 onRefresh={handleFetchSuggestions}
-                onToggleReminders={calendarState.handleToggleReminders}
+                onToggleReminders={handleToggleRemindersWithTracking}
                 selectedEventIds={calendarState.selectedEventIds}
                 copiedEvents={calendarState.copiedEvents}
                 unreadNonAIReminders={calendarState.unreadNonAIReminders}
