@@ -42,16 +42,13 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
 
   return (
     <section>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary">
-          <PenLine className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
-          Write
-        </h2>
+      <div className="mb-4">
         <TransitionLink
           href="/write"
-          className="text-sm font-medium text-purple-600 dark:text-purple-400 rounded-lg px-3 py-1 transition-all duration-300 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+          className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300"
         >
-          View all
+          <PenLine className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
+          Write
         </TransitionLink>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

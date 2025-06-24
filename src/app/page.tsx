@@ -5,6 +5,8 @@ import {
   PlusCircle,
   FileText,
   Clock,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 import prisma from "@/lib/prisma";
@@ -20,6 +22,8 @@ export default async function Home() {
   let recentDocuments: any[] = [];
   let upcomingEvents: any[] = [];
   let bulletinNotes: any[] = [];
+  let goals: any[] = [];
+  let totalGoalsCount = 0;
 
   if (userId) {
     const today = new Date();
@@ -27,32 +31,45 @@ export default async function Home() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    [recentDocuments, upcomingEvents, bulletinNotes] = await Promise.all([
-      prisma.document.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        take: 3,
-        select: { title: true, id: true },
-      }),
-      prisma.event.findMany({
-        where: {
-          userId,
-          start: {
-            gte: today,
-            lt: tomorrow,
+    [recentDocuments, upcomingEvents, bulletinNotes, goals, totalGoalsCount] =
+      await Promise.all([
+        prisma.document.findMany({
+          where: { userId },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+          select: { title: true, id: true },
+        }),
+        prisma.event.findMany({
+          where: {
+            userId,
+            start: {
+              gte: today,
+              lt: tomorrow,
+            },
           },
-        },
-        orderBy: { start: "asc" },
-        take: 3,
-        select: { title: true, start: true },
-      }),
-      prisma.bulletin.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        take: 3,
-        select: { title: true, id: true },
-      }),
-    ]);
+          orderBy: { start: "asc" },
+          take: 3,
+          select: { title: true, start: true },
+        }),
+        prisma.bulletin.findMany({
+          where: { userId },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+          select: { title: true, id: true },
+        }),
+        prisma.goal.findMany({
+          where: { userId },
+          orderBy: [
+            { type: "asc" }, // This will order by DAILY, WEEKLY, MONTHLY, YEARLY
+            { createdAt: "desc" }, // Most recent within each type
+          ],
+          take: 3,
+          select: { title: true, type: true, createdAt: true },
+        }),
+        prisma.goal.count({
+          where: { userId },
+        }),
+      ]);
   }
 
   return (
@@ -73,16 +90,13 @@ export default async function Home() {
 
             {/* Bulletin Section */}
             <section>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary">
-                  <ClipboardList className="h-6 w-6 mr-3 text-green-500 dark:text-green-400" />
-                  Bulletin
-                </h2>
+              <div className="mb-4">
                 <TransitionLink
                   href="/bulletin"
-                  className="text-sm font-medium text-green-500 dark:text-green-400 rounded-lg px-3 py-1 transition-all duration-300 hover:bg-green-100 dark:hover:bg-green-900/40"
+                  className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary hover:text-green-600 dark:hover:text-green-400 transition-colors duration-300"
                 >
-                  View all
+                  <ClipboardList className="h-6 w-6 mr-3 text-green-500 dark:text-green-400" />
+                  Bulletin
                 </TransitionLink>
               </div>
               <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 space-y-3">
@@ -111,39 +125,133 @@ export default async function Home() {
           {/* Schedule Section */}
           <div className="lg:col-span-1">
             <section>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary">
-                  <Calendar className="h-6 w-6 mr-3 text-blue-600 dark:text-blue-400" />
-                  Today's Schedule
-                </h2>
+              <div className="mb-4">
                 <TransitionLink
                   href="/schedule"
-                  className="text-sm font-medium text-blue-600 dark:text-blue-400 rounded-lg px-3 py-1 transition-all duration-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                  className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
                 >
-                  View all
+                  <Calendar className="h-6 w-6 mr-3 text-blue-600 dark:text-blue-400" />
+                  Schedule
                 </TransitionLink>
               </div>
-              <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div key={event.title} className="flex items-start">
-                    <Clock className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-1 mr-3 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-dark-textPrimary">
-                        {event.title}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                        <EventTime startTime={event.start} />
-                      </p>
-                    </div>
+
+              <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-6 space-y-8">
+                {/* Today's Schedule Subsection */}
+                <div>
+                  <div className="flex items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-dark-textPrimary">
+                      Today's Events
+                    </h3>
                   </div>
-                ))}
-                <TransitionLink
-                  href="/schedule"
-                  className="flex items-center text-blue-600 dark:text-blue-400 rounded-lg p-2 transition-all duration-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 -m-2"
-                >
-                  <PlusCircle className="h-5 w-5 mr-2" />
-                  Add event
-                </TransitionLink>
+                  <div className="space-y-3">
+                    {upcomingEvents.length > 0 ? (
+                      upcomingEvents.map((event) => (
+                        <div
+                          key={event.title}
+                          className="flex items-start py-2"
+                        >
+                          <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                              {event.title}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
+                              <EventTime startTime={event.start} />
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-2">
+                        No events scheduled for today
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-dark-divider" />
+
+                {/* Goals Subsection */}
+                <div>
+                  <div className="flex items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-dark-textPrimary">
+                      Goals
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {goals.length > 0 ? (
+                      <>
+                        {goals.map((goal, index) => {
+                          const getGoalTypeLetter = (type: string) => {
+                            switch (type) {
+                              case "DAILY":
+                                return "D";
+                              case "WEEKLY":
+                                return "W";
+                              case "MONTHLY":
+                                return "M";
+                              case "YEARLY":
+                                return "Y";
+                              default:
+                                return "?";
+                            }
+                          };
+
+                          const getGoalTypeColor = (type: string) => {
+                            switch (type) {
+                              case "DAILY":
+                                return "text-green-600 dark:text-green-400";
+                              case "WEEKLY":
+                                return "text-blue-600 dark:text-blue-400";
+                              case "MONTHLY":
+                                return "text-yellow-600 dark:text-yellow-400";
+                              case "YEARLY":
+                                return "text-purple-600 dark:text-purple-400";
+                              default:
+                                return "text-gray-600 dark:text-dark-textSecondary";
+                            }
+                          };
+
+                          return (
+                            <div
+                              key={`${goal.title}-${index}`}
+                              className="flex items-center py-2"
+                            >
+                              <div className="mr-3 flex-shrink-0">
+                                <span
+                                  className={`text-base font-bold ${getGoalTypeColor(
+                                    goal.type
+                                  )}`}
+                                >
+                                  {getGoalTypeLetter(goal.type)}
+                                </span>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                                  {goal.title}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {totalGoalsCount > 3 && (
+                          <TransitionLink
+                            href="/schedule"
+                            className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-2 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+                          >
+                            <TrendingUp className="h-4 w-4 mr-1" />
+                            {totalGoalsCount - 3} more goals
+                          </TransitionLink>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-2">
+                        No goals set yet
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </section>
           </div>
