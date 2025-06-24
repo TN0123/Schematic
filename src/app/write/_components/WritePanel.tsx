@@ -24,6 +24,59 @@ interface MessageProps {
   };
 }
 
+// Typing animation component
+function TypingIndicator() {
+  return (
+    <div className="flex w-full justify-start">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="max-w-[85%] p-3 rounded-xl my-2 bg-gray-50 dark:bg-dark-paper text-left"
+      >
+        <div className="flex items-center space-x-1">
+          <div className="flex space-x-1">
+            <motion.div
+              className="w-2 h-2 bg-gray-400 dark:bg-dark-textPrimary rounded-full"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0,
+              }}
+            />
+            <motion.div
+              className="w-2 h-2 bg-gray-400 dark:bg-dark-textPrimary rounded-full"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.2,
+              }}
+            />
+            <motion.div
+              className="w-2 h-2 bg-gray-400 dark:bg-dark-textPrimary rounded-full"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.4,
+              }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 dark:text-dark-textDisabled ml-2">
+            AI is typing...
+          </span>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export function Message({
   message,
   role,
@@ -118,6 +171,7 @@ export default function WritePanel({
     { role: "user" | "model"; parts: string }[]
   >([]);
   const [isImproving, setIsImproving] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [contextDiffModal, setContextDiffModal] = useState<{
@@ -136,7 +190,7 @@ export default function WritePanel({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isChatLoading]);
 
   // Listen for context diff events
   useEffect(() => {
@@ -175,6 +229,7 @@ export default function WritePanel({
     const userMessage = { message: instructions, role: "user" as const };
     setMessages((prev) => [...prev, userMessage]);
     setInstructions("");
+    setIsChatLoading(true);
 
     try {
       const response = await fetch("/api/chat", {
@@ -212,13 +267,15 @@ export default function WritePanel({
       setHistory(data.history);
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
   const handleImprove = async () => {
     if (!selected) return;
     onImproveStart();
-    setIsImproving(true); // Start loading animation
+    setIsImproving(true);
     try {
       const getSurroundingWords = (
         text: string,
@@ -274,7 +331,7 @@ export default function WritePanel({
     } catch (error) {
       console.error(error);
     } finally {
-      setIsImproving(false); // Stop loading animation
+      setIsImproving(false);
     }
   };
 
@@ -290,6 +347,8 @@ export default function WritePanel({
       }
       return trimmed;
     });
+
+    setIsChatLoading(true);
 
     try {
       const response = await fetch("/api/chat", {
@@ -324,6 +383,8 @@ export default function WritePanel({
       setHistory(data.history);
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -413,6 +474,7 @@ export default function WritePanel({
               }}
               placeholder="Ask anything"
               rows={3}
+              disabled={isChatLoading}
             />
             <div className="flex w-full justify-end items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
               {selected && (
@@ -434,7 +496,7 @@ export default function WritePanel({
                   }`}
                   onClick={handleImprove}
                   title="Improve selected text"
-                  disabled={isImproving} // Disable button while loading
+                  disabled={isImproving || isChatLoading}
                 >
                   <Sparkles size={20} />
                 </button>
@@ -444,6 +506,7 @@ export default function WritePanel({
                   className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                   onClick={handleRetry}
                   title="Retry last request"
+                  disabled={isChatLoading}
                 >
                   <RefreshCw size={20} />
                 </button>
@@ -452,6 +515,7 @@ export default function WritePanel({
               <button
                 className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
                 onClick={handleSubmit}
+                disabled={isChatLoading}
               >
                 <CircleArrowUp size={20} />
               </button>
@@ -473,6 +537,7 @@ export default function WritePanel({
                   setHistory([]);
                   setLastRequest(null);
                 }}
+                disabled={isChatLoading}
               >
                 <RefreshCw
                   size={18}
@@ -508,21 +573,25 @@ export default function WritePanel({
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value as ModelType)}
               className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
+              disabled={isChatLoading}
             >
               <option value="basic">Basic</option>
               <option value="premium">Premium</option>
             </select>
           </div>
           <div className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider">
-            {messages.map((msg, index) => (
-              <Message
-                key={index}
-                message={msg.message}
-                role={msg.role}
-                contextUpdated={msg.contextUpdated}
-                contextChange={msg.contextChange}
-              />
-            ))}
+            <AnimatePresence mode="wait">
+              {messages.map((msg, index) => (
+                <Message
+                  key={index}
+                  message={msg.message}
+                  role={msg.role}
+                  contextUpdated={msg.contextUpdated}
+                  contextChange={msg.contextChange}
+                />
+              ))}
+              {isChatLoading && <TypingIndicator />}
+            </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
         </div>
