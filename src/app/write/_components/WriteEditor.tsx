@@ -525,7 +525,7 @@ export default function WriteEditor({
             Documents
           </Link>
           <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-[400px]">
             <FileText className="w-5 h-5 dark:text-gray-400" />
             <input
               type="text"
@@ -534,7 +534,7 @@ export default function WriteEditor({
                 setTitle(e.target.value);
                 debouncedSaveTitle(e.target.value);
               }}
-              className="text-lg font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary"
+              className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden"
               placeholder="Untitled Document"
             />
             {(isSaving || isSavingContent) && (
