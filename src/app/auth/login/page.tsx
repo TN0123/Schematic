@@ -29,20 +29,20 @@ export default function Login() {
       icon: PenLine,
       title: "Write",
       description:
-        "Next-generation AI-enhanced writing editor with intelligent suggestions and seamless workflow integration.",
+        "AI-powered writing editor with deep integration and GitHub Copilot-style sidebar for seamless human+AI collaboration.",
       color: "purple",
       highlights: [
-        "Integrated AI chat sidebar with intelligent document-level context management",
-        "Real-time AI suggestions",
-        "Instant continuation with Ctrl+Enter",
-        "Smart improvements with Ctrl+I",
+        "AI chat sidebar with document-level context that dynamically learns what you're writing about",
+        "Select any text as context for AI queries",
+        "Instant AI continuation with Ctrl+Enter in your writing style",
+        "Smart text improvements with Ctrl+I over highlighted text",
       ],
     },
     {
       icon: ClipboardList,
       title: "Bulletin",
       description:
-        "Revolutionary note-taking system that creates custom formats on demand. Describe any layout in natural language and watch AI build it for you.",
+        "AI-powered notes app that generates custom interactive layouts from natural language descriptions. Refactor and customize anytime.",
       color: "green",
       highlights: [
         "AI-powered custom and dynamic interactive note formats from natural language descriptions",
@@ -55,13 +55,13 @@ export default function Login() {
       icon: Calendar,
       title: "Schedule",
       description:
-        "Effortless calendar management with a built in personalized AI life assistant.",
+        "Text-first calendar with personalized AI assistant that learns your preferences and optimizes your time.",
       color: "blue",
       highlights: [
-        "Context-aware suggestions and reminders",
-        "Natural language event creation",
-        "Chat with your personal assistant for scheduling advice",
-        "Clean, minimalistic UI for goal tracking and task management",
+        "Create events through text, voice, or file uploads (PDFs, images)",
+        "AI assistant suggests events based on your availability and habits",
+        "Chat with your personal assistant for schedule advice and optimization",
+        "AI maintains context about your preferences with manual editing control",
       ],
     },
   ];
