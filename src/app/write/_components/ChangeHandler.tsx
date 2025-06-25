@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Check, X } from "lucide-react";
+import { Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ChangeMap } from "./WriteEditor";
 
 export function ChangeHandler({
@@ -20,16 +20,18 @@ export function ChangeHandler({
   setActiveHighlight: (text: string | null) => void;
 }) {
   const changeKeys = Object.keys(changes);
-  const [currentKey, setCurrentKey] = useState<string | null>(
-    changeKeys[0] ?? null
-  );
+  const [currentChangeIndex, setCurrentChangeIndex] = useState<number>(0);
   const [editedSuggestion, setEditedSuggestion] = useState<string>("");
 
+  const currentKey = changeKeys[currentChangeIndex] ?? null;
+  const totalChanges = changeKeys.length;
+
+  // Reset to first change when changes update
   useEffect(() => {
-    if (!currentKey || !changes[currentKey]) {
-      setCurrentKey(changeKeys[0] ?? null);
+    if (changeKeys.length > 0) {
+      setCurrentChangeIndex(0);
     }
-  }, [changes, currentKey]);
+  }, [changeKeys.length]);
 
   useEffect(() => {
     setActiveHighlight(currentKey ?? null);
@@ -42,6 +44,14 @@ export function ChangeHandler({
     }
   }, [currentKey, changes]);
 
+  const handlePrevious = () => {
+    setCurrentChangeIndex((prev) => (prev > 0 ? prev - 1 : totalChanges - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentChangeIndex((prev) => (prev < totalChanges - 1 ? prev + 1 : 0));
+  };
+
   const handleAccept = () => {
     if (currentKey) {
       if (currentKey == "!ADD_TO_END!") {
@@ -49,41 +59,80 @@ export function ChangeHandler({
       } else {
         applyChange(currentKey, editedSuggestion);
       }
+      // After accepting, adjust index if needed
+      if (currentChangeIndex >= changeKeys.length - 1) {
+        setCurrentChangeIndex(Math.max(0, changeKeys.length - 2));
+      }
     }
   };
 
   const handleReject = () => {
     if (currentKey) {
       rejectChange(currentKey);
+      // After rejecting, adjust index if needed
+      if (currentChangeIndex >= changeKeys.length - 1) {
+        setCurrentChangeIndex(Math.max(0, changeKeys.length - 2));
+      }
     }
   };
 
   const handleAcceptAll = () => {
     acceptAllChanges();
     setActiveHighlight(null);
-    setCurrentKey(null);
+    setCurrentChangeIndex(0);
   };
 
   const handleRejectAll = () => {
     rejectAllChanges();
     setActiveHighlight(null);
-    setCurrentKey(null);
+    setCurrentChangeIndex(0);
   };
 
   if (!currentKey) return null;
 
-  const totalChanges = changeKeys.length;
-
   return (
     <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary text-center">
-        {totalChanges} Change(s) Remaining
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary">
+          {totalChanges} Change(s) Remaining
+        </h3>
+        {totalChanges > 1 && (
+          <div className="text-sm text-gray-600 dark:text-dark-textSecondary">
+            {currentChangeIndex + 1} of {totalChanges}
+          </div>
+        )}
+      </div>
 
       <div className="flex-grow overflow-hidden bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
-        <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
-          Suggested:
-        </span>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
+            Suggested:
+          </span>
+          {totalChanges > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handlePrevious}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                title="Previous change"
+              >
+                <ChevronLeft
+                  size={16}
+                  className="text-gray-600 dark:text-gray-400"
+                />
+              </button>
+              <button
+                onClick={handleNext}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                title="Next change"
+              >
+                <ChevronRight
+                  size={16}
+                  className="text-gray-600 dark:text-gray-400"
+                />
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           value={editedSuggestion}
           onChange={(e) => setEditedSuggestion(e.target.value)}
