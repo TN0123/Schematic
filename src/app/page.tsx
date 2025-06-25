@@ -104,7 +104,7 @@ export default async function Home() {
                   <TransitionLink
                     key={note.id}
                     href={`/bulletin?noteId=${note.id}`}
-                    className="block p-3 rounded-md bg-gray-50 dark:bg-dark-background hover:bg-gray-100 dark:hover:bg-gray-800/60"
+                    className="block p-3 rounded-md bg-gray-50 dark:bg-dark-background hover:bg-gray-100 dark:hover:bg-neutral-800"
                   >
                     <p className="text-gray-800 dark:text-dark-textSecondary">
                       {note.title}
