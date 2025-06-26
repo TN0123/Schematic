@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Bell,
-  Bot,
-  ArrowLeft,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Bell, Bot, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface Reminder {
@@ -111,7 +104,7 @@ export default function RemindersBar({
           <div className="flex items-center justify-start min-w-[120px]">
             <button
               onClick={onToggle}
-              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <ArrowLeft
                 size={18}
@@ -142,7 +135,7 @@ export default function RemindersBar({
           <div className="flex items-center justify-start min-w-[120px]">
             <button
               onClick={onToggle}
-              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <ArrowLeft
                 size={18}
@@ -155,7 +148,7 @@ export default function RemindersBar({
             <button
               onClick={handlePrev}
               disabled={currentReminderIndex === 0}
-              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
+              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronLeft
                 size={18}
@@ -163,7 +156,7 @@ export default function RemindersBar({
               />
             </button>
 
-            <div className="flex-1 mx-4 min-w-0">
+            <div className="flex-1 mx-4 min-w-0 max-w-full">
               <AnimatePresence mode="wait">
                 {currentReminder && (
                   <motion.div
@@ -175,10 +168,10 @@ export default function RemindersBar({
                       duration: 0.3,
                       ease: [0.25, 0.46, 0.45, 0.94],
                     }}
-                    className="text-center"
+                    className="text-center min-w-0 max-w-full"
                   >
-                    <div className="flex items-center justify-center mb-1">
-                      <span className="text-xs font-semibold text-gray-600 dark:text-dark-textSecondary truncate bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+                    <div className="flex items-center justify-center mb-1 min-w-0">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-dark-textSecondary truncate bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md max-w-xs">
                         {formatDate(currentReminder.time)} at{" "}
                         {formatTime(currentReminder.time)}
                       </span>
@@ -191,7 +184,7 @@ export default function RemindersBar({
                             type: "spring",
                             stiffness: 200,
                           }}
-                          className="ml-2 flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full shadow-sm"
+                          className="ml-2 flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full shadow-sm flex-shrink-0"
                         >
                           <Bot
                             size={12}
@@ -203,16 +196,13 @@ export default function RemindersBar({
                         </motion.div>
                       )}
                     </div>
-                    <div className="relative flex items-center justify-center group">
-                      <p className="text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-2 text-center">
-                        {currentReminder.text}
-                      </p>
+                    <div className="flex items-center justify-center min-w-0">
                       <button
                         onClick={handleDismiss}
-                        className="absolute right-0 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
-                        title="Dismiss reminder"
+                        className="text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-2 text-center min-w-0 max-w-full hover:line-through hover:text-gray-500 dark:hover:text-dark-textDisabled transition-all duration-200 cursor-pointer"
+                        title="Click to dismiss reminder"
                       >
-                        <X size={14} />
+                        {currentReminder.text}
                       </button>
                     </div>
                   </motion.div>
@@ -223,7 +213,7 @@ export default function RemindersBar({
             <button
               onClick={handleNext}
               disabled={currentReminderIndex === unreadReminders.length - 1}
-              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
+              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronRight
                 size={18}
@@ -238,7 +228,7 @@ export default function RemindersBar({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md"
+              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md"
             >
               {currentReminderIndex + 1}/{unreadReminders.length}
             </motion.span>
