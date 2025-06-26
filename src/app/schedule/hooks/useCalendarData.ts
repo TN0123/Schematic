@@ -354,19 +354,21 @@ export const useCalendarData = (userId: string | undefined) => {
       if (!suggestion) return;
 
       try {
-        const createdEvent = await addEvent({
+        // First remove the suggestion from local state
+        setEvents((currentEvents) =>
+          currentEvents.filter((e) => e.id !== suggestionId)
+        );
+
+        // Then add the real event (this will add to both database and local state)
+        await addEvent({
           title: suggestion.title,
           start: suggestion.start,
           end: suggestion.end,
         });
-
-        setEvents((currentEvents) =>
-          currentEvents.map((e) =>
-            e.id === suggestionId ? { ...createdEvent, isSuggestion: false } : e
-          )
-        );
       } catch (error) {
         console.error("Error accepting suggestion:", error);
+        // On error, restore the suggestion
+        setEvents((currentEvents) => [...currentEvents, suggestion]);
       }
     },
     [events, addEvent]
