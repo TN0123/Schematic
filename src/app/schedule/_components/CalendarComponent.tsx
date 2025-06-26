@@ -1,6 +1,7 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import FullCalendar from "@fullcalendar/react";
 import {
   EventClickArg,
@@ -32,6 +33,89 @@ interface CalendarComponentProps {
   isMobile?: boolean;
 }
 
+// Smart Tooltip Component
+interface SmartTooltipProps {
+  isVisible: boolean;
+  targetRect: DOMRect | null;
+  content: string;
+}
+
+const SmartTooltip = ({
+  isVisible,
+  targetRect,
+  content,
+}: SmartTooltipProps) => {
+  const [position, setPosition] = useState({
+    top: 0,
+    left: 0,
+    placement: "top",
+  });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isVisible || !targetRect || !tooltipRef.current) return;
+
+    const tooltip = tooltipRef.current;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    let top = targetRect.top - tooltipRect.height - 8; // 8px gap
+    let left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+    let placement = "top";
+
+    // Check if tooltip goes above viewport
+    if (top < 0) {
+      top = targetRect.bottom + 8;
+      placement = "bottom";
+    }
+
+    // Check if tooltip goes beyond right edge
+    if (left + tooltipRect.width > viewport.width - 16) {
+      left = viewport.width - tooltipRect.width - 16;
+    }
+
+    // Check if tooltip goes beyond left edge
+    if (left < 16) {
+      left = 16;
+    }
+
+    setPosition({ top, left, placement });
+  }, [isVisible, targetRect]);
+
+  if (!isVisible || !targetRect) return null;
+
+  return createPortal(
+    <div
+      ref={tooltipRef}
+      className={`fixed z-[10000] max-w-xs rounded-md bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-lg transition-opacity duration-200 dark:bg-gray-800 ${
+        isVisible ? "opacity-100" : "opacity-0"
+      }`}
+      style={{
+        top: position.top,
+        left: position.left,
+      }}
+    >
+      <div className="relative">
+        <span className="block max-w-[250px] truncate whitespace-nowrap">
+          {content}
+        </span>
+        {/* Arrow */}
+        <div
+          className={`absolute h-0 w-0 border-4 border-transparent ${
+            position.placement === "top"
+              ? "top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-gray-800"
+              : "bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-800"
+          }`}
+        />
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
   (
     {
@@ -53,34 +137,64 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     },
     ref
   ) => {
+    const [tooltip, setTooltip] = useState<{
+      isVisible: boolean;
+      targetRect: DOMRect | null;
+      content: string;
+    }>({
+      isVisible: false,
+      targetRect: null,
+      content: "",
+    });
+
+    const showTooltip = (element: HTMLElement, content: string) => {
+      const rect = element.getBoundingClientRect();
+      setTooltip({
+        isVisible: true,
+        targetRect: rect,
+        content,
+      });
+    };
+
+    const hideTooltip = () => {
+      setTooltip((prev) => ({ ...prev, isVisible: false }));
+    };
+
     function renderEventContent(eventInfo: EventContentArg) {
       const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
       const eventTitle = eventInfo.event.title;
 
-      const tooltip = (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-max -translate-x-1/2 rounded-md bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none dark:bg-gray-700">
-          {eventTitle}
-          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-4 border-t-4 border-b-0 border-solid border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-        </div>
-      );
-
-      const baseContainerClasses = "group relative h-full w-full p-1";
+      const baseContainerClasses =
+        "group relative h-full w-full p-1 overflow-visible";
       const titleClasses = "font-normal truncate";
+
+      const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (eventTitle && eventTitle.length > 20) {
+          // Only show tooltip for longer titles
+          showTooltip(e.currentTarget, eventTitle);
+        }
+      };
+
+      const handleMouseLeave = () => {
+        hideTooltip();
+      };
 
       if (isSuggestion) {
         return (
           <div
             className={`${baseContainerClasses} flex items-center justify-between`}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <div className={`${titleClasses} text-xs pr-1`}>{eventTitle}</div>
-            {tooltip}
             <div className="flex shrink-0 items-center space-x-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  hideTooltip();
                   onAcceptSuggestion(eventInfo.event.id);
                 }}
-                className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center"
+                className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
                 style={{ width: "16px", height: "16px" }}
                 aria-label="Accept suggestion"
               >
@@ -89,9 +203,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  hideTooltip();
                   onRejectSuggestion(eventInfo.event.id);
                 }}
-                className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center"
+                className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
                 style={{ width: "16px", height: "16px" }}
                 aria-label="Reject suggestion"
               >
@@ -103,9 +218,12 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       }
 
       return (
-        <div className={`${baseContainerClasses} flex flex-col justify-start`}>
+        <div
+          className={`${baseContainerClasses} flex flex-col justify-start`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <div className={titleClasses}>{eventTitle}</div>
-          {tooltip}
         </div>
       );
     }
@@ -171,68 +289,75 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     };
 
     return (
-      <FullCalendar
-        ref={ref}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
-        events={events}
-        eventClick={onEventClick}
-        eventContent={renderEventContent}
-        height="100%"
-        customButtons={{
-          refresh: {
-            text: "",
-            click: onRefresh,
-            hint: "Refresh Suggestions",
-          },
-          reminders: {
-            text: "",
-            click: onToggleReminders,
-            hint: `${
-              unreadNonAIReminders.length > 0
-                ? `${unreadNonAIReminders.length} `
-                : ""
-            }Reminders`,
-          },
-        }}
-        eventClassNames={getEventClassNames}
-        headerToolbar={isMobile ? mobileToolbar.header : desktopToolbar}
-        footerToolbar={isMobile ? mobileToolbar.footer : undefined}
-        buttonText={{
-          today: "Today",
-          month: isMobile ? "M" : "Month",
-          week: isMobile ? "W" : "Week",
-          day: isMobile ? "D" : "Day",
-        }}
-        dayMaxEventRows={isMobile ? 2 : 3}
-        views={{
-          dayGridMonth: {
-            titleFormat: { year: "numeric", month: "long" },
-            dayHeaderFormat: { weekday: isMobile ? "narrow" : "short" },
-          },
-        }}
-        themeSystem="standard"
-        dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
-        dayHeaderClassNames={`${
-          isMobile
-            ? "text-gray-600 font-medium py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
-            : "text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
-        }`}
-        nowIndicator={true}
-        nowIndicatorClassNames="border-red-500 dark:border-red-900"
-        scrollTimeReset={false}
-        allDaySlot={false}
-        scrollTime={`${new Date().getHours()}:00:00`}
-        editable={true}
-        select={onSelect}
-        unselect={onUnselect}
-        unselectAuto={true}
-        selectable={true}
-        dateClick={onDateClick}
-        eventResize={onEventUpdate}
-        eventDrop={onEventUpdate}
-        datesSet={onDatesSet}
-      />
+      <>
+        <FullCalendar
+          ref={ref}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+          events={events}
+          eventClick={onEventClick}
+          eventContent={renderEventContent}
+          height="100%"
+          customButtons={{
+            refresh: {
+              text: "",
+              click: onRefresh,
+              hint: "Refresh Suggestions",
+            },
+            reminders: {
+              text: "",
+              click: onToggleReminders,
+              hint: `${
+                unreadNonAIReminders.length > 0
+                  ? `${unreadNonAIReminders.length} `
+                  : ""
+              }Reminders`,
+            },
+          }}
+          eventClassNames={getEventClassNames}
+          headerToolbar={isMobile ? mobileToolbar.header : desktopToolbar}
+          footerToolbar={isMobile ? mobileToolbar.footer : undefined}
+          buttonText={{
+            today: "Today",
+            month: isMobile ? "M" : "Month",
+            week: isMobile ? "W" : "Week",
+            day: isMobile ? "D" : "Day",
+          }}
+          dayMaxEventRows={isMobile ? 2 : 3}
+          views={{
+            dayGridMonth: {
+              titleFormat: { year: "numeric", month: "long" },
+              dayHeaderFormat: { weekday: isMobile ? "narrow" : "short" },
+            },
+          }}
+          themeSystem="standard"
+          dayCellClassNames="hover:bg-gray-100 transition-all duration-200 dark:hover:bg-dark-actionHover"
+          dayHeaderClassNames={`${
+            isMobile
+              ? "text-gray-600 font-medium py-2 border-b dark:text-dark-textSecondary dark:border-dark-divider text-xs"
+              : "text-gray-700 font-semibold py-3 border-b dark:text-dark-textSecondary dark:border-dark-divider"
+          }`}
+          nowIndicator={true}
+          nowIndicatorClassNames="border-red-500 dark:border-red-900"
+          scrollTimeReset={false}
+          allDaySlot={false}
+          scrollTime={`${new Date().getHours()}:00:00`}
+          editable={true}
+          select={onSelect}
+          unselect={onUnselect}
+          unselectAuto={true}
+          selectable={true}
+          dateClick={onDateClick}
+          eventResize={onEventUpdate}
+          eventDrop={onEventUpdate}
+          datesSet={onDatesSet}
+        />
+        <SmartTooltip
+          isVisible={tooltip.isVisible}
+          targetRect={tooltip.targetRect}
+          content={tooltip.content}
+        />
+      </>
     );
   }
 );
