@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getUserTimezone } from "../utils/calendarHelpers";
 
 export const useDailySummary = (userId: string | undefined) => {
@@ -7,9 +7,10 @@ export const useDailySummary = (userId: string | undefined) => {
     new Date()
   );
   const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    const fetchDailySummary = async (date: Date) => {
+  const fetchDailySummary = useCallback(
+    async (date: Date) => {
       setDailySummaryLoading(true);
       try {
         const userTimezone = getUserTimezone();
@@ -36,19 +37,27 @@ export const useDailySummary = (userId: string | undefined) => {
       } finally {
         setDailySummaryLoading(false);
       }
-    };
+    },
+    [userId]
+  );
 
+  const refreshDailySummary = useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
     if (dailySummaryDate && userId) {
       fetchDailySummary(dailySummaryDate);
     } else {
       setDailySummary("");
     }
-  }, [dailySummaryDate, userId]);
+  }, [dailySummaryDate, userId, refreshTrigger, fetchDailySummary]);
 
   return {
     dailySummary,
     dailySummaryDate,
     dailySummaryLoading,
     setDailySummaryDate,
+    refreshDailySummary,
   };
 };

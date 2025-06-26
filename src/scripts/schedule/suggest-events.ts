@@ -307,7 +307,7 @@ export async function suggest_events(userId: string, timezone: string) {
     - Reminders are brief and actionable
   `;
 
-  console.log(prompt);
+  // console.log(prompt);
 
   let retries = 3;
   let delay = 1000;

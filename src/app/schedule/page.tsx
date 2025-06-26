@@ -37,8 +37,11 @@ export default function CalendarApp() {
   const userId = session?.user?.id;
 
   // Initialize our custom hooks
-  const calendarData = useCalendarData(userId);
   const dailySummary = useDailySummary(userId);
+  const calendarData = useCalendarData(
+    userId,
+    dailySummary.refreshDailySummary
+  );
 
   const calendarState = useCalendarState(
     calendarData.events,
@@ -146,6 +149,7 @@ export default function CalendarApp() {
         start: calendarState.newEvent.start,
         end: calendarState.newEvent.end,
       });
+
       calendarState.setShowCreationModal(false);
       calendarState.setNewEvent({
         id: "",

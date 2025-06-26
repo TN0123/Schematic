@@ -7,7 +7,10 @@ import {
   formatTimeForDisplay,
 } from "../utils/calendarHelpers";
 
-export const useCalendarData = (userId: string | undefined) => {
+export const useCalendarData = (
+  userId: string | undefined,
+  refreshDailySummary?: () => void
+) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -76,9 +79,15 @@ export const useCalendarData = (userId: string | undefined) => {
       };
 
       setEvents((prev) => [...prev, newEvent]);
+
+      // Refresh daily summary when event is added
+      if (refreshDailySummary) {
+        refreshDailySummary();
+      }
+
       return newEvent;
     },
-    []
+    [refreshDailySummary]
   );
 
   // Edit event
@@ -106,30 +115,51 @@ export const useCalendarData = (userId: string | undefined) => {
           event.id === eventId ? { ...event, ...eventData } : event
         )
       );
+
+      // Refresh daily summary when event is edited
+      if (refreshDailySummary) {
+        refreshDailySummary();
+      }
     },
-    []
+    [refreshDailySummary]
   );
 
   // Delete event
-  const deleteEvent = useCallback(async (eventId: string) => {
-    const res = await fetch(`/api/events/${eventId}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) {
-      throw new Error("Failed to delete event");
-    }
-    setEvents((prev) => prev.filter((event) => event.id !== eventId));
-  }, []);
+  const deleteEvent = useCallback(
+    async (eventId: string) => {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete event");
+      }
+      setEvents((prev) => prev.filter((event) => event.id !== eventId));
+
+      // Refresh daily summary when event is deleted
+      if (refreshDailySummary) {
+        refreshDailySummary();
+      }
+    },
+    [refreshDailySummary]
+  );
 
   // Delete multiple events
-  const deleteMultipleEvents = useCallback(async (eventIds: string[]) => {
-    await fetch(`/api/events/bulk`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: eventIds }),
-    });
-    setEvents((prev) => prev.filter((e) => !eventIds.includes(e.id)));
-  }, []);
+  const deleteMultipleEvents = useCallback(
+    async (eventIds: string[]) => {
+      await fetch(`/api/events/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: eventIds }),
+      });
+      setEvents((prev) => prev.filter((e) => !eventIds.includes(e.id)));
+
+      // Refresh daily summary when events are deleted
+      if (refreshDailySummary && eventIds.length > 0) {
+        refreshDailySummary();
+      }
+    },
+    [refreshDailySummary]
+  );
 
   // Bulk add events
   const bulkAddEvents = useCallback(
@@ -190,9 +220,15 @@ export const useCalendarData = (userId: string | undefined) => {
       }
 
       setEvents((prevEvents) => [...prevEvents, ...formattedEvents]);
+
+      // Refresh daily summary when events are bulk added
+      if (refreshDailySummary && formattedEvents.length > 0) {
+        refreshDailySummary();
+      }
+
       return formattedEvents;
     },
-    [fetchEvents, fetchedRange]
+    [fetchEvents, fetchedRange, refreshDailySummary]
   );
 
   // Generate events and reminders
@@ -365,6 +401,8 @@ export const useCalendarData = (userId: string | undefined) => {
           start: suggestion.start,
           end: suggestion.end,
         });
+
+        // Note: addEvent already calls refreshDailySummary, so no need to call it again here
       } catch (error) {
         console.error("Error accepting suggestion:", error);
         // On error, restore the suggestion
