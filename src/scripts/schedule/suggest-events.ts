@@ -11,90 +11,80 @@ interface TimeSlot {
 function getAvailableTimeSlots(events: Event[], timezone: string): TimeSlot[] {
   const now = new Date();
 
-  // Get today's date in the user's timezone using a more reliable method
-  const nowInUserTz = new Date(
-    now.toLocaleString("en-US", { timeZone: timezone })
-  );
-  const year = nowInUserTz.getFullYear();
-  const month = nowInUserTz.getMonth();
-  const day = nowInUserTz.getDate();
-  const hour = nowInUserTz.getHours();
-  const minute = nowInUserTz.getMinutes();
-  const second = nowInUserTz.getSeconds();
+  // Get today's date string in the user's timezone (YYYY-MM-DD format)
+  const todayInUserTz = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 
-  // Create start and end of day in user's timezone
-  const startOfDayInUserTz = new Date(year, month, day, 0, 0, 0);
-  const endOfDayInUserTz = new Date(year, month, day, 23, 59, 59);
-  const currentTimeInUserTz = new Date(year, month, day, hour, minute, second);
+  // Create start and end of day in the user's timezone
+  // These will be interpreted as local time in the user's timezone
+  const startOfDayInUserTz = new Date(`${todayInUserTz}T00:00:00`);
+  const endOfDayInUserTz = new Date(`${todayInUserTz}T23:59:59`);
 
-  // Convert these to UTC for proper comparison with event times (which are in UTC)
-  const localToUtcOffset = now.getTimezoneOffset() * 60 * 1000;
-  const userToUtcOffset = getUserTimezoneOffsetMs(timezone, now);
-
-  const startOfDayUTC = new Date(
-    startOfDayInUserTz.getTime() + localToUtcOffset - userToUtcOffset
-  );
-  const endOfDayUTC = new Date(
-    endOfDayInUserTz.getTime() + localToUtcOffset - userToUtcOffset
-  );
-  const currentTimeUTC = new Date(
-    Math.max(now.getTime(), startOfDayUTC.getTime())
+  // Get current time, but not earlier than start of day
+  const currentTime = new Date(
+    Math.max(now.getTime(), startOfDayInUserTz.getTime())
   );
 
-  // Filter events that are today and in the future
+  // Convert events to user timezone for easier comparison
   const todayEvents = events.filter((event) => {
     const eventStart = new Date(event.start);
+    const eventEnd = new Date(event.end);
+
+    // Check if event overlaps with today and is in the future
     return (
-      eventStart >= startOfDayUTC &&
-      eventStart <= endOfDayUTC &&
-      eventStart >= now
+      eventStart < endOfDayInUserTz &&
+      eventEnd > startOfDayInUserTz &&
+      eventEnd > currentTime
     );
   });
 
+  // Sort events by start time
   const sortedEvents = [...todayEvents].sort(
     (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
   );
 
   const availableSlots: TimeSlot[] = [];
-  let currentTime = currentTimeUTC;
+  let slotStart = currentTime;
 
   for (const event of sortedEvents) {
     const eventStart = new Date(event.start);
     const eventEnd = new Date(event.end);
 
-    // If there's a gap between current time and event start (minimum 15 minutes)
-    if (eventStart.getTime() - currentTime.getTime() >= 15 * 60 * 1000) {
+    // If event is in the past, skip it
+    if (eventEnd <= currentTime) {
+      continue;
+    }
+
+    // Adjust event start if it's in the past
+    const adjustedEventStart = new Date(
+      Math.max(eventStart.getTime(), currentTime.getTime())
+    );
+
+    // If there's a gap between current slot start and event start (minimum 15 minutes)
+    if (adjustedEventStart.getTime() - slotStart.getTime() >= 15 * 60 * 1000) {
       availableSlots.push({
-        start: currentTime.toISOString(),
-        end: eventStart.toISOString(),
+        start: slotStart.toISOString(),
+        end: adjustedEventStart.toISOString(),
       });
     }
 
-    // Move current time to end of event
-    if (eventEnd > currentTime) {
-      currentTime = eventEnd;
-    }
+    // Move slot start to end of current event
+    slotStart = new Date(Math.max(eventEnd.getTime(), slotStart.getTime()));
   }
 
-  // Add remaining time until end of work day (if at least 15 minutes available)
-  if (endOfDayUTC.getTime() - currentTime.getTime() >= 15 * 60 * 1000) {
+  // Add remaining time until end of day (if at least 15 minutes available)
+  if (endOfDayInUserTz.getTime() - slotStart.getTime() >= 15 * 60 * 1000) {
     availableSlots.push({
-      start: currentTime.toISOString(),
-      end: endOfDayUTC.toISOString(),
+      start: slotStart.toISOString(),
+      end: endOfDayInUserTz.toISOString(),
     });
   }
 
   return availableSlots;
-}
-
-// Helper function to get timezone offset in milliseconds from UTC
-function getUserTimezoneOffsetMs(timezone: string, date: Date): number {
-  // Create the same moment in UTC and in the target timezone
-  const utcTime = new Date(date.toLocaleString("en-US", { timeZone: "UTC" }));
-  const tzTime = new Date(date.toLocaleString("en-US", { timeZone: timezone }));
-
-  // The difference tells us the offset
-  return tzTime.getTime() - utcTime.getTime();
 }
 
 export async function suggest_events(userId: string, timezone: string) {
@@ -317,7 +307,7 @@ export async function suggest_events(userId: string, timezone: string) {
     - Reminders are brief and actionable
   `;
 
-  // console.log(prompt);
+  console.log(prompt);
 
   let retries = 3;
   let delay = 1000;
