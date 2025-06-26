@@ -832,6 +832,8 @@ export default function BulletinClient() {
                     onClick={() => {
                       setExpandedItemId(item.id);
                       router.push(`${pathname}?noteId=${item.id}`);
+                      // Clear search query when note is selected
+                      setSearchQuery("");
                       // Close sidebar on mobile after selection
                       if (window.innerWidth < 768) {
                         // 768px is the md breakpoint
