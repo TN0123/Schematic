@@ -95,7 +95,7 @@ function SortableColumnComponent({
                   className={`text-xs px-2 py-1 rounded-full ${
                     isOverLimit
                       ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-200"
-                      : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                      : "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-dark-textDisabled"
                   }`}
                 >
                   {cardCount}
