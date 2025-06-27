@@ -10,6 +10,7 @@ import {
   Trash2,
   Search,
   Menu,
+  PenLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Document } from "@prisma/client";
@@ -102,7 +103,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-white" />
+                  <PenLine className="w-5 h-5 text-white" />
                 </div>
                 <h1 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
                   Write
