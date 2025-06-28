@@ -147,6 +147,7 @@ export default function WritePanel({
     selected: string;
     instructions: string;
     history: { role: "user" | "model"; parts: string }[];
+    actionMode: "ask" | "edit";
   } | null;
   setLastRequest: (
     request: {
@@ -154,6 +155,7 @@ export default function WritePanel({
       selected: string;
       instructions: string;
       history: { role: "user" | "model"; parts: string }[];
+      actionMode: "ask" | "edit";
     } | null
   ) => void;
   userId: string | undefined;
@@ -179,6 +181,7 @@ export default function WritePanel({
     before: string;
     after: string;
   }>({ isOpen: false, before: "", after: "" });
+  const [actionMode, setActionMode] = useState<"ask" | "edit">("edit");
 
   useEffect(() => {
     onModelChange(selectedModel);
@@ -224,6 +227,7 @@ export default function WritePanel({
       selected,
       instructions,
       history,
+      actionMode,
     };
 
     const userMessage = { message: instructions, role: "user" as const };
@@ -244,6 +248,7 @@ export default function WritePanel({
           userId,
           documentId,
           model: selectedModel,
+          actionMode,
         }),
       });
 
@@ -255,15 +260,21 @@ export default function WritePanel({
       if (data.remainingUses !== null) {
         setPremiumRemainingUses(data.remainingUses);
       }
+
       const assistantMessage = {
-        message: data.result[0],
+        message: actionMode === "ask" ? data.result : data.result[0],
         role: "assistant" as const,
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
       };
       setLastRequest(requestPayload);
       setMessages((prev) => [...prev, assistantMessage]);
-      setChanges(data.result[1]);
+
+      // Only apply changes for "edit" mode
+      if (actionMode === "edit") {
+        setChanges(data.result[1]);
+      }
+
       setHistory(data.history);
     } catch (error) {
       console.error(error);
@@ -338,7 +349,13 @@ export default function WritePanel({
   const handleRetry = async () => {
     if (!lastRequest) return;
 
-    const { input, selected, instructions, history } = lastRequest;
+    const {
+      input,
+      selected,
+      instructions,
+      history,
+      actionMode: retryActionMode,
+    } = lastRequest;
 
     setMessages((prev) => {
       const trimmed = [...prev];
@@ -363,6 +380,7 @@ export default function WritePanel({
           model: selectedModel,
           userId,
           documentId,
+          actionMode: retryActionMode,
         }),
       });
 
@@ -373,13 +391,18 @@ export default function WritePanel({
       const data = await response.json();
 
       const assistantMessage = {
-        message: data.result[0],
+        message: retryActionMode === "ask" ? data.result : data.result[0],
         role: "assistant" as const,
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-      setChanges(data.result[1]);
+
+      // Only apply changes for "edit" mode
+      if (retryActionMode === "edit") {
+        setChanges(data.result[1]);
+      }
+
       setHistory(data.history);
     } catch (error) {
       console.error(error);
@@ -476,49 +499,65 @@ export default function WritePanel({
               rows={3}
               disabled={isChatLoading}
             />
-            <div className="flex w-full justify-end items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
-              {selected && (
-                <p className="text-xs text-gray-400 italic px-4 pb-1">
-                  Using selected text from{" "}
-                  <span className="font-medium text-gray-500">
-                    {selected.trim().split(/\s+/)[0]}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium text-gray-500">
-                    {selected.trim().split(/\s+/).slice(-1)[0]}
-                  </span>
-                </p>
-              )}
-              {selected && (
-                <button
-                  className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2 ${
-                    isImproving ? "animate-spin" : ""
-                  }`}
-                  onClick={handleImprove}
-                  title="Improve selected text"
-                  disabled={isImproving || isChatLoading}
-                >
-                  <Sparkles size={20} />
-                </button>
-              )}
-              {lastRequest && (
-                <button
-                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
-                  onClick={handleRetry}
-                  title="Retry last request"
+            <div className="flex w-full justify-between items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
+              <div className="flex items-center">
+                <select
+                  value={actionMode}
+                  onChange={(e) =>
+                    setActionMode(e.target.value as "ask" | "edit")
+                  }
+                  className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
                   disabled={isChatLoading}
                 >
-                  <RefreshCw size={20} />
-                </button>
-              )}
+                  <option value="edit">Edit</option>
+                  <option value="ask">Ask</option>
+                </select>
+              </div>
 
-              <button
-                className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
-                onClick={handleSubmit}
-                disabled={isChatLoading}
-              >
-                <CircleArrowUp size={20} />
-              </button>
+              <div className="flex items-center">
+                {selected && (
+                  <p className="text-xs text-gray-400 italic px-4 pb-1">
+                    Using selected text from{" "}
+                    <span className="font-medium text-gray-500">
+                      {selected.trim().split(/\s+/)[0]}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-medium text-gray-500">
+                      {selected.trim().split(/\s+/).slice(-1)[0]}
+                    </span>
+                  </p>
+                )}
+                {selected && (
+                  <button
+                    className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2 ${
+                      isImproving ? "animate-spin" : ""
+                    }`}
+                    onClick={handleImprove}
+                    title="Improve selected text"
+                    disabled={isImproving || isChatLoading}
+                  >
+                    <Sparkles size={20} />
+                  </button>
+                )}
+                {lastRequest && (
+                  <button
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
+                    onClick={handleRetry}
+                    title="Retry last request"
+                    disabled={isChatLoading}
+                  >
+                    <RefreshCw size={20} />
+                  </button>
+                )}
+
+                <button
+                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                  onClick={handleSubmit}
+                  disabled={isChatLoading}
+                >
+                  <CircleArrowUp size={20} />
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex w-full items-center justify-between p-2 border-y dark:border-dark-divider">

@@ -8,7 +8,8 @@ export async function chat(
   history: any[],
   documentId: any,
   userId?: string,
-  selectedModel: "basic" | "premium" = "premium"
+  selectedModel: "basic" | "premium" = "premium",
+  actionMode: "ask" | "edit" = "edit"
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
@@ -21,7 +22,9 @@ export async function chat(
 
   const context = document?.context;
 
-  const systemPrompt = `
+  const systemPrompt =
+    actionMode === "edit"
+      ? `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
 
         Here is the context for what the user is writing (will be empty if the user has not written anything yet):
@@ -56,6 +59,25 @@ export async function chat(
         as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
         or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+    `
+      : `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
+        
+        You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
+        
+        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+        
+        Do not include any other text in your response, only your answer to the user's question.
     `;
 
   const userPrompt = `
