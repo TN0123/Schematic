@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Bell, Bot, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Bell, Bot, Calendar } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface Reminder {
@@ -101,17 +101,7 @@ export default function RemindersBar({
     >
       {unreadReminders.length === 0 ? (
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center justify-start min-w-[120px]">
-            <button
-              onClick={onToggle}
-              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
-            >
-              <ArrowLeft
-                size={18}
-                className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
-              />
-            </button>
-          </div>
+          <div className="flex items-center justify-start min-w-[120px]"></div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -128,20 +118,30 @@ export default function RemindersBar({
               <span className="text-sm font-medium">No new reminders</span>
             </div>
           </motion.div>
-          <div className="flex items-center justify-end min-w-[120px]"></div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center justify-start min-w-[120px]">
+          <div className="flex items-center justify-end min-w-[120px]">
             <button
               onClick={onToggle}
               className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
-              <ArrowLeft
+              <Calendar
                 size={18}
                 className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
             </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-start min-w-[120px]">
+            <motion.span
+              key={`${currentReminderIndex + 1}/${unreadReminders.length}`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md"
+            >
+              {currentReminderIndex + 1}/{unreadReminders.length}
+            </motion.span>
           </div>
 
           <div className="flex items-center justify-center flex-1 max-w-2xl mx-4">
@@ -223,15 +223,15 @@ export default function RemindersBar({
           </div>
 
           <div className="flex items-center justify-end min-w-[120px]">
-            <motion.span
-              key={`${currentReminderIndex + 1}/${unreadReminders.length}`}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.2 }}
-              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md"
+            <button
+              onClick={onToggle}
+              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
-              {currentReminderIndex + 1}/{unreadReminders.length}
-            </motion.span>
+              <Calendar
+                size={18}
+                className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
+              />
+            </button>
           </div>
         </div>
       )}
