@@ -121,21 +121,30 @@ main {
     }
     
 .fc-dayGridMonth-button, .fc-timeGridWeek-button, .fc-timeGridDay-button {
-    background-color: #f0f0f0 !important;
-    color: black !important;
-    border: 3px solid #f0f0f0 !important;
-    padding: 5px 10px !important;
-    font-weight: normal !important;
+    background-color: transparent !important;
+    color: #4b5563 !important;
+    border: none !important;
+    padding: 5px 8px !important;
+    font-weight: 500 !important;
     box-shadow: none !important;
-    transition: all 0.2s ease-in-out !important;
+    border-radius: 6px !important;
+    margin: 0 2px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-dayGridMonth-button:hover, .fc-timeGridWeek-button:hover, .fc-timeGridDay-button:hover {
-    background-color: white !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-dayGridMonth-button:active, .fc-timeGridWeek-button:active, .fc-timeGridDay-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .fc-button-active {
-    background-color: white !important;
+    background-color: rgba(0, 0, 0, 0.1) !important;
+    color: #1f2937 !important;
+    font-weight: 600 !important;
 }
 
 .fc-toolbar-title {
@@ -144,32 +153,46 @@ main {
 }
 
 .fc-today-button {
-    background-color: white !important;
-    color: black !important;
+    background-color: transparent !important;
+    color: #4b5563 !important;
     border: none !important;
-    transition: all 0.2s ease-in-out !important;
+    padding: 5px 8px !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+    margin: 0 4px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-today-button:hover {
-    background-color: #f0f0f0 !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-today-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .fc-prev-button, .fc-next-button {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 50% !important; 
-    background-color: white !important;
-    border: 1px solid lightgray !important;
+    padding: 5px !important;
+    border-radius: 6px !important; 
+    background-color: transparent !important;
+    border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: black !important;
-    margin: 0 5px !important;
+    color: #4b5563 !important;
+    margin: 0 4px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-prev-button:hover, .fc-next-button:hover {
-    background-color: #f0f0f0 !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-prev-button:active, .fc-next-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .fc-prev-button:focus, .fc-next-button:focus {
@@ -178,21 +201,26 @@ main {
 }
 
 .fc-refresh-button {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 50% !important; 
-    background-color: white !important;
+    padding: 6px !important;
+    border-radius: 6px !important; 
+    background-color: transparent !important;
     border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: black !important;
-    margin: 0 5px !important;
+    color: #4b5563 !important;
+    margin: 0 6px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-refresh-button:hover {
-    background-color: #f0f0f0 !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-refresh-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .fc-refresh-button:focus {
@@ -201,22 +229,27 @@ main {
 }
 
 .fc-reminders-button {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 50% !important; 
-    background-color: white !important;
+    padding: 6px !important;
+    border-radius: 6px !important; 
+    background-color: transparent !important;
     border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: black !important;
-    margin: 0 5px !important;
+    color: #4b5563 !important;
+    margin: 0 6px !important;
     position: relative !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-reminders-button:hover {
-    background-color: #f0f0f0 !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-reminders-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 .fc-reminders-button:focus {
@@ -289,20 +322,28 @@ html.dark .fc-day-today:hover {
 html.dark .fc-dayGridMonth-button, 
 html.dark .fc-timeGridWeek-button, 
 html.dark .fc-timeGridDay-button {
-    background-color: #1e1e1e !important;
-    color: #ffffff !important; 
-    border: 3px solid #1e1e1e !important;
+    background-color: transparent !important;
+    color: rgba(255, 255, 255, 0.6) !important; 
+    border: none !important;
 }
 
 html.dark .fc-dayGridMonth-button:hover, 
 html.dark .fc-timeGridWeek-button:hover, 
 html.dark .fc-timeGridDay-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important; 
-    transition: all 0.2s ease-in-out !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-dayGridMonth-button:active, 
+html.dark .fc-timeGridWeek-button:active, 
+html.dark .fc-timeGridDay-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-button-active {
     background-color: rgba(255, 255, 255, 0.16) !important; 
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
 }
 
 html.dark .fc-toolbar-title {
@@ -310,24 +351,35 @@ html.dark .fc-toolbar-title {
 }
 
 html.dark .fc-today-button {
-    background-color: #1e1e1e !important;
-    color: #ffffff !important; 
+    background-color: transparent !important;
+    color: rgba(255, 255, 255, 0.6) !important; 
 }
 
 html.dark .fc-today-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important; 
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-today-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-prev-button, 
 html.dark .fc-next-button {
-    background-color: #1e1e1e !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important; 
+    background-color: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.6) !important; 
 }
 
 html.dark .fc-prev-button:hover, 
 html.dark .fc-next-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important; 
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-prev-button:active, 
+html.dark .fc-next-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-prev-button:focus, 
@@ -337,13 +389,18 @@ html.dark .fc-next-button:focus {
 }
 
 html.dark .fc-refresh-button {
-    background-color: #1e1e1e !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important;
+    background-color: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 html.dark .fc-refresh-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-refresh-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-refresh-button:focus {
@@ -352,13 +409,18 @@ html.dark .fc-refresh-button:focus {
 }
 
 html.dark .fc-reminders-button {
-    background-color: #1e1e1e !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important;
+    background-color: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 html.dark .fc-reminders-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-reminders-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-reminders-button:focus {
