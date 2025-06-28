@@ -1,19 +1,11 @@
-import {
-  Calendar,
-  ClipboardList,
-  PenLine,
-  PlusCircle,
-  FileText,
-  Clock,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { Calendar, ClipboardList, PlusCircle, TrendingUp } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import WriteSection from "./_components/WriteSection";
 import EventTime from "./_components/EventTime";
+import DateTimeDisplay from "./_components/DateTimeDisplay";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -24,6 +16,7 @@ export default async function Home() {
   let bulletinNotes: any[] = [];
   let goals: any[] = [];
   let totalGoalsCount = 0;
+  let totalEventsCount = 0;
 
   if (userId) {
     const today = new Date();
@@ -31,57 +24,75 @@ export default async function Home() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    [recentDocuments, upcomingEvents, bulletinNotes, goals, totalGoalsCount] =
-      await Promise.all([
-        prisma.document.findMany({
-          where: { userId },
-          orderBy: { updatedAt: "desc" },
-          take: 3,
-          select: { title: true, id: true },
-        }),
-        prisma.event.findMany({
-          where: {
-            userId,
-            start: {
-              gte: today,
-              lt: tomorrow,
-            },
+    [
+      recentDocuments,
+      upcomingEvents,
+      bulletinNotes,
+      goals,
+      totalGoalsCount,
+      totalEventsCount,
+    ] = await Promise.all([
+      prisma.document.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+        select: { title: true, id: true },
+      }),
+      prisma.event.findMany({
+        where: {
+          userId,
+          start: {
+            gte: today,
+            lt: tomorrow,
           },
-          orderBy: { start: "asc" },
-          take: 3,
-          select: { title: true, start: true },
-        }),
-        prisma.bulletin.findMany({
-          where: { userId },
-          orderBy: { updatedAt: "desc" },
-          take: 3,
-          select: { title: true, id: true },
-        }),
-        prisma.goal.findMany({
-          where: { userId },
-          orderBy: [
-            { type: "asc" }, // This will order by DAILY, WEEKLY, MONTHLY, YEARLY
-            { createdAt: "desc" }, // Most recent within each type
-          ],
-          take: 3,
-          select: { title: true, type: true, createdAt: true },
-        }),
-        prisma.goal.count({
-          where: { userId },
-        }),
-      ]);
+        },
+        orderBy: { start: "asc" },
+        take: 3,
+        select: { title: true, start: true },
+      }),
+      prisma.bulletin.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+        select: { title: true, id: true },
+      }),
+      prisma.goal.findMany({
+        where: { userId },
+        orderBy: [
+          { type: "asc" }, // This will order by DAILY, WEEKLY, MONTHLY, YEARLY
+          { createdAt: "desc" }, // Most recent within each type
+        ],
+        take: 3,
+        select: { title: true, type: true, createdAt: true },
+      }),
+      prisma.goal.count({
+        where: { userId },
+      }),
+      prisma.event.count({
+        where: {
+          userId,
+          start: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+      }),
+    ]);
   }
 
   return (
     <main className="min-h-screen w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background transition-all">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-dark-textPrimary">
-            Dashboard
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600 dark:text-dark-textSecondary mt-1">
-            Welcome back!
-          </p>
+        <header className="mb-10 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-dark-textPrimary">
+              Dashboard
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600 dark:text-dark-textSecondary mt-1">
+              Welcome back!
+            </p>
+          </div>
+          <DateTimeDisplay />
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -143,26 +154,37 @@ export default async function Home() {
                       Today's Events
                     </h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-1">
                     {upcomingEvents.length > 0 ? (
-                      upcomingEvents.map((event) => (
-                        <div
-                          key={event.title}
-                          className="flex items-start py-2"
-                        >
-                          <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-dark-textPrimary">
-                              {event.title}
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                              <EventTime startTime={event.start} />
-                            </p>
+                      <>
+                        {upcomingEvents.map((event) => (
+                          <div
+                            key={event.title}
+                            className="flex items-center py-1"
+                          >
+                            <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mr-3 flex-shrink-0" />
+                            <div className="flex items-center justify-between flex-1">
+                              <p className="font-medium text-gray-900 dark:text-dark-textPrimary text-sm truncate mr-2">
+                                {event.title}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-dark-textSecondary flex-shrink-0">
+                                <EventTime startTime={event.start} />
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                        {totalEventsCount > 3 && (
+                          <TransitionLink
+                            href="/schedule"
+                            className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+                          >
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {totalEventsCount - 3} more
+                          </TransitionLink>
+                        )}
+                      </>
                     ) : (
-                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-2">
+                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-1">
                         No events scheduled for today
                       </p>
                     )}
@@ -179,7 +201,7 @@ export default async function Home() {
                       Goals
                     </h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-1">
                     {goals.length > 0 ? (
                       <>
                         {goals.map((goal, index) => {
@@ -216,11 +238,11 @@ export default async function Home() {
                           return (
                             <div
                               key={`${goal.title}-${index}`}
-                              className="flex items-center py-2"
+                              className="flex items-center py-1"
                             >
                               <div className="mr-3 flex-shrink-0">
                                 <span
-                                  className={`text-base font-bold ${getGoalTypeColor(
+                                  className={`text-sm font-bold ${getGoalTypeColor(
                                     goal.type
                                   )}`}
                                 >
@@ -228,7 +250,7 @@ export default async function Home() {
                                 </span>
                               </div>
                               <div className="flex-1">
-                                <p className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                                <p className="font-medium text-gray-900 dark:text-dark-textPrimary text-sm">
                                   {goal.title}
                                 </p>
                               </div>
@@ -238,15 +260,15 @@ export default async function Home() {
                         {totalGoalsCount > 3 && (
                           <TransitionLink
                             href="/schedule"
-                            className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-2 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+                            className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
                           >
                             <TrendingUp className="h-4 w-4 mr-1" />
-                            {totalGoalsCount - 3} more goals
+                            {totalGoalsCount - 3} more
                           </TransitionLink>
                         )}
                       </>
                     ) : (
-                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-2">
+                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-1">
                         No goals set yet
                       </p>
                     )}
