@@ -287,6 +287,16 @@ main {
     text-overflow: ellipsis;
     white-space: nowrap;
     color: #1447e6 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+
+.fc-event:hover {
+    background-color: #a3d1ff !important;
+    border-color: #a3d1ff !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-1px) !important;
+    z-index: 10 !important;
 }
 
 
@@ -450,6 +460,15 @@ html.dark .fc-event {
     border: 1px solid #355c7d !important;  /* softer border */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important; /* stronger shadow */
     color: #a8c4ff !important; /* lighter text color */
+}
+
+html.dark .fc-event:hover {
+    background-color: #2d4a75 !important;
+    border-color: #4a6fa5 !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.8) !important;
+    transform: translateY(-1px) !important;
+    z-index: 10 !important;
+    color: #c7e0ff !important;
 }
 
 html.dark .fc-event::before {
