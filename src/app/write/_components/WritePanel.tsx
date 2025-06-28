@@ -674,14 +674,14 @@ export default function WritePanel({
                 ✕
               </button>
             </div>
-            <div className="p-6 max-h-[calc(80vh-120px)]">
+            <div className="p-6 max-h-[calc(80vh-180px)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 <div className="flex flex-col">
                   <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
                     <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
                     Before
                   </h3>
-                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-200px)]">
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-260px)]">
                     {contextDiffModal.before || "No previous context"}
                   </div>
                 </div>
@@ -690,11 +690,52 @@ export default function WritePanel({
                     <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
                     After
                   </h3>
-                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-200px)]">
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap border overflow-y-auto flex-1 max-h-[calc(80vh-260px)]">
                     {contextDiffModal.after}
                   </div>
                 </div>
               </div>
+            </div>
+            <div className="flex justify-end items-center p-6 border-t dark:border-dark-divider gap-3">
+              <button
+                onClick={() =>
+                  setContextDiffModal({ isOpen: false, before: "", after: "" })
+                }
+                className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:text-dark-textPrimary dark:hover:bg-dark-hover transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/context", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        documentId,
+                        context: contextDiffModal.before,
+                      }),
+                    });
+
+                    if (!response.ok) {
+                      throw new Error("Failed to revert context");
+                    }
+
+                    setContextDiffModal({
+                      isOpen: false,
+                      before: "",
+                      after: "",
+                    });
+                  } catch (error) {
+                    console.error("Failed to revert context", error);
+                  }
+                }}
+                className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition"
+              >
+                Reject Change
+              </button>
             </div>
           </div>
         </div>
