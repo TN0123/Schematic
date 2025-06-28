@@ -172,6 +172,11 @@ main {
     background-color: #f0f0f0 !important;
 }
 
+.fc-prev-button:focus, .fc-next-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .fc-refresh-button {
     width: 40px !important;
     height: 40px !important;
@@ -190,6 +195,11 @@ main {
     background-color: #f0f0f0 !important;
 }
 
+.fc-refresh-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .fc-reminders-button {
     width: 40px !important;
     height: 40px !important;
@@ -202,13 +212,16 @@ main {
     cursor: pointer !important;
     color: black !important;
     margin: 0 5px !important;
-    transition: all 0.2s ease-in-out !important;
     position: relative !important;
 }
 
 .fc-reminders-button:hover {
     background-color: #f0f0f0 !important;
-    transform: scale(1.05) !important;
+}
+
+.fc-reminders-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .fc-daygrid-day-top {
@@ -317,6 +330,12 @@ html.dark .fc-next-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important; 
 }
 
+html.dark .fc-prev-button:focus, 
+html.dark .fc-next-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 html.dark .fc-refresh-button {
     background-color: #1e1e1e !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -327,6 +346,11 @@ html.dark .fc-refresh-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+html.dark .fc-refresh-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 html.dark .fc-reminders-button {
     background-color: #1e1e1e !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -335,7 +359,11 @@ html.dark .fc-reminders-button {
 
 html.dark .fc-reminders-button:hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
-    transform: scale(1.05) !important;
+}
+
+html.dark .fc-reminders-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 html.dark .fc-daygrid-day-top {
