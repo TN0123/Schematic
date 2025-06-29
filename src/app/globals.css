@@ -279,23 +279,25 @@ main {
 
 .fc-event {
     font-size: 0.85rem !important;
-    padding: 0.1rem 0.3rem !important;
-    background-color: #bedbff !important;
-    border: 1px solid #bedbff !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    padding: 0.25rem 0.5rem !important;
+    background: linear-gradient(135deg, #bedbff 0%, #a8d0ff 100%) !important;
+    border: 1px solid rgba(20, 71, 230, 0.2) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: #1447e6 !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer !important;
+    backdrop-filter: blur(10px) !important;
 }
 
 .fc-event:hover {
-    background-color: #a3d1ff !important;
-    border-color: #a3d1ff !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-    transform: translateY(-1px) !important;
+    background: linear-gradient(135deg, #a3d1ff 0%, #8bc7ff 100%) !important;
+    border-color: rgba(20, 71, 230, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(20, 71, 230, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    transform: translateY(-2px) scale(1.02) !important;
     z-index: 10 !important;
 }
 
@@ -456,17 +458,19 @@ html.dark .fc-popover:hover {
 }
 
 html.dark .fc-event {
-    background-color: #23395d !important; /* darker blue for background */
-    border: 1px solid #355c7d !important;  /* softer border */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important; /* stronger shadow */
-    color: #a8c4ff !important; /* lighter text color */
+    background: linear-gradient(135deg, #23395d 0%, #1e3251 100%) !important;
+    border: 1px solid rgba(168, 196, 255, 0.2) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    color: #a8c4ff !important;
+    backdrop-filter: blur(10px) !important;
 }
 
 html.dark .fc-event:hover {
-    background-color: #2d4a75 !important;
-    border-color: #4a6fa5 !important;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.8) !important;
-    transform: translateY(-1px) !important;
+    background: linear-gradient(135deg, #2d4a75 0%, #26426b 100%) !important;
+    border-color: rgba(168, 196, 255, 0.3) !important;
+    box-shadow: 0 4px 12px rgba(168, 196, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+    transform: translateY(-2px) scale(1.02) !important;
     z-index: 10 !important;
     color: #c7e0ff !important;
 }
