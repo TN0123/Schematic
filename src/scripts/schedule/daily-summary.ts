@@ -15,10 +15,45 @@ export async function daily_summary(
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   // Fetch events for the specific day from the database
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
+  // Create start and end of day boundaries in the user's timezone
+  const getDateBoundaryInTimezone = (
+    date: Date,
+    timezone: string,
+    isEndOfDay: boolean = false
+  ): Date => {
+    // Get the date string in the user's timezone (YYYY-MM-DD format)
+    const userDateStr = date.toLocaleDateString("en-CA", {
+      timeZone: timezone,
+    });
+
+    // Create the datetime string for start or end of day
+    const timeStr = isEndOfDay ? "23:59:59.999" : "00:00:00.000";
+    const dateTimeStr = `${userDateStr}T${timeStr}`;
+
+    // Create a date object and adjust for timezone
+    const localDate = new Date(dateTimeStr);
+
+    // Calculate timezone offset difference to convert to proper UTC time
+    const testDate = new Date();
+    const localOffset = testDate.getTimezoneOffset() * 60000; // Convert to milliseconds
+    const userOffset = getTimezoneOffsetMs(testDate, timezone);
+    const offsetDifference = userOffset - localOffset;
+
+    return new Date(localDate.getTime() - offsetDifference);
+  };
+
+  const getTimezoneOffsetMs = (date: Date, timezone: string): number => {
+    const utcTime = new Date(
+      date.toLocaleString("en-US", { timeZone: "UTC" })
+    ).getTime();
+    const userTime = new Date(
+      date.toLocaleString("en-US", { timeZone: timezone })
+    ).getTime();
+    return utcTime - userTime;
+  };
+
+  const startOfDay = getDateBoundaryInTimezone(date, timezone, false);
+  const endOfDay = getDateBoundaryInTimezone(date, timezone, true);
 
   const eventsForDay = await prisma.event.findMany({
     where: {
