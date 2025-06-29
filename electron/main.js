@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
+const fs = require("fs");
 const isDev = !app.isPackaged;
 const { autoUpdater } = require("electron-updater");
 
@@ -7,21 +8,33 @@ const { autoUpdater } = require("electron-updater");
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
+let mainWindow;
+
 function createWindow() {
-  const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 800,
+    minHeight: 600,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
+      webSecurity: false, // Needed for local file access
     },
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    show: false, // Don't show until ready
+  });
+
+  // Show window when ready to prevent visual flash
+  mainWindow.once("ready-to-show", () => {
+    mainWindow.show();
   });
 
   // Load the Next.js app
   const startUrl = isDev
     ? "http://localhost:3000"
-    : `file://${path.join(__dirname, "../.next/server/pages/index.html")}`;
+    : `file://${path.join(__dirname, "../out/index.html")}`;
 
   mainWindow.loadURL(startUrl);
 
@@ -29,7 +42,62 @@ function createWindow() {
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
+
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    require("electron").shell.openExternal(url);
+    return { action: "deny" };
+  });
 }
+
+// IPC Handlers
+ipcMain.handle("open-file", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile"],
+    filters: [{ name: "All Files", extensions: ["*"] }],
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    const filePath = result.filePaths[0];
+    const fileContent = fs.readFileSync(filePath, "utf-8");
+    return { filePath, fileContent };
+  }
+  return null;
+});
+
+ipcMain.handle("save-file", async (event, data) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    filters: [
+      { name: "Text Files", extensions: ["txt"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (!result.canceled && result.filePath) {
+    fs.writeFileSync(result.filePath, data);
+    return result.filePath;
+  }
+  return null;
+});
+
+// Window controls
+ipcMain.on("window-minimize", () => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on("window-maximize", () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on("window-close", () => {
+  if (mainWindow) mainWindow.close();
+});
 
 // Add auto-update handlers
 autoUpdater.on("checking-for-update", () => {
