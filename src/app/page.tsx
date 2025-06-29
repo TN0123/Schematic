@@ -6,78 +6,45 @@ import { authOptions } from "@/lib/auth";
 import WriteSection from "./_components/WriteSection";
 import EventTime from "./_components/EventTime";
 import DateTimeDisplay from "./_components/DateTimeDisplay";
+import DashboardEvents from "./_components/DashboardEvents";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
 
   let recentDocuments: any[] = [];
-  let upcomingEvents: any[] = [];
   let bulletinNotes: any[] = [];
   let goals: any[] = [];
   let totalGoalsCount = 0;
-  let totalEventsCount = 0;
 
   if (userId) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    [
-      recentDocuments,
-      upcomingEvents,
-      bulletinNotes,
-      goals,
-      totalGoalsCount,
-      totalEventsCount,
-    ] = await Promise.all([
-      prisma.document.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        take: 3,
-        select: { title: true, id: true },
-      }),
-      prisma.event.findMany({
-        where: {
-          userId,
-          start: {
-            gte: today,
-            lt: tomorrow,
-          },
-        },
-        orderBy: { start: "asc" },
-        take: 3,
-        select: { title: true, start: true },
-      }),
-      prisma.bulletin.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        take: 3,
-        select: { title: true, id: true },
-      }),
-      prisma.goal.findMany({
-        where: { userId },
-        orderBy: [
-          { type: "asc" }, // This will order by DAILY, WEEKLY, MONTHLY, YEARLY
-          { createdAt: "desc" }, // Most recent within each type
-        ],
-        take: 3,
-        select: { title: true, type: true, createdAt: true },
-      }),
-      prisma.goal.count({
-        where: { userId },
-      }),
-      prisma.event.count({
-        where: {
-          userId,
-          start: {
-            gte: today,
-            lt: tomorrow,
-          },
-        },
-      }),
-    ]);
+    [recentDocuments, bulletinNotes, goals, totalGoalsCount] =
+      await Promise.all([
+        prisma.document.findMany({
+          where: { userId },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+          select: { title: true, id: true },
+        }),
+        prisma.bulletin.findMany({
+          where: { userId },
+          orderBy: { updatedAt: "desc" },
+          take: 3,
+          select: { title: true, id: true },
+        }),
+        prisma.goal.findMany({
+          where: { userId },
+          orderBy: [
+            { type: "asc" }, // This will order by DAILY, WEEKLY, MONTHLY, YEARLY
+            { createdAt: "desc" }, // Most recent within each type
+          ],
+          take: 3,
+          select: { title: true, type: true, createdAt: true },
+        }),
+        prisma.goal.count({
+          where: { userId },
+        }),
+      ]);
   }
 
   return (
@@ -148,48 +115,7 @@ export default async function Home() {
 
               <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-6 space-y-8">
                 {/* Today's Schedule Subsection */}
-                <div>
-                  <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-dark-textPrimary">
-                      Today's Events
-                    </h3>
-                  </div>
-                  <div className="space-y-1">
-                    {upcomingEvents.length > 0 ? (
-                      <>
-                        {upcomingEvents.map((event) => (
-                          <div
-                            key={event.title}
-                            className="flex items-center py-1"
-                          >
-                            <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mr-3 flex-shrink-0" />
-                            <div className="flex items-center justify-between flex-1">
-                              <p className="font-medium text-gray-900 dark:text-dark-textPrimary text-sm truncate mr-2">
-                                {event.title}
-                              </p>
-                              <p className="text-xs text-gray-600 dark:text-dark-textSecondary flex-shrink-0">
-                                <EventTime startTime={event.start} />
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                        {totalEventsCount > 3 && (
-                          <TransitionLink
-                            href="/schedule"
-                            className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
-                          >
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {totalEventsCount - 3} more
-                          </TransitionLink>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-gray-500 dark:text-dark-textSecondary text-sm py-1">
-                        No events scheduled for today
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <DashboardEvents userId={userId || ""} />
 
                 {/* Divider */}
                 <div className="border-t border-gray-200 dark:border-dark-divider" />
