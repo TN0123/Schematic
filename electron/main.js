@@ -23,6 +23,8 @@ function createWindow() {
       webSecurity: false, // Needed for local file access
     },
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    autoHideMenuBar: true, // Hide menu bar by default (can still access with Alt key)
+    // frame: false, // Uncomment for completely frameless window with custom title bar
     show: false, // Don't show until ready
   });
 
