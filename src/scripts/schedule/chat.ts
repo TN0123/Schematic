@@ -124,8 +124,6 @@ export async function scheduleChat(
 You are an AI life assistant helping a user manage their schedule and providing helpful advice to the user.
 Current date: ${new Date().toISOString()}.
 
-User context: ${context}
-
 User goals:
 ${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}
 
@@ -155,7 +153,13 @@ FUNCTION CALLING RULES:
 Today: ${userNow.toISOString().split("T")[0]}
 Yesterday: ${yesterdayInUserTz.toISOString().split("T")[0]}
 
+User context: ${context}
+
 CONTEXT UPDATE RULES:
+The user context is general information about the user's life that has been accumulated over time.
+It is used to help the AI understand the user's life and provide better advice.
+It is updated automatically by the AI when the user shares information that should be saved to their context.
+
 You must automatically detect when the user shares information that should be saved to their context. Look for:
 - Daily routines, habits, or patterns (wake up time, work hours, meal times, etc.)
 - Scheduling preferences (preferred meeting times, break preferences, etc.)
