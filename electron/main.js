@@ -4,13 +4,57 @@ const fs = require("fs");
 const isDev = !app.isPackaged;
 const { autoUpdater } = require("electron-updater");
 
+// For production, we need to start a Next.js server
+let nextServer = null;
+const serverPort = 3001;
+
 // Configure auto-updater
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let mainWindow;
 
-function createWindow() {
+// Function to start Next.js server in production
+async function startNextServer() {
+  if (isDev) {
+    return "http://localhost:3000"; // Development server
+  }
+
+  try {
+    // Import Next.js in production
+    const next = require("next");
+    const nextApp = next({
+      dev: false,
+      dir: path.join(__dirname, ".."),
+    });
+
+    await nextApp.prepare();
+
+    // Create HTTP server
+    const { createServer } = require("http");
+    const handle = nextApp.getRequestHandler();
+
+    nextServer = createServer((req, res) => {
+      handle(req, res);
+    });
+
+    // Start server
+    await new Promise((resolve, reject) => {
+      nextServer.listen(serverPort, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    console.log(`Next.js server started on port ${serverPort}`);
+    return `http://localhost:${serverPort}`;
+  } catch (error) {
+    console.error("Failed to start Next.js server:", error);
+    throw error;
+  }
+}
+
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -33,12 +77,17 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Load the Next.js app
-  const startUrl = isDev
-    ? "http://localhost:3000"
-    : `file://${path.join(__dirname, "../out/index.html")}`;
+  try {
+    // Start Next.js server and get URL
+    const serverUrl = await startNextServer();
 
-  mainWindow.loadURL(startUrl);
+    // Load the Next.js app
+    await mainWindow.loadURL(serverUrl);
+  } catch (error) {
+    console.error("Failed to load application:", error);
+    // Fallback: try to load a simple error page
+    mainWindow.loadFile(path.join(__dirname, "error.html"));
+  }
 
   // Open DevTools in development mode
   if (isDev) {
@@ -128,21 +177,35 @@ autoUpdater.on("update-downloaded", (info) => {
 });
 
 // Check for updates when app is ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!isDev) {
     autoUpdater.checkForUpdates();
   }
-  createWindow();
+  await createWindow();
 });
 
 app.on("window-all-closed", () => {
+  // Clean up Next.js server
+  if (nextServer) {
+    nextServer.close();
+    nextServer = null;
+  }
+
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
 
-app.on("activate", () => {
+app.on("activate", async () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    await createWindow();
+  }
+});
+
+// Clean up on quit
+app.on("before-quit", () => {
+  if (nextServer) {
+    nextServer.close();
+    nextServer = null;
   }
 });

@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "build:electron": "cross-env ELECTRON=true next build",
+    "build:electron": "next build",
     "start": "next start",
+    "start:electron": "cross-env NODE_ENV=production next start --port 3001",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "electron-dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
@@ -95,9 +96,11 @@
     ],
     "files": [
       "electron/**/*",
-      "out/**/*",
+      ".next/**/*",
+      "public/**/*",
       "node_modules/**/*",
       "package.json",
+      "next.config.ts",
       "prisma/**/*",
       ".env*"
     ],

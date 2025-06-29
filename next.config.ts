@@ -1,16 +1,9 @@
 import type { NextConfig } from "next";
 
-const isElectron =
-  process.env.NODE_ENV === "production" && process.env.ELECTRON === "true";
-
 const nextConfig: NextConfig = {
-  // Enable static export for Electron
-  output: isElectron ? "export" : undefined,
-  trailingSlash: isElectron ? true : undefined,
-
-  // Set environment variable for middleware
+  // Set environment variables
   env: {
-    NEXT_OUTPUT: isElectron ? "export" : "default",
+    NEXT_PUBLIC_ELECTRON: process.env.ELECTRON === "true" ? "true" : "false",
   },
 
   images: {
@@ -20,13 +13,8 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
       },
     ],
-    // Disable image optimization for static export
-    unoptimized: isElectron,
   },
   async rewrites() {
-    // Skip rewrites for static export
-    if (isElectron) return [];
-
     return [
       {
         source: "/ingest/static/:path*",
