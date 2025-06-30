@@ -30,6 +30,10 @@ export const TransitionLink = ({
     e.preventDefault();
     const mainContent = document.querySelector("main");
 
+    // Hide scrollbar during transition to prevent layout shifts
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
     // Start the transition out
     mainContent?.classList.add("page-transition");
     await sleep(150); // Match the CSS transition duration
