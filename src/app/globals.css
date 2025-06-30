@@ -536,4 +536,218 @@ html.dark {
         opacity: 1;
     }
 }
+
+/* Enhanced animations for link collection */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Custom scrollbar for link collection */
+.link-collection-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.link-collection-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.link-collection-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.3);
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.link-collection-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .link-collection-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dark .link-collection-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+.dark .link-collection-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.6);
+}
+
+/* Enhanced backdrop blur effects */
+.backdrop-enhanced {
+  backdrop-filter: blur(12px) saturate(200%);
+  -webkit-backdrop-filter: blur(12px) saturate(200%);
+}
+
+/* Loading shimmer effect */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+.dark .loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+/* Enhanced focus rings */
+.focus-ring-emerald:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced hover effects */
+.hover-lift {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.dark .hover-lift:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Enhanced button styles */
+.btn-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+  transition: all 0.2s ease;
+}
+
+.btn-emerald:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Graph controls enhancement */
+.graph-controls {
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .graph-controls {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Tooltip animations */
+.tooltip-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(4px);
+}
+
+.tooltip-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+/* Context menu animations */
+.context-menu-enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.context-menu-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
+}
+
+/* Empty state illustration */
+.empty-state-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Enhanced category badges */
+.category-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.category-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.category-badge:hover::before {
+  left: 100%;
+}
+
+/* Enhanced form inputs */
+.input-enhanced {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.input-enhanced:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+/* Graph background pattern */
+.graph-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.15) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.dark .graph-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.1) 1px, transparent 0);
+}
   

@@ -7,8 +7,13 @@ import {
   Loader2,
   AlertCircle,
   Save,
-  NotepadText,
-  Clock,
+  Plus,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  ExternalLink,
+  Tag,
+  Network,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import * as d3 from "d3-force";
@@ -16,20 +21,20 @@ import { formatDistanceToNow } from "date-fns";
 
 // Constants
 const CATEGORY_COLORS = [
-  "#1a73e8", // blue
-  "#e8711a", // orange
-  "#34a853", // green
-  "#e91e63", // pink
-  "#fbbc05", // yellow
-  "#9c27b0", // purple
-  "#00bcd4", // cyan
-  "#ff9800", // deep orange
-  "#607d8b", // blue grey
-  "#8bc34a", // light green
+  "#3b82f6", // blue-500
+  "#f59e0b", // amber-500
+  "#10b981", // emerald-500
+  "#ec4899", // pink-500
+  "#8b5cf6", // violet-500
+  "#06b6d4", // cyan-500
+  "#f97316", // orange-500
+  "#84cc16", // lime-500
+  "#6366f1", // indigo-500
+  "#14b8a6", // teal-500
 ];
 
-const BASE_RADIUS = 12;
-const HOVER_RADIUS = 18;
+const BASE_RADIUS = 16;
+const HOVER_RADIUS = 22;
 const ANIMATION_SPEED = 0.25;
 
 // Utility functions
@@ -134,23 +139,35 @@ const Legend = ({
   categories: string[];
   categoryColorMap: Record<string, string>;
 }) => (
-  <div className="flex flex-wrap gap-3 mb-2 px-4 py-2 bg-white/80 dark:bg-dark-secondary/80 rounded-lg shadow text-xs">
-    {categories.map((cat) => (
-      <div key={cat} className="flex items-center gap-2">
-        <span
-          style={{
-            display: "inline-block",
-            width: 14,
-            height: 14,
-            borderRadius: "50%",
-            background: categoryColorMap[cat],
-            border: "2px solid #fff",
-            boxShadow: "0 0 0 1px #8884",
-          }}
-        />
-        <span className="dark:text-dark-textPrimary text-gray-800">{cat}</span>
-      </div>
-    ))}
+  <div className="backdrop-blur-sm bg-white/90 dark:bg-dark-secondary/90 rounded-xl shadow-lg border border-gray-200/50 dark:border-dark-divider p-4 max-w-sm">
+    <div className="flex items-center gap-2 mb-3">
+      <Tag className="h-4 w-4 text-gray-600 dark:text-dark-textSecondary" />
+      <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
+        Categories
+      </span>
+    </div>
+    <div className="flex flex-wrap gap-2">
+      {categories.map((cat) => (
+        <div
+          key={cat}
+          className="flex items-center gap-2 bg-white/60 dark:bg-dark-secondary/60 rounded-full px-3 py-1.5 backdrop-blur-sm border border-gray-200/30 dark:border-dark-divider category-badge hover-lift"
+        >
+          <span
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: categoryColorMap[cat],
+              boxShadow: `0 0 0 2px ${categoryColorMap[cat]}22`,
+            }}
+          />
+          <span className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary truncate max-w-20">
+            {cat}
+          </span>
+        </div>
+      ))}
+    </div>
   </div>
 );
 
@@ -204,37 +221,98 @@ const Tooltip = ({
         minWidth: 220,
         maxWidth: TOOLTIP_WIDTH,
       }}
-      className="rounded-lg shadow-lg px-4 py-3 bg-white/90 dark:bg-dark-secondary/90 border border-gray-200 dark:border-dark-divider text-xs text-gray-900 dark:text-dark-textPrimary"
+      className="backdrop-blur-sm bg-white/95 dark:bg-dark-secondary/95 rounded-xl shadow-xl border border-gray-200/50 dark:border-dark-divider p-4 text-sm animate-in fade-in-0 zoom-in-95 duration-200"
     >
-      <div className="flex items-center gap-2 mb-1">
-        <span
+      <div className="flex items-start gap-3 mb-3">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{
-            display: "inline-block",
-            width: 14,
-            height: 14,
-            borderRadius: "50%",
-            background: categoryColorMap[node.category],
-            border: "2px solid #fff",
-            boxShadow: "0 0 0 1px #8884",
-          }}
-        />
-        <span className="font-semibold truncate">{node.link.title}</span>
-        <span
-          className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium truncate"
-          style={{
-            background: categoryColorMap[node.category] + "22",
-            color: categoryColorMap[node.category],
+            background: `linear-gradient(135deg, ${
+              categoryColorMap[node.category]
+            }22, ${categoryColorMap[node.category]}44)`,
+            border: `1px solid ${categoryColorMap[node.category]}33`,
           }}
         >
+          <ExternalLink
+            className="h-4 w-4"
+            style={{ color: categoryColorMap[node.category] }}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-gray-900 dark:text-dark-textPrimary truncate mb-1">
+            {node.link.title}
+          </h4>
+          <p className="text-xs text-gray-500 dark:text-dark-textSecondary truncate">
+            {node.link.url}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+          style={{
+            background: `linear-gradient(135deg, ${
+              categoryColorMap[node.category]
+            }15, ${categoryColorMap[node.category]}25)`,
+            color: categoryColorMap[node.category],
+            border: `1px solid ${categoryColorMap[node.category]}33`,
+          }}
+        >
+          <Tag className="h-3 w-3" />
           {node.category}
         </span>
-      </div>
-      <div className="text-right mt-2 text-[10px] text-gray-500 dark:text-dark-textSecondary">
-        Right-click to modify
+        <span className="text-xs text-gray-400 dark:text-dark-textSecondary">
+          Right-click to edit
+        </span>
       </div>
     </div>
   );
 };
+
+// Enhanced Graph Controls Component
+const GraphControls = ({
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  zoom,
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  zoom: number;
+}) => (
+  <div className="absolute right-4 top-4 z-10">
+    <div className="backdrop-blur-sm bg-white/90 dark:bg-dark-secondary/90 rounded-xl shadow-lg border border-gray-200/50 dark:border-dark-divider p-2 graph-controls">
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={onZoomIn}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          title="Zoom In"
+        >
+          <ZoomIn className="h-4 w-4 text-gray-600 dark:text-dark-textSecondary" />
+        </button>
+        <button
+          onClick={onZoomOut}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          title="Zoom Out"
+        >
+          <ZoomOut className="h-4 w-4 text-gray-600 dark:text-dark-textSecondary" />
+        </button>
+        <button
+          onClick={onResetZoom}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+          title="Reset View"
+        >
+          <RotateCcw className="h-4 w-4 text-gray-600 dark:text-dark-textSecondary" />
+        </button>
+      </div>
+      <div className="text-xs text-gray-500 dark:text-dark-textSecondary text-center mt-1 px-2">
+        {Math.round(zoom * 100)}%
+      </div>
+    </div>
+  </div>
+);
 
 function GraphView({
   links,
@@ -362,29 +440,29 @@ function GraphView({
     setGraphData({ nodes, links: graphLinks });
   }, [links]);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     if (graphInstance) {
-      const newZoom = zoom * 1.2;
+      const newZoom = Math.min(zoom * 1.2, 3);
       setZoom(newZoom);
       graphInstance.zoom(newZoom);
     }
-  };
+  }, [graphInstance, zoom]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (graphInstance) {
-      const newZoom = zoom / 1.2;
+      const newZoom = Math.max(zoom / 1.2, 0.1);
       setZoom(newZoom);
       graphInstance.zoom(newZoom);
     }
-  };
+  }, [graphInstance, zoom]);
 
-  const handleResetZoom = () => {
+  const handleResetZoom = useCallback(() => {
     if (graphInstance) {
       setZoom(1);
       graphInstance.zoom(1);
       graphInstance.centerAt(0, 0);
     }
-  };
+  }, [graphInstance]);
 
   if (!isClient) {
     return (
@@ -400,9 +478,17 @@ function GraphView({
   return (
     <div className="relative w-full h-full max-w-full overflow-hidden">
       {/* Legend */}
-      <div className="absolute left-4 top-4 z-5">
+      <div className="absolute left-4 top-4 z-10">
         <Legend categories={categories} categoryColorMap={categoryColorMap} />
       </div>
+
+      {/* Graph Controls */}
+      <GraphControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+        zoom={zoom}
+      />
       {/* Tooltip */}
       {hoveredNode && mousePos && (
         <div
@@ -428,7 +514,7 @@ function GraphView({
         >
           <div
             ref={menuRef}
-            className="fixed z-[99999] bg-white dark:bg-dark-secondary rounded-lg shadow-lg border border-gray-200 dark:border-dark-divider"
+            className="fixed z-[99999] backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50"
             style={{
               left: (() => {
                 const MENU_WIDTH = 200;
@@ -469,16 +555,16 @@ function GraphView({
               e.stopPropagation();
             }}
           >
-            <div className="p-2 border-b border-gray-200 dark:border-dark-divider">
-              <div className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary">
+            <div className="p-4 border-b border-gray-200/50 dark:border-dark-divider">
+              <div className="text-sm font-semibold text-gray-900 dark:text-dark-textPrimary mb-1">
                 {contextMenu.node.link.title}
               </div>
               <div className="text-xs text-gray-500 dark:text-dark-textSecondary truncate">
                 {contextMenu.node.link.url}
               </div>
             </div>
-            <div className="p-2">
-              <div className="text-xs text-gray-500 dark:text-dark-textSecondary mb-1">
+            <div className="p-4">
+              <div className="text-xs font-medium text-gray-600 dark:text-dark-textSecondary mb-2">
                 Category
               </div>
               {isEditing ? (
@@ -508,7 +594,7 @@ function GraphView({
                     onClick={(e) => {
                       e.stopPropagation();
                     }}
-                    className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-background text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-accent"
+                    className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-secondary text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
                     placeholder="Enter category..."
                   />
                   <button
@@ -531,7 +617,7 @@ function GraphView({
                       }
                       setIsEditing(false);
                     }}
-                    className="px-2 py-1 text-sm text-white bg-light-accent dark:bg-dark-accent rounded hover:opacity-90"
+                    className="px-4 py-2 text-sm text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors font-medium"
                   >
                     Save
                   </button>
@@ -545,7 +631,7 @@ function GraphView({
                     setNewCategory(contextMenu.node.category);
                     setIsEditing(true);
                   }}
-                  className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-100 dark:hover:bg-dark-hover flex items-center justify-between group"
+                  className="w-full text-left px-3 py-2.5 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-dark-hover flex items-center justify-between group transition-colors"
                 >
                   <span
                     className="px-2 py-0.5 rounded-full text-xs font-medium truncate"
@@ -557,13 +643,13 @@ function GraphView({
                   >
                     {contextMenu.node.category}
                   </span>
-                  <span className="text-gray-400 dark:text-dark-textSecondary text-xs group-hover:text-gray-600 dark:group-hover:text-dark-textPrimary">
+                  <span className="text-gray-400 dark:text-dark-textSecondary text-xs group-hover:text-gray-600 dark:group-hover:text-dark-textPrimary transition-colors">
                     Click to edit
                   </span>
                 </button>
               )}
             </div>
-            <div className="p-1 border-t border-gray-200 dark:border-dark-divider">
+            <div className="p-2 border-t border-gray-200/50 dark:border-dark-divider">
               <button
                 type="button"
                 onClick={(e) => {
@@ -572,7 +658,7 @@ function GraphView({
                   onDelete(contextMenu.node.id);
                   setContextMenu(null);
                 }}
-                className="w-full text-left px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                className="w-full text-left px-3 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors font-medium"
               >
                 Delete Link
               </button>
@@ -687,7 +773,11 @@ function GraphView({
           }
         }}
         onEngineStop={() => {
-          if (graphInstance) {
+          const instance = graphRef.current;
+          if (instance && !graphInstance) {
+            setGraphInstance(instance);
+          }
+          if (instance) {
             const nodes = graphData.nodes;
             if (nodes.length > 0) {
               const centerX =
@@ -696,8 +786,9 @@ function GraphView({
               const centerY =
                 nodes.reduce((sum, node) => sum + (node.y || 0), 0) /
                 nodes.length;
-              graphInstance.centerAt(centerX, centerY);
-              graphInstance.zoom(1.2);
+              instance.centerAt(centerX, centerY);
+              instance.zoom(1.2);
+              setZoom(1.2);
             }
           }
         }}
@@ -968,10 +1059,11 @@ export default function BulletinLinkCollection({
   return (
     <div className="w-full h-full max-w-full dark:bg-dark-background transition-all overflow-hidden">
       <div className="h-full flex flex-col max-w-full">
-        <div className="flex justify-between items-center mb-2 p-2 min-w-0">
-          <div className="flex items-center w-full min-w-0">
-            <NotepadText className="h-10 w-10 mx-4 text-green-500 flex-shrink-0" />
-            <div className="flex flex-col w-full min-w-0">
+        {/* Simplified Header to match BulletinNote */}
+        <div className="flex justify-between items-start mb-4 px-4 pt-4">
+          <div className="flex items-center w-full gap-3">
+            <LinkIcon className="h-8 w-8 text-green-500 flex-shrink-0" />
+            <div className="flex flex-col w-full">
               <input
                 type="text"
                 value={title}
@@ -979,25 +1071,31 @@ export default function BulletinLinkCollection({
                   setTitle(e.target.value);
                   setHasUnsavedChanges(true);
                 }}
-                className="font-semibold text-2xl text-left w-full focus:outline-none focus:ring-2 focus:ring-gray-100 dark:focus:ring-dark-secondary rounded-lg p-2 dark:text-dark-textPrimary dark:bg-dark-background truncate min-w-0"
-                placeholder="Enter title..."
+                className="font-semibold text-xl text-left w-full focus:outline-none border-none bg-transparent dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500"
+                placeholder="Enter collection title..."
               />
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Last modified{" "}
-                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
+              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-2">
+                <span>
+                  Last modified{" "}
+                  {formatDistanceToNow(new Date(updatedAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+                <span className="text-gray-300 dark:text-dark-divider">•</span>
+                <span className="flex items-center gap-1">
+                  <LinkIcon className="h-3 w-3" />
+                  {links.length} links
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex gap-2 ml-2 flex-shrink-0">
+
+          <div className="flex items-center gap-2 pt-2 flex-shrink-0">
             {hasUnsavedChanges && (
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className={`p-2 rounded-lg transition-colors
-                  text-light-icon hover:text-light-accent hover:bg-light-hover
-                  dark:text-dark-icon dark:hover:text-dark-accent dark:hover:bg-dark-hover
-                  ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Save changes"
               >
                 {isSaving ? (
@@ -1007,61 +1105,99 @@ export default function BulletinLinkCollection({
                 )}
               </button>
             )}
+
             <button
               onClick={onDelete}
-              className="p-2 text-light-icon hover:bg-red-300 dark:hover:bg-red-900 rounded-lg transition-all"
-              aria-label="Delete list"
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:text-dark-textPrimary dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
+              aria-label="Delete collection"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <div className="relative rounded-lg flex-grow flex flex-col dark:border-dark-divider max-w-full overflow-hidden">
-          <div className="border-y p-2 mb-2 flex flex-col gap-2 dark:border-dark-divider transition-all">
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={newLink}
-                onChange={(e) => {
-                  setNewLink(e.target.value);
-                  setError(null);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter a URL..."
-                className={`flex-1 p-2 border-b dark:border-dark-divider dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none min-w-0 ${
-                  error ? "border-red-500 dark:border-red-500" : ""
-                }`}
-              />
-              <button
-                onClick={handleAddLink}
-                disabled={isLoading}
-                className="p-2 bg-light-accent dark:bg-dark-accent text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 flex-shrink-0"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <LinkIcon className="h-5 w-5" />
-                )}
-              </button>
+        {/* Simplified Link Input */}
+        <div className="px-4 mb-4">
+          <div className="space-y-3">
+            <div className="relative">
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="url"
+                    value={newLink}
+                    onChange={(e) => {
+                      setNewLink(e.target.value);
+                      setError(null);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Paste a URL to add to your collection..."
+                    className={`w-full pl-10 pr-4 py-2 bg-white dark:bg-dark-secondary border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-gray-900 dark:text-dark-textPrimary placeholder-gray-400 ${
+                      error
+                        ? "border-red-300 dark:border-red-600 focus:ring-red-500/20 focus:border-red-500"
+                        : "border-gray-200 dark:border-dark-divider"
+                    }`}
+                  />
+                </div>
+
+                <button
+                  onClick={handleAddLink}
+                  disabled={isLoading || !newLink.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span className="text-sm">Add Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+
             {error && (
-              <div className="flex items-center gap-2 text-red-500 text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
+              <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                <span className="text-red-700 dark:text-red-300 text-sm">
+                  {error}
+                </span>
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex-grow overflow-hidden p-3 max-w-full">
-            <div className="w-full h-full overflow-hidden rounded-lg border dark:border-dark-divider max-w-full">
+        {/* Graph Container */}
+        <div className="flex-1 relative overflow-hidden border-t border-gray-200 dark:border-dark-divider">
+          {links.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md mx-auto p-8">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Network className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  Start Building Your Knowledge Graph
+                </h3>
+                <p className="text-gray-500 dark:text-dark-textSecondary text-sm leading-relaxed">
+                  Add your first link above to begin creating a visual network
+                  of your bookmarks. Our AI will automatically categorize them
+                  for you.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full relative">
               <GraphView
                 links={links}
                 onDelete={handleDeleteLink}
                 onCategoryChange={handleCategoryChange}
               />
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
