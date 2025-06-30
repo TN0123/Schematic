@@ -8,12 +8,15 @@ import {
   Calendar,
   Settings,
   LogOut,
+  Search,
 } from "lucide-react";
 import { TransitionLink } from "./utils/TransitionLink";
+import { useSearch } from "./SearchProvider";
 
 export default function Navigation() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { openSearch } = useSearch();
 
   // Don't show navigation on login page
   if (pathname === "/auth/login") return null;
@@ -28,7 +31,7 @@ export default function Navigation() {
     <nav className="fixed left-0 top-0 h-screen w-16 bg-white shadow-sm border-r border-gray-100 dark:bg-dark-background dark:border-dark-divider flex flex-col items-center py-4 z-50">
       <TransitionLink
         href="/"
-        className="flex items-center justify-center mb-8"
+        className="flex items-center justify-center mb-6"
       >
         <img
           src="/favicon.ico"
@@ -55,6 +58,15 @@ export default function Navigation() {
             </TransitionLink>
           );
         })}
+
+        {/* Search Button */}
+        <button
+          onClick={openSearch}
+          className="p-2 rounded-lg transition-colors duration-200 text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover mb-6"
+          title="Search (Cmd+K)"
+        >
+          <Search className="w-6 h-6" />
+        </button>
       </div>
 
       <div className="flex flex-col items-center gap-4 mt-auto">

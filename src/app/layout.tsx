@@ -10,6 +10,8 @@ import Script from "next/script";
 import PageTransition from "@/components/PageTransition";
 import MainWrapper from "@/components/MainWrapper";
 import PostHogProvider from "@/components/PostHogProvider";
+import GlobalSearch from "@/components/GlobalSearch";
+import { SearchProvider } from "@/components/SearchProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,9 +58,12 @@ export default function RootLayout({
             <NextStepWrapper>
               <AuthProvider>
                 <PostHogProvider>
-                  <Navigation />
-                  <MainWrapper>{children}</MainWrapper>
-                  <PageTransition />
+                  <SearchProvider>
+                    <Navigation />
+                    <MainWrapper>{children}</MainWrapper>
+                    <PageTransition />
+                    <GlobalSearch />
+                  </SearchProvider>
                 </PostHogProvider>
               </AuthProvider>
             </NextStepWrapper>
