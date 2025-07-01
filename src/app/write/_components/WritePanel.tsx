@@ -190,6 +190,7 @@ export default function WritePanel({
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [contextDiffModal, setContextDiffModal] = useState<{
     isOpen: boolean;
     before: string;
@@ -284,13 +285,31 @@ export default function WritePanel({
     onModelChange(selectedModel);
   }, [selectedModel, onModelChange]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback(() => {
+    // Use requestAnimationFrame to ensure DOM has updated and scroll at the right time
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop =
+            scrollContainerRef.current.scrollHeight;
+        } else if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+          });
+        }
+      }, 100); // Increased timeout to account for message animations
+    });
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isChatLoading]);
+  }, [messages, scrollToBottom]);
+
+  // Additional effect to handle scrolling when loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [isChatLoading, scrollToBottom]);
 
   // Listen for context diff events
   useEffect(() => {
@@ -375,15 +394,6 @@ export default function WritePanel({
       }
 
       setHistory(data.history);
-
-      // Show success feedback
-      addToast(
-        actionMode === "ask"
-          ? "Question answered successfully!"
-          : "Changes generated successfully!",
-        "success",
-        2000
-      );
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
@@ -452,9 +462,6 @@ export default function WritePanel({
         setPremiumRemainingUses(data.remainingUses);
       }
       setChanges(data.result);
-
-      // Show success feedback
-      addToast("Text improved successfully!", "success", 2000);
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
@@ -524,9 +531,6 @@ export default function WritePanel({
       }
 
       setHistory(data.history);
-
-      // Show success feedback
-      addToast("Retry successful!", "success", 2000);
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
@@ -782,8 +786,11 @@ export default function WritePanel({
               <option value="premium">Premium</option>
             </select>
           </div>
-          <div className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider">
-            <AnimatePresence mode="wait">
+          <div
+            ref={scrollContainerRef}
+            className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider"
+          >
+            <AnimatePresence>
               {messages.map((msg, index) => (
                 <Message
                   key={index}
@@ -892,7 +899,6 @@ export default function WritePanel({
                       before: "",
                       after: "",
                     });
-                    addToast("Context reverted successfully!", "success", 2000);
                   } catch (error) {
                     console.error("Failed to revert context", error);
                     addToast(
