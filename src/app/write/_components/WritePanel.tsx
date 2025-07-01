@@ -290,15 +290,17 @@ export default function WritePanel({
     requestAnimationFrame(() => {
       setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop =
-            scrollContainerRef.current.scrollHeight;
+          scrollContainerRef.current.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
         } else if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({
             behavior: "smooth",
             block: "end",
           });
         }
-      }, 100); // Increased timeout to account for message animations
+      }, 150); // Slightly increased timeout for smoother animation timing
     });
   }, []);
 
