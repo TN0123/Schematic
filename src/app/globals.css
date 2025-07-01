@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme flash prevention - initial dark mode for system preference */
+@media (prefers-color-scheme: dark) {
+  html:not(.light) {
+    background-color: #121212;
+    color-scheme: dark;
+  }
+  
+  html:not(.light) body {
+    background-color: #121212;
+    color: #ffffff;
+  }
+}
+
 /* Width of the scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
