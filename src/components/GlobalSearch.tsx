@@ -89,8 +89,8 @@ export default function GlobalSearch() {
   // Enhanced keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K to open search
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+      // Cmd+P or Ctrl+P to open search
+      if ((event.metaKey || event.ctrlKey) && event.key === "p") {
         event.preventDefault();
         openSearch();
       }
