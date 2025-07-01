@@ -51,16 +51,34 @@ export default function RootLayout({
                   // Apply the theme immediately
                   if (actualTheme === 'dark') {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
                   } else {
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
                   }
+                  
+                  // Prevent any flickering by setting initial styles
+                  document.documentElement.style.visibility = 'visible';
                 } catch (e) {
                   // Fallback: check system preference
                   if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
+                  } else {
+                    document.documentElement.style.colorScheme = 'light';
                   }
+                  document.documentElement.style.visibility = 'visible';
                 }
               })();
+            `,
+          }}
+        />
+        {/* Additional CSS to prevent flash */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              html { visibility: hidden; }
+              html.dark { background-color: #121212; color: #ffffff; }
             `,
           }}
         />
@@ -85,7 +103,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange={false}
+          disableTransitionOnChange={true}
           storageKey="theme"
         >
           <NextStepProvider>

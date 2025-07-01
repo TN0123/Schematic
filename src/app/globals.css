@@ -5,14 +5,25 @@
 /* Theme flash prevention - initial dark mode for system preference */
 @media (prefers-color-scheme: dark) {
   html:not(.light) {
-    background-color: #121212;
+    background-color: #121212 !important;
     color-scheme: dark;
   }
   
   html:not(.light) body {
-    background-color: #121212;
+    background-color: #121212 !important;
     color: #ffffff;
   }
+}
+
+/* Ensure dark theme background is applied immediately */
+html.dark {
+  background-color: #121212 !important;
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #121212 !important;
+  color: #ffffff;
 }
 
 /* Width of the scrollbar */
