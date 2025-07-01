@@ -674,12 +674,12 @@ export default function WriteEditor({
             key={toast.id}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] max-w-[400px] transition-all duration-300 ${
               toast.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200"
+                ? "bg-red-50 border-red-200 text-red-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-red-300"
                 : toast.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
+                ? "bg-green-50 border-green-200 text-green-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-green-300"
                 : toast.type === "warning"
-                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200"
-                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200"
+                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-yellow-300"
+                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-blue-300"
             }`}
           >
             {toast.type === "error" && (
@@ -697,7 +697,7 @@ export default function WriteEditor({
             <span className="flex-1 text-sm font-medium">{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
-              className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+              className="p-1 hover:bg-black/10 dark:hover:bg-dark-actionHover rounded transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -714,9 +714,9 @@ export default function WriteEditor({
             <ArrowLeft className="w-4 h-4" />
             Documents
           </Link>
-          <div className="h-6 w-px bg-gray-200 dark:bg-gray-600"></div>
+          <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider"></div>
           <div className="flex items-center gap-2 w-[400px]">
-            <FileText className="w-5 h-5 dark:text-gray-400" />
+            <FileText className="w-5 h-5 dark:text-dark-textSecondary" />
             <input
               type="text"
               value={title}
@@ -728,13 +728,13 @@ export default function WriteEditor({
               placeholder="Untitled Document"
             />
             {(isSaving || isSavingContent) && (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary" />
             )}
           </div>
         </div>
         <button
           onClick={handleExport}
-          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-200 font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:shadow-md"
+          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md"
         >
           Export
           <FileUp className="w-4 h-4" />
@@ -744,10 +744,10 @@ export default function WriteEditor({
       {/* Error Banner */}
       {error && (
         <div className="w-full max-w-[1200px] px-4 mb-4">
-          <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-dark-secondary border border-red-200 dark:border-dark-divider rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">
                 {error.message}
               </p>
               {error.type === "network" && (
@@ -761,7 +761,7 @@ export default function WriteEditor({
                 <button
                   onClick={error.retryAction}
                   disabled={loading}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-200 text-xs font-medium rounded hover:bg-red-200 dark:hover:bg-red-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-dark-actionHover text-red-700 dark:text-red-300 text-xs font-medium rounded hover:bg-red-200 dark:hover:bg-dark-actionSelected transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw
                     className={`w-3 h-3 ${loading ? "animate-spin" : ""}`}
@@ -771,7 +771,7 @@ export default function WriteEditor({
               )}
               <button
                 onClick={() => setError(null)}
-                className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/50 rounded transition-colors"
+                className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-dark-actionHover rounded transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -782,7 +782,7 @@ export default function WriteEditor({
 
       <div className="w-full flex-1 flex flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100vh-80px)]">
         <div
-          className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-scroll ${
+          className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-dark-paper shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-scroll ${
             Object.keys(pendingChanges).length !== 0 &&
             Object.keys(pendingChanges)[0] !== ""
               ? "flex-[2_2_0%] min-w-0"
@@ -794,21 +794,23 @@ export default function WriteEditor({
             <div className="relative" ref={editorContainerRef}>
               {tooltipState.visible && (
                 <div
-                  className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-neutral-800 dark:text-neutral-200 whitespace-nowrap pointer-events-none"
+                  className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-dark-secondary dark:text-dark-textPrimary whitespace-nowrap pointer-events-none"
                   style={{
                     top: tooltipState.top,
                     left: tooltipState.left,
                     transform: "translateX(-50%)",
                   }}
                 >
-                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200">
+                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
                     Ctrl
                   </kbd>
                   <span>+</span>
-                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200">
+                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
                     I
                   </kbd>
-                  <span className="text-neutral-400">to improve</span>
+                  <span className="text-neutral-400 dark:text-dark-textSecondary">
+                    to improve
+                  </span>
                 </div>
               )}
               <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
@@ -824,10 +826,10 @@ export default function WriteEditor({
                     premiumRemainingUses !== null &&
                     userId !== "cm6qw1jxy0000unao2h2rz83l" &&
                     userId !== "cma8kzffi0000unysbz2awbmf" && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                      <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
                         <Info className="w-3 h-3 cursor-help" />
                         Premium model uses remaining: {premiumRemainingUses}
-                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
                           The premium model is used for both Ctrl+Enter
                           generation and AI sidebar suggestions. If you have 0
                           premium uses left, the system will automatically
@@ -838,10 +840,10 @@ export default function WriteEditor({
                   {selectedModel !== "basic" &&
                     (userId === "cm6qw1jxy0000unao2h2rz83l" ||
                       userId === "cma8kzffi0000unysbz2awbmf") && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 group relative">
+                      <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
                         <Info className="w-3 h-3 cursor-help" />
                         Premium model active
-                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
                           The premium model is used for both Ctrl+Enter
                           generation and AI sidebar suggestions. You are a
                           premium user with unlimited uses.
@@ -857,12 +859,12 @@ export default function WriteEditor({
                 </div>
                 <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
                   {loading && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
                       Generating...
                     </div>
                   )}
                   {isImproving && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
                     </div>
                   )}
