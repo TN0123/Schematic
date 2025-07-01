@@ -48,7 +48,7 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background transition-all">
+    <main className="min-h-screen w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background">
       <div className="max-w-7xl mx-auto">
         <header className="mb-10 flex justify-between items-start">
           <div>
