@@ -35,9 +35,11 @@ export async function chat(
         Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
         modify the content accordingly. 
         
-        Your job is to return an array of two items:
+        Your job is to return an array of EXACTLY two items in strict JSON format:
             1. A string of text responding to what the user said to you.
             2. a JSON object that contains the changes that should be made to the original text.
+
+        CRITICAL: Your entire response must be a valid JSON array with exactly two elements.
 
         The JSON object must have the following properties:
         - each key is a snippet or section from the original text that you think should be replaced with new text
@@ -45,14 +47,14 @@ export async function chat(
         - only include parts of the text that need to be changed, do not include any text that does not need to be changed
         - if you want to add text to the end of the original text, use the key "!ADD_TO_END!" and have the value as the text to add
 
-        If the text is long, break up the suggested changes into multiple changes, try to not make a single change be too long.
-        However, never use more than one key "!ADD_TO_END!" in the JSON object.
+        FORMATTING RULES:
+        - Do NOT wrap your response in json blocks or any other formatting
+        - Do NOT include any text before or after the JSON array
+        - Ensure all strings in the JSON are properly escaped (use \\\\n for newlines, \\\\" for quotes)
+        - Never use more than one key "!ADD_TO_END!" in the JSON object
 
         If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
         to the end of the text. Never put output text in the string of text, only in the JSON object.
-
-        Please generate the array of the string of text and the JSON object as described above.
-        Do not include any other text in your response, only the array of two items.
 
         Do not ever mention the JSON object in your response to the user. Your response must be 
         written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
@@ -104,6 +106,9 @@ export async function chat(
       const openAIAPIKey = process.env.OPENAI_API_KEY;
       const client = new OpenAI({ apiKey: openAIAPIKey });
 
+      // console.log("systemPrompt", systemPrompt);
+      // console.log("userPrompt", userPrompt);
+
       const response = await client.responses.create({
         model: "gpt-4.1",
         input:
@@ -113,6 +118,8 @@ export async function chat(
           "\n\n Here is the conversation history: \n" +
           JSON.stringify(history),
       });
+
+      // console.log("response", response);
 
       const updatedHistory = [
         ...history,
