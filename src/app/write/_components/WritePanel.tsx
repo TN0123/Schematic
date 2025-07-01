@@ -6,6 +6,8 @@ import {
   CircleArrowUp,
   UserPen,
   Info,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
@@ -22,6 +24,18 @@ interface MessageProps {
     before: string;
     after: string;
   };
+}
+
+interface ErrorState {
+  message: string;
+  type: "network" | "server" | "auth" | "validation" | "unknown";
+}
+
+interface ToastNotification {
+  id: string;
+  message: string;
+  type: "error" | "success" | "warning" | "info";
+  duration?: number;
 }
 
 // Typing animation component
@@ -182,6 +196,89 @@ export default function WritePanel({
     after: string;
   }>({ isOpen: false, before: "", after: "" });
   const [actionMode, setActionMode] = useState<"ask" | "edit">("edit");
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  // Helper function to add toast notifications
+  const addToast = (
+    message: string,
+    type: ToastNotification["type"] = "error",
+    duration = 5000
+  ) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const toast: ToastNotification = { id, message, type, duration };
+    setToasts((prev) => [...prev, toast]);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, duration);
+    }
+  };
+
+  // Helper function to remove toast
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Helper function to parse API errors
+  const parseApiError = async (response: Response): Promise<ErrorState> => {
+    let message = "An unexpected error occurred";
+    let type: ErrorState["type"] = "unknown";
+
+    try {
+      const errorData = await response.json();
+      message = errorData.error || errorData.message || message;
+    } catch {
+      // If we can't parse the error response, use status-based messages
+      switch (response.status) {
+        case 400:
+          message = "Invalid request. Please check your input and try again.";
+          type = "validation";
+          break;
+        case 401:
+          message = "Authentication required. Please log in and try again.";
+          type = "auth";
+          break;
+        case 403:
+          message = "Access denied. You may have reached your usage limit.";
+          type = "auth";
+          break;
+        case 429:
+          message = "Too many requests. Please wait a moment and try again.";
+          type = "server";
+          break;
+        case 500:
+          message = "Server error. Please try again in a moment.";
+          type = "server";
+          break;
+        case 503:
+          message = "Service temporarily unavailable. Please try again later.";
+          type = "server";
+          break;
+        default:
+          message = `Request failed with status ${response.status}`;
+          type = "server";
+      }
+    }
+
+    return { message, type };
+  };
+
+  // Helper function to handle network errors
+  const handleNetworkError = (error: Error): ErrorState => {
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      return {
+        message:
+          "Network connection failed. Please check your internet connection and try again.",
+        type: "network",
+      };
+    }
+
+    return {
+      message: error.message || "An unexpected error occurred",
+      type: "unknown",
+    };
+  };
 
   useEffect(() => {
     onModelChange(selectedModel);
@@ -253,7 +350,9 @@ export default function WritePanel({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate content");
+        const errorState = await parseApiError(response);
+        addToast(errorState.message, "error");
+        return;
       }
 
       const data = await response.json();
@@ -276,8 +375,19 @@ export default function WritePanel({
       }
 
       setHistory(data.history);
+
+      // Show success feedback
+      addToast(
+        actionMode === "ask"
+          ? "Question answered successfully!"
+          : "Changes generated successfully!",
+        "success",
+        2000
+      );
     } catch (error) {
       console.error(error);
+      const errorState = handleNetworkError(error as Error);
+      addToast(errorState.message, "error");
     } finally {
       setIsChatLoading(false);
     }
@@ -287,6 +397,7 @@ export default function WritePanel({
     if (!selected) return;
     onImproveStart();
     setIsImproving(true);
+
     try {
       const getSurroundingWords = (
         text: string,
@@ -331,7 +442,9 @@ export default function WritePanel({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate content");
+        const errorState = await parseApiError(response);
+        addToast(errorState.message, "error");
+        return;
       }
 
       const data = await response.json();
@@ -339,8 +452,13 @@ export default function WritePanel({
         setPremiumRemainingUses(data.remainingUses);
       }
       setChanges(data.result);
+
+      // Show success feedback
+      addToast("Text improved successfully!", "success", 2000);
     } catch (error) {
       console.error(error);
+      const errorState = handleNetworkError(error as Error);
+      addToast(errorState.message, "error");
     } finally {
       setIsImproving(false);
     }
@@ -385,7 +503,9 @@ export default function WritePanel({
       });
 
       if (!response.ok) {
-        throw new Error("Retry failed");
+        const errorState = await parseApiError(response);
+        addToast(errorState.message, "error");
+        return;
       }
 
       const data = await response.json();
@@ -404,8 +524,13 @@ export default function WritePanel({
       }
 
       setHistory(data.history);
+
+      // Show success feedback
+      addToast("Retry successful!", "success", 2000);
     } catch (error) {
       console.error(error);
+      const errorState = handleNetworkError(error as Error);
+      addToast(errorState.message, "error");
     } finally {
       setIsChatLoading(false);
     }
@@ -435,6 +560,44 @@ export default function WritePanel({
       } h-full border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
       id="write-panel"
     >
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] max-w-[400px] transition-all duration-300 ${
+              toast.type === "error"
+                ? "bg-red-50 border-red-200 text-red-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-red-300"
+                : toast.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-green-300"
+                : toast.type === "warning"
+                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-yellow-300"
+                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-blue-300"
+            }`}
+          >
+            {toast.type === "error" && (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "success" && (
+              <Sparkles className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "warning" && (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "info" && (
+              <Info className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span className="flex-1 text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="p-1 hover:bg-black/10 dark:hover:bg-dark-actionHover rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
         <div className="flex w-full items-center justify-between">
           <button
@@ -474,6 +637,7 @@ export default function WritePanel({
           )}
         </div>
       </div>
+
       {!isCollapsed && (
         <div className="flex flex-col w-full h-full overflow-y-auto py-2 gap-4 transition-all">
           <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
@@ -728,8 +892,13 @@ export default function WritePanel({
                       before: "",
                       after: "",
                     });
+                    addToast("Context reverted successfully!", "success", 2000);
                   } catch (error) {
                     console.error("Failed to revert context", error);
+                    addToast(
+                      "Failed to revert context. Please try again.",
+                      "error"
+                    );
                   }
                 }}
                 className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition"
