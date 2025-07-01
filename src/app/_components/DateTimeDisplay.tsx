@@ -3,9 +3,15 @@
 import { useState, useEffect } from "react";
 
 export default function DateTimeDisplay() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // Set initial time and mark as client
+    setCurrentTime(new Date());
+    setIsClient(true);
+
+    // Set up interval for updates
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -29,6 +35,20 @@ export default function DateTimeDisplay() {
       hour12: true,
     });
   };
+
+  // Show placeholder during SSR and initial hydration
+  if (!isClient || !currentTime) {
+    return (
+      <div className="text-right">
+        <div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+          --:-- --
+        </div>
+        <div className="text-base sm:text-lg font-medium text-gray-600 dark:text-dark-textSecondary">
+          --- --- --, ----
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="text-right">

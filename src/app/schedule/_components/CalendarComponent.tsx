@@ -169,9 +169,16 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       const titleClasses = "font-normal truncate";
 
       const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (eventTitle && eventTitle.length > 20) {
-          // Only show tooltip for longer titles
-          showTooltip(e.currentTarget, eventTitle);
+        if (eventTitle) {
+          // Find the text element within the event container
+          const textElement = e.currentTarget.querySelector(".event-title");
+          if (
+            textElement &&
+            textElement.scrollWidth > textElement.clientWidth
+          ) {
+            // Text is overflowing, show tooltip
+            showTooltip(e.currentTarget, eventTitle);
+          }
         }
       };
 
@@ -186,7 +193,9 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <div className={`${titleClasses} text-xs pr-1`}>{eventTitle}</div>
+            <div className={`${titleClasses} text-xs pr-1 event-title`}>
+              {eventTitle}
+            </div>
             <div className="flex shrink-0 items-center space-x-1">
               <button
                 onClick={(e) => {
@@ -223,7 +232,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className={titleClasses}>{eventTitle}</div>
+          <div className={`${titleClasses} event-title`}>{eventTitle}</div>
         </div>
       );
     }
