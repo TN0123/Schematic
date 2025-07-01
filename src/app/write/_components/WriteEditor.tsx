@@ -8,7 +8,16 @@ import {
   useLayoutEffect,
 } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import { Info, FileUp, FileText, Loader2, ArrowLeft } from "lucide-react";
+import {
+  Info,
+  FileUp,
+  FileText,
+  Loader2,
+  ArrowLeft,
+  AlertCircle,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
@@ -21,6 +30,20 @@ interface Document {
   content: string;
   updatedAt: string;
   userId: string;
+}
+
+interface ErrorState {
+  message: string;
+  type: "network" | "server" | "auth" | "validation" | "unknown";
+  canRetry: boolean;
+  retryAction?: () => void;
+}
+
+interface ToastNotification {
+  id: string;
+  message: string;
+  type: "error" | "success" | "warning" | "info";
+  duration?: number;
 }
 
 export default function WriteEditor({
@@ -51,11 +74,15 @@ export default function WriteEditor({
   isImproving: boolean;
 }) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<ErrorState | null>(null);
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
   const [isSavingContent, setIsSavingContent] = useState(false);
+  const [autocompleteError, setAutocompleteError] = useState<string | null>(
+    null
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [generatedStart, setGeneratedStart] = useState<number | null>(null);
@@ -72,6 +99,95 @@ export default function WriteEditor({
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
+
+  // Helper function to add toast notifications
+  const addToast = (
+    message: string,
+    type: ToastNotification["type"] = "error",
+    duration = 5000
+  ) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const toast: ToastNotification = { id, message, type, duration };
+    setToasts((prev) => [...prev, toast]);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, duration);
+    }
+  };
+
+  // Helper function to remove toast
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Helper function to parse API errors
+  const parseApiError = async (response: Response): Promise<ErrorState> => {
+    let message = "An unexpected error occurred";
+    let type: ErrorState["type"] = "unknown";
+    let canRetry = false;
+
+    try {
+      const errorData = await response.json();
+      message = errorData.error || errorData.message || message;
+    } catch {
+      // If we can't parse the error response, use status-based messages
+      switch (response.status) {
+        case 400:
+          message = "Invalid request. Please check your input and try again.";
+          type = "validation";
+          break;
+        case 401:
+          message = "Authentication required. Please log in and try again.";
+          type = "auth";
+          break;
+        case 403:
+          message = "Access denied. You may have reached your usage limit.";
+          type = "auth";
+          break;
+        case 429:
+          message = "Too many requests. Please wait a moment and try again.";
+          type = "server";
+          canRetry = true;
+          break;
+        case 500:
+          message = "Server error. Please try again in a moment.";
+          type = "server";
+          canRetry = true;
+          break;
+        case 503:
+          message = "Service temporarily unavailable. Please try again later.";
+          type = "server";
+          canRetry = true;
+          break;
+        default:
+          message = `Request failed with status ${response.status}`;
+          type = "server";
+          canRetry = response.status >= 500;
+      }
+    }
+
+    return { message, type, canRetry };
+  };
+
+  // Helper function to handle network errors
+  const handleNetworkError = (error: Error): ErrorState => {
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      return {
+        message:
+          "Network connection failed. Please check your internet connection and try again.",
+        type: "network",
+        canRetry: true,
+      };
+    }
+
+    return {
+      message: error.message || "An unexpected error occurred",
+      type: "unknown",
+      canRetry: false,
+    };
+  };
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -92,10 +208,12 @@ export default function WriteEditor({
         text.length < 10
       ) {
         setSuggestion("");
+        setAutocompleteError(null);
         return;
       }
 
       try {
+        setAutocompleteError(null);
         const response = await fetch("/api/autocomplete", {
           method: "POST",
           headers: {
@@ -104,25 +222,48 @@ export default function WriteEditor({
           body: JSON.stringify({ currentText: text }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          let newSuggestion = data.result || "";
+        if (!response.ok) {
+          const errorState = await parseApiError(response);
+          setAutocompleteError(errorState.message);
+          setSuggestion("");
 
-          if (inputText.endsWith(" ") && newSuggestion.startsWith(" ")) {
-            newSuggestion = newSuggestion.substring(1);
+          // Only show toast for serious errors, not rate limiting or temporary issues
+          if (errorState.type === "auth" || errorState.type === "validation") {
+            addToast(
+              `Autocomplete error: ${errorState.message}`,
+              "warning",
+              3000
+            );
           }
+          return;
+        }
 
-          if (newSuggestion) {
-            setSuggestion(newSuggestion);
-          } else {
-            setSuggestion("");
-          }
+        const data = await response.json();
+        let newSuggestion = data.result || "";
+
+        if (inputText.endsWith(" ") && newSuggestion.startsWith(" ")) {
+          newSuggestion = newSuggestion.substring(1);
+        }
+
+        if (newSuggestion) {
+          setSuggestion(newSuggestion);
         } else {
           setSuggestion("");
         }
       } catch (error) {
         console.error("Autocomplete error:", error);
+        const errorState = handleNetworkError(error as Error);
+        setAutocompleteError(errorState.message);
         setSuggestion("");
+
+        // Only show toast for network errors
+        if (errorState.type === "network") {
+          addToast(
+            `Autocomplete unavailable: ${errorState.message}`,
+            "warning",
+            3000
+          );
+        }
       }
     },
     300
@@ -227,12 +368,13 @@ export default function WriteEditor({
 
   const clearSuggestionAndCancel = () => {
     setSuggestion("");
+    setAutocompleteError(null);
     debouncedFetchAutocomplete.cancel();
   };
 
   const handleContinue = async () => {
     try {
-      setError("");
+      setError(null);
       clearSuggestionAndCancel();
       const liveCursor =
         textareaRef.current?.selectionStart ?? inputText.length;
@@ -260,21 +402,25 @@ export default function WriteEditor({
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate content");
-      }
-      const data = await response.json();
+      setLoading(false);
 
+      if (!response.ok) {
+        const errorState = await parseApiError(response);
+        errorState.retryAction = handleContinue;
+        setError(errorState);
+        addToast(errorState.message, "error");
+        return;
+      }
+
+      const data = await response.json();
       const { text: generatedText, remainingUses } = data.result;
 
       const updated = before + generatedText + after;
-
       const start = before.length;
       const end = start + generatedText.length;
 
       setInputText(updated);
       cursorPositionRef.current = end;
-
       setGeneratedStart(start);
       setGeneratedEnd(end);
 
@@ -283,10 +429,15 @@ export default function WriteEditor({
         setPremiumRemainingUses(remainingUses);
       }
 
-      setLoading(false);
+      // Show success feedback for generation
+      addToast("Content generated successfully!", "success", 2000);
     } catch (error) {
-      console.error(error);
-      setError("An error occurred while generating content.");
+      console.error("Generation error:", error);
+      setLoading(false);
+      const errorState = handleNetworkError(error as Error);
+      errorState.retryAction = handleContinue;
+      setError(errorState);
+      addToast(errorState.message, "error");
     }
   };
 
@@ -339,7 +490,7 @@ export default function WriteEditor({
 
   const handleExport = () => {
     if (!inputText.trim()) {
-      alert("Please add some content before exporting.");
+      addToast("Please add some content before exporting.", "warning");
       return;
     }
 
@@ -388,9 +539,10 @@ export default function WriteEditor({
 
       // Download the PDF
       pdf.save(filename);
+      addToast("PDF exported successfully!", "success", 2000);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("An error occurred while generating the PDF. Please try again.");
+      addToast("Failed to generate PDF. Please try again.", "error");
     }
   };
 
@@ -515,6 +667,44 @@ export default function WriteEditor({
 
   return (
     <div className="w-full flex flex-col justify-center items-center h-full">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] max-w-[400px] transition-all duration-300 ${
+              toast.type === "error"
+                ? "bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200"
+                : toast.type === "success"
+                ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
+                : toast.type === "warning"
+                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200"
+                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200"
+            }`}
+          >
+            {toast.type === "error" && (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "success" && (
+              <FileText className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "warning" && (
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            )}
+            {toast.type === "info" && (
+              <Info className="w-5 h-5 flex-shrink-0" />
+            )}
+            <span className="flex-1 text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="w-full max-w-[1200px] flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-3">
           <Link
@@ -550,6 +740,46 @@ export default function WriteEditor({
           <FileUp className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="w-full max-w-[1200px] px-4 mb-4">
+          <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                {error.message}
+              </p>
+              {error.type === "network" && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Check your internet connection and try again.
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {error.canRetry && error.retryAction && (
+                <button
+                  onClick={error.retryAction}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-800/50 text-red-700 dark:text-red-200 text-xs font-medium rounded hover:bg-red-200 dark:hover:bg-red-700/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 ${loading ? "animate-spin" : ""}`}
+                  />
+                  Retry
+                </button>
+              )}
+              <button
+                onClick={() => setError(null)}
+                className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-800/50 rounded transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full flex-1 flex flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100vh-80px)]">
         <div
           className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-neutral-900 shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-scroll ${
@@ -618,6 +848,12 @@ export default function WriteEditor({
                         </div>
                       </div>
                     )}
+                  {autocompleteError && (
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      Autocomplete temporarily unavailable
+                    </div>
+                  )}
                 </div>
                 <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
                   {loading && (
