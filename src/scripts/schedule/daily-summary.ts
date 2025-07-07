@@ -14,53 +14,40 @@ export async function daily_summary(
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  // Fetch events for the specific day from the database
   // Create start and end of day boundaries in the user's timezone
-  const getDateBoundaryInTimezone = (
-    date: Date,
-    timezone: string,
-    isEndOfDay: boolean = false
-  ): Date => {
-    // Get the date string in the user's timezone (YYYY-MM-DD format)
-    const userDateStr = date.toLocaleDateString("en-CA", {
-      timeZone: timezone,
-    });
+  // Get the date string in the user's timezone (YYYY-MM-DD format)
+  const userDateStr = date.toLocaleDateString("en-CA", {
+    timeZone: timezone,
+  });
 
-    // Create the datetime string for start or end of day
-    const timeStr = isEndOfDay ? "23:59:59.999" : "00:00:00.000";
-    const dateTimeStr = `${userDateStr}T${timeStr}`;
+  // Very simple approach: Use Intl.DateTimeFormat to get the right times
+  // We'll create the dates in the user's timezone and convert to UTC
 
-    // Create a date object and adjust for timezone
-    const localDate = new Date(dateTimeStr);
+  // Create start of day (00:00:00.000) in user's timezone
+  const startOfDay = new Date(`${userDateStr}T00:00:00.000`);
 
-    // Calculate timezone offset difference to convert to proper UTC time
-    const testDate = new Date();
-    const localOffset = testDate.getTimezoneOffset() * 60000; // Convert to milliseconds
-    const userOffset = getTimezoneOffsetMs(testDate, timezone);
-    const offsetDifference = userOffset - localOffset;
+  // Create end of day (23:59:59.999) in user's timezone
+  const endOfDay = new Date(`${userDateStr}T23:59:59.999`);
 
-    return new Date(localDate.getTime() - offsetDifference);
-  };
+  // Now we need to adjust these to be in the user's timezone
+  // Get the timezone offset in minutes for this date
+  const testDate = new Date(userDateStr + "T12:00:00");
+  const utcTime = testDate.getTime();
+  const userTzTime = new Date(
+    testDate.toLocaleString("en-US", { timeZone: timezone })
+  ).getTime();
+  const offsetMs = utcTime - userTzTime;
 
-  const getTimezoneOffsetMs = (date: Date, timezone: string): number => {
-    const utcTime = new Date(
-      date.toLocaleString("en-US", { timeZone: "UTC" })
-    ).getTime();
-    const userTime = new Date(
-      date.toLocaleString("en-US", { timeZone: timezone })
-    ).getTime();
-    return utcTime - userTime;
-  };
-
-  const startOfDay = getDateBoundaryInTimezone(date, timezone, false);
-  const endOfDay = getDateBoundaryInTimezone(date, timezone, true);
+  // Apply the offset to our boundaries
+  const startOfDayAdjusted = new Date(startOfDay.getTime() + offsetMs);
+  const endOfDayAdjusted = new Date(endOfDay.getTime() + offsetMs);
 
   const eventsForDay = await prisma.event.findMany({
     where: {
       userId,
       start: {
-        gte: startOfDay,
-        lte: endOfDay,
+        gte: startOfDayAdjusted,
+        lte: endOfDayAdjusted,
       },
     },
     select: {
