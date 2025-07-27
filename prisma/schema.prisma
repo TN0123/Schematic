@@ -24,6 +24,7 @@ model User {
   documents                Document[]
   reminders                Reminder[]
   scheduleContext          String         @default("")
+  goalText                 String         @default("")
 }
 
 model Account {
