@@ -7,7 +7,7 @@ export async function contextUpdate(history: any[], documentId: any) {
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const document = await prisma.document.findUnique({
     where: { id: documentId },

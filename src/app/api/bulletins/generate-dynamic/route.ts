@@ -72,7 +72,7 @@ export async function POST(request: Request) {
             technicalInfo: {
               endpoint: "/api/bulletins/generate-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
             },
           },
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
 You are an expert UI designer that creates structured note schemas based on user descriptions. 
@@ -220,7 +220,7 @@ Generate the schema now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/generate-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: [
                 `Parse error: ${
@@ -265,7 +265,7 @@ Generate the schema now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/generate-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: [
                 `Missing required fields: ${missingFields.join(", ")}`,
@@ -310,7 +310,7 @@ Generate the schema now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/generate-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: ["Component array is empty or invalid"],
             },
@@ -429,7 +429,7 @@ Generate the schema now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/generate-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors,
             },
@@ -504,7 +504,7 @@ Generate the schema now:`;
               technicalInfo: {
                 endpoint: "/api/bulletins/generate-dynamic",
                 requestId,
-                aiModel: "gemini-2.0-flash",
+                aiModel: "gemini-2.5-flash",
                 timestamp: new Date().toISOString(),
                 validationErrors: layoutValidationErrors,
               },
@@ -536,7 +536,7 @@ Generate the schema now:`;
           technicalInfo: {
             endpoint: "/api/bulletins/generate-dynamic",
             requestId,
-            aiModel: "gemini-2.0-flash",
+            aiModel: "gemini-2.5-flash",
             timestamp: new Date().toISOString(),
             validationErrors: [
               error instanceof Error ? error.message : "Unknown error",
