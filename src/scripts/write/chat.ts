@@ -94,51 +94,7 @@ export async function chat(
     """
   `;
 
-  // Special users (you) get unlimited GPT-4.1 access
-  if (
-    (userId === "cm6qw1jxy0000unao2h2rz83l" ||
-      userId === "cma8kzffi0000unysbz2awbmf") &&
-    selectedModel === "premium"
-  ) {
-    try {
-      console.log("using premium model");
-      const { OpenAI } = require("openai");
-      const openAIAPIKey = process.env.OPENAI_API_KEY;
-      const client = new OpenAI({ apiKey: openAIAPIKey });
-
-      // console.log("systemPrompt", systemPrompt);
-      // console.log("userPrompt", userPrompt);
-
-      const response = await client.responses.create({
-        model: "gpt-4.1",
-        input:
-          systemPrompt +
-          "\n\n" +
-          userPrompt +
-          "\n\n Here is the conversation history: \n" +
-          JSON.stringify(history),
-      });
-
-      // console.log("response", response);
-
-      const updatedHistory = [
-        ...history,
-        { role: "user", parts: userPrompt },
-        { role: "model", parts: response.output_text },
-      ];
-
-      return {
-        response: response.output_text,
-        updatedHistory,
-        remainingUses: null,
-      };
-    } catch (error) {
-      console.error("OpenAI API call failed:", error);
-      // Continue to Gemini API as fallback
-    }
-  }
-
-  // For other users, check premium usage
+  // Check premium usage for premium model
   if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;

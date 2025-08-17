@@ -24,29 +24,11 @@ export async function generate(
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  // Special users (you) get unlimited GPT-4.1 access
-  if ((userId === "cm6qw1jxy0000unao2h2rz83l" || userId === "cma8kzffi0000unysbz2awbmf") && selectedModel === "premium") {
-    try {
-      console.log("using premium model");
-      const { OpenAI } = require("openai");
-      const openAIAPIKey = process.env.OPENAI_API_KEY;
-      const client = new OpenAI({apiKey: openAIAPIKey});
-      const response = await client.responses.create({
-        model: "gpt-4.1",
-        input: prompt,
-      })
-      return { text: response.output_text, remainingUses: null };
-    } catch (error) {
-      console.error("OpenAI API call failed:", error);
-      // Continue to Gemini API as fallback
-    }
-  }
-
-  // For other users, check premium usage
+  // Check premium usage for premium model
   if (userId && selectedModel === "premium") {
     try {
       const prisma = require("@/lib/prisma").default;
-      
+
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { premiumRemainingUses: true },
@@ -56,8 +38,8 @@ export async function generate(
         console.log("using premium model");
         const { OpenAI } = require("openai");
         const openAIAPIKey = process.env.OPENAI_API_KEY;
-        const client = new OpenAI({apiKey: openAIAPIKey});
-        
+        const client = new OpenAI({ apiKey: openAIAPIKey });
+
         // Decrement usage
         const updatedUser = await prisma.user.update({
           where: { id: userId },
@@ -70,12 +52,15 @@ export async function generate(
             premiumRemainingUses: true,
           },
         });
-        
+
         const response = await client.responses.create({
           model: "gpt-4.1",
           input: prompt,
         });
-        return { text: response.output_text, remainingUses: updatedUser.premiumRemainingUses };
+        return {
+          text: response.output_text,
+          remainingUses: updatedUser.premiumRemainingUses,
+        };
       }
     } catch (error) {
       console.error("Error checking/using premium model:", error);
