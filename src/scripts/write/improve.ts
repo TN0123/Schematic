@@ -87,7 +87,7 @@ export async function improve(
   // 2. Model is "premium" but user has no premium uses
   console.log("using basic model");
   const genAI = new GoogleGenerativeAI(geminiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const result = await model.generateContent(prompt);
 
