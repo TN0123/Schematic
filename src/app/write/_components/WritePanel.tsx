@@ -24,6 +24,9 @@ interface MessageProps {
     before: string;
     after: string;
   };
+  isStreaming?: boolean;
+  isTyping?: boolean;
+  id?: string;
 }
 
 interface ErrorState {
@@ -96,9 +99,16 @@ export function Message({
   role,
   contextUpdated,
   contextChange,
+  isStreaming,
+  isTyping,
 }: MessageProps & {
   onShowContextDiff?: (before: string, after: string) => void;
 }) {
+  // If it's a typing indicator, render the TypingIndicator component
+  if (isTyping) {
+    return <TypingIndicator />;
+  }
+
   return (
     <div
       className={`flex w-full ${
@@ -113,11 +123,34 @@ export function Message({
           role === "user"
             ? "bg-blue-50 dark:bg-dark-secondary text-right"
             : "bg-gray-50 dark:bg-dark-paper text-left"
+        } ${
+          isStreaming ? "border-2 border-blue-200 dark:border-blue-600" : ""
         }`}
       >
-        <p className="text-gray-900 dark:text-dark-textPrimary text-xs">
-          {message}
-        </p>
+        <div className="flex items-start gap-2">
+          <p className="text-gray-900 dark:text-dark-textPrimary text-xs flex-1">
+            {message}
+            {isStreaming && (
+              <motion.span
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="inline-block ml-1 w-2 h-4 bg-blue-500 dark:bg-blue-400"
+              />
+            )}
+          </p>
+          {isStreaming && (
+            <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="mr-1"
+              >
+                <RefreshCw size={12} />
+              </motion.div>
+              <span>Streaming...</span>
+            </div>
+          )}
+        </div>
         {contextUpdated && contextChange && (
           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-divider">
             <button
@@ -337,6 +370,136 @@ export default function WritePanel({
     };
   }, []);
 
+  // Function to handle streaming responses
+  const handleStreamingResponse = async (requestPayload: any) => {
+    return new Promise<void>(async (resolve, reject) => {
+      let streamingMessage = "";
+      let assistantMessageId: string | null = null;
+
+      // Add a typing indicator instead of streaming message
+      const typingMessageObj = {
+        message: "",
+        role: "assistant" as const,
+        isTyping: true,
+        id: Date.now().toString(),
+      };
+      assistantMessageId = typingMessageObj.id;
+      setMessages((prev) => [...prev, typingMessageObj]);
+
+      try {
+        // Make the POST request to the streaming endpoint
+        const response = await fetch("/api/chat/stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentText: selected || inputText,
+            instructions: requestPayload.instructions,
+            history,
+            userId,
+            documentId,
+            model: selectedModel,
+            actionMode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        if (!response.body) {
+          throw new Error("No response body");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages in the buffer
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.trim() === "") continue;
+
+            if (line.startsWith("event:")) {
+              const eventType = line.substring(6).trim();
+              continue;
+            }
+
+            if (line.startsWith("data:")) {
+              try {
+                const jsonData = line.substring(5).trim();
+                const data = JSON.parse(jsonData);
+
+                // Handle different event types based on the data structure
+                if (data.chunk !== undefined) {
+                  // This is a chunk event - accumulate but don't show to user
+                  streamingMessage += data.chunk;
+                } else if (data.result !== undefined) {
+                  // This is the final result
+                  if (data.remainingUses !== null) {
+                    setPremiumRemainingUses(data.remainingUses);
+                  }
+
+                  const finalMessage = {
+                    message:
+                      actionMode === "ask" ? data.result : data.result[0],
+                    role: "assistant" as const,
+                    contextUpdated: data.contextUpdated,
+                    contextChange: data.contextChange,
+                    id: assistantMessageId,
+                  };
+
+                  // Replace the typing indicator with the final message
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId ? finalMessage : msg
+                    )
+                  );
+
+                  setLastRequest(requestPayload);
+
+                  if (actionMode === "edit") {
+                    setChanges(data.result[1]);
+                  }
+
+                  setHistory(data.history);
+                } else if (data.message && data.message.includes("complete")) {
+                  // Stream is complete
+                  resolve();
+                  return;
+                } else if (data.error) {
+                  // Error occurred
+                  addToast(data.message || "Streaming failed", "error");
+                  reject(new Error(data.message));
+                  return;
+                }
+              } catch (parseError) {
+                console.error("Error parsing SSE data:", parseError);
+              }
+            }
+          }
+        }
+
+        resolve();
+      } catch (error) {
+        console.error("Error in streaming request:", error);
+        addToast("Streaming request failed", "error");
+        reject(error);
+      }
+    });
+  };
+
   const handleSubmit = async () => {
     if (!instructions.trim()) return;
 
@@ -354,6 +517,7 @@ export default function WritePanel({
     setIsChatLoading(true);
 
     try {
+      // First, try the regular endpoint
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -370,12 +534,30 @@ export default function WritePanel({
         }),
       });
 
+      // Handle different response types
+      if (response.status === 202) {
+        // Server suggests using streaming
+        const data = await response.json();
+        if (data.suggestStreaming) {
+          await handleStreamingResponse(requestPayload);
+          return;
+        }
+      }
+
+      if (response.status === 408) {
+        // Request timeout, automatically switch to streaming
+        const data = await response.json();
+        await handleStreamingResponse(requestPayload);
+        return;
+      }
+
       if (!response.ok) {
         const errorState = await parseApiError(response);
         addToast(errorState.message, "error");
         return;
       }
 
+      // Handle regular successful response
       const data = await response.json();
       if (data.remainingUses !== null) {
         setPremiumRemainingUses(data.remainingUses);
@@ -800,9 +982,10 @@ export default function WritePanel({
                   role={msg.role}
                   contextUpdated={msg.contextUpdated}
                   contextChange={msg.contextChange}
+                  isStreaming={msg.isStreaming}
+                  isTyping={msg.isTyping}
                 />
               ))}
-              {isChatLoading && <TypingIndicator />}
             </AnimatePresence>
             <div ref={messagesEndRef} />
           </div>
