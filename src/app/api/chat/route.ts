@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
-import { chat } from "@/scripts/write/chat";
+import { NextRequest } from "next/server";
+import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
+import { PrismaClient } from "@prisma/client";
 import { contextUpdate } from "@/scripts/write/context-update";
+
+const prisma = new PrismaClient();
 
 // Robust function to parse LLM response with multiple fallback strategies
 function parseAIResponse(response: string): [string, any] {
@@ -122,35 +127,7 @@ function parseAIResponse(response: string): [string, any] {
   ];
 }
 
-// Helper function to estimate if a query might be long-running
-function isLikelyLongQuery(instructions: string, currentText: string): boolean {
-  const instructionLength = instructions.length;
-  const textLength = currentText.length;
-
-  // Consider long if:
-  // - Instructions are very detailed (>500 chars)
-  // - Working with large text (>5000 chars)
-  // - Contains keywords that suggest complex operations
-  const complexKeywords = [
-    "rewrite",
-    "comprehensive",
-    "detailed analysis",
-    "complete",
-    "thorough",
-    "extensive",
-    "full report",
-    "deep dive",
-    "elaborate",
-  ];
-
-  const hasComplexKeywords = complexKeywords.some((keyword) =>
-    instructions.toLowerCase().includes(keyword)
-  );
-
-  return instructionLength > 500 || textLength > 5000 || hasComplexKeywords;
-}
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const {
       currentText,
@@ -160,132 +137,280 @@ export async function POST(req: Request) {
       documentId,
       model = "basic",
       actionMode = "edit",
-      forceSync = false, // New parameter to force synchronous processing
     } = await req.json();
 
     console.log(
-      `[CHAT] Request received - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
+      `[CHAT] Streaming request started - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
         0,
         8
       )}...`
     );
 
-    // Check if this query should use streaming
-    // Always use streaming for premium model (OpenAI) or for complex queries
-    const shouldUseStreaming =
-      !forceSync &&
-      (model === "premium" || isLikelyLongQuery(instructions, currentText));
-
-    if (shouldUseStreaming) {
-      const reason = model === "premium" ? "premium model" : "complex query";
-      console.log(
-        `[CHAT] Redirecting to streaming endpoint - Reason: ${reason}`
-      );
-
-      const message =
-        model === "premium"
-          ? "Using streaming for premium model to ensure optimal performance."
-          : "This query appears complex and may take longer than usual. Consider using the streaming endpoint for better performance.";
-
-      return NextResponse.json(
-        {
-          suggestStreaming: true,
-          message,
-          streamEndpoint: "/api/chat/stream",
-        },
-        { status: 202 } // 202 Accepted but suggesting alternative
-      );
-    }
-
-    console.log(`[CHAT] Processing synchronously - Model: ${model}`);
-
-    // Add timeout protection (8 seconds to leave buffer for Vercel's 10s limit)
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Request timeout")), 8000);
+    // Get document context
+    const document = await prisma.document.findUnique({
+      where: { id: documentId },
+      select: { context: true },
     });
 
-    const chatPromise = chat(
-      currentText,
-      instructions,
-      history,
-      documentId,
-      userId,
-      model,
-      actionMode
-    );
+    const context = document?.context;
 
-    let result: {
-      response: string;
-      updatedHistory: any[];
-      remainingUses: number | null;
-    };
-    try {
-      result = (await Promise.race([chatPromise, timeoutPromise])) as {
-        response: string;
-        updatedHistory: any[];
-        remainingUses: number | null;
-      };
-    } catch (error) {
-      if (error instanceof Error && error.message === "Request timeout") {
-        console.log(
-          `[CHAT] Request timed out - Redirecting to streaming endpoint`
-        );
-        return NextResponse.json(
-          {
-            timeout: true,
-            message:
-              "The request is taking longer than expected. Please use the streaming endpoint for complex queries.",
-            streamEndpoint: "/api/chat/stream",
-            suggestion:
-              "Try using the streaming version of this endpoint for better handling of long-running requests.",
-          },
-          { status: 408 } // 408 Request Timeout
-        );
+    // Create system prompt
+    const systemPrompt =
+      actionMode === "edit"
+        ? `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
+        modify the content accordingly. 
+        
+        Your job is to return an array of EXACTLY two items in strict JSON format:
+            1. A string of text responding to what the user said to you.
+            2. a JSON object that contains the changes that should be made to the original text.
+
+        CRITICAL: Your entire response must be a valid JSON array with exactly two elements.
+
+        The JSON object must have the following properties:
+        - each key is a snippet or section from the original text that you think should be replaced with new text
+        - each value is the new text that should replace the original text
+        - only include parts of the text that need to be changed, do not include any text that does not need to be changed
+        - if you want to add text to the end of the original text, use the key "!ADD_TO_END!" and have the value as the text to add
+
+        FORMATTING RULES:
+        - Do NOT wrap your response in json blocks or any other formatting
+        - Do NOT include any text before or after the JSON array
+        - Ensure all strings in the JSON are properly escaped (use \\\\n for newlines, \\\\" for quotes)
+        - Never use more than one key "!ADD_TO_END!" in the JSON object
+
+        If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
+        to the end of the text. Never put output text in the string of text, only in the JSON object.
+
+        Do not ever mention the JSON object in your response to the user. Your response must be 
+        written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+    `
+        : `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
+        
+        You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
+        
+        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+        
+        Do not include any other text in your response, only your answer to the user's question.
+    `;
+
+    const userPrompt = `
+    Here is the current text:
+    """
+    ${currentText}
+    """
+
+    Here is what the user asked for:
+    """
+    ${instructions}
+    """
+  `;
+
+    // Format conversation history for Vercel AI SDK
+    const messages = [
+      { role: "system" as const, content: systemPrompt },
+      ...history.map((entry: any) => ({
+        role: entry.role as "user" | "assistant",
+        content: typeof entry.parts === "string" ? entry.parts : 
+                Array.isArray(entry.parts) ? entry.parts.map((p: any) => 
+                  typeof p === "string" ? p : p.text
+                ).join("") : entry.parts.text || entry.parts
+      })),
+      { role: "user" as const, content: userPrompt },
+    ];
+
+    // Select model and check usage
+    let selectedModelProvider;
+    let remainingUses: number | null = null;
+
+    if (model === "premium" && userId) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { premiumRemainingUses: true },
+        });
+
+        if (user && user.premiumRemainingUses > 0) {
+          selectedModelProvider = openai("gpt-4.1");
+
+          // Decrement usage
+          const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+              premiumRemainingUses: {
+                decrement: 1,
+              },
+            },
+            select: {
+              premiumRemainingUses: true,
+            },
+          });
+
+          remainingUses = updatedUser.premiumRemainingUses;
+        } else {
+          // Fall back to Gemini
+          selectedModelProvider = google("gemini-2.5-flash");
+          console.log("Using Gemini Flash (fallback - no premium uses remaining)");
+        }
+      } catch (error) {
+        console.error("Error checking premium usage:", error);
+        // Fall back to Gemini
+        selectedModelProvider = google("gemini-2.5-flash");
+        console.log("Using Gemini Flash (fallback - error checking premium)");
       }
-      throw error; // Re-throw other errors
-    }
-
-    const { response, updatedHistory, remainingUses } = result;
-
-    const contextUpdateResult = await contextUpdate(updatedHistory, documentId);
-
-    console.log(
-      `[CHAT] Synchronous request completed successfully - Model: ${model}, Remaining uses: ${remainingUses}`
-    );
-
-    // Handle different response formats based on action mode
-    if (actionMode === "ask") {
-      // For "ask" mode, return the response directly as text
-      return NextResponse.json(
-        {
-          result: response,
-          history: updatedHistory,
-          remainingUses,
-          contextUpdated: contextUpdateResult.contextUpdated,
-          contextChange: contextUpdateResult.contextChange,
-        },
-        { status: 200 }
-      );
     } else {
-      // For "edit" mode, use robust parsing
-      const [message, changes] = parseAIResponse(response);
-
-      return NextResponse.json(
-        {
-          result: [message, changes],
-          history: updatedHistory,
-          remainingUses,
-          contextUpdated: contextUpdateResult.contextUpdated,
-          contextChange: contextUpdateResult.contextChange,
-        },
-        { status: 200 }
-      );
+      // Use Gemini for basic model
+      selectedModelProvider = google("gemini-2.5-flash");
+      console.log("Using Gemini Flash (basic model)");
     }
+
+    // Stream the response using Vercel AI SDK
+    const result = await streamText({
+      model: selectedModelProvider,
+      messages,
+      temperature: 0.7,
+    });
+
+    // Create streaming response
+    let fullResponse = "";
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        // Helper function to send SSE data
+        const sendEvent = (eventType: string, data: any) => {
+          const sseData = `event: ${eventType}\ndata: ${JSON.stringify(
+            data
+          )}\n\n`;
+          controller.enqueue(encoder.encode(sseData));
+        };
+
+        try {
+          // Send initial status
+          sendEvent("status", { message: "Starting AI processing..." });
+
+          let chunkCount = 0;
+
+          // Stream the text
+          for await (const delta of result.textStream) {
+            fullResponse += delta;
+            chunkCount++;
+
+            sendEvent("chunk", {
+              chunk: delta,
+              progress: chunkCount,
+              partial: fullResponse,
+            });
+          }
+
+          // Send parsing status
+          sendEvent("status", { message: "Processing response..." });
+
+          // Update conversation history
+          const updatedHistory = [
+            ...history,
+            { role: "user", parts: userPrompt },
+            { role: "model", parts: fullResponse },
+          ];
+
+          // Update context
+          sendEvent("status", { message: "Updating context..." });
+          let contextUpdateResult;
+          try {
+            contextUpdateResult = await contextUpdate(
+              updatedHistory,
+              documentId
+            );
+          } catch (error) {
+            console.error("Context update failed:", error);
+            contextUpdateResult = {
+              contextUpdated: false,
+              contextChange: null,
+            };
+          }
+
+          // Handle different response formats based on action mode
+          if (actionMode === "ask") {
+            // For "ask" mode, return the response directly as text
+            sendEvent("result", {
+              result: fullResponse,
+              history: updatedHistory,
+              remainingUses,
+              contextUpdated: contextUpdateResult.contextUpdated,
+              contextChange: contextUpdateResult.contextChange,
+              actionMode: "ask",
+            });
+          } else {
+            // For "edit" mode, use robust parsing
+            const [message, changes] = parseAIResponse(fullResponse);
+
+            sendEvent("result", {
+              result: [message, changes],
+              history: updatedHistory,
+              remainingUses,
+              contextUpdated: contextUpdateResult.contextUpdated,
+              contextChange: contextUpdateResult.contextChange,
+              actionMode: "edit",
+            });
+          }
+
+          // Send completion event
+          sendEvent("complete", { message: "Processing complete" });
+          console.log(
+            `[CHAT] Streaming request completed successfully - Model: ${model}`
+          );
+        } catch (error) {
+          console.error("[CHAT] Error in streaming:", error);
+          sendEvent("error", {
+            error: "Failed to generate content",
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    // Return SSE response
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
   } catch (error) {
-    console.error("Error generating content:", error);
-    return NextResponse.json(
-      { error: "Failed to generate content" },
-      { status: 500 }
+    console.error("Error setting up streaming:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to start streaming" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 }

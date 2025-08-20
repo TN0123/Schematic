@@ -185,6 +185,7 @@ export default function WritePanel({
   setPremiumRemainingUses,
   onModelChange,
   onImproveStart,
+  onChatLoadingChange,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -211,6 +212,7 @@ export default function WritePanel({
   setPremiumRemainingUses: (remainingUses: number) => void;
   onModelChange: (model: ModelType) => void;
   onImproveStart: () => void;
+  onChatLoadingChange?: (loading: boolean) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -221,6 +223,11 @@ export default function WritePanel({
   >([]);
   const [isImproving, setIsImproving] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Notify parent component of loading state changes
+  useEffect(() => {
+    onChatLoadingChange?.(isChatLoading);
+  }, [isChatLoading, onChatLoadingChange]);
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -370,13 +377,105 @@ export default function WritePanel({
     };
   }, []);
 
+  // Helper function to extract streaming message from partial response
+  const extractStreamingMessage = (partialResponse: string): string | null => {
+    try {
+      // Look for the start of the JSON array and first string
+      const arrayStart = partialResponse.indexOf('[');
+      if (arrayStart === -1) return null;
+
+      const firstQuote = partialResponse.indexOf('"', arrayStart);
+      if (firstQuote === -1) return null;
+
+      // Find the end of the message string, handling escaped quotes
+      let messageEnd = firstQuote + 1;
+      let escaped = false;
+      
+      while (messageEnd < partialResponse.length) {
+        const char = partialResponse[messageEnd];
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          // Check if this quote is followed by a comma (end of first element)
+          const nextNonSpace = partialResponse.slice(messageEnd + 1).match(/^\s*,/);
+          if (nextNonSpace) {
+            // This is the end of the first element
+            const message = partialResponse.slice(firstQuote + 1, messageEnd);
+            return message.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+          } else {
+            // This might be the end of the entire message if it's the last element
+            const nextNonSpace2 = partialResponse.slice(messageEnd + 1).match(/^\s*\]/);
+            if (nextNonSpace2) {
+              const message = partialResponse.slice(firstQuote + 1, messageEnd);
+              return message.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+            }
+          }
+        }
+        messageEnd++;
+      }
+
+      // If we haven't found the end, return the partial message so far
+      if (messageEnd > firstQuote + 1) {
+        const partialMessage = partialResponse.slice(firstQuote + 1, messageEnd);
+        return partialMessage.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+      }
+    } catch (error) {
+      // Silent fail for extraction
+    }
+    return null;
+  };
+
+  // Helper function to parse complete response for changes
+  const parseCompleteResponse = (response: string): [string, any] | null => {
+    try {
+      const parsed = JSON.parse(response);
+      if (Array.isArray(parsed) && parsed.length >= 2) {
+        return [parsed[0], parsed[1]];
+      }
+    } catch (error) {
+      // Continue to fallback parsing strategies
+    }
+
+    // Use the same robust parsing from the original function as fallback
+    try {
+      const messageMatch = response.match(/"([^"]+(?:\\"[^"]*)*)",/);
+      const message = messageMatch
+        ? messageMatch[1].replace(/\\"/g, '"')
+        : "AI response could not be parsed properly.";
+
+      const objMatch = response.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        let jsonStr = objMatch[0];
+        jsonStr = jsonStr
+          .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":')
+          .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, (match, content) => {
+            return `: "${content
+              .replace(/\n/g, "\\n")
+              .replace(/\r/g, "\\r")
+              .replace(/\t/g, "\\t")}"`;
+          });
+
+        const changes = JSON.parse(jsonStr);
+        return [message, changes];
+      }
+    } catch (error) {
+      // Continue to final fallback
+    }
+
+    return null;
+  };
+
   // Function to handle streaming responses
   const handleStreamingResponse = async (requestPayload: any) => {
     return new Promise<void>(async (resolve, reject) => {
-      let streamingMessage = "";
+      let fullStreamingResponse = "";
       let assistantMessageId: string | null = null;
+      let currentStreamingMessage = "";
+      let hasShownPreparingState = false;
 
-      // Add a typing indicator instead of streaming message
+      // Add a typing indicator for the message
       const typingMessageObj = {
         message: "",
         role: "assistant" as const,
@@ -386,9 +485,14 @@ export default function WritePanel({
       assistantMessageId = typingMessageObj.id;
       setMessages((prev) => [...prev, typingMessageObj]);
 
+      // Show "preparing changes" state in ChangeHandler for edit mode
+      if (actionMode === "edit") {
+        setChanges({ "!PREPARING!": "Preparing suggested changes..." });
+      }
+
       try {
-        // Make the POST request to the streaming endpoint
-        const response = await fetch("/api/chat/stream", {
+        // Make the POST request to the chat endpoint (now with streaming)
+        const response = await fetch("/api/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -443,34 +547,79 @@ export default function WritePanel({
 
                 // Handle different event types based on the data structure
                 if (data.chunk !== undefined) {
-                  // This is a chunk event - accumulate but don't show to user
-                  streamingMessage += data.chunk;
+                  // Accumulate the full response
+                  fullStreamingResponse += data.chunk;
+                  
+                  // Extract and stream just the message portion
+                  const streamedMessage = extractStreamingMessage(fullStreamingResponse);
+                  
+                  if (streamedMessage && streamedMessage !== currentStreamingMessage) {
+                    currentStreamingMessage = streamedMessage;
+                    
+                    // Update the chat message with streaming content
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId 
+                          ? { ...msg, message: currentStreamingMessage, isTyping: true }
+                          : msg
+                      )
+                    );
+
+                    // Show "preparing changes" after message starts appearing
+                    if (actionMode === "edit" && !hasShownPreparingState && currentStreamingMessage.length > 20) {
+                      setChanges({ "!PREPARING!": "Analyzing content and preparing suggested changes..." });
+                      hasShownPreparingState = true;
+                    }
+                  }
                 } else if (data.result !== undefined) {
-                  // This is the final result
+                  // This is the final result - parse the complete response
                   if (data.remainingUses !== null) {
                     setPremiumRemainingUses(data.remainingUses);
                   }
 
-                  const finalMessage = {
-                    message:
-                      actionMode === "ask" ? data.result : data.result[0],
+                  let finalMessage: string;
+                  let finalChanges: any = {};
+
+                  if (actionMode === "ask") {
+                    finalMessage = data.result;
+                  } else {
+                    // Parse the complete response for changes
+                    const parseResult = parseCompleteResponse(fullStreamingResponse);
+                    if (parseResult) {
+                      [finalMessage, finalChanges] = parseResult;
+                    } else {
+                      // Fallback: try to use the streamed message and server-provided result
+                      finalMessage = currentStreamingMessage || data.result[0] || "AI response was generated successfully.";
+                      finalChanges = data.result[1] || {};
+                      
+                      // If we still don't have changes but have a message, create a gentle fallback
+                      if (Object.keys(finalChanges).length === 0 && finalMessage) {
+                        finalChanges = { "!PARSING_ERROR!": "The AI response was generated but couldn't be processed into editable changes. Please try your request again." };
+                      }
+                    }
+                  }
+
+                  // Update the final message (no longer typing)
+                  const finalMessageObj = {
+                    message: finalMessage,
                     role: "assistant" as const,
                     contextUpdated: data.contextUpdated,
                     contextChange: data.contextChange,
                     id: assistantMessageId,
+                    isTyping: false,
                   };
 
-                  // Replace the typing indicator with the final message
                   setMessages((prev) =>
                     prev.map((msg) =>
-                      msg.id === assistantMessageId ? finalMessage : msg
+                      msg.id === assistantMessageId ? finalMessageObj : msg
                     )
                   );
 
                   setLastRequest(requestPayload);
 
+                  // Apply the final changes for edit mode
                   if (actionMode === "edit") {
-                    setChanges(data.result[1]);
+                    setChanges(finalChanges);
                   }
 
                   setHistory(data.history);
@@ -517,67 +666,8 @@ export default function WritePanel({
     setIsChatLoading(true);
 
     try {
-      // First, try the regular endpoint
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentText: selected || inputText,
-          instructions: `${instructions}`,
-          history,
-          userId,
-          documentId,
-          model: selectedModel,
-          actionMode,
-        }),
-      });
-
-      // Handle different response types
-      if (response.status === 202) {
-        // Server suggests using streaming
-        const data = await response.json();
-        if (data.suggestStreaming) {
-          await handleStreamingResponse(requestPayload);
-          return;
-        }
-      }
-
-      if (response.status === 408) {
-        // Request timeout, automatically switch to streaming
-        const data = await response.json();
-        await handleStreamingResponse(requestPayload);
-        return;
-      }
-
-      if (!response.ok) {
-        const errorState = await parseApiError(response);
-        addToast(errorState.message, "error");
-        return;
-      }
-
-      // Handle regular successful response
-      const data = await response.json();
-      if (data.remainingUses !== null) {
-        setPremiumRemainingUses(data.remainingUses);
-      }
-
-      const assistantMessage = {
-        message: actionMode === "ask" ? data.result : data.result[0],
-        role: "assistant" as const,
-        contextUpdated: data.contextUpdated,
-        contextChange: data.contextChange,
-      };
-      setLastRequest(requestPayload);
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Only apply changes for "edit" mode
-      if (actionMode === "edit") {
-        setChanges(data.result[1]);
-      }
-
-      setHistory(data.history);
+      // Use streaming endpoint (now unified in main chat route)
+      await handleStreamingResponse(requestPayload);
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);

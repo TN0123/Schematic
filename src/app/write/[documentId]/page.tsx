@@ -32,6 +32,7 @@ export default function DocumentEditorPage() {
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const [isSaving, setIsSaving] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const { startNextStep } = useNextStep();
 
   useEffect(() => {
@@ -153,6 +154,7 @@ export default function DocumentEditorPage() {
           onSaveDocument={handleSaveDocument}
           isSaving={isSaving}
           isImproving={isImproving}
+          isChatLoading={isChatLoading}
         />
       </div>
       <WritePanel
@@ -170,6 +172,7 @@ export default function DocumentEditorPage() {
           setIsImproving(true);
           setSelected("");
         }}
+        onChatLoadingChange={setIsChatLoading}
       />
     </div>
   );

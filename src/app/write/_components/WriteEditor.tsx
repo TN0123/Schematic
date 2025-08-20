@@ -59,6 +59,7 @@ export default function WriteEditor({
   onSaveDocument,
   isSaving,
   isImproving,
+  isChatLoading,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -72,6 +73,7 @@ export default function WriteEditor({
   onSaveDocument: () => void;
   isSaving: boolean;
   isImproving: boolean;
+  isChatLoading?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
@@ -942,6 +944,7 @@ export default function WriteEditor({
             acceptAllChanges={acceptAllChanges}
             rejectAllChanges={rejectAllChanges}
             setActiveHighlight={setActiveHighlight}
+            isStreaming={isChatLoading || false}
           />
         </div>
       </div>
