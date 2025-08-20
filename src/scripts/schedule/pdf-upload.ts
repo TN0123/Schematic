@@ -4,7 +4,7 @@ export async function pdfUpload(arrayBuffer: ArrayBuffer) {
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const genAI = new GoogleGenerativeAI(geminiKey!);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const currentDate = new Date().toISOString().split("T")[0];
 

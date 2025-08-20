@@ -96,7 +96,7 @@ export async function POST(request: Request) {
             technicalInfo: {
               endpoint: "/api/bulletins/refactor-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
             },
           },
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Prepare current structure info for the AI
     const currentStructureInfo = {
@@ -284,7 +284,7 @@ Generate the refactored schema and data mapping now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/refactor-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: [
                 `Parse error: ${
@@ -331,7 +331,7 @@ Generate the refactored schema and data mapping now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/refactor-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: [
                 `Missing required fields: ${missingFields.join(", ")}`,
@@ -377,7 +377,7 @@ Generate the refactored schema and data mapping now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/refactor-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors: ["Component array is empty or invalid"],
             },
@@ -497,7 +497,7 @@ Generate the refactored schema and data mapping now:`;
             technicalInfo: {
               endpoint: "/api/bulletins/refactor-dynamic",
               requestId,
-              aiModel: "gemini-2.0-flash",
+              aiModel: "gemini-2.5-flash",
               timestamp: new Date().toISOString(),
               validationErrors,
             },
@@ -572,7 +572,7 @@ Generate the refactored schema and data mapping now:`;
               technicalInfo: {
                 endpoint: "/api/bulletins/refactor-dynamic",
                 requestId,
-                aiModel: "gemini-2.0-flash",
+                aiModel: "gemini-2.5-flash",
                 timestamp: new Date().toISOString(),
                 validationErrors: layoutValidationErrors,
               },
@@ -606,7 +606,7 @@ Generate the refactored schema and data mapping now:`;
           technicalInfo: {
             endpoint: "/api/bulletins/refactor-dynamic",
             requestId,
-            aiModel: "gemini-2.0-flash",
+            aiModel: "gemini-2.5-flash",
             timestamp: new Date().toISOString(),
             validationErrors: [
               error instanceof Error ? error.message : "Unknown error",

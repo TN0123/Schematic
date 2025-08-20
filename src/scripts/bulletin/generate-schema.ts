@@ -8,7 +8,7 @@ export async function generateDynamicSchema(description: string) {
   }
 
   const genAI = new GoogleGenerativeAI(geminiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `
 You are an expert UI designer that creates structured note schemas based on user descriptions. 

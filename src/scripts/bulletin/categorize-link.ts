@@ -1,14 +1,14 @@
 import { LinkPreview } from "@/app/bulletin/_components/BulletinLinkCollection";
 
 export async function categorizeLink(categories: string[], link: LinkPreview) {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-    require("dotenv").config();
-    const geminiKey = process.env.GEMINI_API_KEY;
-  
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  
-    const prompt = `
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  require("dotenv").config();
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  const genAI = new GoogleGenerativeAI(geminiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const prompt = `
     
     You will be given a link and a list of categories, your job is to determine which category
     is most relevant to the link. If none of the categories are relevant, create a new category
@@ -22,11 +22,10 @@ export async function categorizeLink(categories: string[], link: LinkPreview) {
     Never make the category "Uncategorized".
     
     `;
-  
-    const result = await model.generateContent(prompt);
-  
-    // console.log("Prompt: ", prompt);
-  
-    return result.response.text();
-  }
-  
+
+  const result = await model.generateContent(prompt);
+
+  // console.log("Prompt: ", prompt);
+
+  return result.response.text();
+}

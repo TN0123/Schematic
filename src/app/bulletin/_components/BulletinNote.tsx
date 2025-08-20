@@ -341,70 +341,68 @@ export default function BulletinNote({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="h-full flex flex-col">
-        <div className="flex justify-between items-start mb-4 px-4 pt-4">
-          <div className="flex items-center w-full gap-3">
-            <NotepadText className="h-8 w-8 text-green-500 flex-shrink-0" />
-            <div className="flex flex-col w-full">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  const newTitle = e.target.value;
-                  setTitle(newTitle);
-                  setHasUnsavedChanges(true);
+    <div className="w-full h-full dark:bg-dark-background transition-all flex flex-col">
+      <div className="flex justify-between items-start mb-4 px-4 pt-4 flex-shrink-0">
+        <div className="flex items-center w-full gap-3">
+          <NotepadText className="h-8 w-8 text-green-500 flex-shrink-0" />
+          <div className="flex flex-col w-full">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                const newTitle = e.target.value;
+                setTitle(newTitle);
+                setHasUnsavedChanges(true);
 
-                  // Trigger debounced save for title
-                  debouncedSaveTitle(newTitle);
-                }}
-                className="font-semibold text-xl text-left w-full focus:outline-none border-none bg-transparent dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500"
-                placeholder="Untitled"
-              />
-              <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
-              </div>
+                // Trigger debounced save for title
+                debouncedSaveTitle(newTitle);
+              }}
+              className="font-semibold text-xl text-left w-full focus:outline-none border-none bg-transparent dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500"
+              placeholder="Untitled"
+            />
+            <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
             </div>
           </div>
-          <div className="flex items-center gap-2 pt-2 flex-shrink-0">
-            {isAutoSaving && (
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            )}
-            {hasUnsavedChanges && !isAutoSaving && (
-              <button
-                onClick={handleSave}
-                disabled={isSaving || externalIsSaving}
-                className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Save changes"
-              >
-                {isSaving || externalIsSaving ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Save className="h-5 w-5" />
-                )}
-              </button>
-            )}
+        </div>
+        <div className="flex items-center gap-2 pt-2 flex-shrink-0">
+          {isAutoSaving && (
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          )}
+          {hasUnsavedChanges && !isAutoSaving && (
             <button
-              onClick={onDelete}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:text-dark-textPrimary dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
-              aria-label="Delete list"
+              onClick={handleSave}
+              disabled={isSaving || externalIsSaving}
+              className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Save changes"
             >
-              <Trash2 className="h-5 w-5" />
+              {isSaving || externalIsSaving ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Save className="h-5 w-5" />
+              )}
             </button>
-          </div>
+          )}
+          <button
+            onClick={onDelete}
+            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 dark:text-dark-textPrimary dark:hover:bg-red-900/50 dark:hover:text-red-500 rounded-lg transition-all"
+            aria-label="Delete list"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
         </div>
-        <div className="relative rounded-lg flex-grow flex flex-col dark:border-dark-divider">
-          <MenuBar />
-          <EditorContent
-            editor={editor}
-            className="prose max-w-none focus:outline-none flex-grow overflow-y-auto max-h-[550px] dark:prose-invert p-3"
-            style={
-              {
-                "--list-style": "initial",
-              } as React.CSSProperties
-            }
-          />
-        </div>
+      </div>
+      <div className="relative rounded-lg flex-1 flex flex-col dark:border-dark-divider min-h-0">
+        <MenuBar />
+        <EditorContent
+          editor={editor}
+          className="prose max-w-none focus:outline-none flex-1 overflow-y-auto dark:prose-invert p-3 min-h-0"
+          style={
+            {
+              "--list-style": "initial",
+            } as React.CSSProperties
+          }
+        />
       </div>
     </div>
   );

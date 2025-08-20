@@ -2,14 +2,15 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function chat(
+export async function chatStream(
   currentText: string,
   instructions: string,
   history: any[],
   documentId: any,
   userId?: string,
   selectedModel: "basic" | "premium" = "premium",
-  actionMode: "ask" | "edit" = "edit"
+  actionMode: "ask" | "edit" = "edit",
+  onProgress?: (chunk: string) => void
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
@@ -105,9 +106,13 @@ export async function chat(
       });
 
       if (user && user.premiumRemainingUses > 0) {
-        console.log("using premium model");
         const { OpenAI } = require("openai");
         const openAIAPIKey = process.env.OPENAI_API_KEY;
+
+        if (!openAIAPIKey) {
+          throw new Error("OpenAI API key not configured");
+        }
+
         const client = new OpenAI({ apiKey: openAIAPIKey });
 
         // Decrement usage
@@ -123,38 +128,60 @@ export async function chat(
           },
         });
 
-        const response = await client.responses.create({
-          model: "gpt-4.1",
-          input:
-            systemPrompt +
-            "\n\n" +
-            userPrompt +
-            "\n\n Here is the conversation history: \n" +
-            JSON.stringify(history),
+        // Use OpenAI streaming API
+        const stream = await client.chat.completions.create({
+          model: "gpt-4-1106-preview",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            ...history.map((entry) => ({
+              role: entry.role,
+              content: entry.parts,
+            })),
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+          stream: true,
         });
+
+        let fullResponse = "";
+
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || "";
+          if (content) {
+            fullResponse += content;
+            if (onProgress) {
+              onProgress(content);
+            }
+          }
+        }
 
         const updatedHistory = [
           ...history,
           { role: "user", parts: userPrompt },
-          { role: "model", parts: response.output_text },
+          { role: "model", parts: fullResponse },
         ];
 
         return {
-          response: response.output_text,
+          response: fullResponse,
           updatedHistory,
           remainingUses: updatedUser.premiumRemainingUses,
         };
       }
     } catch (error) {
-      console.error("Error checking/using premium model:", error);
+      console.error("Error with premium streaming model:", error);
       // Continue to Gemini API as fallback
     }
   }
 
-  // Use Gemini if:
+  // Use Gemini streaming if:
   // 1. Model is set to "basic"
   // 2. Model is "premium" but user has no premium uses
-  console.log("using basic model");
+  // 3. Premium model failed for any reason
   const genAI = new GoogleGenerativeAI(geminiKey);
   const geminiModel = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
@@ -176,14 +203,25 @@ export async function chat(
     ],
   });
 
-  const result = await chatSession.sendMessage(userPrompt);
-  const response = await result.response.text();
+  // Use Gemini's streaming
+  const result = await chatSession.sendMessageStream(userPrompt);
+  let fullResponse = "";
+
+  for await (const chunk of result.stream) {
+    const chunkText = chunk.text();
+    if (chunkText) {
+      fullResponse += chunkText;
+      if (onProgress) {
+        onProgress(chunkText);
+      }
+    }
+  }
 
   const updatedHistory = [
     ...formattedHistory,
     { role: "user", parts: [{ text: userPrompt }] },
-    { role: "model", parts: [{ text: response }] },
+    { role: "model", parts: [{ text: fullResponse }] },
   ];
 
-  return { response, updatedHistory, remainingUses: null };
+  return { response: fullResponse, updatedHistory, remainingUses: null };
 }

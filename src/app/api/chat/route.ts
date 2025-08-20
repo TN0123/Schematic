@@ -122,6 +122,34 @@ function parseAIResponse(response: string): [string, any] {
   ];
 }
 
+// Helper function to estimate if a query might be long-running
+function isLikelyLongQuery(instructions: string, currentText: string): boolean {
+  const instructionLength = instructions.length;
+  const textLength = currentText.length;
+
+  // Consider long if:
+  // - Instructions are very detailed (>500 chars)
+  // - Working with large text (>5000 chars)
+  // - Contains keywords that suggest complex operations
+  const complexKeywords = [
+    "rewrite",
+    "comprehensive",
+    "detailed analysis",
+    "complete",
+    "thorough",
+    "extensive",
+    "full report",
+    "deep dive",
+    "elaborate",
+  ];
+
+  const hasComplexKeywords = complexKeywords.some((keyword) =>
+    instructions.toLowerCase().includes(keyword)
+  );
+
+  return instructionLength > 500 || textLength > 5000 || hasComplexKeywords;
+}
+
 export async function POST(req: Request) {
   try {
     const {
@@ -132,9 +160,51 @@ export async function POST(req: Request) {
       documentId,
       model = "basic",
       actionMode = "edit",
+      forceSync = false, // New parameter to force synchronous processing
     } = await req.json();
 
-    const { response, updatedHistory, remainingUses } = await chat(
+    console.log(
+      `[CHAT] Request received - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
+        0,
+        8
+      )}...`
+    );
+
+    // Check if this query should use streaming
+    // Always use streaming for premium model (OpenAI) or for complex queries
+    const shouldUseStreaming =
+      !forceSync &&
+      (model === "premium" || isLikelyLongQuery(instructions, currentText));
+
+    if (shouldUseStreaming) {
+      const reason = model === "premium" ? "premium model" : "complex query";
+      console.log(
+        `[CHAT] Redirecting to streaming endpoint - Reason: ${reason}`
+      );
+
+      const message =
+        model === "premium"
+          ? "Using streaming for premium model to ensure optimal performance."
+          : "This query appears complex and may take longer than usual. Consider using the streaming endpoint for better performance.";
+
+      return NextResponse.json(
+        {
+          suggestStreaming: true,
+          message,
+          streamEndpoint: "/api/chat/stream",
+        },
+        { status: 202 } // 202 Accepted but suggesting alternative
+      );
+    }
+
+    console.log(`[CHAT] Processing synchronously - Model: ${model}`);
+
+    // Add timeout protection (8 seconds to leave buffer for Vercel's 10s limit)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Request timeout")), 8000);
+    });
+
+    const chatPromise = chat(
       currentText,
       instructions,
       history,
@@ -144,7 +214,44 @@ export async function POST(req: Request) {
       actionMode
     );
 
+    let result: {
+      response: string;
+      updatedHistory: any[];
+      remainingUses: number | null;
+    };
+    try {
+      result = (await Promise.race([chatPromise, timeoutPromise])) as {
+        response: string;
+        updatedHistory: any[];
+        remainingUses: number | null;
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message === "Request timeout") {
+        console.log(
+          `[CHAT] Request timed out - Redirecting to streaming endpoint`
+        );
+        return NextResponse.json(
+          {
+            timeout: true,
+            message:
+              "The request is taking longer than expected. Please use the streaming endpoint for complex queries.",
+            streamEndpoint: "/api/chat/stream",
+            suggestion:
+              "Try using the streaming version of this endpoint for better handling of long-running requests.",
+          },
+          { status: 408 } // 408 Request Timeout
+        );
+      }
+      throw error; // Re-throw other errors
+    }
+
+    const { response, updatedHistory, remainingUses } = result;
+
     const contextUpdateResult = await contextUpdate(updatedHistory, documentId);
+
+    console.log(
+      `[CHAT] Synchronous request completed successfully - Model: ${model}, Remaining uses: ${remainingUses}`
+    );
 
     // Handle different response formats based on action mode
     if (actionMode === "ask") {
