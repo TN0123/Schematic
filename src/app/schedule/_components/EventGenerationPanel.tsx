@@ -373,7 +373,7 @@ export default function EventGenerationPanel({
               </button>
             </div>
 
-            <div className="flex flex-col gap-2 overflow-y-auto px-2">
+            <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">
               {/* Generation Result Summary */}
               <AnimatePresence>
                 {generationResult && (
@@ -495,7 +495,7 @@ export default function EventGenerationPanel({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="flex flex-col gap-2 mt-4"
+                    className="flex flex-col gap-2 mt-4 flex-1"
                   >
                     <div className="text-center">
                       <p className="text-lg text-gray-500 font-bold dark:text-dark-textSecondary">
@@ -519,7 +519,7 @@ export default function EventGenerationPanel({
                         />
                       </div>
                     ) : (
-                      <div className="text-sm text-gray-500 px-2 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line max-h-64 overflow-y-auto">
+                      <div className="text-sm text-gray-500 px-2 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line flex-1 overflow-y-auto">
                         <span>{eventList}</span>
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
