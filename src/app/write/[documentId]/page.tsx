@@ -66,6 +66,21 @@ export default function DocumentEditorPage() {
   }, []);
 
   useEffect(() => {
+    async function fetchPremiumUsage() {
+      try {
+        const res = await fetch("/api/user/premium-usage");
+        if (res.ok) {
+          const data = await res.json();
+          setPremiumRemainingUses(data.remainingUses);
+        }
+      } catch (error) {
+        console.error("Failed to fetch premium usage:", error);
+      }
+    }
+    fetchPremiumUsage();
+  }, []);
+
+  useEffect(() => {
     async function fetchDocument() {
       if (!documentId) return;
       try {
