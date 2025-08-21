@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import { TransitionLink } from "./utils/TransitionLink";
 import { useSearch } from "./SearchProvider";
+import { useModifierKeyLabel } from "@/components/utils/platform";
 
 export default function Navigation() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { openSearch } = useSearch();
+  const modKeyLabel = useModifierKeyLabel();
 
   // Don't show navigation on login page
   if (pathname === "/auth/login") return null;
@@ -63,7 +65,7 @@ export default function Navigation() {
         <button
           onClick={openSearch}
           className="p-2 rounded-lg transition-colors duration-200 text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover mb-6"
-          title="Search (Ctrl+P)"
+          title={`Search (${modKeyLabel}+P)`}
         >
           <Search className="w-6 h-6" />
         </button>

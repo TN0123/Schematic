@@ -21,6 +21,7 @@ import {
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
+import { useModifierKeyLabel } from "@/components/utils/platform";
 
 export type ChangeMap = Record<string, string>;
 
@@ -75,6 +76,7 @@ export default function WriteEditor({
   isImproving: boolean;
   isChatLoading?: boolean;
 }) {
+  const modKeyLabel = useModifierKeyLabel();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -804,7 +806,7 @@ export default function WriteEditor({
                   }}
                 >
                   <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
-                    Ctrl
+                    {modKeyLabel}
                   </kbd>
                   <span>+</span>
                   <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
@@ -830,7 +832,7 @@ export default function WriteEditor({
                         <Info className="w-3 h-3 cursor-help" />
                         Premium model uses remaining: {premiumRemainingUses}
                         <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                          The premium model is used for both Ctrl+Enter
+                          The premium model is used for both {modKeyLabel}+Enter
                           generation and AI sidebar suggestions. If you have 0
                           premium uses left, the system will automatically
                           switch to the default model.

@@ -1,11 +1,26 @@
 "use client";
 
 import { NextStep } from "nextstepjs";
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { steps } from "@/lib/nextstep-steps";
 import CustomCard from "@/components/OnboardingCard";
+import { useModifierKeyLabel } from "@/components/utils/platform";
 
 export default function NextStepWrapper({ children }: { children: ReactNode }) {
+  const modKeyLabel = useModifierKeyLabel();
+
+  const resolvedSteps = useMemo(() => {
+    return steps.map((tour) => ({
+      ...tour,
+      steps: tour.steps.map((s) => ({
+        ...s,
+        content:
+          typeof s.content === "string"
+            ? s.content.replace(/Ctrl\+/g, `${modKeyLabel}+`)
+            : s.content,
+      })),
+    }));
+  }, [modKeyLabel]);
   const handleTourComplete = async (tourName: string | null) => {
     if (!tourName) return;
 
@@ -34,7 +49,7 @@ export default function NextStepWrapper({ children }: { children: ReactNode }) {
 
   return (
     <NextStep
-      steps={steps}
+      steps={resolvedSteps}
       onComplete={handleTourComplete}
       onSkip={handleTourSkip}
       cardComponent={CustomCard}

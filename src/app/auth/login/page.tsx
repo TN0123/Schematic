@@ -2,12 +2,14 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { useState } from "react";
+import { useModifierKeyLabel } from "@/components/utils/platform";
 import { Calendar, ClipboardList, PenLine, Check } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { data: session, status } = useSession();
+  const modKeyLabel = useModifierKeyLabel();
 
   if (status === "authenticated") {
     redirect("/");
@@ -34,8 +36,8 @@ export default function Login() {
       highlights: [
         "AI chat sidebar with document-level context that dynamically learns what you're writing about",
         "Select any text as context for AI queries",
-        "Instant AI continuation with Ctrl+Enter in your writing style",
-        "Smart text improvements with Ctrl+I over highlighted text",
+        `Instant AI continuation with ${modKeyLabel}+Enter in your writing style`,
+        `Smart text improvements with ${modKeyLabel}+I over highlighted text`,
       ],
     },
     {

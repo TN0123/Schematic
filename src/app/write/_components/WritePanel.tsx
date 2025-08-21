@@ -12,6 +12,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
+import { useModifierKeyLabel } from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
 
 export type ModelType = "basic" | "premium";
@@ -216,6 +217,7 @@ export default function WritePanel({
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
+  const modKeyLabel = useModifierKeyLabel();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [history, setHistory] = useState<
@@ -381,7 +383,7 @@ export default function WritePanel({
   const extractStreamingMessage = (partialResponse: string): string | null => {
     try {
       // Look for the start of the JSON array and first string
-      const arrayStart = partialResponse.indexOf('[');
+      const arrayStart = partialResponse.indexOf("[");
       if (arrayStart === -1) return null;
 
       const firstQuote = partialResponse.indexOf('"', arrayStart);
@@ -390,26 +392,30 @@ export default function WritePanel({
       // Find the end of the message string, handling escaped quotes
       let messageEnd = firstQuote + 1;
       let escaped = false;
-      
+
       while (messageEnd < partialResponse.length) {
         const char = partialResponse[messageEnd];
         if (escaped) {
           escaped = false;
-        } else if (char === '\\') {
+        } else if (char === "\\") {
           escaped = true;
         } else if (char === '"') {
           // Check if this quote is followed by a comma (end of first element)
-          const nextNonSpace = partialResponse.slice(messageEnd + 1).match(/^\s*,/);
+          const nextNonSpace = partialResponse
+            .slice(messageEnd + 1)
+            .match(/^\s*,/);
           if (nextNonSpace) {
             // This is the end of the first element
             const message = partialResponse.slice(firstQuote + 1, messageEnd);
-            return message.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+            return message.replace(/\\"/g, '"').replace(/\\n/g, "\n");
           } else {
             // This might be the end of the entire message if it's the last element
-            const nextNonSpace2 = partialResponse.slice(messageEnd + 1).match(/^\s*\]/);
+            const nextNonSpace2 = partialResponse
+              .slice(messageEnd + 1)
+              .match(/^\s*\]/);
             if (nextNonSpace2) {
               const message = partialResponse.slice(firstQuote + 1, messageEnd);
-              return message.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+              return message.replace(/\\"/g, '"').replace(/\\n/g, "\n");
             }
           }
         }
@@ -418,8 +424,11 @@ export default function WritePanel({
 
       // If we haven't found the end, return the partial message so far
       if (messageEnd > firstQuote + 1) {
-        const partialMessage = partialResponse.slice(firstQuote + 1, messageEnd);
-        return partialMessage.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+        const partialMessage = partialResponse.slice(
+          firstQuote + 1,
+          messageEnd
+        );
+        return partialMessage.replace(/\\"/g, '"').replace(/\\n/g, "\n");
       }
     } catch (error) {
       // Silent fail for extraction
@@ -549,25 +558,41 @@ export default function WritePanel({
                 if (data.chunk !== undefined) {
                   // Accumulate the full response
                   fullStreamingResponse += data.chunk;
-                  
+
                   // Extract and stream just the message portion
-                  const streamedMessage = extractStreamingMessage(fullStreamingResponse);
-                  
-                  if (streamedMessage && streamedMessage !== currentStreamingMessage) {
+                  const streamedMessage = extractStreamingMessage(
+                    fullStreamingResponse
+                  );
+
+                  if (
+                    streamedMessage &&
+                    streamedMessage !== currentStreamingMessage
+                  ) {
                     currentStreamingMessage = streamedMessage;
-                    
+
                     // Update the chat message with streaming content
                     setMessages((prev) =>
                       prev.map((msg) =>
-                        msg.id === assistantMessageId 
-                          ? { ...msg, message: currentStreamingMessage, isTyping: true }
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              message: currentStreamingMessage,
+                              isTyping: true,
+                            }
                           : msg
                       )
                     );
 
                     // Show "preparing changes" after message starts appearing
-                    if (actionMode === "edit" && !hasShownPreparingState && currentStreamingMessage.length > 20) {
-                      setChanges({ "!PREPARING!": "Analyzing content and preparing suggested changes..." });
+                    if (
+                      actionMode === "edit" &&
+                      !hasShownPreparingState &&
+                      currentStreamingMessage.length > 20
+                    ) {
+                      setChanges({
+                        "!PREPARING!":
+                          "Analyzing content and preparing suggested changes...",
+                      });
                       hasShownPreparingState = true;
                     }
                   }
@@ -584,17 +609,28 @@ export default function WritePanel({
                     finalMessage = data.result;
                   } else {
                     // Parse the complete response for changes
-                    const parseResult = parseCompleteResponse(fullStreamingResponse);
+                    const parseResult = parseCompleteResponse(
+                      fullStreamingResponse
+                    );
                     if (parseResult) {
                       [finalMessage, finalChanges] = parseResult;
                     } else {
                       // Fallback: try to use the streamed message and server-provided result
-                      finalMessage = currentStreamingMessage || data.result[0] || "AI response was generated successfully.";
+                      finalMessage =
+                        currentStreamingMessage ||
+                        data.result[0] ||
+                        "AI response was generated successfully.";
                       finalChanges = data.result[1] || {};
-                      
+
                       // If we still don't have changes but have a message, create a gentle fallback
-                      if (Object.keys(finalChanges).length === 0 && finalMessage) {
-                        finalChanges = { "!PARSING_ERROR!": "The AI response was generated but couldn't be processed into editable changes. Please try your request again." };
+                      if (
+                        Object.keys(finalChanges).length === 0 &&
+                        finalMessage
+                      ) {
+                        finalChanges = {
+                          "!PARSING_ERROR!":
+                            "The AI response was generated but couldn't be processed into editable changes. Please try your request again.",
+                        };
                       }
                     }
                   }
@@ -903,7 +939,7 @@ export default function WritePanel({
               </h2>
               <p className="text-xs text-center mt-1">
                 <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                  ctrl
+                  {modKeyLabel.toLowerCase()}
                 </kbd>{" "}
                 +{" "}
                 <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
