@@ -33,15 +33,12 @@ async function getCalendarEvents(
     let startUTC: Date;
     let endUTC: Date;
 
-    // Create proper day boundaries - start of day to end of day
-    // Since the AI now provides timezone-aware dates, we can use them directly
     startUTC = new Date(`${startDate}T00:00:00.000Z`);
     endUTC = new Date(`${endDate}T23:59:59.999Z`);
 
     const events = await prisma.event.findMany({
       where: {
         userId,
-        // Events that start before end of period AND end after start of period
         start: {
           lte: endUTC,
         },
@@ -72,6 +69,7 @@ export async function scheduleChat(
   let context = "";
   let goals: { title: string; type: string }[] = [];
   let events: { title: string; start: Date; end: Date }[] = [];
+  let recentNotes: { title: string; content: string }[] = [];
 
   // Calculate dates in user's timezone
   const now = new Date();
@@ -115,6 +113,14 @@ export async function scheduleChat(
         },
         select: { title: true, start: true, end: true },
       });
+
+      // Get user's 5 most recent notes from bulletin
+      recentNotes = await prisma.bulletin.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        select: { title: true, content: true },
+      });
     } catch (e) {
       console.error("Could not find user to get schedule context");
     }
@@ -140,6 +146,11 @@ ${events
     const end = new Date(event.end).toLocaleTimeString("en-US", options);
     return `- ${event.title}: ${start} - ${end}`;
   })
+  .join("\n")}
+
+Recent notes from the user's bulletin:
+${recentNotes
+  .map((note) => `- ${note.title}: ${note.content.substring(0, 200)}${note.content.length > 200 ? "..." : ""}`)
   .join("\n")}
 
 FUNCTION CALLING RULES:
