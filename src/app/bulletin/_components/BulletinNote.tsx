@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { isPrimaryModifierPressed } from "@/components/utils/platform";
 import {
   Trash2,
   Bold,
@@ -303,7 +304,7 @@ export default function BulletinNote({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "s") {
+      if (isPrimaryModifierPressed(event) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         handleSave();
         console.log("item saved");

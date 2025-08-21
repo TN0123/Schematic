@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, forwardRef } from "react";
+import { isPrimaryModifierPressed } from "@/components/utils/platform";
 import {
   Trash2,
   Link as LinkIcon,
@@ -947,7 +948,7 @@ export default function BulletinLinkCollection({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "s") {
+      if (isPrimaryModifierPressed(event) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         handleSave();
       }

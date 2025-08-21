@@ -21,7 +21,7 @@ import {
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
-import { useModifierKeyLabel } from "@/components/utils/platform";
+import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/utils/platform";
 
 export type ChangeMap = Record<string, string>;
 
@@ -447,7 +447,7 @@ export default function WriteEditor({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "Enter") {
+      if (isPrimaryModifierPressed(event) && event.key === "Enter") {
         event.preventDefault();
         handleContinue();
       }

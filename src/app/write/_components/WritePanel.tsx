@@ -12,7 +12,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
-import { useModifierKeyLabel } from "@/components/utils/platform";
+import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
 
 export type ModelType = "basic" | "premium";
@@ -870,7 +870,7 @@ export default function WritePanel({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "i") {
+      if (isPrimaryModifierPressed(event) && event.key.toLowerCase() === "i") {
         event.preventDefault();
         handleImprove();
       }

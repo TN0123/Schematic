@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { isPrimaryModifierPressed } from "@/components/utils/platform";
 import {
   Plus,
   X,
@@ -114,7 +115,7 @@ export default function BulletinTodo({
 
   const handleKeyPress = useCallback(
     (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === "s") {
+      if (isPrimaryModifierPressed(event) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         if (hasUnsavedChanges) {
           handleSave();

@@ -16,4 +16,17 @@ export function useModifierKeyLabel(): "Cmd" | "Ctrl" {
   return label;
 }
 
+// Runtime platform detection helpers
+export function isMacPlatform(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || navigator.vendor || "";
+  const platform = (navigator as any).userAgentData?.platform || navigator.platform || "";
+  return /Mac|Macintosh|Mac OS/i.test(ua) || /Mac/i.test(platform);
+}
+
+// Checks if the primary modifier is pressed for the current platform
+export function isPrimaryModifierPressed(event: KeyboardEvent): boolean {
+  return isMacPlatform() ? event.metaKey === true : event.ctrlKey === true;
+}
+
 

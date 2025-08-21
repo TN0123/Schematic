@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isPrimaryModifierPressed } from "./platform";
 
 interface KeyboardShortcutOptions {
   key: string;
@@ -8,6 +9,8 @@ interface KeyboardShortcutOptions {
   altKey?: boolean;
   preventDefault?: boolean;
   target?: EventTarget | null;
+  // When true, uses Cmd on macOS and Ctrl on Windows/Linux
+  primaryKey?: boolean;
 }
 
 export function useKeyboardShortcut(
@@ -24,12 +27,15 @@ export function useKeyboardShortcut(
         shiftKey = false,
         altKey = false,
         preventDefault = true,
+        primaryKey = false,
       } = options;
 
       // Check if the key combination matches
       const keyMatches = event.key.toLowerCase() === key.toLowerCase();
-      const ctrlMatches = event.ctrlKey === ctrlKey;
-      const metaMatches = event.metaKey === metaKey;
+      const ctrlMatches = primaryKey
+        ? isPrimaryModifierPressed(event)
+        : event.ctrlKey === ctrlKey;
+      const metaMatches = primaryKey ? true : event.metaKey === metaKey;
       const shiftMatches = event.shiftKey === shiftKey;
       const altMatches = event.altKey === altKey;
 
@@ -59,6 +65,7 @@ export function useKeyboardShortcut(
     options.metaKey,
     options.shiftKey,
     options.altKey,
+    options.primaryKey,
     callback,
     ...dependencies,
   ]);
@@ -66,7 +73,7 @@ export function useKeyboardShortcut(
 
 // Predefined shortcuts
 export const useSearchShortcut = (callback: () => void) => {
-  useKeyboardShortcut({ key: "k", ctrlKey: true, metaKey: true }, callback);
+  useKeyboardShortcut({ key: "k", primaryKey: true }, callback);
 };
 
 export const useEscapeShortcut = (callback: () => void) => {
