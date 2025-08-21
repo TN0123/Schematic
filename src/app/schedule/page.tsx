@@ -61,7 +61,8 @@ export default function CalendarApp() {
   const [hasUserClosedReminders, setHasUserClosedReminders] = useState(false);
 
   const { startNextStep } = useNextStep();
-  const calendarRef = useRef<FullCalendar>(null);
+  const desktopCalendarRef = useRef<FullCalendar>(null);
+  const mobileCalendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   // Handle reminders UI state logic
@@ -276,6 +277,41 @@ export default function CalendarApp() {
   // Enhanced keyboard handlers
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle view switching when not typing in an input-like element
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isContentEditable = !!target && (target as HTMLElement).isContentEditable;
+      const role = target?.getAttribute?.("role");
+      const isTextInputFocused =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        isContentEditable ||
+        role === "textbox";
+
+      // Single-key shortcuts: m (month), w (week), d (day)
+      if (!isTextInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        const key = e.key.toLowerCase();
+        if (key === "m") {
+          e.preventDefault();
+          desktopCalendarRef.current?.getApi().changeView("dayGridMonth");
+          mobileCalendarRef.current?.getApi().changeView("dayGridMonth");
+          return;
+        }
+        if (key === "w") {
+          e.preventDefault();
+          desktopCalendarRef.current?.getApi().changeView("timeGridWeek");
+          mobileCalendarRef.current?.getApi().changeView("timeGridWeek");
+          return;
+        }
+        if (key === "d") {
+          e.preventDefault();
+          desktopCalendarRef.current?.getApi().changeView("timeGridDay");
+          mobileCalendarRef.current?.getApi().changeView("timeGridDay");
+          return;
+        }
+      }
+
       if (e.key === "Backspace" && calendarState.selectedEventIds.size > 0) {
         calendarState.handleBackspaceDelete();
       } else if (
@@ -354,9 +390,10 @@ export default function CalendarApp() {
     if (!calendarContainerRef.current) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      if (calendarRef.current) {
+      if (desktopCalendarRef.current || mobileCalendarRef.current) {
         const timeoutId = setTimeout(() => {
-          calendarRef.current?.getApi().updateSize();
+          desktopCalendarRef.current?.getApi().updateSize();
+          mobileCalendarRef.current?.getApi().updateSize();
         }, 50);
         return () => clearTimeout(timeoutId);
       }
@@ -443,7 +480,7 @@ export default function CalendarApp() {
               }}
             >
               <CalendarComponent
-                ref={calendarRef}
+                ref={desktopCalendarRef}
                 events={calendarData.events}
                 onEventClick={calendarState.handleEventClick}
                 onEventUpdate={calendarState.handleEventUpdate}
@@ -537,7 +574,7 @@ export default function CalendarApp() {
               }}
             >
               <CalendarComponent
-                ref={calendarRef}
+                ref={mobileCalendarRef}
                 events={calendarData.events}
                 onEventClick={calendarState.handleEventClick}
                 onEventUpdate={calendarState.handleEventUpdate}
