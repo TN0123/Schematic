@@ -233,6 +233,7 @@ export default function WritePanel({
   const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const wasPremiumDisabledRef = useRef(false);
   const [contextDiffModal, setContextDiffModal] = useState<{
     isOpen: boolean;
     before: string;
@@ -326,6 +327,23 @@ export default function WritePanel({
   useEffect(() => {
     onModelChange(selectedModel);
   }, [selectedModel, onModelChange]);
+
+  // Auto-switch to basic model when premium uses run out
+  useEffect(() => {
+    if (premiumRemainingUses === 0 && selectedModel === "premium") {
+      setSelectedModel("basic");
+      wasPremiumDisabledRef.current = true;
+      addToast("Premium uses exhausted - automatically switched to basic model", "warning");
+    }
+  }, [premiumRemainingUses, selectedModel]);
+
+  // Notify when premium uses become available again
+  useEffect(() => {
+    if (premiumRemainingUses !== null && premiumRemainingUses > 0 && wasPremiumDisabledRef.current) {
+      wasPremiumDisabledRef.current = false;
+      addToast("Premium model is now available again!", "success");
+    }
+  }, [premiumRemainingUses]);
 
   const scrollToBottom = useCallback(() => {
     // Use requestAnimationFrame to ensure DOM has updated and scroll at the right time
@@ -1073,7 +1091,7 @@ export default function WritePanel({
                 />
               </button>
               <div className="relative group">
-                <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48">
+                <div className="absolute top-full left-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48 pointer-events-none">
                   Chat messages are temporary and won't be saved. Instead,
                   document context is maintained and used to help the AI produce
                   better outputs.
@@ -1086,15 +1104,45 @@ export default function WritePanel({
                 </button>
               </div>
             </div>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value as ModelType)}
-              className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
-              disabled={isChatLoading}
-            >
-              <option value="basic">Basic</option>
-              <option value="premium">Premium</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedModel}
+                onChange={(e) => {
+                  const newModel = e.target.value as ModelType;
+                  if (newModel === "premium" && premiumRemainingUses === 0) {
+                    addToast("Premium model unavailable - no uses remaining", "warning");
+                    return;
+                  }
+                  setSelectedModel(newModel);
+                }}
+                className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
+                disabled={isChatLoading}
+              >
+                <option value="basic">Basic</option>
+                <option 
+                  value="premium" 
+                  disabled={premiumRemainingUses === 0}
+                  className={premiumRemainingUses === 0 ? "text-gray-400 dark:text-gray-500" : ""}
+                >
+                  Premium{premiumRemainingUses === 0 ? " (No uses left)" : ""}
+                </option>
+              </select>
+              <div className="relative group">
+                <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48 pointer-events-none">
+                  {premiumRemainingUses === null 
+                    ? "Loading premium usage..." 
+                    : premiumRemainingUses === 0 
+                    ? "Premium model uses exhausted. Switch to basic model or wait for usage to reset." 
+                    : `Premium model uses remaining: ${premiumRemainingUses}. Premium model provides higher quality AI responses.`}
+                </div>
+                <button className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200 cursor-help">
+                  <Info
+                    size={14}
+                    className="text-gray-600 dark:text-gray-400"
+                  />
+                </button>
+              </div>
+            </div>
           </div>
           <div
             ref={scrollContainerRef}
