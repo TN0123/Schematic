@@ -111,13 +111,6 @@ export function ChangeHandler({
         </div>
 
         <div className="flex-grow overflow-hidden bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-gray-300 dark:bg-dark-textDisabled rounded-full animate-pulse"></div>
-            <div className="text-sm text-gray-600 dark:text-dark-textSecondary">
-              {changes["!PREPARING!"]}
-            </div>
-          </div>
-          
           <div className="space-y-2">
             <div className="h-3 bg-gray-200 dark:bg-dark-actionDisabledBackground rounded animate-pulse"></div>
             <div className="h-3 bg-gray-200 dark:bg-dark-actionDisabledBackground rounded animate-pulse w-3/4"></div>
