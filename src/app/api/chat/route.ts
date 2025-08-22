@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText } from "ai";
+import { streamText, convertToModelMessages } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { PrismaClient } from "@prisma/client";
@@ -227,18 +227,31 @@ export async function POST(req: NextRequest) {
     """
   `;
 
-    // Format conversation history for Vercel AI SDK
-    const messages = [
-      { role: "system" as const, content: systemPrompt },
-      ...history.map((entry: any) => ({
-        role: entry.role as "user" | "assistant",
-        content: typeof entry.parts === "string" ? entry.parts : 
-                Array.isArray(entry.parts) ? entry.parts.map((p: any) => 
-                  typeof p === "string" ? p : p.text
-                ).join("") : entry.parts.text || entry.parts
-      })),
-      { role: "user" as const, content: userPrompt },
+    // Build UI-style messages with parts[], then convert to ModelMessages
+    const uiMessages = [
+      { role: "system" as const, parts: [{ type: "text", text: systemPrompt }] },
+      ...history.map((entry: any) => {
+        const role = (entry.role === "model" ? "assistant" : entry.role) as
+          | "user"
+          | "assistant";
+
+        let textContent = "";
+        if (typeof entry.parts === "string") {
+          textContent = entry.parts;
+        } else if (Array.isArray(entry.parts)) {
+          textContent = entry.parts
+            .map((p: any) => (typeof p === "string" ? p : p?.text ?? ""))
+            .join("");
+        } else if (entry.parts && typeof entry.parts === "object") {
+          textContent = entry.parts.text ?? String(entry.parts);
+        }
+
+        return { role, parts: [{ type: "text", text: textContent }] };
+      }),
+      { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
     ];
+
+    const messages = convertToModelMessages(uiMessages);
 
     // Select model and check usage
     let selectedModelProvider;
