@@ -315,11 +315,7 @@ When requesting features:
 
 ## Questions?
 
-If you have questions about contributing:
-
-1. Search existing issues and discussions
-2. Create a new issue with the "question" label
-3. Join our community discussions
+If you have questions about contributing reach out to schematicnow@gmail.com
 
 Thank you for contributing to Schematic! Your contributions help make this project better for everyone.
 
