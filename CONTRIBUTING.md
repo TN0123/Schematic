@@ -14,7 +14,6 @@ Thank you for your interest in contributing to Schematic! This document provides
 - [Pull Request Process](#pull-request-process)
 - [Reporting Issues](#reporting-issues)
 - [Feature Requests](#feature-requests)
-- [Documentation](#documentation)
 - [Community](#community)
 
 ## Code of Conduct
@@ -47,6 +46,15 @@ Before you begin contributing, please make sure you have:
    ```bash
    npm install
    ```
+
+3. **Install VS Code Prettier Extension**
+   
+   Install the Prettier extension in VS Code to ensure consistent code formatting:
+   - Open VS Code
+   - Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
+   - Search for "Prettier - Code formatter"
+   - Install the extension by Prettier
+   - Enable "Format on Save" in VS Code settings for automatic formatting
 
 3. **Set up environment variables**
    Create a `.env` file in the root directory:
@@ -104,7 +112,7 @@ We welcome various types of contributions:
 
 - **Bug fixes**: Fix issues and improve stability
 - **Feature development**: Add new features and capabilities
-- **Documentation**: Improve docs, add examples, fix typos
+- **Documentation**: Improve README, add examples, fix typos
 - **UI/UX improvements**: Enhance the user interface and experience
 - **Performance optimizations**: Improve speed and efficiency
 - **Testing**: Add tests and improve test coverage
@@ -123,7 +131,7 @@ Use descriptive branch names:
 
 - `feature/descriptive-feature-name`
 - `fix/descriptive-bug-fix`
-- `docs/descriptive-documentation-update`
+
 - `refactor/descriptive-refactoring`
 
 ## Code Style and Standards
@@ -195,7 +203,6 @@ npm test
    - Write clean, well-documented code
    - Follow the coding standards
    - Add tests if applicable
-   - Update documentation if needed
 
 3. **Commit your changes**
 
@@ -232,7 +239,7 @@ Types:
 
 - `feat`: New feature
 - `fix`: Bug fix
-- `docs`: Documentation changes
+
 - `style`: Code style changes (formatting, etc.)
 - `refactor`: Code refactoring
 - `test`: Adding or updating tests
@@ -243,8 +250,7 @@ Types:
 1. **Automated checks**: Ensure all CI checks pass
 2. **Code review**: Address feedback from maintainers
 3. **Testing**: Verify changes work as expected
-4. **Documentation**: Update docs if needed
-5. **Merge**: Maintainers will merge approved PRs
+4. **Merge**: Maintainers will merge approved PRs
 
 ## Reporting Issues
 
@@ -265,7 +271,7 @@ Use the appropriate issue template:
 
 - Bug report
 - Feature request
-- Documentation request
+
 - Security vulnerability
 
 ## Feature Requests
@@ -278,23 +284,7 @@ When requesting features:
 4. **Consider alternatives**: Are there existing solutions?
 5. **Show examples**: Provide mockups or examples if possible
 
-## Documentation
 
-### Contributing to Documentation
-
-- Keep documentation up to date
-- Use clear, concise language
-- Include code examples
-- Add screenshots for UI features
-- Follow the existing documentation style
-
-### Documentation Types
-
-- **README.md**: Project overview and setup
-- **API documentation**: API endpoints and usage
-- **Component documentation**: React component usage
-- **Architecture docs**: System design and patterns
-- **Deployment guides**: Production deployment instructions
 
 ## Community
 
@@ -302,7 +292,7 @@ When requesting features:
 
 - **GitHub Issues**: For bugs and feature requests
 - **GitHub Discussions**: For questions and general discussion
-- **Documentation**: Check the README and docs first
+- **README**: Check the README first
 
 ### Communication Guidelines
 
@@ -311,15 +301,6 @@ When requesting features:
 - Provide context when asking questions
 - Help others when you can
 - Follow the Code of Conduct
-
-### Recognition
-
-Contributors will be recognized in:
-
-- GitHub contributors list
-- Release notes
-- Project documentation
-- Community acknowledgments
 
 ## Development Workflow
 
@@ -336,10 +317,9 @@ Contributors will be recognized in:
 
 If you have questions about contributing:
 
-1. Check the documentation
-2. Search existing issues and discussions
-3. Create a new issue with the "question" label
-4. Join our community discussions
+1. Search existing issues and discussions
+2. Create a new issue with the "question" label
+3. Join our community discussions
 
 Thank you for contributing to Schematic! Your contributions help make this project better for everyone.
 
