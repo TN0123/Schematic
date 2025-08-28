@@ -88,6 +88,50 @@ html.dark ::-webkit-scrollbar-thumb:hover {
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
       }
+
+      /* Mobile touch optimization */
+      .touch-manipulation {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        touch-action: manipulation;
+      }
+
+      /* Mobile-specific breakpoints and utilities */
+      @media (max-width: 768px) {
+        .mobile-safe-area-top {
+          padding-top: env(safe-area-inset-top);
+        }
+        
+        .mobile-safe-area-bottom {
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+        
+        /* Better mobile text rendering */
+        .mobile-text-optimize {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+        }
+        
+        /* Mobile viewport adjustments */
+        .mobile-full-height {
+          height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        }
+        
+        /* Account for mobile navigation tab bar */
+        .mobile-with-nav {
+          height: calc(100vh - 64px);
+          max-height: calc(100vh - 64px);
+        }
+        
+        .mobile-avoid-nav {
+          margin-bottom: 8px;
+        }
+      }
     }
 }
 
@@ -517,6 +561,76 @@ html.dark .fc-event-main {
 
 html.dark .fc-event-title {
     font-weight: 500 !important;
+}
+
+/* Mobile-specific FullCalendar optimizations */
+@media (max-width: 768px) {
+  /* Larger touch targets for mobile buttons */
+  .fc-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+  }
+  
+  /* Better mobile toolbar spacing */
+  .fc-toolbar {
+    padding: 8px 4px !important;
+    gap: 8px !important;
+  }
+  
+  .fc-toolbar-chunk {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+  
+  /* Mobile event styling */
+  .fc-event {
+    min-height: 24px !important;
+    font-size: 12px !important;
+    padding: 4px 6px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  /* Mobile day cell improvements */
+  .fc-daygrid-day {
+    min-height: 40px !important;
+  }
+  
+  .fc-daygrid-day-number {
+    font-size: 14px !important;
+    padding: 4px !important;
+  }
+  
+  /* Mobile timegrid improvements */
+  .fc-timegrid-slot {
+    height: 30px !important;
+  }
+  
+  .fc-timegrid-slot-label {
+    font-size: 12px !important;
+  }
+  
+  /* Better mobile scrolling */
+  .fc-scroller {
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Mobile header improvements */
+  .fc-col-header-cell {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Mobile title adjustments */
+  .fc-toolbar-title {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+  }
 }
 
 /* html.dark .fc-border-color {

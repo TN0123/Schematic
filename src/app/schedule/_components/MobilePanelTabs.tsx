@@ -128,31 +128,31 @@ export default function MobilePanelTabs({
   return (
     <div className="h-full flex flex-col">
       {/* Tab Navigation */}
-      <div className="flex border-b dark:border-dark-divider">
+      <div className="flex border-b dark:border-dark-divider bg-gray-50 dark:bg-dark-secondary">
         <button
           onClick={() => setActiveTab("events")}
-          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+          className={`flex-1 py-4 px-4 text-center font-medium transition-all duration-200 touch-manipulation ${
             activeTab === "events"
-              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-dark-background"
+              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover active:bg-gray-200 dark:active:bg-dark-actionSelected"
           }`}
         >
           <div className="flex items-center justify-center gap-2">
-            <Calendar size={16} />
-            Events
+            <Calendar size={18} />
+            <span className="text-sm">Events</span>
           </div>
         </button>
         <button
           onClick={() => setActiveTab("goals")}
-          className={`flex-1 py-3 px-4 text-center font-medium transition-colors duration-200 ${
+          className={`flex-1 py-4 px-4 text-center font-medium transition-all duration-200 touch-manipulation ${
             activeTab === "goals"
-              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+              ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 bg-white dark:bg-dark-background"
+              : "text-gray-600 dark:text-dark-textSecondary hover:bg-gray-100 dark:hover:bg-dark-actionHover active:bg-gray-200 dark:active:bg-dark-actionSelected"
           }`}
         >
           <div className="flex items-center justify-center gap-2">
-            <Target size={16} />
-            Goals
+            <Target size={18} />
+            <span className="text-sm">Goals</span>
           </div>
         </button>
       </div>
@@ -162,28 +162,29 @@ export default function MobilePanelTabs({
         {activeTab === "events" ? (
           <div className="p-4 flex flex-col gap-6">
             {/* Event Generation */}
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+            <div className="flex flex-col gap-3">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary text-base">
                 Generate with AI
               </h3>
               <div className="relative">
                 <textarea
-                  className="w-full p-3 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-lg resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-4 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-xl resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base placeholder-gray-400 dark:placeholder-dark-textDisabled touch-manipulation"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Describe your schedule to generate events..."
-                  rows={4}
+                  rows={3}
+                  style={{ fontSize: '16px' }} // Prevents zoom on iOS
                 />
                 <button
-                  className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-colors duration-200 ${
+                  className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-200 touch-manipulation ${
                     listening
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                      ? "bg-red-500 hover:bg-red-600 active:bg-red-700"
+                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover active:bg-gray-400 dark:active:bg-dark-actionSelected"
                   }`}
                   onClick={handleListen}
                 >
                   <Mic
-                    size={16}
+                    size={18}
                     className={
                       listening
                         ? "text-white"
@@ -193,7 +194,7 @@ export default function MobilePanelTabs({
                 </button>
               </div>
               <button
-                className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base touch-manipulation"
                 disabled={loading}
                 onClick={handleSubmit}
               >
@@ -203,29 +204,29 @@ export default function MobilePanelTabs({
 
             {/* Actions */}
             <div className="flex flex-col gap-3">
-              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary text-base">
                 Actions
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-xl hover:bg-gray-200 dark:hover:bg-dark-actionHover active:bg-gray-300 dark:active:bg-dark-actionSelected transition-all duration-200 border dark:border-dark-divider text-sm font-medium touch-manipulation min-h-[44px]"
                   onClick={() => setShowModal(true)}
                 >
-                  <Plus size={16} />
+                  <Plus size={18} />
                   Add Event
                 </button>
                 <button
-                  className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-xl hover:bg-gray-200 dark:hover:bg-dark-actionHover active:bg-gray-300 dark:active:bg-dark-actionSelected transition-all duration-200 border dark:border-dark-divider text-sm font-medium touch-manipulation min-h-[44px]"
                   onClick={() => setIsFileUploaderModalOpen(true)}
                 >
-                  <FileUp size={16} />
+                  <FileUp size={18} />
                   Upload
                 </button>
                 <button
-                  className="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors duration-200 border dark:border-dark-divider text-sm"
+                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-xl hover:bg-gray-200 dark:hover:bg-dark-actionHover active:bg-gray-300 dark:active:bg-dark-actionSelected transition-all duration-200 border dark:border-dark-divider text-sm font-medium touch-manipulation min-h-[44px]"
                   onClick={() => setIsIcsUploaderModalOpen(true)}
                 >
-                  <Calendar size={16} />
+                  <Calendar size={18} />
                   Import from .ics
                 </button>
               </div>
@@ -297,25 +298,26 @@ export default function MobilePanelTabs({
         ) : (
           <div className="p-4 flex flex-col gap-6">
             {/* Add Goal */}
-            <div className="flex flex-col gap-2">
-              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+            <div className="flex flex-col gap-3">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary text-base">
                 Add New Goal
               </h3>
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
                   <input
                     type="text"
                     value={goalToAdd}
                     onChange={(e) => setGoalToAdd(e.target.value)}
                     placeholder="Enter goal title..."
-                    className="flex-1 px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border dark:border-dark-divider rounded-xl bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base touch-manipulation"
+                    style={{ fontSize: '16px' }} // Prevents zoom on iOS
                   />
                   <select
                     value={currentDuration}
                     onChange={(e) =>
                       setCurrentDuration(e.target.value as GoalDuration)
                     }
-                    className="px-3 py-2 border dark:border-dark-divider rounded-lg bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border dark:border-dark-divider rounded-xl bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base touch-manipulation"
                   >
                     {Object.values(GoalDuration).map((duration) => (
                       <option key={duration} value={duration}>
@@ -327,7 +329,7 @@ export default function MobilePanelTabs({
                 <button
                   onClick={addGoal}
                   disabled={!goalToAdd.trim()}
-                  className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-base touch-manipulation min-h-[44px]"
                 >
                   Add Goal
                 </button>
@@ -336,7 +338,7 @@ export default function MobilePanelTabs({
 
             {/* Goals List */}
             <div className="flex flex-col gap-3">
-              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary">
+              <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary text-base">
                 Your Goals
               </h3>
               {/* Goal Filters */}
@@ -344,10 +346,10 @@ export default function MobilePanelTabs({
                 {Object.values(GoalDuration).map((duration) => (
                   <button
                     key={duration}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-200 ${
+                    className={`text-sm font-medium px-4 py-2 rounded-full border transition-all duration-200 touch-manipulation min-h-[36px] ${
                       filters.includes(duration)
                         ? "bg-gray-900 text-white border-gray-900 dark:bg-blue-500 dark:text-white dark:border-blue-500"
-                        : "text-gray-700 border-gray-300 hover:bg-gray-100 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover"
+                        : "text-gray-700 border-gray-300 hover:bg-gray-100 active:bg-gray-200 dark:text-dark-textSecondary dark:border-dark-divider dark:hover:bg-dark-actionHover dark:active:bg-dark-actionSelected"
                     }`}
                     onClick={() => handleFilterChange(duration)}
                   >

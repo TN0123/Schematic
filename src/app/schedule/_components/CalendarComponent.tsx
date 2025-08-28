@@ -286,9 +286,9 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
 
     const mobileToolbar = {
       header: {
-        start: "title",
-        center: "",
-        end: "prev,next,reminders",
+        start: "prev,next",
+        center: "title",
+        end: "reminders",
       },
       footer: {
         start: "today",
@@ -327,12 +327,12 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           headerToolbar={isMobile ? mobileToolbar.header : desktopToolbar}
           footerToolbar={isMobile ? mobileToolbar.footer : undefined}
           buttonText={{
-            today: "Today",
-            month: isMobile ? "M" : "Month",
-            week: isMobile ? "W" : "Week",
-            day: isMobile ? "D" : "Day",
+            today: isMobile ? "Today" : "Today",
+            month: isMobile ? "Month" : "Month",
+            week: isMobile ? "Week" : "Week",
+            day: isMobile ? "Day" : "Day",
           }}
-          dayMaxEventRows={isMobile ? 2 : 3}
+          dayMaxEventRows={isMobile ? 3 : 3}
           views={{
             dayGridMonth: {
               titleFormat: { year: "numeric", month: "long" },

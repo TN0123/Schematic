@@ -8,7 +8,7 @@ import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";
 import { SessionProvider, useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronUp, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
@@ -19,6 +19,7 @@ import { useNextStep } from "nextstepjs";
 import MobilePanelTabs from "./_components/MobilePanelTabs";
 import RemindersBar from "./_components/RemindersBar";
 import CalendarComponent from "./_components/CalendarComponent";
+import { createPortal } from "react-dom";
 
 // Import our custom hooks and utilities
 import { useCalendarData } from "./hooks/useCalendarData";
@@ -59,11 +60,32 @@ export default function CalendarApp() {
   const [generationResult, setGenerationResult] =
     useState<GenerationResult | null>(null);
   const [hasUserClosedReminders, setHasUserClosedReminders] = useState(false);
+  
+  // Mobile panel state
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   const { startNextStep } = useNextStep();
   const desktopCalendarRef = useRef<FullCalendar>(null);
   const mobileCalendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+
+  // Mobile panel effects
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMobilePanelOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobilePanelOpen]);
 
   // Handle reminders UI state logic
   useEffect(() => {
@@ -427,7 +449,7 @@ export default function CalendarApp() {
 
   return (
     <SessionProvider>
-      <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background">
+      <div className="h-screen w-full flex flex-col bg-white dark:bg-dark-background mobile-text-optimize">
         {/* Desktop Layout */}
         <div className="hidden md:flex md:flex-row h-full">
           {/* Goals Panel */}
@@ -525,11 +547,11 @@ export default function CalendarApp() {
         </div>
 
         {/* Mobile Layout */}
-        <div className="flex md:hidden flex-col h-full">
-          {/* Calendar Section - Top */}
+        <div className="flex md:hidden flex-col mobile-safe-area-top mobile-with-nav">
+          {/* Calendar Section - Full Height */}
           <div
             ref={calendarContainerRef}
-            className={`flex-1 flex flex-col p-2 h-2/3 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+            className={`flex-1 flex flex-col p-2 min-h-0 transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
               calendarState.showCalendarHeader
                 ? "calendar-header-visible"
                 : "calendar-header-hidden"
@@ -593,32 +615,101 @@ export default function CalendarApp() {
               />
             </motion.div>
           </div>
-
-          {/* Bottom Panel Section - Mobile */}
-          <div className="h-1/3 bg-white dark:bg-dark-background border-t dark:border-dark-divider">
-            <MobilePanelTabs
-              inputText={inputText}
-              setInputText={setInputText}
-              loading={calendarState.loading}
-              handleSubmit={handleSubmit}
-              setShowModal={(show) => {
-                if (show) {
-                  calendarState.setModalInitialTab("event");
-                }
-                calendarState.setShowCreationModal(show);
-              }}
-              setIsFileUploaderModalOpen={
-                calendarState.setIsFileUploaderModalOpen
-              }
-              setIsIcsUploaderModalOpen={
-                calendarState.setIsIcsUploaderModalOpen
-              }
-              dailySummary={dailySummary.dailySummary}
-              dailySummaryDate={dailySummary.dailySummaryDate}
-              dailySummaryLoading={dailySummary.dailySummaryLoading}
-            />
-          </div>
         </div>
+
+        {/* Mobile Floating Action Button */}
+        {isMounted &&
+          createPortal(
+            <button
+              className={`md:hidden fixed bottom-24 right-6 z-40 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform ${
+                isMobilePanelOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+              }`}
+              onClick={() => setIsMobilePanelOpen(true)}
+            >
+              <ChevronUp className="w-6 h-6" />
+            </button>,
+            document.body
+          )}
+
+        {/* Mobile Bottom Sheet Panel */}
+        <AnimatePresence>
+          {isMobilePanelOpen && (
+            <motion.div
+              className="md:hidden fixed inset-0 z-50 flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Backdrop */}
+              <motion.div
+                className="flex-1 bg-black bg-opacity-50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobilePanelOpen(false)}
+              />
+              
+              {/* Bottom Sheet Content */}
+              <motion.div
+                className="bg-white dark:bg-dark-background rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              >
+                {/* Handle Bar */}
+                <div className="flex justify-center pt-3 pb-2">
+                  <div className="w-10 h-1 bg-gray-300 dark:bg-dark-divider rounded-full" />
+                </div>
+                
+                {/* Header */}
+                <div className="flex justify-between items-center px-4 pb-3 border-b dark:border-dark-divider">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
+                    Schedule Tools
+                  </h2>
+                  <button
+                    onClick={() => setIsMobilePanelOpen(false)}
+                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200"
+                  >
+                    <X size={20} className="text-gray-500 dark:text-dark-textSecondary" />
+                  </button>
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  <MobilePanelTabs
+                    inputText={inputText}
+                    setInputText={setInputText}
+                    loading={calendarState.loading}
+                    handleSubmit={() => {
+                      handleSubmit();
+                      setIsMobilePanelOpen(false);
+                    }}
+                    setShowModal={(show) => {
+                      if (show) {
+                        calendarState.setModalInitialTab("event");
+                        setIsMobilePanelOpen(false);
+                      }
+                      calendarState.setShowCreationModal(show);
+                    }}
+                    setIsFileUploaderModalOpen={(open) => {
+                      if (open) setIsMobilePanelOpen(false);
+                      calendarState.setIsFileUploaderModalOpen(open);
+                    }}
+                    setIsIcsUploaderModalOpen={(open) => {
+                      if (open) setIsMobilePanelOpen(false);
+                      calendarState.setIsIcsUploaderModalOpen(open);
+                    }}
+                    dailySummary={dailySummary.dailySummary}
+                    dailySummaryDate={dailySummary.dailySummaryDate}
+                    dailySummaryLoading={dailySummary.dailySummaryLoading}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Modals */}
         {calendarState.showCreationModal && (
