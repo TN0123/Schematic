@@ -262,16 +262,18 @@ export default function DocumentEditorPage() {
 
             {/* Bottom Sheet Content */}
             <motion.div
-              className="bg-white dark:bg-dark-background rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col"
+              className="bg-white dark:bg-dark-background dark:text-dark-textPrimary rounded-t-3xl shadow-2xl flex flex-col max-h-[calc(95vh-3rem)] min-h-[calc(75vh-3rem)] mb-12"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              transition={{ 
+                type: "spring", 
+                damping: 30, 
+                stiffness: 300,
+                duration: 0.3 
+              }}
             >
-              {/* Handle Bar */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 bg-gray-300 dark:bg-dark-divider rounded-full" />
-              </div>
+
 
               {/* Header */}
               <div className="flex justify-between items-center px-4 pb-3 border-b dark:border-dark-divider">

@@ -658,10 +658,7 @@ export default function CalendarApp() {
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
               >
-                {/* Handle Bar */}
-                <div className="flex justify-center pt-3 pb-2">
-                  <div className="w-10 h-1 bg-gray-300 dark:bg-dark-divider rounded-full" />
-                </div>
+
                 
                 {/* Header */}
                 <div className="flex justify-between items-center px-4 pb-3 border-b dark:border-dark-divider">

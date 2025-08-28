@@ -826,10 +826,8 @@ export default function BulletinClient() {
                 duration: 0.3 
               }}
             >
-              {/* Drag Handle */}
-              <div className="flex justify-center py-3">
-                <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full" />
-              </div>
+              {/* Top padding */}
+              <div className="py-3" />
               
               {/* Header */}
               <div className="px-6 pb-4 border-b border-gray-200 dark:border-dark-divider">
