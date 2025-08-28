@@ -9,7 +9,6 @@ import {
   MoreVertical,
   Trash2,
   Search,
-  Menu,
   PenLine,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,58 +94,47 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
     <div className="min-h-screen bg-gray-50 dark:bg-dark-secondary">
       {/* Header */}
       <header className="bg-white dark:bg-dark-paper border-b border-gray-200 dark:border-dark-divider">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-dark-secondary rounded-lg transition-colors lg:hidden">
-                <Menu className="w-5 h-5 text-gray-600 dark:text-dark-textSecondary" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <PenLine className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
-                  Write
-                </h1>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 sm:py-4 sm:h-16 gap-3 sm:gap-4 lg:gap-0">
+                        {/* Top row: Title */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <PenLine className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Write
+              </h1>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            {/* Bottom row: Search */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 lg:gap-4">
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="w-4 h-4 text-gray-400 absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search documents..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 sm:w-64 pl-10 pr-4 py-2 bg-gray-100 dark:bg-dark-secondary border-0 rounded-full text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  className="w-full sm:w-48 lg:w-64 pl-10 pr-4 py-2.5 sm:py-2 bg-gray-100 dark:bg-dark-secondary border-0 rounded-lg sm:rounded-full text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                 />
               </div>
-
-              <button
-                onClick={handleCreateDocument}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full text-sm font-medium shadow-sm transition-colors duration-200"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">New Document</span>
-              </button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="mb-4 sm:mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-2">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-3 sm:py-4 lg:py-8">
+        <div className="mb-3 sm:mb-4 lg:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-1.5 sm:mb-2">
             Your Documents
           </h2>
-          <p className="text-gray-600 dark:text-dark-textSecondary">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-dark-textSecondary">
             Create, edit, and organize your documents
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6 mb-4 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 lg:gap-6 mb-3 sm:mb-4 lg:mb-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -155,11 +143,11 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
             className="group cursor-pointer"
             onClick={handleCreateDocument}
           >
-            <div className="aspect-[4/3] sm:aspect-[3/4] bg-white dark:bg-dark-paper border-2 border-dashed border-gray-300 dark:border-dark-divider rounded-xl hover:border-purple-400 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center p-4 sm:p-6 shadow-sm hover:shadow-md">
-              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800 transition-colors">
-                <Plus className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            <div className="aspect-[4/3] sm:aspect-[3/4] bg-white dark:bg-dark-paper border-2 border-dashed border-gray-300 dark:border-dark-divider rounded-xl hover:border-purple-400 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center p-3 sm:p-4 lg:p-6 shadow-sm hover:shadow-md">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-2.5 sm:mb-3 lg:mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800 transition-colors">
+                <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+              <h3 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-dark-textSecondary group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors text-center">
                 Create new document
               </h3>
             </div>
@@ -183,8 +171,8 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                 onClick={() => handleDocumentSelect(doc)}
               >
                 <div className="aspect-[4/3] sm:aspect-[3/4] bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-xl hover:shadow-lg transition-all duration-200 overflow-hidden shadow-sm">
-                  <div className="h-3/4 bg-gray-50 dark:bg-dark-secondary p-3 sm:p-4 relative">
-                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4 opacity-0 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                  <div className="h-3/4 bg-gray-50 dark:bg-dark-secondary p-2.5 sm:p-3 lg:p-4 relative">
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-4 lg:right-4 opacity-100 transition-opacity">
                       <div className="relative" data-dropdown>
                         <button
                           className="p-1 hover:bg-gray-200 dark:hover:bg-dark-divider rounded"
@@ -219,15 +207,15 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                       </div>
                     </div>
                     <div className="flex flex-col h-full">
-                      <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                        <FileText className="w-5 h-5 text-purple-500" />
+                      <div className="flex items-center gap-2 mb-1.5 sm:mb-2 lg:mb-3">
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <div className="space-y-1.5 sm:space-y-2">
+                        <div className="space-y-1 sm:space-y-1.5 sm:space-y-2">
                           {[...Array(6)].map((_, i) => (
                             <div
                               key={i}
-                              className={`h-1.5 bg-gray-200 dark:bg-dark-divider rounded ${
+                              className={`h-1 sm:h-1.5 bg-gray-200 dark:bg-dark-divider rounded ${
                                 i === 0
                                   ? "w-4/5"
                                   : i === 1
@@ -246,8 +234,8 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="h-1/4 p-3 sm:p-4 border-t border-gray-100 dark:border-dark-divider">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary mb-0.5 sm:mb-1 truncate">
+                  <div className="h-1/4 p-2.5 sm:p-3 lg:p-4 border-t border-gray-100 dark:border-dark-divider">
+                    <h3 className="text-xs sm:text-sm font-medium text-gray-900 dark:text-dark-textPrimary mb-0.5 sm:mb-1 truncate">
                       {doc.title}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-dark-textSecondary">
@@ -277,18 +265,18 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
               onClick={(e) => e.stopPropagation()}
               className="bg-white dark:bg-dark-paper rounded-2xl shadow-xl w-full max-w-sm"
             >
-              <div className="p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-4">
-                  <Trash2 className="w-6 h-6" />
+              <div className="p-4 sm:p-6 text-center">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center mb-3 sm:mb-4">
+                  <Trash2 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
                   Delete Document
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-dark-textSecondary mb-6">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-dark-textSecondary mb-4 sm:mb-6">
                   Are you sure you want to delete this document? This action
                   cannot be undone.
                 </p>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <button
                     onClick={() => setShowDeleteModal(null)}
                     className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-dark-secondary text-sm font-medium text-gray-700 dark:text-dark-textSecondary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-divider transition-colors"
