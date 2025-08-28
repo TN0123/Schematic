@@ -11,7 +11,7 @@ export default function MainWrapper({
   const isLoginPage = segment === "auth";
 
   return (
-    <main className={`h-screen ${!isLoginPage ? "pl-16" : ""}`}>
+    <main className={`h-screen ${!isLoginPage ? "pl-0 md:pl-16 pb-16 md:pb-0" : ""}`}>
       {children}
     </main>
   );

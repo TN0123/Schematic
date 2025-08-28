@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import AuthProvider from "@/components/AuthProvider";
 import Navigation from "@/components/Navigation";
+import MobileTabBar from "@/components/MobileTabBar";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { NextStepProvider } from "nextstepjs";
@@ -112,6 +113,7 @@ export default function RootLayout({
                 <PostHogProvider>
                   <SearchProvider>
                     <Navigation />
+                    <MobileTabBar />
                     <MainWrapper>{children}</MainWrapper>
                     <PageTransition />
                     <GlobalSearch />
