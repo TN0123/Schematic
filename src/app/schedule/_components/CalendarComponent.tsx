@@ -364,8 +364,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           dateClick={onDateClick}
           eventResize={onEventUpdate}
           eventDrop={onEventUpdate}
-          datesSet={onDatesSet}
-          datesSet={(dateInfo) => {
+          datesSet={(dateInfo: any) => {
             setCurrentView(dateInfo.view.type);
             onDatesSet(dateInfo);
           }}
