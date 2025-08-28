@@ -136,8 +136,8 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-2">
             Your Documents
           </h2>
@@ -146,7 +146,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6 mb-4 sm:mb-8">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -155,7 +155,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
             className="group cursor-pointer"
             onClick={handleCreateDocument}
           >
-            <div className="aspect-[3/4] bg-white dark:bg-dark-paper border-2 border-dashed border-gray-300 dark:border-dark-divider rounded-xl hover:border-purple-400 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center p-6 shadow-sm hover:shadow-md">
+            <div className="aspect-[4/3] sm:aspect-[3/4] bg-white dark:bg-dark-paper border-2 border-dashed border-gray-300 dark:border-dark-divider rounded-xl hover:border-purple-400 dark:hover:border-purple-400 transition-all duration-200 flex flex-col items-center justify-center p-4 sm:p-6 shadow-sm hover:shadow-md">
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800 transition-colors">
                 <Plus className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
@@ -182,9 +182,9 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                 className="group cursor-pointer"
                 onClick={() => handleDocumentSelect(doc)}
               >
-                <div className="aspect-[3/4] bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-xl hover:shadow-lg transition-all duration-200 overflow-hidden shadow-sm">
-                  <div className="h-3/4 bg-gray-50 dark:bg-dark-secondary p-4 relative">
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="aspect-[4/3] sm:aspect-[3/4] bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-xl hover:shadow-lg transition-all duration-200 overflow-hidden shadow-sm">
+                  <div className="h-3/4 bg-gray-50 dark:bg-dark-secondary p-3 sm:p-4 relative">
+                    <div className="absolute top-3 right-3 sm:top-4 sm:right-4 opacity-0 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                       <div className="relative" data-dropdown>
                         <button
                           className="p-1 hover:bg-gray-200 dark:hover:bg-dark-divider rounded"
@@ -219,11 +219,11 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                       </div>
                     </div>
                     <div className="flex flex-col h-full">
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 mb-2 sm:mb-3">
                         <FileText className="w-5 h-5 text-purple-500" />
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <div className="space-y-2">
+                        <div className="space-y-1.5 sm:space-y-2">
                           {[...Array(6)].map((_, i) => (
                             <div
                               key={i}
@@ -246,8 +246,8 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="h-1/4 p-4 border-t border-gray-100 dark:border-dark-divider">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary mb-1 truncate">
+                  <div className="h-1/4 p-3 sm:p-4 border-t border-gray-100 dark:border-dark-divider">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-dark-textPrimary mb-0.5 sm:mb-1 truncate">
                       {doc.title}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-dark-textSecondary">

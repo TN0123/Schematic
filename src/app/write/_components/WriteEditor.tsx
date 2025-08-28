@@ -61,6 +61,8 @@ export default function WriteEditor({
   isSaving,
   isImproving,
   isChatLoading,
+  onRegisterMobileChangeAPI,
+  onPendingChanges,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -75,6 +77,15 @@ export default function WriteEditor({
   isSaving: boolean;
   isImproving: boolean;
   isChatLoading?: boolean;
+  onRegisterMobileChangeAPI?: (api: {
+    applyChange: (original: string, replacement: string) => void;
+    rejectChange: (original: string) => void;
+    appendChange: (newText: string) => void;
+    acceptAllChanges: () => void;
+    rejectAllChanges: () => void;
+    setActiveHighlight: (text: string | null) => void;
+  }) => void;
+  onPendingChanges?: (changes: ChangeMap) => void;
 }) {
   const modKeyLabel = useModifierKeyLabel();
   const [loading, setLoading] = useState(false);
@@ -560,6 +571,31 @@ export default function WriteEditor({
     setPendingChanges(updatedChanges);
   };
 
+  // Expose change-handling API to parent (for mobile panel)
+  useEffect(() => {
+    onRegisterMobileChangeAPI?.({
+      applyChange,
+      rejectChange,
+      appendChange,
+      acceptAllChanges,
+      rejectAllChanges,
+      setActiveHighlight,
+    });
+  }, [
+    onRegisterMobileChangeAPI,
+    applyChange,
+    rejectChange,
+    appendChange,
+    acceptAllChanges,
+    rejectAllChanges,
+    setActiveHighlight,
+  ]);
+
+  // Mirror pending changes to parent so mobile panel can render them
+  useEffect(() => {
+    onPendingChanges?.(pendingChanges);
+  }, [pendingChanges, onPendingChanges]);
+
   const getHighlightedHTML = (
     text: string,
     highlight: string | null
@@ -709,18 +745,18 @@ export default function WriteEditor({
         ))}
       </div>
 
-      <div className="w-full max-w-[1200px] flex items-center justify-between py-4 px-4">
-        <div className="flex items-center gap-3">
+      <div className="w-full max-w-[1200px] flex items-center justify-between py-4 px-4 gap-2 lg:gap-3">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
           <Link
             href="/write"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
             Documents
           </Link>
-          <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider"></div>
-          <div className="flex items-center gap-2 w-[400px]">
-            <FileText className="w-5 h-5 dark:text-dark-textSecondary" />
+          <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider hidden lg:block"></div>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <FileText className="w-5 h-5 dark:text-dark-textSecondary flex-shrink-0" />
             <input
               type="text"
               value={title}
@@ -728,17 +764,17 @@ export default function WriteEditor({
                 setTitle(e.target.value);
                 debouncedSaveTitle(e.target.value);
               }}
-              className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden"
+              className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden min-w-0"
               placeholder="Untitled Document"
             />
             {(isSaving || isSavingContent) && (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary" />
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary flex-shrink-0" />
             )}
           </div>
         </div>
         <button
           onClick={handleExport}
-          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md"
+          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md flex-shrink-0"
         >
           Export
           <FileUp className="w-4 h-4" />
@@ -784,9 +820,9 @@ export default function WriteEditor({
         </div>
       )}
 
-      <div className="w-full flex-1 flex flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100vh-80px)]">
+      <div className="w-full flex-1 flex flex-col lg:flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100dvh-208px)] lg:h-[calc(100vh-80px)] overflow-hidden min-h-0">
         <div
-          className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-dark-paper shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-scroll ${
+          className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-dark-paper shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-auto min-h-0 ${
             Object.keys(pendingChanges).length !== 0 &&
             Object.keys(pendingChanges)[0] !== ""
               ? "flex-[2_2_0%] min-w-0"
@@ -931,7 +967,7 @@ export default function WriteEditor({
           </div>
         </div>
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
+          className={`hidden lg:block transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
             Object.keys(pendingChanges).length !== 0 &&
             Object.keys(pendingChanges)[0] !== ""
               ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
@@ -950,6 +986,14 @@ export default function WriteEditor({
           />
         </div>
       </div>
+      {/* Mobile assistant tip */}
+      {Object.keys(pendingChanges).length !== 0 && Object.keys(pendingChanges)[0] !== "" && (
+        <div className="lg:hidden w-full px-4 pb-4">
+          <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">
+            Suggested changes available. Open the assistant below to review.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

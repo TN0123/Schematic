@@ -14,6 +14,7 @@ import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
+import { ChangeHandler } from "./ChangeHandler";
 
 export type ModelType = "basic" | "premium";
 
@@ -187,6 +188,15 @@ export default function WritePanel({
   onModelChange,
   onImproveStart,
   onChatLoadingChange,
+  variant = "desktop",
+  // ChangeHandler props for mobile variant
+  changes,
+  applyChange,
+  rejectChange,
+  appendChange,
+  acceptAllChanges,
+  rejectAllChanges,
+  setActiveHighlight,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -214,6 +224,15 @@ export default function WritePanel({
   onModelChange: (model: ModelType) => void;
   onImproveStart: () => void;
   onChatLoadingChange?: (loading: boolean) => void;
+  variant?: "desktop" | "mobile";
+  // ChangeHandler props for mobile variant
+  changes?: ChangeMap;
+  applyChange?: (original: string, replacement: string) => void;
+  rejectChange?: (original: string) => void;
+  appendChange?: (newText: string) => void;
+  acceptAllChanges?: () => void;
+  rejectAllChanges?: () => void;
+  setActiveHighlight?: (text: string | null) => void;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -885,13 +904,23 @@ export default function WritePanel({
     };
   }, [handleKeyPress]);
 
+  const wrapperClass =
+    variant === "mobile"
+      ? "w-full h-full bg-white dark:bg-dark-background flex flex-col"
+      : `${isCollapsed ? "lg:w-14" : "w-full lg:w-1/3"} hidden lg:flex lg:h-full h-[50vh] lg:border-l-2 border-t-2 lg:border-t-0 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex-col transition-all duration-200`;
+
+  const innerScrollClass =
+    variant === "mobile"
+      ? "flex flex-col w-full h-full overflow-y-auto py-2 gap-4 transition-all"
+      : "flex flex-col w-full lg:h-full h-[calc(50vh-64px)] overflow-y-auto py-2 gap-4 transition-all";
+
+  const messagesContainerClass =
+    variant === "mobile"
+      ? "flex flex-col w-full flex-1 px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider"
+      : "flex flex-col w-full h-[38vh] max-h-[38vh] lg:h-[600px] lg:max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider";
+
   return (
-    <aside
-      className={`${
-        isCollapsed ? "w-14" : "w-1/3"
-      } h-full border-l-2 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex flex-col transition-all duration-200`}
-      id="write-panel"
-    >
+    <aside className={wrapperClass} id={variant === "mobile" ? "write-panel-mobile" : "write-panel"}>
       {/* Toast Notifications */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -932,24 +961,26 @@ export default function WritePanel({
 
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
         <div className="flex w-full items-center justify-between">
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 ${
-              isCollapsed ? "" : "p-2"
-            }`}
-          >
-            {isCollapsed ? (
-              <PanelRightOpen
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
-            ) : (
-              <PanelRightClose
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
-            )}
-          </button>{" "}
+          {variant === "desktop" && (
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 ${
+                isCollapsed ? "" : "p-2"
+              }`}
+            >
+              {isCollapsed ? (
+                <PanelRightOpen
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              ) : (
+                <PanelRightClose
+                  size={24}
+                  className="text-gray-700 dark:text-dark-textSecondary"
+                />
+              )}
+            </button>
+          )}
           {!isCollapsed && (
             <div className="flex flex-col items-end justify-center transition-all">
               <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
@@ -971,7 +1002,7 @@ export default function WritePanel({
       </div>
 
       {!isCollapsed && (
-        <div className="flex flex-col w-full h-full overflow-y-auto py-2 gap-4 transition-all">
+        <div className={innerScrollClass}>
           <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
             <textarea
               className="w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled"
@@ -1144,10 +1175,7 @@ export default function WritePanel({
               </div>
             </div>
           </div>
-          <div
-            ref={scrollContainerRef}
-            className="flex flex-col w-full h-[600px] max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider"
-          >
+          <div ref={scrollContainerRef} className={messagesContainerClass}>
             <AnimatePresence>
               {messages.map((msg, index) => (
                 <Message
@@ -1272,6 +1300,22 @@ export default function WritePanel({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ChangeHandler for mobile variant */}
+      {variant === "mobile" && changes && Object.keys(changes).length > 0 && applyChange && rejectChange && appendChange && acceptAllChanges && rejectAllChanges && setActiveHighlight && (
+        <div className="border-t border-gray-200 dark:border-dark-divider p-2">
+          <ChangeHandler
+            changes={changes}
+            applyChange={applyChange}
+            rejectChange={rejectChange}
+            appendChange={appendChange}
+            acceptAllChanges={acceptAllChanges}
+            rejectAllChanges={rejectAllChanges}
+            setActiveHighlight={setActiveHighlight}
+            isStreaming={isChatLoading}
+          />
         </div>
       )}
     </aside>
