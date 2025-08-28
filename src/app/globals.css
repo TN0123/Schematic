@@ -585,6 +585,17 @@ html.dark .fc-event-title {
     gap: 4px !important;
   }
   
+  /* Reduce spacing between calendar content and footer toolbar */
+  .fc-footer-toolbar {
+    margin-top: 4px !important;
+    padding-top: 8px !important;
+  }
+  
+  /* Reduce bottom margin of calendar content */
+  .fc-view-harness {
+    margin-bottom: 4px !important;
+  }
+  
   /* Mobile event styling */
   .fc-event {
     min-height: 24px !important;

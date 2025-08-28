@@ -97,11 +97,11 @@ export default function RemindersBar({
         duration: 0.35,
         ease: [0.25, 0.46, 0.45, 0.94],
       }}
-      className="absolute top-0 left-0 right-0 z-30 h-16 flex items-center bg-gray-50/95 dark:bg-dark-background/95 backdrop-blur-sm px-6 shadow-lg shadow-black/5 dark:shadow-black/20"
+      className="absolute top-0 left-0 right-0 z-30 h-16 flex items-center bg-gray-50/95 dark:bg-dark-background/95 backdrop-blur-sm px-3 sm:px-6 shadow-lg shadow-black/5 dark:shadow-black/20"
     >
       {unreadReminders.length === 0 ? (
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center justify-start min-w-[120px]"></div>
+          <div className="flex items-center justify-start w-12 sm:w-auto"></div>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,18 +113,18 @@ export default function RemindersBar({
                 animate={{ rotate: [0, 15, -15, 0] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
               >
-                <Bell size={22} className="mr-3 opacity-60" />
+                <Bell size={20} className="mr-2 sm:mr-3 opacity-60" />
               </motion.div>
-              <span className="text-sm font-medium">No new reminders</span>
+              <span className="text-xs sm:text-sm font-medium">No new reminders</span>
             </div>
           </motion.div>
-          <div className="flex items-center justify-end min-w-[120px]">
+          <div className="flex items-center justify-end w-12 sm:w-auto">
             <button
               onClick={onToggle}
-              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-1.5 sm:p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <Calendar
-                size={18}
+                size={16}
                 className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
             </button>
@@ -132,31 +132,31 @@ export default function RemindersBar({
         </div>
       ) : (
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center justify-start min-w-[120px]">
+          <div className="flex items-center justify-start w-12 sm:w-auto">
             <motion.span
               key={`${currentReminderIndex + 1}/${unreadReminders.length}`}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
-              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md"
+              className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary bg-gray-100 dark:bg-dark-secondary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md"
             >
               {currentReminderIndex + 1}/{unreadReminders.length}
             </motion.span>
           </div>
 
-          <div className="flex items-center justify-center flex-1 max-w-2xl mx-4">
+          <div className="flex items-center justify-center flex-1 mx-2 sm:mx-4">
             <button
               onClick={handlePrev}
               disabled={currentReminderIndex === 0}
-              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
+              className="group p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronLeft
-                size={18}
+                size={16}
                 className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
             </button>
 
-            <div className="flex-1 mx-4 min-w-0 max-w-full">
+            <div className="flex-1 mx-2 sm:mx-4 min-w-0 max-w-full">
               <AnimatePresence mode="wait">
                 {currentReminder && (
                   <motion.div
@@ -170,8 +170,8 @@ export default function RemindersBar({
                     }}
                     className="text-center min-w-0 max-w-full"
                   >
-                    <div className="flex items-center justify-center mb-1 min-w-0">
-                      <span className="text-xs font-semibold text-gray-600 dark:text-dark-textSecondary truncate bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-md max-w-xs">
+                    <div className="flex items-center justify-center mb-1 min-w-0 flex-wrap gap-1">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-dark-textSecondary truncate bg-gray-100 dark:bg-dark-secondary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md max-w-[120px] sm:max-w-xs">
                         {formatDate(currentReminder.time)} at{" "}
                         {formatTime(currentReminder.time)}
                       </span>
@@ -184,11 +184,11 @@ export default function RemindersBar({
                             type: "spring",
                             stiffness: 200,
                           }}
-                          className="ml-2 flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full shadow-sm flex-shrink-0"
+                          className="flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full shadow-sm flex-shrink-0"
                         >
                           <Bot
-                            size={12}
-                            className="text-blue-600 dark:text-blue-400 mr-1"
+                            size={10}
+                            className="text-blue-600 dark:text-blue-400 mr-0.5 sm:mr-1"
                           />
                           <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
                             AI
@@ -199,7 +199,7 @@ export default function RemindersBar({
                     <div className="flex items-center justify-center min-w-0">
                       <button
                         onClick={handleDismiss}
-                        className="text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-2 text-center min-w-0 max-w-full hover:line-through hover:text-gray-500 dark:hover:text-dark-textDisabled transition-all duration-200 cursor-pointer"
+                        className="text-xs sm:text-sm text-gray-800 dark:text-dark-textPrimary font-medium truncate px-1 sm:px-2 text-center min-w-0 max-w-full hover:line-through hover:text-gray-500 dark:hover:text-dark-textDisabled transition-all duration-200 cursor-pointer leading-tight"
                         title="Click to dismiss reminder"
                       >
                         {currentReminder.text}
@@ -213,22 +213,22 @@ export default function RemindersBar({
             <button
               onClick={handleNext}
               disabled={currentReminderIndex === unreadReminders.length - 1}
-              className="group p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
+              className="group p-1.5 sm:p-2 rounded-full hover:bg-black/5 dark:hover:bg-dark-actionHover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronRight
-                size={18}
+                size={16}
                 className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
             </button>
           </div>
 
-          <div className="flex items-center justify-end min-w-[120px]">
+          <div className="flex items-center justify-end w-12 sm:w-auto">
             <button
               onClick={onToggle}
-              className="group flex items-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
+              className="group flex items-center p-1.5 sm:p-2 rounded-lg hover:bg-black/5 dark:hover:bg-dark-actionHover transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <Calendar
-                size={18}
+                size={16}
                 className="text-gray-600 dark:text-dark-textSecondary group-hover:text-gray-800 dark:group-hover:text-dark-textPrimary transition-colors duration-200"
               />
             </button>

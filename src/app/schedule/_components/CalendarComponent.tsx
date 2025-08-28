@@ -147,6 +147,8 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       content: "",
     });
 
+    const [currentView, setCurrentView] = useState<string>("timeGridDay");
+
     const showTooltip = (element: HTMLElement, content: string) => {
       const rect = element.getBoundingClientRect();
       setTooltip({
@@ -163,6 +165,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     function renderEventContent(eventInfo: EventContentArg) {
       const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
       const eventTitle = eventInfo.event.title;
+      const shouldShowButtons = !isMobile || currentView === "timeGridDay";
 
       const baseContainerClasses =
         "group relative h-full w-full p-1 overflow-visible";
@@ -196,32 +199,34 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
             <div className={`${titleClasses} text-xs pr-1 event-title`}>
               {eventTitle}
             </div>
-            <div className="flex shrink-0 items-center space-x-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  hideTooltip();
-                  onAcceptSuggestion(eventInfo.event.id);
-                }}
-                className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
-                style={{ width: "16px", height: "16px" }}
-                aria-label="Accept suggestion"
-              >
-                <Check size={10} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  hideTooltip();
-                  onRejectSuggestion(eventInfo.event.id);
-                }}
-                className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
-                style={{ width: "16px", height: "16px" }}
-                aria-label="Reject suggestion"
-              >
-                <X size={10} />
-              </button>
-            </div>
+            {shouldShowButtons && (
+              <div className="flex shrink-0 items-center space-x-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    hideTooltip();
+                    onAcceptSuggestion(eventInfo.event.id);
+                  }}
+                  className="bg-green-500 hover:bg-green-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
+                  style={{ width: "16px", height: "16px" }}
+                  aria-label="Accept suggestion"
+                >
+                  <Check size={10} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    hideTooltip();
+                    onRejectSuggestion(eventInfo.event.id);
+                  }}
+                  className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded-full flex items-center justify-center z-[10000] relative"
+                  style={{ width: "16px", height: "16px" }}
+                  aria-label="Reject suggestion"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
           </div>
         );
       }
@@ -360,6 +365,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           eventResize={onEventUpdate}
           eventDrop={onEventUpdate}
           datesSet={onDatesSet}
+          datesSet={(dateInfo) => {
+            setCurrentView(dateInfo.view.type);
+            onDatesSet(dateInfo);
+          }}
         />
         <SmartTooltip
           isVisible={tooltip.isVisible}

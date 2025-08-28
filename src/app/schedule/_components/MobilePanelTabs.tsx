@@ -263,14 +263,15 @@ export default function MobilePanelTabs({
                       />
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500 dark:text-dark-textSecondary text-center prose dark:prose-invert">
+                    <div className="text-sm text-gray-500 px-2 dark:text-dark-textSecondary text-center prose dark:prose-invert whitespace-pre-line flex-1 overflow-y-auto">
+                      <span>{dailySummary.split("ADVICE")[0]}</span>
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
                           p: (props) => <p {...props} className="mt-4" />,
                         }}
                       >
-                        {dailySummary}
+                        {dailySummary.split("ADVICE")[1]}
                       </ReactMarkdown>
                     </div>
                   )}
