@@ -90,24 +90,24 @@ const SmartTooltip = ({
   return createPortal(
     <div
       ref={tooltipRef}
-      className={`fixed z-[10000] max-w-xs rounded-md bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-lg transition-opacity duration-200 dark:bg-gray-800 ${
+      className={`fixed z-[10000] max-w-sm rounded-md px-3 py-2 text-xs font-semibold shadow-lg transition-opacity duration-200 ${
         isVisible ? "opacity-100" : "opacity-0"
-      }`}
+      } bg-white text-gray-900 dark:bg-dark-paper dark:text-dark-textPrimary border border-gray-200 dark:border-dark-divider`}
       style={{
         top: position.top,
         left: position.left,
       }}
     >
       <div className="relative">
-        <span className="block max-w-[250px] truncate whitespace-nowrap">
+        <span className="block break-words whitespace-normal">
           {content}
         </span>
         {/* Arrow */}
         <div
           className={`absolute h-0 w-0 border-4 border-transparent ${
             position.placement === "top"
-              ? "top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-gray-800"
-              : "bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-gray-800"
+              ? "top-full left-1/2 -translate-x-1/2 border-t-white dark:border-t-dark-paper"
+              : "bottom-full left-1/2 -translate-x-1/2 border-b-white dark:border-b-dark-paper"
           }`}
         />
       </div>
