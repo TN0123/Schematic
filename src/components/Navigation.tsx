@@ -13,6 +13,7 @@ import {
 import { TransitionLink } from "./utils/TransitionLink";
 import { useSearch } from "./SearchProvider";
 import { useModifierKeyLabel } from "@/components/utils/platform";
+import { Tooltip } from "./utils/Tooltip";
 
 export default function Navigation() {
   const { data: session } = useSession();
@@ -62,13 +63,14 @@ export default function Navigation() {
         })}
 
         {/* Search Button */}
-        <button
-          onClick={openSearch}
-          className="p-2 rounded-lg transition-colors duration-200 text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover mb-6"
-          title={`Search (${modKeyLabel}+P)`}
-        >
-          <Search className="w-6 h-6" />
-        </button>
+        <Tooltip content={`Search (${modKeyLabel}+P)`} position="right">
+          <button
+            onClick={openSearch}
+            className="p-2 rounded-lg transition-colors duration-200 text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover mb-6"
+          >
+            <Search className="w-6 h-6" />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="flex flex-col items-center gap-4 mt-auto">
