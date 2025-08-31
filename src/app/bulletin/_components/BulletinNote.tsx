@@ -27,6 +27,9 @@ import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import { formatDistanceToNow } from "date-fns";
 import { useDebouncedCallback } from "use-debounce";
+import { EventMention } from "./extensions/EventMention";
+import EventMentionPopup from "./EventMentionPopup";
+import { useSession } from "next-auth/react";
 
 interface BulletinNoteProps {
   id: string;
@@ -55,6 +58,12 @@ export default function BulletinNote({
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [showEventPopup, setShowEventPopup] = useState(false);
+  const [eventPopupData, setEventPopupData] = useState<{
+    text: string;
+    position: { x: number; y: number };
+  } | null>(null);
+  const { data: session } = useSession();
   const lastSavedState = useRef({
     title: initialTitle,
     content: initialContent,
@@ -129,6 +138,29 @@ export default function BulletinNote({
       TextStyle,
       TextAlign.configure({
         types: ["heading", "paragraph"],
+      }),
+      EventMention.configure({
+        HTMLAttributes: {
+          class: "event-mention-suggestion",
+        },
+        onEventHover: (eventText: string, range: { from: number; to: number }, element: HTMLElement) => {
+          const rect = element.getBoundingClientRect();
+          setEventPopupData({
+            text: eventText,
+            position: {
+              x: rect.left + window.scrollX,
+              y: rect.bottom + window.scrollY,
+            },
+          });
+          setShowEventPopup(true);
+        },
+        onEventLeave: () => {
+          // Add a small delay to prevent flickering when moving between popup and text
+          setTimeout(() => {
+            setShowEventPopup(false);
+            setEventPopupData(null);
+          }, 150);
+        },
       }),
     ],
     content: initialContent,
@@ -341,6 +373,29 @@ export default function BulletinNote({
     };
   }, [hasUnsavedChanges, handleSave]);
 
+  // Handle event creation from popup
+  const handleCreateEvent = useCallback(async (eventData: { title: string; start: Date; end: Date }) => {
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to create event");
+      }
+      
+      // Event created successfully - the popup will handle showing success message
+      // and closing itself
+    } catch (error) {
+      console.error("Error creating event:", error);
+      throw error;
+    }
+  }, []);
+
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all flex flex-col">
       <div className="flex justify-between items-start mb-4 px-4 pt-4 flex-shrink-0">
@@ -405,6 +460,23 @@ export default function BulletinNote({
           }
         />
       </div>
+      
+      {/* Event Mention Popup */}
+      {showEventPopup && eventPopupData && session?.user?.id && (
+        <EventMentionPopup
+          eventText={eventPopupData.text}
+          position={eventPopupData.position}
+          onCreateEvent={handleCreateEvent}
+          onClose={() => {
+            setShowEventPopup(false);
+            setEventPopupData(null);
+          }}
+          userId={session.user.id}
+          visible={showEventPopup}
+        />
+      )}
+      
+
     </div>
   );
 }
