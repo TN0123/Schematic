@@ -92,6 +92,7 @@ export default function EventGenerationPanel({
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [contextDiffModal, setContextDiffModal] = useState<{
     isOpen: boolean;
     before: string;
@@ -126,6 +127,21 @@ export default function EventGenerationPanel({
         chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // Keep the textarea height in sync with its content and reset when cleared
+  useEffect(() => {
+    const textarea = inputTextareaRef.current;
+    if (!textarea) return;
+
+    // Reset height to allow shrink, then set to content height if non-empty
+    textarea.style.height = "auto";
+    if (inputText && inputText.trim() !== "") {
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
+    } else {
+      // Empty input — clear inline height so it returns to default size
+      textarea.style.height = "";
+    }
+  }, [inputText]);
 
   const handleListen = () => {
     if (listening) {
@@ -322,6 +338,7 @@ export default function EventGenerationPanel({
             <div id="event-adder">
               <div className="relative">
                 <textarea
+                  ref={inputTextareaRef}
                   className="flex w-full p-4 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
