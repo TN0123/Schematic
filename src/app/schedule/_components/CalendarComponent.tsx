@@ -167,9 +167,16 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       const eventTitle = eventInfo.event.title;
       const shouldShowButtons = !isMobile || currentView === "timeGridDay";
 
+      const startDate = eventInfo.event.start as Date | null;
+      const endDate = eventInfo.event.end as Date | null;
+      const isShortEvent =
+        !!startDate && !!endDate
+          ? (endDate.getTime() - startDate.getTime()) / 60000 <= 30
+          : false;
+
       const baseContainerClasses =
-        "group relative h-full w-full p-1 overflow-visible";
-      const titleClasses = "font-normal truncate";
+        `group relative h-full w-full overflow-visible ${isShortEvent ? "p-0.5" : "p-1"}`;
+      const titleClasses = `${isShortEvent ? "text-xs leading-4" : ""} font-normal truncate`;
 
       const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (eventTitle) {
@@ -177,7 +184,8 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           const textElement = e.currentTarget.querySelector(".event-title");
           if (
             textElement &&
-            textElement.scrollWidth > textElement.clientWidth
+            (textElement.scrollWidth > textElement.clientWidth ||
+              textElement.scrollHeight > textElement.clientHeight)
           ) {
             // Text is overflowing, show tooltip
             showTooltip(e.currentTarget, eventTitle);

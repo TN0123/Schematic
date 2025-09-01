@@ -430,6 +430,17 @@ main {
     font-weight: 500 !important;
 }
 
+/* Ensure short timegrid events keep text visible */
+.fc-timegrid-event .fc-event-main {
+    line-height: 1.1 !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+
+.fc-timegrid-event {
+    min-height: 20px !important;
+}
+
 /* Dark theme for FullCalendar */
 html.dark .fc-day-today {
     background-color: #1e1e1e !important;
