@@ -25,6 +25,7 @@ model User {
   reminders                Reminder[]
   scheduleContext          String         @default("")
   goalText                 String         @default("")
+  dailySummaryCaches       DailySummaryCache[]
 }
 
 model Account {
@@ -115,4 +116,20 @@ enum GoalType {
   WEEKLY
   MONTHLY
   YEARLY
+}
+
+/// Cache of generated daily summaries by user, timezone, and local day
+model DailySummaryCache {
+  id        String   @id @default(cuid())
+  userId    String
+  timezone  String
+  dayKey    String   /// e.g. "2025-06-30" in user's timezone
+  eventsHash String
+  summary   String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, timezone, dayKey])
+  @@index([userId])
 }
