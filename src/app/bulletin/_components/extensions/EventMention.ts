@@ -115,49 +115,30 @@ export const EventMention = Mark.create<EventMentionOptions>({
             const decorations: Decoration[] = [];
             const doc = tr.doc;
 
-            // Get the full text content
-            const fullText = doc.textContent;
-            
-            // Detect event patterns
-            const eventMatches = detectSimpleEventPatterns(fullText);
+            // Detect patterns per text node to avoid global offset mismatches
+            doc.descendants((node, pos) => {
+              if (!node.isText || !node.text) return true;
 
-            // Convert text positions to document positions
-            eventMatches.forEach(match => {
-              let currentPos = 0;
-              let found = false;
+              const nodeText = node.text;
+              const nodeMatches = detectSimpleEventPatterns(nodeText);
 
-              doc.descendants((node, pos) => {
-                if (found) return false;
-                
-                if (node.isText) {
-                  const nodeStart = currentPos;
-                  const nodeEnd = currentPos + node.text!.length;
-                  
-                  // Check if our match overlaps with this text node
-                  if (match.start >= nodeStart && match.end <= nodeEnd) {
-                    const from = pos + (match.start - nodeStart);
-                    const to = pos + (match.end - nodeStart);
-                    
-                    const decoration = Decoration.inline(from, to, {
-                      class: 'event-mention-suggestion',
-                      'data-event-text': match.text,
-                    });
-                    
-                    decorations.push(decoration);
-                    
-                    // Callback for event detection
-                    if (onEventDetected) {
-                      onEventDetected(match.text, { from, to });
-                    }
-                    
-                    found = true;
-                    return false;
-                  }
-                  
-                  currentPos = nodeEnd;
+              nodeMatches.forEach(match => {
+                const from = pos + match.start;
+                const to = pos + match.end;
+
+                const decoration = Decoration.inline(from, to, {
+                  class: 'event-mention-suggestion',
+                  'data-event-text': match.text,
+                });
+
+                decorations.push(decoration);
+
+                if (onEventDetected) {
+                  onEventDetected(match.text, { from, to });
                 }
-                return true;
               });
+
+              return true;
             });
 
             return DecorationSet.create(doc, decorations);
