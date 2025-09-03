@@ -12,7 +12,7 @@ import {
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { Check, X } from "lucide-react";
+import { Check, X, Link as LinkIcon } from "lucide-react";
 import { Event } from "../types";
 
 interface CalendarComponentProps {
@@ -174,6 +174,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           ? (endDate.getTime() - startDate.getTime()) / 60000 <= 30
           : false;
 
+      const hasLinks = Array.isArray(eventInfo.event.extendedProps.links)
+        ? (eventInfo.event.extendedProps.links as string[]).length > 0
+        : false;
+
       const baseContainerClasses =
         `group relative h-full w-full overflow-visible ${isShortEvent ? "p-0.5" : "p-1"}`;
       const titleClasses = `${isShortEvent ? "text-xs leading-4" : ""} font-normal truncate`;
@@ -245,6 +249,11 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
+          {!isShortEvent && hasLinks && (
+            <div className="absolute top-0.5 right-0.5">
+              <LinkIcon size={12} className="text-white dark:text-blue-200/90" />
+            </div>
+          )}
           <div className={`${titleClasses} event-title`}>{eventTitle}</div>
         </div>
       );

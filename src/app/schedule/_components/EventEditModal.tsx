@@ -1,5 +1,6 @@
 import { Event } from "../types";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
 
 function formatDateTimeLocal(date: Date) {
   const offset = date.getTimezoneOffset();
@@ -20,6 +21,9 @@ export default function EventEditModal({
   handleEditEvent: () => void;
   handleDeleteEvent: () => void;
 }) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState<string>("");
+
   const links = Array.isArray(newEvent.links) ? newEvent.links : [];
   const updateLinkAt = (idx: number, value: string) => {
     const next = [...links];
@@ -27,11 +31,18 @@ export default function EventEditModal({
     setNewEvent({ ...newEvent, links: next });
   };
   const addLink = () => {
-    setNewEvent({ ...newEvent, links: [...links, ""] });
+    const next = [...links, ""];
+    setNewEvent({ ...newEvent, links: next });
+    setEditingIndex(next.length - 1);
+    setEditingValue("");
   };
   const removeLinkAt = (idx: number) => {
     const next = links.filter((_, i) => i !== idx);
     setNewEvent({ ...newEvent, links: next });
+    if (editingIndex === idx) {
+      setEditingIndex(null);
+      setEditingValue("");
+    }
   };
 
   return (
@@ -94,7 +105,7 @@ export default function EventEditModal({
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <label className="text-gray-700 dark:text-dark-textSecondary">
-              Links (optional)
+              Links
             </label>
             <button
               type="button"
@@ -105,23 +116,73 @@ export default function EventEditModal({
             </button>
           </div>
           {links.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {links.map((link, idx) => (
                 <div key={idx} className="flex items-center space-x-2">
-                  <input
-                    type="url"
-                    className="flex-1 p-2 border rounded bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
-                    value={link}
-                    onChange={(e) => updateLinkAt(idx, e.target.value)}
-                    placeholder="https://example.com"
-                  />
-                  <button
-                    type="button"
-                    className="px-2 py-1 text-sm text-red-600 hover:underline"
-                    onClick={() => removeLinkAt(idx)}
-                  >
-                    Remove
-                  </button>
+                  {editingIndex === idx ? (
+                    <>
+                      <input
+                        type="url"
+                        className="flex-1 p-2 border rounded bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        placeholder="https://example.com"
+                      />
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-sm text-green-600 hover:underline"
+                        onClick={() => {
+                          updateLinkAt(idx, editingValue.trim());
+                          setEditingIndex(null);
+                          setEditingValue("");
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-sm text-gray-600 hover:underline"
+                        onClick={() => {
+                          setEditingIndex(null);
+                          setEditingValue("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <a
+                        href={link || "#"}
+                        onClick={(e) => {
+                          if (!link) e.preventDefault();
+                        }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 truncate text-blue-600 dark:text-blue-400 hover:underline"
+                        title={link}
+                      >
+                        {link || "(empty)"}
+                      </a>
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-sm text-blue-600 hover:underline"
+                        onClick={() => {
+                          setEditingIndex(idx);
+                          setEditingValue(link);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-sm text-red-600 hover:underline"
+                        onClick={() => removeLinkAt(idx)}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
