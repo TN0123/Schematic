@@ -17,12 +17,13 @@ export const useCalendarState = (
   setFetchedRange: (range: { start: Date; end: Date } | null) => void,
   editEvent: (
     eventId: string,
-    eventData: { title: string; start: Date; end: Date }
+    eventData: { title: string; start: Date; end: Date; links?: string[] }
   ) => Promise<void>,
   addEvent: (eventData: {
     title: string;
     start: Date;
     end: Date;
+    links?: string[];
   }) => Promise<Event>,
   acceptSuggestion: (suggestionId: string) => Promise<void>
 ) => {
@@ -39,6 +40,7 @@ export const useCalendarState = (
     title: "",
     start: new Date(),
     end: new Date(),
+    links: [],
   });
   const [eventToDelete, setEventToDelete] = useState<EventImpl | null>(null);
   const [eventToEdit, setEventToEdit] = useState<EventImpl>();
@@ -146,6 +148,9 @@ export const useCalendarState = (
             title: event.title,
             start: event.start!,
             end: event.end!,
+            links: Array.isArray(event.extendedProps.links)
+              ? (event.extendedProps.links as string[])
+              : undefined,
           });
           console.log("Event updated successfully");
         } catch (error) {
@@ -223,6 +228,7 @@ export const useCalendarState = (
           title: string;
           start: Date;
           end: Date;
+          links?: string[];
         }>
       ) => Promise<Event[]>
     ) => {
@@ -245,6 +251,7 @@ export const useCalendarState = (
           title: event.title,
           start: newStart,
           end: newEnd,
+          links: Array.isArray(event.links) ? event.links : undefined,
         };
       });
 
@@ -300,6 +307,9 @@ export const useCalendarState = (
         title: eventToEdit.title,
         start: eventToEdit.start!,
         end: eventToEdit.end!,
+        links: Array.isArray(eventToEdit.extendedProps.links)
+          ? (eventToEdit.extendedProps.links as string[])
+          : [],
       });
       setEventToDelete(eventToEdit);
     }

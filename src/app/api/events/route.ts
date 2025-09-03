@@ -40,9 +40,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { title, start, end } = await req.json();
+    const { title, start, end, links } = await req.json();
     const event = await prisma.event.create({
-      data: { title, start: new Date(start), end: new Date(end), userId: session.user.id },
+      data: { title, start: new Date(start), end: new Date(end), userId: session.user.id, links: Array.isArray(links) ? links : undefined },
     });
     return NextResponse.json(event, { status: 201 });
   } catch (error) {

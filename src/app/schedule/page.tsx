@@ -171,6 +171,7 @@ export default function CalendarApp() {
         title: calendarState.newEvent.title,
         start: calendarState.newEvent.start,
         end: calendarState.newEvent.end,
+        links: calendarState.newEvent.links,
       });
 
       calendarState.setShowCreationModal(false);
@@ -179,6 +180,7 @@ export default function CalendarApp() {
         title: "",
         start: new Date(),
         end: new Date(),
+        links: [],
       });
     }
   };
@@ -193,6 +195,7 @@ export default function CalendarApp() {
         title: calendarState.newEvent.title,
         start: calendarState.newEvent.start,
         end: calendarState.newEvent.end,
+        links: calendarState.newEvent.links,
       });
 
       console.log("Event updated successfully");
@@ -201,6 +204,7 @@ export default function CalendarApp() {
         title: "",
         start: new Date(),
         end: new Date(),
+        links: [],
       });
       calendarState.setShowEditModal(false);
     } catch (error) {
@@ -736,6 +740,7 @@ export default function CalendarApp() {
                 title: "",
                 start: new Date(),
                 end: new Date(),
+                links: [],
               });
             }}
             handleEditEvent={handleEditEvent}

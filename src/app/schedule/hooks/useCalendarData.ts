@@ -30,7 +30,14 @@ export const useCalendarData = (
         throw new Error("Failed to fetch events");
       }
       const data = await response.json();
-      setEvents(data);
+      const formatted = data.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        start: new Date(e.start),
+        end: new Date(e.end),
+        links: Array.isArray(e.links) ? e.links : undefined,
+      }));
+      setEvents(formatted);
     } catch (error) {
       console.error("Error fetching events:", error);
     } finally {
@@ -58,13 +65,17 @@ export const useCalendarData = (
 
   // Add single event
   const addEvent = useCallback(
-    async (eventData: { title: string; start: Date; end: Date }) => {
+    async (eventData: { title: string; start: Date; end: Date; links?: string[] }) => {
       const res = await fetch("/api/events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(eventData),
+        body: JSON.stringify({
+          ...eventData,
+          start: eventData.start,
+          end: eventData.end,
+        }),
       });
       if (!res.ok) {
         throw new Error("Failed to add event");
@@ -73,9 +84,10 @@ export const useCalendarData = (
       const createdEvent = await res.json();
       const newEvent: Event = {
         id: createdEvent.id,
-        title: eventData.title,
+        title: createdEvent.title,
         start: new Date(createdEvent.start),
         end: new Date(createdEvent.end),
+        links: Array.isArray(createdEvent.links) ? createdEvent.links : undefined,
       };
 
       setEvents((prev) => [...prev, newEvent]);
@@ -98,6 +110,7 @@ export const useCalendarData = (
         title: string;
         start: Date;
         end: Date;
+        links?: string[];
       }
     ) => {
       const res = await fetch(`/api/events/${eventId}`, {
@@ -168,6 +181,7 @@ export const useCalendarData = (
         title: string;
         start: Date;
         end: Date;
+        links?: string[];
       }>
     ) => {
       const res = await fetch("/api/events/bulkAdd", {
@@ -199,6 +213,7 @@ export const useCalendarData = (
           title: event.title,
           start: new Date(event.start),
           end: new Date(event.end),
+          links: Array.isArray(event.links) ? event.links : undefined,
         }));
       } else {
         formattedEvents = eventsToCreate.map((event, index) => ({
@@ -206,6 +221,7 @@ export const useCalendarData = (
           title: event.title,
           start: event.start,
           end: event.end,
+          links: Array.isArray(event.links) ? event.links : undefined,
         }));
 
         // Refetch events to get the actual data from the database
@@ -359,6 +375,7 @@ export const useCalendarData = (
           start: new Date(event.start),
           end: new Date(event.end),
           isSuggestion: true,
+          links: Array.isArray(event.links) ? event.links : undefined,
         }));
         setEvents((currentEvents) => [
           ...currentEvents.filter((e) => !e.isSuggestion),
@@ -400,6 +417,7 @@ export const useCalendarData = (
           title: suggestion.title,
           start: suggestion.start,
           end: suggestion.end,
+          links: suggestion.links,
         });
 
         // Note: addEvent already calls refreshDailySummary, so no need to call it again here

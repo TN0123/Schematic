@@ -20,6 +20,20 @@ export default function EventEditModal({
   handleEditEvent: () => void;
   handleDeleteEvent: () => void;
 }) {
+  const links = Array.isArray(newEvent.links) ? newEvent.links : [];
+  const updateLinkAt = (idx: number, value: string) => {
+    const next = [...links];
+    next[idx] = value;
+    setNewEvent({ ...newEvent, links: next });
+  };
+  const addLink = () => {
+    setNewEvent({ ...newEvent, links: [...links, ""] });
+  };
+  const removeLinkAt = (idx: number) => {
+    const next = links.filter((_, i) => i !== idx);
+    setNewEvent({ ...newEvent, links: next });
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 z-50">
       <div
@@ -76,6 +90,43 @@ export default function EventEditModal({
             }));
           }}
         />
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-gray-700 dark:text-dark-textSecondary">
+              Links (optional)
+            </label>
+            <button
+              type="button"
+              className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
+              onClick={addLink}
+            >
+              Add link
+            </button>
+          </div>
+          {links.length > 0 && (
+            <div className="space-y-2">
+              {links.map((link, idx) => (
+                <div key={idx} className="flex items-center space-x-2">
+                  <input
+                    type="url"
+                    className="flex-1 p-2 border rounded bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+                    value={link}
+                    onChange={(e) => updateLinkAt(idx, e.target.value)}
+                    placeholder="https://example.com"
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-sm text-red-600 hover:underline"
+                    onClick={() => removeLinkAt(idx)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-between">
           <button

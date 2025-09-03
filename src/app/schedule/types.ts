@@ -18,6 +18,7 @@ export interface Event {
   title: string;
   start: Date;
   end: Date;
+  links?: string[];
   isSuggestion?: boolean;
 }
 
@@ -32,4 +33,5 @@ export interface NewEvent {
   title: string;
   start: Date;
   end: Date;
+  links?: string[];
 }

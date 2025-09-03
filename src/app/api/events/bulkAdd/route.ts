@@ -26,6 +26,7 @@ export async function POST(req: Request) {
             title: event.title,
             start: new Date(event.start),
             end: new Date(event.end),
+            links: Array.isArray(event.links) ? event.links : undefined,
             userId: session.user.id!,
           },
         })
