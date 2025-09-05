@@ -14,6 +14,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Check, X, Link as LinkIcon } from "lucide-react";
 import { Event } from "../types";
+import { useRouter } from "next/navigation";
 
 interface CalendarComponentProps {
   events: Event[];
@@ -137,6 +138,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     },
     ref
   ) => {
+    const router = useRouter();
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
     const [tooltip, setTooltip] = useState<{
       isVisible: boolean;
       targetRect: DOMRect | null;
@@ -303,7 +308,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     const desktopToolbar = {
       start: "prev,next today",
       center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders",
+      right: "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders,statistics",
     };
 
     const mobileToolbar = {
@@ -343,6 +348,18 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
                   ? `${unreadNonAIReminders.length} `
                   : ""
               }Reminders`,
+            },
+            statistics: {
+              text: "",
+              click: async () => {
+                const mainContent = document.querySelector("main");
+                document.documentElement.style.overflow = "hidden";
+                document.body.style.overflow = "hidden";
+                mainContent?.classList.add("page-transition");
+                await sleep(150);
+                router.push("/statistics");
+              },
+              hint: "Statistics",
             },
           }}
           eventClassNames={getEventClassNames}
