@@ -6,6 +6,7 @@ import {
   PenLine,
   ClipboardList,
   Calendar,
+  Clock,
   Settings,
   LogOut,
   Search,
@@ -28,6 +29,7 @@ export default function Navigation() {
     { href: "/write", icon: PenLine, label: "Write" },
     { href: "/bulletin", icon: ClipboardList, label: "Bulletin" },
     { href: "/schedule", icon: Calendar, label: "Schedule" },
+    { href: "/statistics", icon: Clock, label: "Statistics" },
   ];
 
   return (
