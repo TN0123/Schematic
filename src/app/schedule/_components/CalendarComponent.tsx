@@ -139,6 +139,9 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     ref
   ) => {
     const router = useRouter();
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
     const [tooltip, setTooltip] = useState<{
       isVisible: boolean;
       targetRect: DOMRect | null;
@@ -348,7 +351,14 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
             },
             statistics: {
               text: "",
-              click: () => router.push("/statistics"),
+              click: async () => {
+                const mainContent = document.querySelector("main");
+                document.documentElement.style.overflow = "hidden";
+                document.body.style.overflow = "hidden";
+                mainContent?.classList.add("page-transition");
+                await sleep(150);
+                router.push("/statistics");
+              },
               hint: "Statistics",
             },
           }}
