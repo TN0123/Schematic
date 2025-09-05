@@ -148,7 +148,7 @@ export default function StatisticsPage() {
 
     const dayTotals = new Array(7).fill(0) as number[];
     const hourTotals = new Array(24).fill(0) as number[];
-    const byTitle = new Map<string, number>();
+    const byTitle = new Map<string, { label: string; value: number }>();
     const byDomain = new Map<string, number>();
 
     let totalHours = 0;
@@ -161,9 +161,15 @@ export default function StatisticsPage() {
       if (duration <= 0) continue;
       totalHours += duration;
 
-      // Title aggregation
+      // Title aggregation (case-insensitive key, preserve display label)
       const t = (ev.title || "Untitled").trim();
-      byTitle.set(t, (byTitle.get(t) || 0) + duration);
+      const titleKey = t.toLowerCase();
+      const existingTitle = byTitle.get(titleKey);
+      if (existingTitle) {
+        existingTitle.value += duration;
+      } else {
+        byTitle.set(titleKey, { label: t, value: duration });
+      }
 
       // Domain aggregation (first link domain if present)
       if (Array.isArray(ev.links) && ev.links.length > 0) {
@@ -182,8 +188,7 @@ export default function StatisticsPage() {
       }
     }
 
-    const titles: LabeledValue[] = Array.from(byTitle.entries())
-      .map(([label, value]) => ({ label, value }))
+    const titles: LabeledValue[] = Array.from(byTitle.values())
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
 
@@ -223,14 +228,15 @@ export default function StatisticsPage() {
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="min-h-screen w-full bg-white dark:bg-dark-background dark:text-dark-textPrimary">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
-        <div className="flex items-center justify-between gap-3 mb-4 md:mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-600">Statistics</h1>
+    <div className="h-screen overflow-hidden w-full bg-white dark:bg-dark-background dark:text-dark-textPrimary">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col items-center justify-center gap-1 mb-3 md:mb-4">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-dark-textPrimary text-center">Schedule Statistics</h1>
+          <p className="text-xs md:text-sm italic text-gray-600 dark:text-dark-textSecondary text-center">Track your Time</p>
         </div>
 
         {/* Controls */}
-        <div className="mb-4 md:mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="mb-3 md:mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="flex items-center gap-2 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg px-3 py-2">
             <label className="text-xs text-gray-600 dark:text-dark-textSecondary">Start</label>
             <input
@@ -290,7 +296,7 @@ export default function StatisticsPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3 mb-3 md:mb-4">
           <SummaryCard title="Total Hours" value={`${formatHours(stats.totalHours)}h`} subtext="In selected range" />
           <SummaryCard title="Events" value={`${stats.eventCount}`} subtext="Count of events" />
           <SummaryCard title="Avg / Day" value={`${stats.avgHoursPerDay.toFixed(1)}h`} subtext="Average hours" />
@@ -302,21 +308,16 @@ export default function StatisticsPage() {
         )}
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          <Card title="Top Titles">
-            {stats.titles.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <HorizontalBarChart data={stats.titles} total={totalForTitles} />
-            )}
-          </Card>
-          <Card title="Top Domains">
-            {stats.domains.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <HorizontalBarChart data={stats.domains} total={totalForDomains} />
-            )}
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+          <div className="lg:col-span-2">
+            <Card title="Top Titles">
+              {stats.titles.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <HorizontalBarChart data={stats.titles} total={totalForTitles} />
+              )}
+            </Card>
+          </div>
 
           <Card title="Time by Weekday">
             <ColumnChart labels={dayLabels} values={stats.days} maxValue={maxDay} />
@@ -353,8 +354,8 @@ function SummaryCard(props: { title: string; value: string; subtext?: string }) 
 
 function Card(props: { title: string; children: any }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper p-4">
-      <div className="flex items-center justify-between mb-3">
+    <div className="rounded-xl border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper p-3">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-sm font-semibold text-gray-800 dark:text-dark-textPrimary">{props.title}</h2>
       </div>
       {props.children}
@@ -364,7 +365,7 @@ function Card(props: { title: string; children: any }) {
 
 function EmptyState() {
   return (
-    <div className="h-28 flex items-center justify-center text-sm text-gray-500 dark:text-dark-textSecondary">
+    <div className="h-24 flex items-center justify-center text-sm text-gray-500 dark:text-dark-textSecondary">
       No data available in this range
     </div>
   );
@@ -384,7 +385,7 @@ function HorizontalBarChart(props: { data: LabeledValue[]; total: number }) {
             </div>
             <div className="h-2.5 w-full rounded-md bg-gray-100 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500/70 to-blue-400/50"
+                className="h-full bg-blue-500"
                 style={{ width: `${Math.max(2, Math.round(pct * 100))}%` }}
               />
             </div>
@@ -399,16 +400,19 @@ function ColumnChart(props: { labels: string[]; values: number[]; maxValue: numb
   const { labels, values, maxValue, dense } = props;
   return (
     <div className="w-full">
-      <div className="h-40 md:h-48 flex items-end gap-1.5">
+      <div className="h-36 md:h-44 flex items-end gap-1.5">
         {values.map((v, i) => {
           const hPct = maxValue > 0 ? (v / maxValue) * 100 : 0;
           return (
-            <div key={i} className="flex-1 h-full flex flex-col items-center">
-              <div className="w-full h-full rounded-md bg-gray-100 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider overflow-hidden">
+            <div key={i} className="flex-1 h-full flex flex-col items-center" title={`${formatHours(v)}h`}>
+              <div className="w-full h-full rounded-md bg-gray-100 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider relative group">
                 <div
-                  className="w-full bg-gradient-to-t from-blue-500/70 to-blue-400/30"
+                  className="w-full bg-blue-500 absolute bottom-0 left-0 right-0"
                   style={{ height: `${Math.max(2, Math.round(hPct))}%` }}
                 />
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition text-[10px] md:text-xs bg-gray-800 text-white px-1.5 py-0.5 rounded shadow-sm pointer-events-none">
+                  {formatHours(v)}h
+                </div>
               </div>
             </div>
           );
