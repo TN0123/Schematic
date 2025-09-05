@@ -403,8 +403,8 @@ function ColumnChart(props: { labels: string[]; values: number[]; maxValue: numb
         {values.map((v, i) => {
           const hPct = maxValue > 0 ? (v / maxValue) * 100 : 0;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center">
-              <div className="w-full rounded-md bg-gray-100 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider overflow-hidden">
+            <div key={i} className="flex-1 h-full flex flex-col items-center">
+              <div className="w-full h-full rounded-md bg-gray-100 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider overflow-hidden">
                 <div
                   className="w-full bg-gradient-to-t from-blue-500/70 to-blue-400/30"
                   style={{ height: `${Math.max(2, Math.round(hPct))}%` }}
