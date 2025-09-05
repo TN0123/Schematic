@@ -113,6 +113,7 @@ export default function CalendarApp() {
     const timeoutId = setTimeout(() => {
       const refreshIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>`;
       const remindersIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`;
+      const statisticsIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
       const buttons = document.querySelectorAll(".fc-refresh-button");
       buttons.forEach((button) => {
@@ -149,6 +150,11 @@ export default function CalendarApp() {
 
         button.innerHTML = "";
         button.appendChild(iconContainer);
+      });
+
+      const statisticsButtons = document.querySelectorAll(".fc-statistics-button");
+      statisticsButtons.forEach((button) => {
+        button.innerHTML = statisticsIcon;
       });
     }, 200);
 

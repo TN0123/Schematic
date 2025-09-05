@@ -559,6 +559,54 @@ html.dark .fc-reminders-button:focus {
     box-shadow: none !important;
 }
 
+.fc-statistics-button {
+    padding: 6px !important;
+    border-radius: 6px !important; 
+    background-color: transparent !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    color: #4b5563 !important;
+    margin: 0 6px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.fc-statistics-button:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: #1f2937 !important;
+}
+
+.fc-statistics-button:active {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.fc-statistics-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+html.dark .fc-statistics-button {
+    background-color: transparent !important;
+    border: none !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+html.dark .fc-statistics-button:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+html.dark .fc-statistics-button:active {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark .fc-statistics-button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 html.dark .fc-daygrid-day-top {
     color: rgba(255, 255, 255, 0.7) !important;
 }
