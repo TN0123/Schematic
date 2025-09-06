@@ -103,6 +103,25 @@ export interface DynamicComponent {
   config?: any;
 }
 
+// Typed table support
+type TableCellType = "text" | "number" | "date" | "select" | "checkbox";
+
+interface TableColumnSpec {
+  key: string;
+  header: string;
+  type: TableCellType;
+  options?: string[]; // for select
+  placeholder?: string;
+}
+
+interface TableConfig {
+  // Legacy support
+  rows?: number;
+  cols?: number;
+  // New typed columns
+  columns?: TableColumnSpec[];
+}
+
 // Define layout row structure
 export interface LayoutRow {
   id: string;
@@ -478,31 +497,52 @@ export default function BulletinDynamic({
     switch (action.type) {
       case "table-add-row":
         if (targetComponent.type === "table") {
-          const { cols } = targetComponent.config || { cols: 4 };
-          const tableData = Array.isArray(currentValue) ? currentValue : [];
+          const cfg = targetComponent.config || {};
+          // Typed columns branch
+          if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
+            const columns = cfg.columns as TableColumnSpec[];
+            const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
 
-          // Create new row with specified value or empty cells
-          let newRow;
-          if (action.value && Array.isArray(action.value)) {
-            // Use provided row data, padding with empty strings if needed
-            newRow = Array.from(
-              { length: cols },
-              (_, i) => action.value[i] || ""
-            );
-          } else if (action.value && typeof action.value === "string") {
-            // Put the value in the first column, rest empty
-            newRow = Array.from({ length: cols }, (_, i) =>
-              i === 0 ? action.value : ""
-            );
+            let newRow: Record<string, any> = {};
+            if (action.value && typeof action.value === "object" && !Array.isArray(action.value)) {
+              // Partial row object provided
+              for (const col of columns) {
+                newRow[col.key] = (action.value as any)[col.key] ?? defaultValueForColumn(col);
+              }
+            } else if (action.value && Array.isArray(action.value)) {
+              // Array of cell values provided; map by index
+              newRow = {};
+              columns.forEach((col, idx) => {
+                newRow[col.key] = action.value[idx] ?? defaultValueForColumn(col);
+              });
+            } else if (typeof action.value === "string") {
+              // Put provided string into first column, rest defaults
+              newRow = {} as Record<string, any>;
+              columns.forEach((col, idx) => {
+                newRow[col.key] = idx === 0 ? action.value : defaultValueForColumn(col);
+              });
+            } else {
+              // All defaults
+              newRow = {};
+              for (const col of columns) newRow[col.key] = defaultValueForColumn(col);
+            }
+
+            newValue = [...tableRows, newRow];
           } else {
-            // Default: add row with today's date in first column if not specified
-            const today = new Date().toISOString().split("T")[0];
-            newRow = Array.from({ length: cols }, (_, i) =>
-              i === 0 ? today : ""
-            );
+            // Legacy simple table
+            const { cols } = cfg || { cols: 4 };
+            const tableData = Array.isArray(currentValue) ? currentValue : [];
+            let newRow;
+            if (action.value && Array.isArray(action.value)) {
+              newRow = Array.from({ length: cols }, (_, i) => action.value[i] || "");
+            } else if (action.value && typeof action.value === "string") {
+              newRow = Array.from({ length: cols }, (_, i) => (i === 0 ? action.value : ""));
+            } else {
+              const today = new Date().toISOString().split("T")[0];
+              newRow = Array.from({ length: cols }, (_, i) => (i === 0 ? today : ""));
+            }
+            newValue = [...tableData, newRow];
           }
-
-          newValue = [...tableData, newRow];
         }
         break;
 
@@ -516,35 +556,33 @@ export default function BulletinDynamic({
 
       case "table-add-column":
         if (targetComponent.type === "table") {
-          const tableData = Array.isArray(currentValue) ? currentValue : [[]];
-          const newCols = (targetComponent.config?.cols || 4) + 1;
+          const cfg = targetComponent.config || {};
+          if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
+            const columns = cfg.columns as TableColumnSpec[];
+            const newKeyBase = "col" + (columns.length + 1);
+            const newKey = uniqueColumnKey(newKeyBase, new Set(columns.map((c) => c.key)));
+            const newCol: TableColumnSpec = { key: newKey, header: `Column ${columns.length + 1}`, type: "text" };
 
-          // Add empty column to each row
-          newValue = tableData.map((row) => [...(row || []), ""]);
+            const newColumns = [...columns, newCol];
+            // Update schema columns
+            const newSchema = {
+              ...schema,
+              components: schema.components.map((comp) =>
+                comp.id === action.targetComponentId
+                  ? { ...comp, config: { ...(comp.config || {}), columns: newColumns } }
+                  : comp
+              ),
+            };
+            setSchema(newSchema);
 
-          // Update component config
-          const newSchema = {
-            ...schema,
-            components: schema.components.map((comp) =>
-              comp.id === action.targetComponentId
-                ? { ...comp, config: { ...comp.config, cols: newCols } }
-                : comp
-            ),
-          };
-          setSchema(newSchema);
-        }
-        break;
-
-      case "table-remove-column":
-        if (targetComponent.type === "table" && Array.isArray(currentValue)) {
-          const currentCols = targetComponent.config?.cols || 4;
-          if (currentCols > 1) {
-            const newCols = currentCols - 1;
-
-            // Remove last column from each row
-            newValue = currentValue.map((row) => (row || []).slice(0, -1));
-
-            // Update component config
+            // Add default value for new column to each row
+            const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
+            newValue = tableRows.map((row) => ({ ...(row || {}), [newKey]: "" }));
+          } else {
+            // Legacy
+            const tableData = Array.isArray(currentValue) ? currentValue : [[]];
+            const newCols = (cfg?.cols || 4) + 1;
+            newValue = tableData.map((row) => [...(row || []), ""]);
             const newSchema = {
               ...schema,
               components: schema.components.map((comp) =>
@@ -554,6 +592,48 @@ export default function BulletinDynamic({
               ),
             };
             setSchema(newSchema);
+          }
+        }
+        break;
+
+      case "table-remove-column":
+        if (targetComponent.type === "table") {
+          const cfg = targetComponent.config || {};
+          if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
+            const columns = cfg.columns as TableColumnSpec[];
+            if (columns.length > 1) {
+              const removedKey = columns[columns.length - 1].key;
+              const newColumns = columns.slice(0, -1);
+              const newSchema = {
+                ...schema,
+                components: schema.components.map((comp) =>
+                  comp.id === action.targetComponentId
+                    ? { ...comp, config: { ...(comp.config || {}), columns: newColumns } }
+                    : comp
+                ),
+              };
+              setSchema(newSchema);
+              const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
+              newValue = tableRows.map((row) => {
+                const { [removedKey]: _omit, ...rest } = row || {};
+                return rest;
+              });
+            }
+          } else if (Array.isArray(currentValue)) {
+            const currentCols = cfg?.cols || 4;
+            if (currentCols > 1) {
+              const newCols = currentCols - 1;
+              newValue = currentValue.map((row) => (row || []).slice(0, -1));
+              const newSchema = {
+                ...schema,
+                components: schema.components.map((comp) =>
+                  comp.id === action.targetComponentId
+                    ? { ...comp, config: { ...comp.config, cols: newCols } }
+                    : comp
+                ),
+              };
+              setSchema(newSchema);
+            }
           }
         }
         break;
@@ -598,8 +678,16 @@ export default function BulletinDynamic({
 
       case "clear-component":
         if (targetComponent.type === "table") {
-          const { cols } = targetComponent.config || { cols: 4 };
-          newValue = [Array.from({ length: cols }, () => "")];
+          const cfg = targetComponent.config || {};
+          if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
+            const columns = cfg.columns as TableColumnSpec[];
+            const blankRow: Record<string, any> = {};
+            for (const col of columns) blankRow[col.key] = defaultValueForColumn(col);
+            newValue = [blankRow];
+          } else {
+            const { cols } = cfg || { cols: 4 };
+            newValue = [Array.from({ length: cols }, () => "")];
+          }
         } else if (targetComponent.type === "checklist") {
           newValue = [];
         } else {
@@ -1070,94 +1158,123 @@ export default function BulletinDynamic({
           </div>
         );
 
-      case "table":
-        const { cols } = component.config || { cols: 4 };
+      case "table": {
+        const tableConfig = (component.config || {}) as TableConfig;
+        const existingColumns = Array.isArray(tableConfig.columns)
+          ? (tableConfig.columns as TableColumnSpec[])
+          : undefined;
 
-        // Ensure we have properly initialized table data
-        let tableData: string[][];
-        if (!value || !Array.isArray(value)) {
-          // Initialize with one row of empty strings
-          tableData = [Array.from({ length: cols }, () => "")];
+        const columns: TableColumnSpec[] =
+          existingColumns && existingColumns.length > 0
+            ? existingColumns
+            : Array.from({ length: Math.max(1, tableConfig.cols || 3) }, (
+                _,
+                i
+              ): TableColumnSpec => ({
+                key: `col${i + 1}`,
+                header: `Column ${i + 1}`,
+                type: "text" as TableCellType,
+              }));
+        const columnKeys = columns.map((c) => c.key);
+
+        // Ensure data is an array of row objects keyed by column key
+        let rowObjects: Record<string, any>[];
+        if (!Array.isArray(value)) {
+          rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
+        } else if (value.length > 0 && typeof value[0] === "object" && !Array.isArray(value[0])) {
+          // Normalize rows to include all keys
+          rowObjects = (value as any[]).map((rowObj: any) => {
+            const norm: Record<string, any> = {};
+            for (const col of columns) {
+              const current = rowObj[col.key];
+              norm[col.key] = current ?? defaultValueForColumn(col);
+            }
+            return norm;
+          });
+          if (rowObjects.length === 0) {
+            rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
+          }
         } else {
-          // Ensure existing data has proper column structure
-          tableData = value.map((row) =>
-            Array.from(
-              { length: cols },
-              (_, colIndex) => (row && row[colIndex]) || ""
-            )
-          );
-          // Ensure we have at least one row
-          if (tableData.length === 0) {
-            tableData = [Array.from({ length: cols }, () => "")];
+          // Legacy array-of-arrays present but we now have typed columns: convert
+          const legacyRows: any[] = value as any[];
+          rowObjects = legacyRows.map((legacyRow) => {
+            const obj: Record<string, any> = {};
+            columns.forEach((col, idx) => {
+              obj[col.key] = Array.isArray(legacyRow)
+                ? legacyRow[idx] ?? defaultValueForColumn(col)
+                : defaultValueForColumn(col);
+            });
+            return obj;
+          });
+          if (rowObjects.length === 0) {
+            rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
           }
         }
 
-        const currentRows = tableData.length;
+        const currentRows = rowObjects.length;
 
-        const handleTableCellChange = (
+        const handleTypedCellChange = (
           rowIndex: number,
-          colIndex: number,
-          cellValue: string
+          columnKey: string,
+          newVal: any
         ) => {
-          // Create a proper deep copy with the updated value
-          const newTableData = tableData.map((row, rIdx) =>
-            row.map((cell, cIdx) => {
-              if (rIdx === rowIndex && cIdx === colIndex) {
-                return cellValue;
-              }
-              return cell;
-            })
+          const updated = rowObjects.map((row, idx) =>
+            idx === rowIndex ? { ...row, [columnKey]: newVal } : row
           );
-          handleDataChange(component.id, newTableData);
+          handleDataChange(component.id, updated);
         };
 
         const addRow = () => {
-          const newRow = Array.from({ length: cols }, () => "");
-          const newTableData = [...tableData, newRow];
-          handleDataChange(component.id, newTableData);
+          const newRow: Record<string, any> = {};
+          for (const col of columns) newRow[col.key] = defaultValueForColumn(col);
+          handleDataChange(component.id, [...rowObjects, newRow]);
         };
 
         const removeRow = () => {
-          // Don't allow removing the last row
-          if (tableData.length <= 1) return;
-
-          const newTableData = tableData.slice(0, -1); // Remove last row
-          handleDataChange(component.id, newTableData);
+          if (rowObjects.length <= 1) return;
+          handleDataChange(component.id, rowObjects.slice(0, -1));
         };
 
         const addColumn = () => {
-          const newCols = cols + 1;
-          const newTableData = tableData.map((row) => [...row, ""]);
-
-          // Update the component config and data
-          const newConfig = { ...component.config, cols: newCols };
+          const newKeyBase = "col" + (columns.length + 1);
+          const newKey = uniqueColumnKey(newKeyBase, new Set(columnKeys));
+          const newCol: TableColumnSpec = {
+            key: newKey,
+            header: `Column ${columns.length + 1}`,
+            type: "text" as TableCellType,
+          };
+          const newColumns = [...columns, newCol];
           const newSchema = {
             ...schema,
             components: schema.components.map((comp) =>
-              comp.id === component.id ? { ...comp, config: newConfig } : comp
+              comp.id === component.id
+                ? { ...comp, config: { ...(component.config || {}), columns: newColumns } }
+                : comp
             ),
           };
           setSchema(newSchema);
-          handleDataChange(component.id, newTableData);
+          const updatedRows = rowObjects.map((row) => ({ ...row, [newKey]: "" }));
+          handleDataChange(component.id, updatedRows);
         };
 
         const removeColumn = () => {
-          // Don't allow removing the last column
-          if (cols <= 1) return;
-
-          const newCols = cols - 1;
-          const newTableData = tableData.map((row) => row.slice(0, -1)); // Remove last column
-
-          // Update the component config and data
-          const newConfig = { ...component.config, cols: newCols };
+          if (columns.length <= 1) return;
+          const newColumns = columns.slice(0, -1);
+          const removedKey = columns[columns.length - 1].key;
           const newSchema = {
             ...schema,
             components: schema.components.map((comp) =>
-              comp.id === component.id ? { ...comp, config: newConfig } : comp
+              comp.id === component.id
+                ? { ...comp, config: { ...(component.config || {}), columns: newColumns } }
+                : comp
             ),
           };
           setSchema(newSchema);
-          handleDataChange(component.id, newTableData);
+          const updatedRows = rowObjects.map((row) => {
+            const { [removedKey]: _omit, ...rest } = row;
+            return rest;
+          });
+          handleDataChange(component.id, updatedRows);
         };
 
         return (
@@ -1171,74 +1288,37 @@ export default function BulletinDynamic({
                 <table className="w-full border-collapse min-w-max">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-dark-background border-b border-gray-200 dark:border-dark-divider">
-                      {Array.from({ length: cols }, (_, colIndex) => (
+                      {columns.map((col) => (
                         <th
-                          key={colIndex}
+                          key={col.key}
                           className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-dark-textSecondary uppercase tracking-wider border-r border-gray-200 dark:border-dark-divider last:border-r-0"
                         >
-                          {String.fromCharCode(65 + colIndex)}
+                          {col.header}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-dark-divider">
-                    {tableData.map((row, rowIndex) => (
+                    {rowObjects.map((row, rowIndex) => (
                       <tr
                         key={rowIndex}
                         className="group/row hover:bg-gray-50 dark:hover:bg-dark-actionHover transition-all duration-200 hover:shadow-sm"
                       >
-                        {row.map((cell, colIndex) => (
+                        {columns.map((col, colIndex) => (
                           <td
-                            key={colIndex}
-                            className="border-r border-gray-100 dark:border-dark-divider last:border-r-0 p-0 min-w-[160px] relative group/cell"
+                            key={col.key}
+                            className="border-r border-gray-100 dark:border-dark-divider last:border-r-0 p-0 min-w-[200px] relative group/cell"
                           >
-                            <input
-                              type="text"
-                              value={cell || ""}
-                              onChange={(e) =>
-                                handleTableCellChange(
-                                  rowIndex,
-                                  colIndex,
-                                  e.target.value
-                                )
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Tab") {
-                                  e.preventDefault();
-                                  const nextCol = (colIndex + 1) % cols;
-                                  const nextRow =
-                                    nextCol === 0
-                                      ? (rowIndex + 1) % currentRows
-                                      : rowIndex;
-                                  const nextInput = document.querySelector(
-                                    `[data-table-cell="${component.id}-${nextRow}-${nextCol}"]`
-                                  ) as HTMLInputElement;
-                                  nextInput?.focus();
-                                } else if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  const nextRow = (rowIndex + 1) % currentRows;
-                                  const nextInput = document.querySelector(
-                                    `[data-table-cell="${component.id}-${nextRow}-${colIndex}"]`
-                                  ) as HTMLInputElement;
-                                  nextInput?.focus();
-                                }
-                              }}
-                              className="w-full h-14 px-6 py-4 bg-transparent text-gray-800 dark:text-dark-textPrimary border-none outline-none transition-all duration-200 placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary font-medium
-                                hover:bg-blue-50 dark:hover:bg-blue-900/10
-                                focus:bg-green-50 dark:focus:bg-green-900/20
-                                focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/30 focus:ring-inset
-                                group-hover/cell:shadow-inner"
-                              placeholder={`${String.fromCharCode(
-                                65 + colIndex
-                              )}${rowIndex + 1}`}
-                              onFocus={(e) => e.target.select()}
-                              data-table-cell={`${component.id}-${rowIndex}-${colIndex}`}
-                            />
-                            {/* Cell focus indicator */}
-                            <div className="absolute inset-0 pointer-events-none opacity-0 group-focus-within/cell:opacity-100 transition-opacity duration-200">
-                              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-400 to-emerald-400 transform scale-x-0 group-focus-within/cell:scale-x-100 transition-transform duration-300 origin-left"></div>
-                              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-green-400 to-emerald-400 transform scale-x-0 group-focus-within/cell:scale-x-100 transition-transform duration-300 origin-right delay-75"></div>
-                            </div>
+                            {renderTypedTableCell({
+                              componentId: component.id,
+                              rowIndex,
+                              colIndex,
+                              column: col,
+                              value: row[col.key],
+                              currentRows,
+                              onChange: (newVal: any) =>
+                                handleTypedCellChange(rowIndex, col.key, newVal),
+                            })}
                           </td>
                         ))}
                       </tr>
@@ -1246,11 +1326,10 @@ export default function BulletinDynamic({
                   </tbody>
                 </table>
               </div>
-              {/* Enhanced Control Panel */}
+              {/* Control Panel */}
               <div className="border-t border-gray-100 dark:border-dark-divider bg-gray-50 dark:bg-dark-background backdrop-blur-sm">
                 <div className="p-6">
                   <div className="flex items-center justify-between flex-wrap gap-4">
-                    {/* Row Controls */}
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary uppercase tracking-wider">
                         Rows
@@ -1258,26 +1337,25 @@ export default function BulletinDynamic({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={addRow}
-                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
-                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
-                            px-3 py-2 rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm \
+                          hover:bg-gray-100 dark:hover:bg-dark-actionHover \
+                          px-3 py-2 rounded-lg transition-all duration-200"
                         >
                           <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200" />
                         </button>
                         <button
                           onClick={removeRow}
-                          disabled={tableData.length <= 1}
-                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
-                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
-                            px-3 py-2 rounded-lg transition-all duration-200
-                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          disabled={rowObjects.length <= 1}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm \
+                          hover:bg-gray-100 dark:hover:bg-dark-actionHover \
+                          px-3 py-2 rounded-lg transition-all duration-200
+                          disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         >
                           <Trash2 className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-200" />
                         </button>
                       </div>
                     </div>
 
-                    {/* Column Controls */}
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-gray-500 dark:text-dark-textSecondary uppercase tracking-wider">
                         Columns
@@ -1285,19 +1363,19 @@ export default function BulletinDynamic({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={addColumn}
-                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
-                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
-                            px-3 py-2 rounded-lg transition-all duration-200"
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm \
+                          hover:bg-gray-100 dark:hover:bg-dark-actionHover \
+                          px-3 py-2 rounded-lg transition-all duration-200"
                         >
                           <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200" />
                         </button>
                         <button
                           onClick={removeColumn}
-                          disabled={cols <= 1}
-                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm 
-                            hover:bg-gray-100 dark:hover:bg-dark-actionHover 
-                            px-3 py-2 rounded-lg transition-all duration-200
-                            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          disabled={columns.length <= 1}
+                          className="group flex items-center gap-1.5 text-gray-600 dark:text-dark-textSecondary hover:text-gray-800 dark:hover:text-dark-textPrimary font-medium text-sm \
+                          hover:bg-gray-100 dark:hover:bg-dark-actionHover \
+                          px-3 py-2 rounded-lg transition-all duration-200
+                          disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         >
                           <Trash2 className="w-3.5 h-3.5 transition-transform group-hover:scale-105 duration-200" />
                         </button>
@@ -1309,6 +1387,7 @@ export default function BulletinDynamic({
             </div>
           </div>
         );
+      }
 
       case "graph":
         return (
@@ -1464,6 +1543,143 @@ export default function BulletinDynamic({
     }
   };
 
+  // Helpers for typed table
+  function defaultValueForColumn(col: TableColumnSpec) {
+    switch (col.type) {
+      case "checkbox":
+        return false;
+      case "number":
+        return "";
+      default:
+        return "";
+    }
+  }
+
+  function uniqueColumnKey(base: string, existing: Set<string>) {
+    let key = base;
+    let counter = 1;
+    while (existing.has(key)) {
+      key = `${base}${counter++}`;
+    }
+    return key;
+  }
+
+  function renderTypedTableCell(args: {
+    componentId: string;
+    rowIndex: number;
+    colIndex: number;
+    column: TableColumnSpec;
+    value: any;
+    currentRows: number;
+    onChange: (newVal: any) => void;
+  }) {
+    const { componentId, rowIndex, colIndex, column, value, currentRows, onChange } = args;
+    const commonClasses =
+      "w-full h-14 px-6 py-4 bg-transparent text-gray-800 dark:text-dark-textPrimary border-none outline-none transition-all duration-200 placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary font-medium hover:bg-blue-50 dark:hover:bg-dark-actionHover focus:bg-green-50 dark:focus:bg-dark-actionSelected focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/30 focus:ring-inset group-hover/cell:shadow-inner";
+
+    const dataAttr = `${componentId}-${rowIndex}-${colIndex}`;
+    const placeholder = column.placeholder || column.header;
+
+    if (column.type === "checkbox") {
+      return (
+        <div className="flex items-center justify-center h-14">
+          <input
+            type="checkbox"
+            checked={!!value}
+            onChange={(e) => onChange(e.target.checked)}
+            className="w-4 h-4 text-green-600 dark:text-green-500 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded focus:ring-1 focus:ring-green-500/30 dark:focus:ring-green-400/30 focus:border-green-500 dark:focus:border-green-400 transition-all duration-200 cursor-pointer"
+            data-table-cell={dataAttr}
+          />
+        </div>
+      );
+    }
+
+    if (column.type === "select") {
+      const options = Array.isArray(column.options) ? column.options : [];
+      return (
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${commonClasses} pr-8`}
+          data-table-cell={dataAttr}
+        >
+          <option value="" disabled className="text-gray-500 dark:text-dark-textDisabled bg-white dark:bg-dark-secondary">
+            {placeholder}
+          </option>
+          {options.map((opt) => (
+            <option key={opt} value={opt} className="text-gray-900 dark:text-dark-textPrimary bg-white dark:bg-dark-secondary">
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    if (column.type === "date") {
+      return (
+        <input
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className={commonClasses}
+          data-table-cell={dataAttr}
+        />
+      );
+    }
+
+    if (column.type === "number") {
+      return (
+        <input
+          type="number"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+          placeholder={placeholder}
+          className={commonClasses}
+          data-table-cell={dataAttr}
+          onKeyDown={(e) => handleCellNav(e, colIndex, rowIndex, currentRows, componentId)}
+        />
+      );
+    }
+
+    // text default
+    return (
+      <input
+        type="text"
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={commonClasses}
+        data-table-cell={dataAttr}
+        onKeyDown={(e) => handleCellNav(e, colIndex, rowIndex, currentRows, componentId)}
+      />
+    );
+  }
+
+  function handleCellNav(
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    colIndex: number,
+    rowIndex: number,
+    currentRows: number,
+    componentId: string
+  ) {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const nextCol = colIndex + 1; // best-effort for typed table; selection management is simplified
+      const nextRow = nextCol === 0 ? (rowIndex + 1) % currentRows : rowIndex;
+      const nextInput = document.querySelector(
+        `[data-table-cell="${componentId}-${nextRow}-${nextCol}"]`
+      ) as HTMLInputElement;
+      nextInput?.focus();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const nextRow = (rowIndex + 1) % currentRows;
+      const nextInput = document.querySelector(
+        `[data-table-cell="${componentId}-${nextRow}-${colIndex}"]`
+      ) as HTMLInputElement;
+      nextInput?.focus();
+    }
+  }
+
   return (
     <div className="h-full flex flex-col dark:bg-dark-background transition-all">
       {/* Header */}
@@ -1565,7 +1781,7 @@ export default function BulletinDynamic({
 
       {/* Dynamic Content */}
       <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-background">
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           {renderComponentsWithLayout()}
         </div>
       </div>

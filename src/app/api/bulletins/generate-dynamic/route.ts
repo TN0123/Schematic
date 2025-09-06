@@ -96,6 +96,20 @@ Available component types:
 - "date": Date picker input
 - "checklist": Interactive todo-style list with checkboxes
 - "table": Interactive table with editable cells (include rows and cols in config)
+ - "table": Interactive table with editable cells using a required typed columns config. The config looks like:
+   {
+     "id": "assignments",
+     "type": "table",
+     "label": "Assignments",
+     "config": {
+       "columns": [
+         { "key": "course", "header": "Course", "type": "select", "options": ["CMSC422", "CMSC474", "STAT440", "ASTR101", "ENGL393"] },
+         { "key": "assignment", "header": "Assignment", "type": "text" },
+         { "key": "due", "header": "Due Date", "type": "date" },
+         { "key": "done", "header": "Done", "type": "checkbox" }
+       ]
+     }
+   }
 - "graph": Interactive knowledge graph for connecting concepts and ideas
 - "tree": Hierarchical tree structure for organizing information
 - "flowchart": Process flowchart for documenting workflows
@@ -168,7 +182,7 @@ Return a JSON object with this exact structure:
         "type": "component-type",
         "label": "Component Label",
         "placeholder": "Optional placeholder text",
-        "config": { "rows": 4, "cols": 4 }
+        "config": { "columns": [ { "key": "name", "header": "Name", "type": "text" } ] }
       }
     ],
     "layout": [
@@ -185,7 +199,7 @@ Return a JSON object with this exact structure:
   }
 }
 
-Note: Only include the "config" property for table and button components. For table components, determine appropriate rows and cols based on the user's request.
+Note: Only include the "config" property for table and button components. For table components, ALWAYS use the typed columns config with keys, headers, and types (text, number, date, select, checkbox).
 
 Generate the schema now:`;
 
@@ -341,35 +355,64 @@ Generate the schema now:`;
         );
       }
 
-      // Validate table components have proper config
+      // Validate table components have proper config (typed columns only)
       if (component.type === "table") {
-        if (
-          !component.config ||
-          !component.config.rows ||
-          !component.config.cols
-        ) {
+        if (!component.config) {
           validationErrors.push(
-            `Table component "${component.id}" must have config with rows and cols`
+            `Table component "${component.id}" must have a config`
           );
         } else {
-          if (
-            typeof component.config.rows !== "number" ||
-            typeof component.config.cols !== "number"
-          ) {
-            validationErrors.push(
-              `Table component "${component.id}" rows and cols must be numbers`
-            );
-          }
+          const hasTyped = Array.isArray(component.config.columns);
 
-          if (
-            component.config.rows < 1 ||
-            component.config.cols < 1 ||
-            component.config.rows > 20 ||
-            component.config.cols > 20
-          ) {
+          if (!hasTyped) {
             validationErrors.push(
-              `Table component "${component.id}" dimensions must be between 1 and 20`
+              `Table component "${component.id}" must specify a typed {columns} config`
             );
+          } else {
+            const cols = component.config.columns;
+            if (!Array.isArray(cols) || cols.length < 1 || cols.length > 20) {
+              validationErrors.push(
+                `Table component "${component.id}" columns must be an array of 1-20 items`
+              );
+            } else {
+              const allowedTypes = [
+                "text",
+                "number",
+                "date",
+                "select",
+                "checkbox",
+              ];
+              const keys = new Set<string>();
+              for (const c of cols) {
+                if (!c.key || !c.header || !c.type) {
+                  validationErrors.push(
+                    `Each column in table "${component.id}" must have key, header, and type`
+                  );
+                  continue;
+                }
+                if (typeof c.key !== "string" || typeof c.header !== "string") {
+                  validationErrors.push(
+                    `Table "${component.id}" column key and header must be strings`
+                  );
+                }
+                if (!allowedTypes.includes(c.type)) {
+                  validationErrors.push(
+                    `Table "${component.id}" column type ${c.type} is invalid`
+                  );
+                }
+                if (keys.has(c.key)) {
+                  validationErrors.push(
+                    `Table "${component.id}" has duplicate column key: ${c.key}`
+                  );
+                }
+                keys.add(c.key);
+                if (c.type === "select" && c.options && !Array.isArray(c.options)) {
+                  validationErrors.push(
+                    `Table "${component.id}" select column ${c.key} options must be an array`
+                  );
+                }
+              }
+            }
           }
         }
       }
@@ -407,6 +450,24 @@ Generate the schema now:`;
             validationErrors.push(
               `Button component "${component.id}" action must have targetComponentId`
             );
+          }
+
+          // For table-add-row targeting a typed table, allow value to be object with column keys or array
+          if (action.type === "table-add-row") {
+            const targetComp = components.find(
+              (c: any) => c.id === action.targetComponentId
+            );
+            if (targetComp?.type === "table" && targetComp?.config?.columns) {
+              const cols = targetComp.config.columns;
+              if (
+                action.value !== undefined &&
+                !(Array.isArray(action.value) || typeof action.value === "object")
+              ) {
+                validationErrors.push(
+                  `Button "${component.id}" table-add-row value must be an array or object when targeting a typed table`
+                );
+              }
+            }
           }
         }
       }

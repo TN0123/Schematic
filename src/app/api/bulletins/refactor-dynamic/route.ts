@@ -137,7 +137,7 @@ Available component types:
 - "number": Numeric input field
 - "date": Date picker input
 - "checklist": Interactive todo-style list with checkboxes
-- "table": Interactive table with editable cells (include rows and cols in config)
+- "table": Interactive table with editable cells using a required typed columns config.
 - "graph": Interactive knowledge graph for connecting concepts and ideas
 - "tree": Hierarchical tree structure for organizing information
 - "flowchart": Process flowchart for documenting workflows
@@ -174,7 +174,7 @@ For button components, you MUST include a "config" object with an "action" prope
 }
 
 Available button action types:
-- "table-add-row": Adds a new row to a table. Use "value" array for row data or string for first column
+- "table-add-row": Adds a new row to a table. Use "value" object keyed by column keys, array for row data, or string for first column
 - "table-remove-row": Removes the last row from a table
 - "table-add-column": Adds a new column to a table
 - "table-remove-column": Removes the last column from a table
@@ -200,7 +200,7 @@ Rules:
 4. Preserve as much existing data as possible by mapping it to appropriate new components
 5. Generate a new title that reflects the refactored structure
 6. Use semantic component IDs
-7. For table components, ALWAYS include a "config" object with "rows" and "cols" properties
+7. For table components, ALWAYS include a "config" object with a "columns" array. Each column must have { key, header, type } and for select columns include an "options" array.
 8. When mapping data, consider logical transformations (e.g., text can become checklist items, tables can be restructured)
 9. If data cannot be preserved in the new structure, include it in a "notes" or "additional-info" component
 10. Create a thoughtful layout that groups related components together
@@ -218,7 +218,7 @@ Return a JSON object with this exact structure:
         "type": "component-type",
         "label": "Component Label",
         "placeholder": "Optional placeholder text",
-        "config": { "rows": 4, "cols": 4 }
+        "config": { "columns": [ { "key": "name", "header": "Name", "type": "text" } ] }
       }
     ],
     "layout": [
@@ -408,35 +408,63 @@ Generate the refactored schema and data mapping now:`;
         );
       }
 
-      // Validate table components have proper config
+      // Validate table components have proper config (typed columns only)
       if (component.type === "table") {
-        if (
-          !component.config ||
-          !component.config.rows ||
-          !component.config.cols
-        ) {
+        if (!component.config) {
           validationErrors.push(
-            `Table component "${component.id}" must have config with rows and cols`
+            `Table component "${component.id}" must have a config`
           );
         } else {
-          if (
-            typeof component.config.rows !== "number" ||
-            typeof component.config.cols !== "number"
-          ) {
+          const hasTyped = Array.isArray(component.config.columns);
+          if (!hasTyped) {
             validationErrors.push(
-              `Table component "${component.id}" rows and cols must be numbers`
+              `Table component "${component.id}" must specify a typed {columns} config`
             );
-          }
-
-          if (
-            component.config.rows < 1 ||
-            component.config.cols < 1 ||
-            component.config.rows > 20 ||
-            component.config.cols > 20
-          ) {
-            validationErrors.push(
-              `Table component "${component.id}" dimensions must be between 1 and 20`
-            );
+          } else {
+            const cols = component.config.columns;
+            if (!Array.isArray(cols) || cols.length < 1 || cols.length > 20) {
+              validationErrors.push(
+                `Table component "${component.id}" columns must be an array of 1-20 items`
+              );
+            } else {
+              const allowedTypes = [
+                "text",
+                "number",
+                "date",
+                "select",
+                "checkbox",
+              ];
+              const keys = new Set<string>();
+              for (const c of cols) {
+                if (!c.key || !c.header || !c.type) {
+                  validationErrors.push(
+                    `Each column in table "${component.id}" must have key, header, and type`
+                  );
+                  continue;
+                }
+                if (typeof c.key !== "string" || typeof c.header !== "string") {
+                  validationErrors.push(
+                    `Table "${component.id}" column key and header must be strings`
+                  );
+                }
+                if (!allowedTypes.includes(c.type)) {
+                  validationErrors.push(
+                    `Table "${component.id}" column type ${c.type} is invalid`
+                  );
+                }
+                if (keys.has(c.key)) {
+                  validationErrors.push(
+                    `Table "${component.id}" has duplicate column key: ${c.key}`
+                  );
+                }
+                keys.add(c.key);
+                if (c.type === "select" && c.options && !Array.isArray(c.options)) {
+                  validationErrors.push(
+                    `Table "${component.id}" select column ${c.key} options must be an array`
+                  );
+                }
+              }
+            }
           }
         }
       }
