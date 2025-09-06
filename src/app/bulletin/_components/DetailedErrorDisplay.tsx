@@ -122,7 +122,10 @@ export default function DetailedErrorDisplay({
             {(error.code || error.technicalInfo) && (
               <div className="mt-3">
                 <button
-                  onClick={() => setIsExpanded(!isExpanded)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
                   className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
                 >
                   {isExpanded ? (
@@ -140,7 +143,10 @@ export default function DetailedErrorDisplay({
                         Error Information
                       </h4>
                       <button
-                        onClick={handleCopyError}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyError();
+                        }}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                       >
                         {copied ? (
