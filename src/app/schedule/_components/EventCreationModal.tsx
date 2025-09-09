@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Event } from "../types";
 import { Reminder } from "./RemindersBar";
 
@@ -31,6 +31,12 @@ export default function EventCreationModal({
   const [reminderText, setReminderText] = useState("");
   const [reminderTime, setReminderTime] = useState("");
   const [isAISuggested, setIsAISuggested] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const handleReminderSubmit = () => {
     if (!reminderText.trim() || !reminderTime || !onCreateReminder) {
@@ -43,19 +49,33 @@ export default function EventCreationModal({
       isAISuggested,
     });
 
-    // Reset form
-    setReminderText("");
-    setReminderTime("");
-    setIsAISuggested(false);
-    setShowModal(false);
+    // Animate out before closing and resetting
+    setIsVisible(false);
+    setTimeout(() => {
+      setReminderText("");
+      setReminderTime("");
+      setIsAISuggested(false);
+      setShowModal(false);
+    }, 200);
   };
 
   const handleCancel = () => {
-    // Reset both forms
-    setReminderText("");
-    setReminderTime("");
-    setIsAISuggested(false);
-    setShowModal(false);
+    setIsVisible(false);
+    setTimeout(() => {
+      // Reset both forms after fade-out
+      setReminderText("");
+      setReminderTime("");
+      setIsAISuggested(false);
+      setShowModal(false);
+    }, 200);
+  };
+
+  const handleAddEventWithExit = () => {
+    handleAddEvent();
+    setIsVisible(false);
+    setTimeout(() => {
+      setShowModal(false);
+    }, 200);
   };
 
   const links = Array.isArray(newEvent.links) ? newEvent.links : [];
@@ -74,74 +94,82 @@ export default function EventCreationModal({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 z-50"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-opacity duration-200 ${
+        isVisible ? "opacity-100" : "opacity-0"
+      }`}
       onClick={handleCancel}
     >
       <div
-        className="bg-white dark:bg-dark-secondary p-6 rounded-lg shadow-lg w-96 relative z-50"
+        className={`relative z-50 w-full max-w-lg transform rounded-2xl bg-white/90 dark:bg-dark-secondary/90 p-6 shadow-2xl ring-1 ring-black/5 backdrop-saturate-150 transition-all duration-200 ${
+          isVisible
+            ? "opacity-100 translate-y-0 scale-100"
+            : "opacity-0 translate-y-2 scale-95"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Tab Header */}
-        <div className="flex mb-4 border-b border-gray-200 dark:border-dark-divider">
-          <button
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === "event"
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary"
-            }`}
-            onClick={() => setActiveTab("event")}
-          >
-            Event
-          </button>
-          {onCreateReminder && (
+        <div className="mb-6 flex w-full justify-center">
+          <div className="inline-flex items-center rounded-full bg-gray-100 p-1 dark:bg-dark-actionDisabledBackground">
             <button
-              className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                activeTab === "reminder"
-                  ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary"
+              className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
+                activeTab === "event"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-dark-secondary dark:text-dark-textPrimary"
+                  : "text-gray-600 hover:text-gray-800 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
               }`}
-              onClick={() => setActiveTab("reminder")}
+              onClick={() => setActiveTab("event")}
             >
-              Reminder
+              Event
             </button>
-          )}
+            {onCreateReminder && (
+              <button
+                className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all ${
+                  activeTab === "reminder"
+                    ? "bg-white text-gray-900 shadow-sm dark:bg-dark-secondary dark:text-dark-textPrimary"
+                    : "text-gray-600 hover:text-gray-800 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
+                }`}
+                onClick={() => setActiveTab("reminder")}
+              >
+                Reminder
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tab Content */}
         {activeTab === "event" ? (
           <>
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-textPrimary">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
               Add Event
             </h3>
-            <label className="block mb-2 text-gray-700 dark:text-dark-textSecondary">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
               Event Title
             </label>
             <input
               type="text"
-              className="w-full p-2 border rounded mb-4 bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+              className="mb-4 w-full rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               value={newEvent.title}
               onChange={(e) =>
                 setNewEvent({ ...newEvent, title: e.target.value })
               }
               placeholder="Enter event title..."
             />
-            <label className="block mb-2 text-gray-700 dark:text-dark-textSecondary">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
               Start Date
             </label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded mb-4 bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+              className="mb-4 w-full rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               value={formatDateTimeLocal(newEvent.start)}
               onChange={(e) =>
                 setNewEvent({ ...newEvent, start: new Date(e.target.value) })
               }
             />
-            <label className="block mb-2 text-gray-700 dark:text-dark-textSecondary">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
               End Date
             </label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded mb-4 bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+              className="mb-4 w-full rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               value={formatDateTimeLocal(newEvent.end)}
               onChange={(e) =>
                 setNewEvent({ ...newEvent, end: new Date(e.target.value) })
@@ -150,12 +178,12 @@ export default function EventCreationModal({
 
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-gray-700 dark:text-dark-textSecondary">
+                <label className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
                   Links (optional)
                 </label>
                 <button
                   type="button"
-                  className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
+                  className="text-sm text-blue-600 hover:underline dark:text-blue-400"
                   onClick={addLink}
                 >
                   Add link
@@ -167,17 +195,17 @@ export default function EventCreationModal({
                     <div key={idx} className="flex items-center space-x-2">
                       <input
                         type="url"
-                        className="flex-1 p-2 border rounded bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+                        className="flex-1 rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
                         value={link}
                         onChange={(e) => updateLinkAt(idx, e.target.value)}
                         placeholder="https://example.com"
                       />
                       <button
                         type="button"
-                        className="px-2 py-1 text-sm text-red-600 hover:underline"
+                        className="px-2.5 py-1.5 text-sm text-red-600 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30"
                         onClick={() => removeLinkAt(idx)}
                       >
-                        Remove
+                        ×
                       </button>
                     </div>
                   ))}
@@ -185,16 +213,16 @@ export default function EventCreationModal({
               )}
             </div>
 
-            <div className="flex justify-between">
+            <div className="mt-6 flex justify-between">
               <button
-                className="bg-gray-500 dark:bg-dark-actionDisabledBackground text-white px-4 py-2 rounded hover:bg-gray-600 dark:hover:bg-dark-actionHover"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] dark:border-dark-divider dark:bg-transparent dark:text-dark-textSecondary dark:hover:bg-dark-actionDisabledBackground"
                 onClick={handleCancel}
               >
                 Cancel
               </button>
               <button
-                className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-600 dark:hover:bg-blue-500"
-                onClick={handleAddEvent}
+                className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2 text-white shadow-md transition hover:from-blue-600 hover:to-indigo-600 active:scale-[0.99] dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500"
+                onClick={handleAddEventWithExit}
               >
                 Add Event
               </button>
@@ -202,46 +230,49 @@ export default function EventCreationModal({
           </>
         ) : (
           <>
-            <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-dark-textPrimary">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
               Add Reminder
             </h3>
-            <label className="block mb-2 text-gray-700 dark:text-dark-textSecondary">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
               Reminder Text
             </label>
             <textarea
-              className="w-full p-2 border rounded mb-4 bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider resize-none"
+              className="mb-4 w-full resize-none rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               rows={3}
               value={reminderText}
               onChange={(e) => setReminderText(e.target.value)}
               placeholder="Enter reminder text..."
             />
-            <label className="block mb-2 text-gray-700 dark:text-dark-textSecondary">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
               Reminder Time
             </label>
             <input
               type="datetime-local"
-              className="w-full p-2 border rounded mb-4 bg-gray-100 dark:bg-dark-actionDisabledBackground text-gray-900 dark:text-dark-textPrimary border-gray-300 dark:border-dark-divider"
+              className="mb-4 w-full rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
             />
-            <div className="flex items-center mb-4">
+            <div className="mb-4 flex items-center gap-2">
               <input
                 type="checkbox"
                 id="isAISuggested"
                 checked={isAISuggested}
                 onChange={(e) => setIsAISuggested(e.target.checked)}
-                className="mr-2"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
+              <label htmlFor="isAISuggested" className="text-sm text-gray-700 dark:text-dark-textSecondary">
+                Mark as AI-suggested
+              </label>
             </div>
-            <div className="flex justify-between">
+            <div className="mt-6 flex justify-between">
               <button
-                className="bg-gray-500 dark:bg-dark-actionDisabledBackground text-white px-4 py-2 rounded hover:bg-gray-600 dark:hover:bg-dark-actionHover"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.99] dark:border-dark-divider dark:bg-transparent dark:text-dark-textSecondary dark:hover:bg-dark-actionDisabledBackground"
                 onClick={handleCancel}
               >
                 Cancel
               </button>
               <button
-                className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2 text-white shadow-md transition hover:from-blue-600 hover:to-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] dark:from-blue-600 dark:to-indigo-600 dark:hover:from-blue-500 dark:hover:to-indigo-500"
                 onClick={handleReminderSubmit}
                 disabled={!reminderText.trim() || !reminderTime}
               >
