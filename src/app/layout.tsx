@@ -43,25 +43,23 @@ export default async function RootLayout({
   if (session?.user?.id) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { lastLoginAt: true, lastSeenUpdatesAt: true },
+      select: { lastSeenUpdatesAt: true },
     });
-    const baseline = user?.lastSeenUpdatesAt && user.lastLoginAt
-      ? new Date(Math.max(user.lastSeenUpdatesAt.getTime(), user.lastLoginAt.getTime()))
-      : user?.lastSeenUpdatesAt || user?.lastLoginAt || null;
+    const baseline = user?.lastSeenUpdatesAt || null;
 
-    if (baseline) {
-      const updates = await prisma.productUpdate.findMany({
-        where: { isPublished: true, publishedAt: { gt: baseline } },
-        orderBy: { publishedAt: "desc" },
-        select: { id: true, title: true, description: true, publishedAt: true },
-      });
-      updatesForUser = updates.map((u) => ({
-        id: u.id,
-        title: u.title,
-        description: u.description,
-        publishedAt: u.publishedAt.toISOString(),
-      }));
-    }
+    const updates = await prisma.productUpdate.findMany({
+      where: baseline
+        ? { isPublished: true, publishedAt: { gt: baseline } }
+        : { isPublished: true },
+      orderBy: { publishedAt: "desc" },
+      select: { id: true, title: true, description: true, publishedAt: true },
+    });
+    updatesForUser = updates.map((u) => ({
+      id: u.id,
+      title: u.title,
+      description: u.description,
+      publishedAt: u.publishedAt.toISOString(),
+    }));
   }
   return (
     <html lang="en" suppressHydrationWarning>
