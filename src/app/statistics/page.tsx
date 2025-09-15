@@ -99,6 +99,66 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleExport = () => {
+    // Build CSV for current events in selected range
+    const escapeCsv = (value: string) => {
+      const v = value ?? "";
+      if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+      return v;
+    };
+
+    const rows: string[] = [];
+    rows.push([
+      "Title",
+      "Start",
+      "End",
+      "DurationHours",
+      "DayOfWeek",
+      "Date",
+      "StartTime",
+      "EndTime",
+      "FirstLink",
+      "AllLinks"
+    ].join(","));
+
+    for (const ev of events) {
+      const start = new Date(ev.start);
+      const end = new Date(ev.end);
+      const durationHours = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const dateStr = start.toISOString().slice(0, 10);
+      const time = (d: Date) => d.toTimeString().slice(0, 8);
+      const firstLink = Array.isArray(ev.links) && ev.links.length > 0 ? ev.links[0] : "";
+      const allLinks = Array.isArray(ev.links) ? ev.links.join(" ") : "";
+
+      rows.push([
+        escapeCsv(ev.title || "Untitled"),
+        escapeCsv(start.toISOString()),
+        escapeCsv(end.toISOString()),
+        String(durationHours.toFixed(2)),
+        dayNames[start.getDay()],
+        dateStr,
+        time(start),
+        time(end),
+        escapeCsv(firstLink),
+        escapeCsv(allLinks)
+      ].join(","));
+    }
+
+    const csv = rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const startName = startOfDay(startDate).toISOString().slice(0, 10);
+    const endName = endOfDay(endDate).toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `schedule-export_${startName}_to_${endName}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     if (status !== "authenticated") return;
     const controller = new AbortController();
@@ -261,7 +321,7 @@ export default function StatisticsPage() {
               }}
             />
           </div>
-          <div className="flex items-center gap-2 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg px-3 py-2">
+          <div className="flex items-center justify-between gap-2 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg px-3 py-2">
             <div className="flex flex-wrap gap-2 text-xs">
               <button
                 className="px-2.5 py-1 rounded-md border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition"
@@ -292,6 +352,13 @@ export default function StatisticsPage() {
                 Today
               </button>
             </div>
+            <button
+              className="text-xs md:text-sm px-3 py-1.5 rounded-md border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 transition"
+              onClick={handleExport}
+              title="Export events to CSV"
+            >
+              Export
+            </button>
           </div>
         </div>
 
