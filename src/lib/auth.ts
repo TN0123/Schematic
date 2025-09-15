@@ -22,6 +22,19 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  events: {
+    async signIn({ user }) {
+      try {
+        if (!user?.id) return;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+      } catch (err) {
+        console.error("Failed to update lastLoginAt on signIn", err);
+      }
+    },
+  },
 };
 
 export default authOptions;

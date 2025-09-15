@@ -13,6 +13,10 @@ import MainWrapper from "@/components/MainWrapper";
 import PostHogProvider from "@/components/PostHogProvider";
 import GlobalSearch from "@/components/GlobalSearch";
 import { SearchProvider } from "@/components/SearchProvider";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import ChangelogModal from "./(components)/ChangelogModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +33,36 @@ export const metadata: Metadata = {
   description: "",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
+  let updatesForUser: { id: string; title: string; description: string; publishedAt: string }[] = [];
+  if (session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { lastLoginAt: true, lastSeenUpdatesAt: true },
+    });
+    const baseline = user?.lastSeenUpdatesAt && user.lastLoginAt
+      ? new Date(Math.max(user.lastSeenUpdatesAt.getTime(), user.lastLoginAt.getTime()))
+      : user?.lastSeenUpdatesAt || user?.lastLoginAt || null;
+
+    if (baseline) {
+      const updates = await prisma.productUpdate.findMany({
+        where: { isPublished: true, publishedAt: { gt: baseline } },
+        orderBy: { publishedAt: "desc" },
+        select: { id: true, title: true, description: true, publishedAt: true },
+      });
+      updatesForUser = updates.map((u) => ({
+        id: u.id,
+        title: u.title,
+        description: u.description,
+        publishedAt: u.publishedAt.toISOString(),
+      }));
+    }
+  }
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -114,7 +143,12 @@ export default function RootLayout({
                   <SearchProvider>
                     <Navigation />
                     <MobileTabBar />
-                    <MainWrapper>{children}</MainWrapper>
+                    <MainWrapper>
+                      {children}
+                      {updatesForUser.length > 0 && (
+                        <ChangelogModal updates={updatesForUser} />
+                      )}
+                    </MainWrapper>
                     <PageTransition />
                     <GlobalSearch />
                   </SearchProvider>

@@ -26,6 +26,10 @@ model User {
   scheduleContext          String         @default("")
   goalText                 String         @default("")
   dailySummaryCaches       DailySummaryCache[]
+  /// Timestamp of the user's last successful login
+  lastLoginAt              DateTime?
+  /// Timestamp when the user last dismissed the product updates modal
+  lastSeenUpdatesAt        DateTime?
 }
 
 model Account {
@@ -133,4 +137,16 @@ model DailySummaryCache {
 
   @@unique([userId, timezone, dayKey])
   @@index([userId])
+}
+
+/// Changelog entries for informing users about new features
+model ProductUpdate {
+  id           String   @id @default(cuid())
+  title        String
+  description  String   @db.Text
+  publishedAt  DateTime @default(now())
+  isPublished  Boolean  @default(true)
+
+  @@index([publishedAt])
+  @@index([isPublished])
 }
