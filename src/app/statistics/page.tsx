@@ -228,7 +228,7 @@ export default function StatisticsPage() {
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="h-screen overflow-hidden w-full bg-white dark:bg-dark-background dark:text-dark-textPrimary">
+    <div className="h-screen overflow-y-auto md:overflow-hidden w-full bg-white dark:bg-dark-background dark:text-dark-textPrimary pb-16 md:pb-0">
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 md:py-4">
         <div className="flex flex-col items-center justify-center gap-1 mb-3 md:mb-4">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-dark-textPrimary text-center">Schedule Statistics</h1>

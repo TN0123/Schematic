@@ -671,7 +671,7 @@ export default function CalendarApp() {
 
                 
                 {/* Header */}
-                <div className="flex justify-between items-center px-4 pb-3 border-b dark:border-dark-divider">
+                <div className="flex justify-between items-center px-4 py-4 border-b dark:border-dark-divider">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
                     Schedule Tools
                   </h2>
