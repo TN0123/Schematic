@@ -353,7 +353,7 @@ export default function StatisticsPage() {
               </button>
             </div>
             <button
-              className="text-xs md:text-sm px-3 py-1.5 rounded-md border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 transition"
+              className="px-2.5 py-1 rounded-md border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 transition text-xs"
               onClick={handleExport}
               title="Export events to CSV"
             >
