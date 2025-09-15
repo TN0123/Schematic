@@ -662,7 +662,7 @@ export default function CalendarApp() {
               
               {/* Bottom Sheet Content */}
               <motion.div
-                className="bg-white dark:bg-dark-background rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col"
+                className="bg-white dark:bg-dark-background rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col pb-16"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
