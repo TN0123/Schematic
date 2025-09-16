@@ -875,12 +875,6 @@ export default function WriteEditor({
                         </div>
                       </div>
                     )}
-                  {autocompleteError && (
-                    <div className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Autocomplete temporarily unavailable
-                    </div>
-                  )}
                 </div>
                 <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
                   {loading && (
