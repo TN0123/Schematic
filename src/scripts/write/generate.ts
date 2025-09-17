@@ -63,10 +63,10 @@ export async function generate(
             remainingUses: updatedUser.premiumRemainingUses,
           };
         } else {
-          const Anthropic = require("@anthropic-ai/sdk").default;
+          const { anthropic } = require("@ai-sdk/anthropic");
           const anthropicKey = process.env.ANTHROPIC_API_KEY;
           const claudeModel = "claude-4-sonnet-20250514";
-          const client = new Anthropic({ apiKey: anthropicKey });
+          const client = anthropic({ apiKey: anthropicKey });
           const response = await client.messages.create({
             model: claudeModel,
             max_tokens: 1024,
