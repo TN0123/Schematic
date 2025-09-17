@@ -95,8 +95,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "YOUR_GITHUB_USERNAME",
-        "repo": "YOUR_REPO_NAME"
+        "owner": "TN0123",
+        "repo": "Schematic"
       }
     ],
     "files": [
