@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { streamText, convertToModelMessages } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
+import { anthropic } from "@ai-sdk/anthropic";
 import { PrismaClient } from "@prisma/client";
 import { contextUpdate } from "@/scripts/write/context-update";
 
@@ -254,10 +255,12 @@ export async function POST(req: NextRequest) {
     const messages = convertToModelMessages(uiMessages);
 
     // Select model and check usage
-    let selectedModelProvider;
+    // Default to Gemini to satisfy type checker; will be overridden below
+    let selectedModelProvider = google("gemini-2.5-flash");
     let remainingUses: number | null = null;
 
-    if (model === "premium" && userId) {
+    // Support explicit model selection: "basic" | "gpt-4.1" | "claude-sonnet-4"
+    if ((model === "gpt-4.1" || model === "claude-sonnet-4") && userId) {
       try {
         const user = await prisma.user.findUnique({
           where: { id: userId },
@@ -265,7 +268,12 @@ export async function POST(req: NextRequest) {
         });
 
         if (user && user.premiumRemainingUses > 0) {
-          selectedModelProvider = openai("gpt-4.1");
+          if (model === "gpt-4.1") {
+            selectedModelProvider = openai("gpt-4.1");
+          } else if (model === "claude-sonnet-4") {
+            const anthropicModelId = "claude-4-sonnet-20250514";
+            selectedModelProvider = anthropic(anthropicModelId);
+          }
 
           // Decrement usage
           const updatedUser = await prisma.user.update({

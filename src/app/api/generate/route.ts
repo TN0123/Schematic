@@ -3,7 +3,7 @@ import { generate } from "@/scripts/write/generate";
 
 export async function POST(req: Request) {
   try {
-    const { startText, endText, userId, model = "premium" } = await req.json();
+    const { startText, endText, userId, model = "gpt-4.1" } = await req.json();
     const result = await generate(startText, endText, userId, model);
     return NextResponse.json({ result }, { status: 200 });
   } catch (error) {

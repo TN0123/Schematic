@@ -16,7 +16,7 @@ import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/util
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
 
-export type ModelType = "basic" | "premium";
+export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
 
 interface MessageProps {
   message: string;
@@ -249,7 +249,7 @@ export default function WritePanel({
   useEffect(() => {
     onChatLoadingChange?.(isChatLoading);
   }, [isChatLoading, onChatLoadingChange]);
-  const [selectedModel, setSelectedModel] = useState<ModelType>("premium");
+  const [selectedModel, setSelectedModel] = useState<ModelType>("gpt-4.1");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const wasPremiumDisabledRef = useRef(false);
@@ -349,7 +349,7 @@ export default function WritePanel({
 
   // Auto-switch to basic model when premium uses run out
   useEffect(() => {
-    if (premiumRemainingUses === 0 && selectedModel === "premium") {
+    if (premiumRemainingUses === 0 && selectedModel !== "basic") {
       setSelectedModel("basic");
       wasPremiumDisabledRef.current = true;
       addToast("Premium uses exhausted - automatically switched to basic model", "warning");
@@ -1140,7 +1140,7 @@ export default function WritePanel({
                 value={selectedModel}
                 onChange={(e) => {
                   const newModel = e.target.value as ModelType;
-                  if (newModel === "premium" && premiumRemainingUses === 0) {
+                  if (newModel !== "basic" && premiumRemainingUses === 0) {
                     addToast("Premium model unavailable - no uses remaining", "warning");
                     return;
                   }
@@ -1149,13 +1149,20 @@ export default function WritePanel({
                 className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
                 disabled={isChatLoading}
               >
-                <option value="basic">Basic</option>
+                <option value="basic">Gemini 2.5 Flash</option>
                 <option 
-                  value="premium" 
+                  value="gpt-4.1" 
                   disabled={premiumRemainingUses === 0}
                   className={premiumRemainingUses === 0 ? "text-gray-400 dark:text-gray-500" : ""}
                 >
-                  Premium{premiumRemainingUses === 0 ? " (No uses left)" : ""}
+                  GPT-4.1 (Premium)
+                </option>
+                <option 
+                  value="claude-sonnet-4" 
+                  disabled={premiumRemainingUses === 0}
+                  className={premiumRemainingUses === 0 ? "text-gray-400 dark:text-gray-500" : ""}
+                >
+                  Claude Sonnet 4 (Premium)
                 </option>
               </select>
               <div className="relative group">

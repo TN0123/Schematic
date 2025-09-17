@@ -8,7 +8,7 @@ export async function POST(req: Request) {
       selected,
       after,
       userId,
-      model = "premium",
+      model = "gpt-4.1",
     } = await req.json();
     const { response, remainingUses } = await improve(
       before,

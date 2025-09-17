@@ -2,7 +2,7 @@ export async function generate(
   startText: string,
   endText: string,
   userId?: string,
-  selectedModel: "basic" | "premium" = "premium"
+  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4" = "gpt-4.1"
 ) {
   let prompt = `
   You are an AI writing assistant tasked with helping someone continue whatever text that have generated so far. 
@@ -24,8 +24,8 @@ export async function generate(
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  // Check premium usage for premium model
-  if (userId && selectedModel === "premium") {
+  // Premium models: GPT-4.1 and Claude Sonnet 4
+  if (userId && (selectedModel === "gpt-4.1" || selectedModel === "claude-sonnet-4")) {
     try {
       const prisma = require("@/lib/prisma").default;
 
@@ -35,10 +35,7 @@ export async function generate(
       });
 
       if (user && user.premiumRemainingUses > 0) {
-        console.log("using premium model");
-        const { OpenAI } = require("openai");
-        const openAIAPIKey = process.env.OPENAI_API_KEY;
-        const client = new OpenAI({ apiKey: openAIAPIKey });
+        console.log("using premium model", selectedModel);
 
         // Decrement usage
         const updatedUser = await prisma.user.update({
@@ -53,14 +50,36 @@ export async function generate(
           },
         });
 
-        const response = await client.responses.create({
-          model: "gpt-4.1",
-          input: prompt,
-        });
-        return {
-          text: response.output_text,
-          remainingUses: updatedUser.premiumRemainingUses,
-        };
+        if (selectedModel === "gpt-4.1") {
+          const { OpenAI } = require("openai");
+          const openAIAPIKey = process.env.OPENAI_API_KEY;
+          const client = new OpenAI({ apiKey: openAIAPIKey });
+          const response = await client.responses.create({
+            model: "gpt-4.1",
+            input: prompt,
+          });
+          return {
+            text: response.output_text,
+            remainingUses: updatedUser.premiumRemainingUses,
+          };
+        } else {
+          const Anthropic = require("@anthropic-ai/sdk").default;
+          const anthropicKey = process.env.ANTHROPIC_API_KEY;
+          const claudeModel = "claude-4-sonnet-20250514";
+          const client = new Anthropic({ apiKey: anthropicKey });
+          const response = await client.messages.create({
+            model: claudeModel,
+            max_tokens: 1024,
+            messages: [{ role: "user", content: prompt }],
+          });
+          const text = (response.content || [])
+            .map((c: any) => (c.type === "text" ? c.text : ""))
+            .join("");
+          return {
+            text,
+            remainingUses: updatedUser.premiumRemainingUses,
+          };
+        }
       }
     } catch (error) {
       console.error("Error checking/using premium model:", error);

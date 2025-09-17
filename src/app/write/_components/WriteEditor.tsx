@@ -71,7 +71,7 @@ export default function WriteEditor({
   userId?: string;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
-  selectedModel: "auto" | "basic" | "premium";
+  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4";
   currentDocument: Document | null;
   onSaveDocument: () => void;
   isSaving: boolean;
