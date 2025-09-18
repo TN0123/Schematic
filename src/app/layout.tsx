@@ -28,9 +28,40 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://www.schematic.now";
+
 export const metadata: Metadata = {
-  title: "Schematic",
-  description: "",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Schematic",
+    template: "%s · Schematic",
+  },
+  description:
+    "Schematic is an AI powered productivity workspace for notes, scheduling, and everyday writing.",
+  alternates: {
+    canonical: "/",
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "Schematic",
+    title: "Schematic",
+    description:
+      "Schematic is an AI powered productivity workspace for notes, scheduling, and everyday writing.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Schematic",
+    description:
+      "Schematic is an AI powered productivity workspace for notes, scheduling, and everyday writing.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default async function RootLayout({
@@ -122,6 +153,16 @@ export default async function RootLayout({
 
             gtag('config', 'G-VZSDFYLZ9M');
           `}
+        </Script>
+        <Script id="ld-software" type="application/ld+json" strategy="afterInteractive">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "Schematic",
+            applicationCategory: "ProductivityApplication",
+            operatingSystem: "Web",
+            url: siteUrl,
+          })}
         </Script>
       </head>
       <body
