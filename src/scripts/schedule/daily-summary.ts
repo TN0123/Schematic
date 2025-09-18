@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 
 const prisma = new PrismaClient();
 
@@ -14,41 +15,17 @@ export async function daily_summary(
   const genAI = new GoogleGenerativeAI(geminiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  // Create start and end of day boundaries in the user's timezone
-  // Get the date string in the user's timezone (YYYY-MM-DD format)
-  const userDateStr = date.toLocaleDateString("en-CA", {
-    timeZone: timezone,
-  });
-
-  // Very simple approach: Use Intl.DateTimeFormat to get the right times
-  // We'll create the dates in the user's timezone and convert to UTC
-
-  // Create start of day (00:00:00.000) in user's timezone
-  const startOfDay = new Date(`${userDateStr}T00:00:00.000`);
-
-  // Create end of day (23:59:59.999) in user's timezone
-  const endOfDay = new Date(`${userDateStr}T23:59:59.999`);
-
-  // Now we need to adjust these to be in the user's timezone
-  // Get the timezone offset in minutes for this date
-  const testDate = new Date(userDateStr + "T12:00:00");
-  const utcTime = testDate.getTime();
-  const userTzTime = new Date(
-    testDate.toLocaleString("en-US", { timeZone: timezone })
-  ).getTime();
-  const offsetMs = utcTime - userTzTime;
-
-  // Apply the offset to our boundaries
-  const startOfDayAdjusted = new Date(startOfDay.getTime() + offsetMs);
-  const endOfDayAdjusted = new Date(endOfDay.getTime() + offsetMs);
+  // Compute user-local day bounds as UTC instants
+  const { startUtc, endUtc } = getUtcDayBoundsForTimezone(date, timezone);
 
   const eventsForDay = await prisma.event.findMany({
     where: {
       userId,
-      start: {
-        gte: startOfDayAdjusted,
-        lte: endOfDayAdjusted,
-      },
+      // Include events overlapping the user's local day
+      AND: [
+        { start: { lt: endUtc } },
+        { end: { gt: startUtc } },
+      ],
     },
     select: {
       title: true,
