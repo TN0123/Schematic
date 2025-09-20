@@ -21,7 +21,10 @@ import {
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 import Link from "next/link";
-import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/utils/platform";
+import {
+  useModifierKeyLabel,
+  isPrimaryModifierPressed,
+} from "@/components/utils/platform";
 
 export type ChangeMap = Record<string, string>;
 
@@ -114,6 +117,8 @@ export default function WriteEditor({
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
+  const [isAutocompleteEnabled, setIsAutocompleteEnabled] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Helper function to add toast notifications
   const addToast = (
@@ -217,6 +222,12 @@ export default function WriteEditor({
 
   const debouncedFetchAutocomplete = useDebouncedCallback(
     async (text: string) => {
+      // Respect toggle and mobile state
+      if (!isAutocompleteEnabled || isMobile) {
+        setSuggestion("");
+        setAutocompleteError(null);
+        return;
+      }
       if (
         !text.trim() ||
         textareaRef.current?.selectionStart !== text.length ||
@@ -309,6 +320,31 @@ export default function WriteEditor({
       textareaRef.current.focus();
     }
   }, []);
+
+  // Detect mobile devices to disable autocomplete on mobile
+  useEffect(() => {
+    const detectMobile = () => {
+      if (typeof window === "undefined") return;
+      const ua = navigator.userAgent || (navigator as any).vendor || "";
+      const isTouch = window.matchMedia?.("(pointer: coarse)").matches || false;
+      const isSmallViewport = window.innerWidth <= 768;
+      const isMobileUA =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          ua
+        );
+      setIsMobile(isTouch || isMobileUA || isSmallViewport);
+    };
+    detectMobile();
+  }, []);
+
+  // When disabled or on mobile, ensure suggestions are cleared and requests cancelled
+  useEffect(() => {
+    if (!isAutocompleteEnabled || isMobile) {
+      setSuggestion("");
+      setAutocompleteError(null);
+      debouncedFetchAutocomplete.cancel();
+    }
+  }, [isAutocompleteEnabled, isMobile, debouncedFetchAutocomplete]);
 
   useEffect(() => {
     updateTextareaHeight();
@@ -653,7 +689,12 @@ export default function WriteEditor({
     updateTextareaHeight();
 
     clearSuggestionAndCancel();
-    if (cursorPos === newValue.length && newValue.trim().length > 0) {
+    if (
+      cursorPos === newValue.length &&
+      newValue.trim().length > 0 &&
+      isAutocompleteEnabled &&
+      !isMobile
+    ) {
       debouncedFetchAutocomplete(newValue);
     }
   };
@@ -772,13 +813,39 @@ export default function WriteEditor({
             )}
           </div>
         </div>
-        <button
-          onClick={handleExport}
-          className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md flex-shrink-0"
-        >
-          Export
-          <FileUp className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Autocomplete toggle */}
+          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-dark-textSecondary select-none">
+            <span className="hidden sm:inline">Autocomplete</span>
+            <button
+              type="button"
+              onClick={() => setIsAutocompleteEnabled((v) => !v)}
+              className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors duration-200 border ${
+                isAutocompleteEnabled && !isMobile
+                  ? "bg-purple-500/60 border-purple-500/60"
+                  : "bg-gray-200 dark:bg-dark-secondary border-gray-300 dark:border-dark-divider"
+              }`}
+              aria-pressed={isAutocompleteEnabled && !isMobile}
+              aria-label="Toggle autocomplete"
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white dark:bg-dark-paper shadow transition-transform duration-200 ${
+                  isAutocompleteEnabled && !isMobile
+                    ? "translate-x-4"
+                    : "translate-x-1"
+                }`}
+              />
+            </button>
+          </label>
+
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md flex-shrink-0"
+          >
+            Export
+            <FileUp className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -929,7 +996,9 @@ export default function WriteEditor({
                             textareaRef.current.selectionStart =
                               textareaRef.current.selectionEnd =
                                 newValue.length;
-                            debouncedFetchAutocomplete(newValue);
+                            if (isAutocompleteEnabled && !isMobile) {
+                              debouncedFetchAutocomplete(newValue);
+                            }
                           }
                         }, 0);
                       } else {
@@ -981,13 +1050,14 @@ export default function WriteEditor({
         </div>
       </div>
       {/* Mobile assistant tip */}
-      {Object.keys(pendingChanges).length !== 0 && Object.keys(pendingChanges)[0] !== "" && (
-        <div className="lg:hidden w-full px-4 pb-4">
-          <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">
-            Suggested changes available. Open the assistant below to review.
+      {Object.keys(pendingChanges).length !== 0 &&
+        Object.keys(pendingChanges)[0] !== "" && (
+          <div className="lg:hidden w-full px-4 pb-4">
+            <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">
+              Suggested changes available. Open the assistant below to review.
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
