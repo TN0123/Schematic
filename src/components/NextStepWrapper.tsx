@@ -4,10 +4,11 @@ import { NextStep } from "nextstepjs";
 import { ReactNode, useMemo } from "react";
 import { steps } from "@/lib/nextstep-steps";
 import CustomCard from "@/components/OnboardingCard";
-import { useModifierKeyLabel } from "@/components/utils/platform";
+import { useIsMobile, useModifierKeyLabel } from "@/components/utils/platform";
 
 export default function NextStepWrapper({ children }: { children: ReactNode }) {
   const modKeyLabel = useModifierKeyLabel();
+  const isMobile = useIsMobile();
 
   const resolvedSteps = useMemo(() => {
     return steps.map((tour) => ({
@@ -46,6 +47,10 @@ export default function NextStepWrapper({ children }: { children: ReactNode }) {
   const handleTourSkip = (step: number, tourName: string | null) => {
     handleTourComplete(tourName);
   };
+
+  if (isMobile) {
+    return <>{children}</>;
+  }
 
   return (
     <NextStep

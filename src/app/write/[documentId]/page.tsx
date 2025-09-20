@@ -8,6 +8,7 @@ import { useNextStep } from "nextstepjs";
 import { ChevronUp, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { isMobileBrowser } from "@/components/utils/platform";
 
 import { ChangeMap } from "@/app/write/_components/WriteEditor";
 import { ModelType } from "@/app/write/_components/WritePanel";
@@ -38,7 +39,9 @@ export default function DocumentEditorPage() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const { startNextStep } = useNextStep();
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [mobilePendingChanges, setMobilePendingChanges] = useState<ChangeMap>({});
+  const [mobilePendingChanges, setMobilePendingChanges] = useState<ChangeMap>(
+    {}
+  );
   const [isMounted, setIsMounted] = useState(false);
   const mobileChangeApiRef = useRef<{
     applyChange: (original: string, replacement: string) => void;
@@ -50,6 +53,7 @@ export default function DocumentEditorPage() {
   } | null>(null);
 
   useEffect(() => {
+    if (isMobileBrowser()) return;
     async function checkAndStartTour() {
       try {
         const res = await fetch("/api/user/onboarding-status");
@@ -226,13 +230,17 @@ export default function DocumentEditorPage() {
         onChatLoadingChange={setIsChatLoading}
       />
       {/* Desktop sidebar above; Mobile Assistant Button + Bottom Sheet */}
-      {isMounted && typeof window !== "undefined" && globalThis.document?.body &&
+      {isMounted &&
+        typeof window !== "undefined" &&
+        globalThis.document?.body &&
         createPortal(
           <button
             type="button"
             onClick={() => setIsAssistantOpen(true)}
             className={`md:hidden fixed bottom-24 right-6 z-40 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform ${
-              isAssistantOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+              isAssistantOpen
+                ? "scale-0 opacity-0 pointer-events-none"
+                : "scale-100 opacity-100"
             }`}
             aria-label="Open Assistant"
           >
@@ -266,15 +274,13 @@ export default function DocumentEditorPage() {
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ 
-                type: "spring", 
-                damping: 30, 
+              transition={{
+                type: "spring",
+                damping: 30,
                 stiffness: 300,
-                duration: 0.3 
+                duration: 0.3,
               }}
             >
-
-
               {/* Header */}
               <div className="flex justify-between items-center px-4 pb-3 border-b dark:border-dark-divider">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
@@ -285,7 +291,10 @@ export default function DocumentEditorPage() {
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200"
                   aria-label="Close Assistant"
                 >
-                  <X size={20} className="text-gray-500 dark:text-dark-textSecondary" />
+                  <X
+                    size={20}
+                    className="text-gray-500 dark:text-dark-textSecondary"
+                  />
                 </button>
               </div>
 
@@ -309,12 +318,27 @@ export default function DocumentEditorPage() {
                   onChatLoadingChange={setIsChatLoading}
                   variant="mobile"
                   changes={mobilePendingChanges}
-                  applyChange={(original, replacement) => mobileChangeApiRef.current?.applyChange(original, replacement)}
-                  rejectChange={(original) => mobileChangeApiRef.current?.rejectChange(original)}
-                  appendChange={(newText) => mobileChangeApiRef.current?.appendChange(newText)}
-                  acceptAllChanges={() => mobileChangeApiRef.current?.acceptAllChanges()}
-                  rejectAllChanges={() => mobileChangeApiRef.current?.rejectAllChanges()}
-                  setActiveHighlight={(text) => mobileChangeApiRef.current?.setActiveHighlight(text)}
+                  applyChange={(original, replacement) =>
+                    mobileChangeApiRef.current?.applyChange(
+                      original,
+                      replacement
+                    )
+                  }
+                  rejectChange={(original) =>
+                    mobileChangeApiRef.current?.rejectChange(original)
+                  }
+                  appendChange={(newText) =>
+                    mobileChangeApiRef.current?.appendChange(newText)
+                  }
+                  acceptAllChanges={() =>
+                    mobileChangeApiRef.current?.acceptAllChanges()
+                  }
+                  rejectAllChanges={() =>
+                    mobileChangeApiRef.current?.rejectAllChanges()
+                  }
+                  setActiveHighlight={(text) =>
+                    mobileChangeApiRef.current?.setActiveHighlight(text)
+                  }
                 />
               </div>
             </motion.div>

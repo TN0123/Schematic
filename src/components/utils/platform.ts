@@ -30,3 +30,29 @@ export function isPrimaryModifierPressed(event: KeyboardEvent): boolean {
 }
 
 
+// Mobile detection utilities
+export function isMobileBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || navigator.vendor || "";
+  const platform =
+    (navigator as any).userAgentData?.platform || navigator.platform || "";
+  const uaDataMobile = (navigator as any).userAgentData?.mobile === true;
+  const touchPointer =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
+
+  // Common mobile identifiers including tablets
+  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  const isMobileUA = mobileRegex.test(ua) || /iPad|iPhone|iPod/i.test(platform);
+
+  return Boolean(uaDataMobile || touchPointer || isMobileUA);
+}
+
+export function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(isMobileBrowser());
+  }, []);
+  return isMobile;
+}
+

@@ -20,6 +20,7 @@ import MobilePanelTabs from "./_components/MobilePanelTabs";
 import RemindersBar from "./_components/RemindersBar";
 import CalendarComponent from "./_components/CalendarComponent";
 import { createPortal } from "react-dom";
+import { isMobileBrowser } from "@/components/utils/platform";
 
 // Import our custom hooks and utilities
 import { useCalendarData } from "./hooks/useCalendarData";
@@ -60,7 +61,7 @@ export default function CalendarApp() {
   const [generationResult, setGenerationResult] =
     useState<GenerationResult | null>(null);
   const [hasUserClosedReminders, setHasUserClosedReminders] = useState(false);
-  
+
   // Mobile panel state
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -152,7 +153,9 @@ export default function CalendarApp() {
         button.appendChild(iconContainer);
       });
 
-      const statisticsButtons = document.querySelectorAll(".fc-statistics-button");
+      const statisticsButtons = document.querySelectorAll(
+        ".fc-statistics-button"
+      );
       statisticsButtons.forEach((button) => {
         button.innerHTML = statisticsIcon;
       });
@@ -312,7 +315,8 @@ export default function CalendarApp() {
       // Only handle view switching when not typing in an input-like element
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      const isContentEditable = !!target && (target as HTMLElement).isContentEditable;
+      const isContentEditable =
+        !!target && (target as HTMLElement).isContentEditable;
       const role = target?.getAttribute?.("role");
       const isTextInputFocused =
         tag === "INPUT" ||
@@ -322,7 +326,13 @@ export default function CalendarApp() {
         role === "textbox";
 
       // Single-key shortcuts: m (month), w (week), d (day)
-      if (!isTextInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+      if (
+        !isTextInputFocused &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
         const key = e.key.toLowerCase();
         if (key === "m") {
           e.preventDefault();
@@ -383,8 +393,9 @@ export default function CalendarApp() {
     calendarState,
   ]);
 
-  // Tour initialization
+  // Tour initialization (desktop only)
   useEffect(() => {
+    if (isMobileBrowser()) return;
     async function checkAndStartTour() {
       try {
         const res = await fetch("/api/user/onboarding-status");
@@ -632,7 +643,9 @@ export default function CalendarApp() {
           createPortal(
             <button
               className={`md:hidden fixed bottom-24 right-6 z-40 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform ${
-                isMobilePanelOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+                isMobilePanelOpen
+                  ? "scale-0 opacity-0 pointer-events-none"
+                  : "scale-100 opacity-100"
               }`}
               onClick={() => setIsMobilePanelOpen(true)}
             >
@@ -659,7 +672,7 @@ export default function CalendarApp() {
                 exit={{ opacity: 0 }}
                 onClick={() => setIsMobilePanelOpen(false)}
               />
-              
+
               {/* Bottom Sheet Content */}
               <motion.div
                 className="bg-white dark:bg-dark-background rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col pb-16"
@@ -668,8 +681,6 @@ export default function CalendarApp() {
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
               >
-
-                
                 {/* Header */}
                 <div className="flex justify-between items-center px-4 py-4 border-b dark:border-dark-divider">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
@@ -679,10 +690,13 @@ export default function CalendarApp() {
                     onClick={() => setIsMobilePanelOpen(false)}
                     className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200"
                   >
-                    <X size={20} className="text-gray-500 dark:text-dark-textSecondary" />
+                    <X
+                      size={20}
+                      className="text-gray-500 dark:text-dark-textSecondary"
+                    />
                   </button>
                 </div>
-                
+
                 {/* Content */}
                 <div className="flex-1 overflow-hidden">
                   <MobilePanelTabs
