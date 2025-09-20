@@ -100,9 +100,7 @@ const SmartTooltip = ({
       }}
     >
       <div className="relative">
-        <span className="block break-words whitespace-normal">
-          {content}
-        </span>
+        <span className="block break-words whitespace-normal">{content}</span>
         {/* Arrow */}
         <div
           className={`absolute h-0 w-0 border-4 border-transparent ${
@@ -183,9 +181,12 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
         ? (eventInfo.event.extendedProps.links as string[]).length > 0
         : false;
 
-      const baseContainerClasses =
-        `group relative h-full w-full overflow-visible ${isShortEvent ? "p-0.5" : "p-1"}`;
-      const titleClasses = `${isShortEvent ? "text-xs leading-4" : ""} font-normal truncate`;
+      const baseContainerClasses = `group relative h-full w-full overflow-visible ${
+        isShortEvent ? "py-0 px-1" : "p-1"
+      }`;
+      const titleClasses = `${
+        isShortEvent ? "text-xs leading-tight" : ""
+      } font-normal truncate`;
 
       const handleMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
         if (eventTitle) {
@@ -256,7 +257,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
         >
           {!isShortEvent && hasLinks && (
             <div className="absolute top-0.5 right-0.5">
-              <LinkIcon size={12} className="text-white dark:text-blue-200/90" />
+              <LinkIcon
+                size={12}
+                className="text-white dark:text-blue-200/90"
+              />
             </div>
           )}
           <div className={`${titleClasses} event-title`}>{eventTitle}</div>
@@ -268,6 +272,16 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       const isSuggestion = eventInfo.event.extendedProps.isSuggestion;
       const isCopied = copiedEvents.some((e) => e.id === eventInfo.event.id);
       const isSelected = selectedEventIds.has(eventInfo.event.id);
+      const startTs = eventInfo.event.start
+        ? (eventInfo.event.start as Date).getTime()
+        : null;
+      const endTs = eventInfo.event.end
+        ? (eventInfo.event.end as Date).getTime()
+        : null;
+      const isShortDuration =
+        startTs !== null && endTs !== null
+          ? endTs - startTs < 60 * 60 * 1000
+          : false;
 
       if (!isSuggestion && isCopied) {
         const copiedClasses = [
@@ -299,6 +313,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
         classes.push("opacity-70");
       }
 
+      if (isShortDuration) {
+        classes.push("short-event");
+      }
+
       if (isSelected) {
         classes.push("ring-2", "ring-blue-500");
       }
@@ -308,7 +326,8 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     const desktopToolbar = {
       start: "prev,next today",
       center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders,statistics",
+      right:
+        "dayGridMonth,timeGridWeek,timeGridDay,refresh,reminders,statistics",
     };
 
     const mobileToolbar = {

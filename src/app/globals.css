@@ -432,13 +432,28 @@ main {
 
 /* Ensure short timegrid events keep text visible */
 .fc-timegrid-event .fc-event-main {
-    line-height: 1.1 !important;
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
+    line-height: 1.05 !important;
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
 }
 
 .fc-timegrid-event {
-    min-height: 20px !important;
+    min-height: 18px !important;
+}
+
+/* Tighter styling for sub-hour events to ensure full text visibility */
+.fc-timegrid-event.short-event,
+.fc-timegrid-event.short-event .fc-event-main,
+.fc-timegrid-event.short-event .fc-event-title {
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+    line-height: 1 !important;
+}
+
+.fc-timegrid-event.short-event .fc-event-title,
+.fc-timegrid-event.short-event .fc-event-main {
+    font-size: 0.75rem !important; /* 12px */
+    white-space: nowrap !important;
 }
 
 /* Dark theme for FullCalendar */
