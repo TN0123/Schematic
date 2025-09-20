@@ -117,7 +117,7 @@ export default function WriteEditor({
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
-  const [isAutocompleteEnabled, setIsAutocompleteEnabled] = useState(true);
+  const [isAutocompleteEnabled, setIsAutocompleteEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Helper function to add toast notifications
@@ -815,28 +815,30 @@ export default function WriteEditor({
         </div>
         <div className="flex items-center gap-2">
           {/* Autocomplete toggle */}
-          <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-dark-textSecondary select-none">
-            <span className="hidden sm:inline">Autocomplete</span>
-            <button
-              type="button"
-              onClick={() => setIsAutocompleteEnabled((v) => !v)}
-              className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors duration-200 border ${
-                isAutocompleteEnabled && !isMobile
-                  ? "bg-purple-500/60 border-purple-500/60"
-                  : "bg-gray-200 dark:bg-dark-secondary border-gray-300 dark:border-dark-divider"
-              }`}
-              aria-pressed={isAutocompleteEnabled && !isMobile}
-              aria-label="Toggle autocomplete"
-            >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white dark:bg-dark-paper shadow transition-transform duration-200 ${
+          <div className="hidden sm:block">
+            <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-dark-textSecondary select-none">
+              <span className="hidden sm:inline">Autocomplete</span>
+              <button
+                type="button"
+                onClick={() => setIsAutocompleteEnabled((v) => !v)}
+                className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors duration-200 border ${
                   isAutocompleteEnabled && !isMobile
-                    ? "translate-x-4"
-                    : "translate-x-1"
+                    ? "bg-purple-500/60 border-purple-500/60"
+                    : "bg-gray-200 dark:bg-dark-secondary border-gray-300 dark:border-dark-divider"
                 }`}
-              />
-            </button>
-          </label>
+                aria-pressed={isAutocompleteEnabled && !isMobile}
+                aria-label="Toggle autocomplete"
+              >
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white dark:bg-dark-paper shadow transition-transform duration-200 ${
+                    isAutocompleteEnabled && !isMobile
+                      ? "translate-x-4"
+                      : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </label>
+          </div>
 
           <button
             onClick={handleExport}
