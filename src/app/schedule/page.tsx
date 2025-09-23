@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
-import { EventImpl } from "@fullcalendar/core/internal";
 import "tailwindcss/tailwind.css";
 import EventCreationModal from "./_components/EventCreationModal";
 import { DeleteEventModal } from "./_components/DeleteEventModal";

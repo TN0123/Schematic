@@ -57,6 +57,17 @@ export const steps: Tour[] = [
       },
       {
         icon: "",
+        title: "Statistics",
+        content:
+          "View insights about your schedule. Click the clock icon to open the statistics page and see where your time is being spent.",
+        selector: ".fc-statistics-button",
+        side: "bottom-right",
+        pointerRadius: 10,
+        pointerPadding: 20,
+        showSkip: true,
+      },
+      {
+        icon: "",
         title: "Add Goals",
         content:
           "A simple way for you to keep track of your goals and priorities. It is also used by the AI to help it understand your intentions and get better results.",
