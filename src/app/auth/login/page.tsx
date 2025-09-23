@@ -64,6 +64,7 @@ export default function Login() {
         "AI assistant suggests events based on your availability and habits",
         "Chat with your personal assistant for schedule advice and optimization",
         "AI maintains context about your preferences with manual editing control",
+        "View insights and analytics about where your time is being spent",
       ],
     },
   ];
