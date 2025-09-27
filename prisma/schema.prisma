@@ -8,14 +8,14 @@ datasource db {
 }
 
 model User {
-  id                       String     @id @default(cuid())
+  id                       String                  @id @default(cuid())
   name                     String?
-  email                    String?    @unique
+  email                    String?                 @unique
   emailVerified            DateTime?
   image                    String?
-  hasCompletedScheduleTour Boolean    @default(false)
-  hasCompletedWriteTour    Boolean    @default(false)
-  premiumRemainingUses        Int        @default(10)
+  hasCompletedScheduleTour Boolean                 @default(false)
+  hasCompletedWriteTour    Boolean                 @default(false)
+  premiumRemainingUses     Int                     @default(10)
   accounts                 Account[]
   bulletins                Bulletin[]
   events                   Event[]
@@ -23,13 +23,14 @@ model User {
   sessions                 Session[]
   documents                Document[]
   reminders                Reminder[]
-  scheduleContext          String         @default("")
-  goalText                 String         @default("")
+  scheduleContext          String                  @default("")
+  goalText                 String                  @default("")
   dailySummaryCaches       DailySummaryCache[]
   /// Timestamp of the user's last successful login
   lastLoginAt              DateTime?
   /// Timestamp when the user last dismissed the product updates modal
   lastSeenUpdatesAt        DateTime?
+  DailySuggestionsCache    DailySuggestionsCache[]
 }
 
 model Account {
@@ -125,15 +126,15 @@ enum GoalType {
 
 /// Cache of generated daily summaries by user, timezone, and local day
 model DailySummaryCache {
-  id        String   @id @default(cuid())
-  userId    String
-  timezone  String
-  dayKey    String   /// e.g. "2025-06-30" in user's timezone
+  id         String   @id @default(cuid())
+  userId     String
+  timezone   String
+  dayKey     String /// e.g. "2025-06-30" in user's timezone
   eventsHash String
-  summary   String   @db.Text
-  updatedAt DateTime @updatedAt
+  summary    String   @db.Text
+  updatedAt  DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, timezone, dayKey])
   @@index([userId])
@@ -141,12 +142,28 @@ model DailySummaryCache {
 
 /// Changelog entries for informing users about new features
 model ProductUpdate {
-  id           String   @id @default(cuid())
-  title        String
-  description  String   @db.Text
-  publishedAt  DateTime @default(now())
-  isPublished  Boolean  @default(true)
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  publishedAt DateTime @default(now())
+  isPublished Boolean  @default(true)
 
   @@index([publishedAt])
   @@index([isPublished])
+}
+
+/// Cache of generated daily suggestions (events + reminders) by user, timezone, and local day
+model DailySuggestionsCache {
+  id         String   @id @default(cuid())
+  userId     String
+  timezone   String
+  dayKey     String /// e.g. "2025-06-30" in user's timezone
+  eventsHash String
+  payload    String   @db.Text /// JSON string with { events: [], reminders: [] }
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, timezone, dayKey])
+  @@index([userId])
 }

@@ -5,6 +5,7 @@ import {
   getUserTimezone,
   formatDateForDisplay,
   formatTimeForDisplay,
+  isSameDay,
 } from "../utils/calendarHelpers";
 
 export const useCalendarData = (
@@ -18,6 +19,14 @@ export const useCalendarData = (
     start: Date;
     end: Date;
   } | null>(null);
+  const [suggestionsRefreshTrigger, setSuggestionsRefreshTrigger] = useState(0);
+
+  const maybeRefreshSuggestionsForToday = useCallback((date: Date) => {
+    const now = new Date();
+    if (isSameDay(now, date)) {
+      setSuggestionsRefreshTrigger((n) => n + 1);
+    }
+  }, []);
 
   // Fetch events from API
   const fetchEvents = useCallback(async (startStr: string, endStr: string) => {
@@ -97,9 +106,12 @@ export const useCalendarData = (
         refreshDailySummary();
       }
 
+      // Refresh suggestions if event is for today
+      maybeRefreshSuggestionsForToday(newEvent.start);
+
       return newEvent;
     },
-    [refreshDailySummary]
+    [refreshDailySummary, maybeRefreshSuggestionsForToday]
   );
 
   // Edit event
@@ -133,13 +145,18 @@ export const useCalendarData = (
       if (refreshDailySummary) {
         refreshDailySummary();
       }
+
+      // Refresh suggestions if event is for today
+      maybeRefreshSuggestionsForToday(eventData.start);
     },
-    [refreshDailySummary]
+    [refreshDailySummary, maybeRefreshSuggestionsForToday]
   );
 
   // Delete event
   const deleteEvent = useCallback(
     async (eventId: string) => {
+      // Determine if deleted event was today
+      const toDelete = events.find((e) => e.id === eventId);
       const res = await fetch(`/api/events/${eventId}`, {
         method: "DELETE",
       });
@@ -152,13 +169,21 @@ export const useCalendarData = (
       if (refreshDailySummary) {
         refreshDailySummary();
       }
+
+      // Refresh suggestions if deleted event was today
+      if (toDelete) {
+        maybeRefreshSuggestionsForToday(new Date(toDelete.start));
+      }
     },
-    [refreshDailySummary]
+    [events, refreshDailySummary, maybeRefreshSuggestionsForToday]
   );
 
   // Delete multiple events
   const deleteMultipleEvents = useCallback(
     async (eventIds: string[]) => {
+      const toDeleteToday = events.some((e) =>
+        eventIds.includes(e.id) && isSameDay(new Date(e.start), new Date())
+      );
       await fetch(`/api/events/bulk`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -170,8 +195,12 @@ export const useCalendarData = (
       if (refreshDailySummary && eventIds.length > 0) {
         refreshDailySummary();
       }
+
+      if (toDeleteToday) {
+        setSuggestionsRefreshTrigger((n) => n + 1);
+      }
     },
-    [refreshDailySummary]
+    [events, refreshDailySummary]
   );
 
   // Bulk add events
@@ -240,6 +269,13 @@ export const useCalendarData = (
       // Refresh daily summary when events are bulk added
       if (refreshDailySummary && formattedEvents.length > 0) {
         refreshDailySummary();
+      }
+
+      // Refresh suggestions if any of the added events are for today
+      if (
+        formattedEvents.some((e) => isSameDay(new Date(), new Date(e.start)))
+      ) {
+        setSuggestionsRefreshTrigger((n) => n + 1);
       }
 
       return formattedEvents;
@@ -399,6 +435,21 @@ export const useCalendarData = (
       console.error("Error suggesting events and reminders:", error);
     }
   }, [userId]);
+
+  // Refresh suggestions when triggered by event changes affecting today
+  useEffect(() => {
+    if (userId && suggestionsRefreshTrigger > 0) {
+      // Fire and forget
+      (async () => {
+        try {
+          await fetchSuggestions();
+        } catch (e) {
+          console.error(e);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestionsRefreshTrigger, userId]);
 
   // Accept suggestion
   const acceptSuggestion = useCallback(
