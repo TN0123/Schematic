@@ -32,8 +32,16 @@ export async function generate_events(
     select: { scheduleContext: true },
   });
 
+  const goals = await prisma.goal.findMany({
+    where: { 
+      userId,
+    },
+    select: { title: true, type: true },
+  });
+
   const prompt = `
       You are an AI that extracts structured event and reminder details from text. Your goal is to generate a JSON object containing both events and reminders.
+      You may also be asked to come up with a schedule for the user, only do this if explicitly requested.
       
       **Rules:**
       1. Identify event names, dates, and times in the input for EVENTS.
@@ -111,7 +119,11 @@ export async function generate_events(
       use it if applicable, otherwise ignore it.
       
       BEGIN CONTEXT
+      GENERAL CONTEXT:
       ${user?.scheduleContext}
+
+      USER'S GOALS:
+      ${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}
       END CONTEXT
 
       Generate the events and reminders in the output format.
