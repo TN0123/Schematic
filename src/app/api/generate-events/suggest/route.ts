@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    const { userId, timezone } = await request.json();
+    const { userId, timezone, force } = await request.json();
 
     if (!userId) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
@@ -43,8 +43,10 @@ export async function POST(request: Request) {
       .update(JSON.stringify(normalized))
       .digest("hex");
 
-    // Try cache first
-    const cache = await prisma.dailySuggestionsCache.findUnique({
+    // Try cache first (unless forced)
+    const cache = force
+      ? null
+      : await prisma.dailySuggestionsCache.findUnique({
       where: {
         userId_timezone_dayKey: {
           userId,
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
           dayKey,
         },
       },
-    });
+      });
 
     if (cache && cache.eventsHash === eventsHash) {
       const payload = JSON.parse(cache.payload);

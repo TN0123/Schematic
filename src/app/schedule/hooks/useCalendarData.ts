@@ -379,7 +379,7 @@ export const useCalendarData = (
   );
 
   // Fetch suggestions
-  const fetchSuggestions = useCallback(async () => {
+  const fetchSuggestions = useCallback(async (force?: boolean) => {
     if (!userId) {
       console.error("unable to get userId");
       return;
@@ -396,6 +396,7 @@ export const useCalendarData = (
         body: JSON.stringify({
           userId: userId,
           timezone: userTimezone,
+          force: !!force,
         }),
       });
 
