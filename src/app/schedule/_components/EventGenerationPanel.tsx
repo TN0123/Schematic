@@ -342,7 +342,11 @@ export default function EventGenerationPanel({
               <div className="relative">
                 <textarea
                   ref={inputTextareaRef}
-                  className="flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
+                  className={`flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent text-sm ${
+                    loading
+                      ? "text-gray-400 dark:text-dark-textDisabled cursor-not-allowed"
+                      : "dark:text-dark-textPrimary cursor-text"
+                  }`}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onInput={(e) => {
@@ -361,6 +365,7 @@ export default function EventGenerationPanel({
                     }
                   }}
                   placeholder="Enter your events and reminders here..."
+                  disabled={loading}
                 />
                 <div className="absolute bottom-2 right-2 flex items-center gap-2">
                   <button
