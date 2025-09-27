@@ -285,7 +285,10 @@ export const useCalendarData = (
 
   // Generate events and reminders
   const generateEventsAndReminders = useCallback(
-    async (inputText: string): Promise<GenerationResult | null> => {
+    async (
+      inputText: string,
+      options?: { signal?: AbortSignal }
+    ): Promise<GenerationResult | null> => {
       if (!inputText.trim() || !userId) return null;
 
       try {
@@ -300,6 +303,7 @@ export const useCalendarData = (
             timezone: userTimezone,
             userId: userId,
           }),
+          signal: options?.signal,
         });
         const data = await response.json();
 
@@ -371,6 +375,13 @@ export const useCalendarData = (
           reminders: resultReminders,
         };
       } catch (error) {
+        // Swallow abort errors and return null silently
+        if (
+          error instanceof DOMException &&
+          (error.name === "AbortError" || error.message.includes("aborted"))
+        ) {
+          return null;
+        }
         console.error("Error generating events:", error);
         return null;
       }

@@ -69,6 +69,7 @@ export default function CalendarApp() {
   const desktopCalendarRef = useRef<FullCalendar>(null);
   const mobileCalendarRef = useRef<FullCalendar>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   // Mobile panel effects
   useEffect(() => {
@@ -258,7 +259,12 @@ export default function CalendarApp() {
     setGenerationResult(null);
 
     try {
-      const result = await calendarData.generateEventsAndReminders(inputText);
+      const abortController = new AbortController();
+      generationAbortControllerRef.current = abortController;
+
+      const result = await calendarData.generateEventsAndReminders(inputText, {
+        signal: abortController.signal,
+      });
 
       if (result) {
         setGenerationResult(result);
@@ -286,6 +292,20 @@ export default function CalendarApp() {
       setInputText("");
     } catch (error) {
       console.error("Error generating events:", error);
+    } finally {
+      generationAbortControllerRef.current = null;
+      calendarState.setLoading(false);
+    }
+  };
+
+  const handleCancelGeneration = () => {
+    try {
+      if (generationAbortControllerRef.current) {
+        generationAbortControllerRef.current.abort();
+        generationAbortControllerRef.current = null;
+      }
+    } catch (e) {
+      console.error(e);
     } finally {
       calendarState.setLoading(false);
     }
@@ -565,6 +585,7 @@ export default function CalendarApp() {
             setInputText={setInputText}
             loading={calendarState.loading}
             handleSubmit={handleSubmit}
+            onCancelGeneration={handleCancelGeneration}
             setShowModal={(show) => {
               if (show) {
                 calendarState.setModalInitialTab("event");
@@ -722,6 +743,10 @@ export default function CalendarApp() {
                     loading={calendarState.loading}
                     handleSubmit={() => {
                       handleSubmit();
+                      setIsMobilePanelOpen(false);
+                    }}
+                    onCancelGeneration={() => {
+                      handleCancelGeneration();
                       setIsMobilePanelOpen(false);
                     }}
                     setShowModal={(show) => {

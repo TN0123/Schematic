@@ -11,6 +11,7 @@ import {
   MessageCircle,
   CircleArrowUp,
   Eye,
+  CircleStop,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
@@ -61,6 +62,7 @@ interface EventGenerationPanelProps {
   setInputText: (text: string) => void;
   loading: boolean;
   handleSubmit: () => void;
+  onCancelGeneration?: () => void;
   dailySummary: string;
   dailySummaryDate: Date | null;
   dailySummaryLoading: boolean;
@@ -77,6 +79,7 @@ export default function EventGenerationPanel({
   setInputText,
   loading,
   handleSubmit,
+  onCancelGeneration,
   dailySummary,
   dailySummaryDate,
   dailySummaryLoading,
@@ -339,7 +342,7 @@ export default function EventGenerationPanel({
               <div className="relative">
                 <textarea
                   ref={inputTextareaRef}
-                  className="flex w-full p-4 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
+                  className="flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onInput={(e) => {
@@ -359,35 +362,57 @@ export default function EventGenerationPanel({
                   }}
                   placeholder="Enter your events and reminders here..."
                 />
-                <button
-                  className={`absolute bottom-2 right-2 p-1 rounded-full transition-colors duration-200 ${
-                    listening
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
-                  }`}
-                  onClick={handleListen}
-                >
-                  <Mic
-                    size={16}
-                    className={
+                <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                  <button
+                    className={`p-1 rounded-full transition-colors duration-200 ${
                       listening
-                        ? "text-white"
-                        : "text-black dark:text-dark-textPrimary"
-                    }
-                  />
-                </button>
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                    }`}
+                    onClick={handleListen}
+                    title={listening ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic
+                      size={16}
+                      className={
+                        listening
+                          ? "text-white"
+                          : "text-black dark:text-dark-textPrimary"
+                      }
+                    />
+                  </button>
+                  {loading ? (
+                    <button
+                      className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                      onClick={() => {
+                        onCancelGeneration?.();
+                        setIsMobileOpen(false);
+                      }}
+                      title="Stop generating"
+                    >
+                      <CircleStop
+                        size={16}
+                        className="text-black dark:text-dark-textPrimary"
+                      />
+                    </button>
+                  ) : (
+                    <button
+                      className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        handleSubmit();
+                        setIsMobileOpen(false);
+                      }}
+                      disabled={!inputText.trim()}
+                      title="Generate"
+                    >
+                      <CircleArrowUp
+                        size={16}
+                        className="text-black dark:text-dark-textPrimary"
+                      />
+                    </button>
+                  )}
+                </div>
               </div>
-
-              <button
-                className="w-full py-2 mt-2 rounded-lg bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                disabled={loading}
-                onClick={() => {
-                  handleSubmit();
-                  setIsMobileOpen(false);
-                }}
-              >
-                {loading ? "Generating..." : "Generate"}
-              </button>
             </div>
 
             <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">

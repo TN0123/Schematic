@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Calendar, Target, Plus, FileUp, Mic, RefreshCw } from "lucide-react";
+import {
+  Calendar,
+  Target,
+  Plus,
+  FileUp,
+  Mic,
+  RefreshCw,
+  CircleArrowUp,
+  Square,
+} from "lucide-react";
 import { Goal, GoalDuration } from "./GoalsPanel";
 import GoalCard from "./GoalCard";
 import SpeechRecognition, {
@@ -15,6 +24,7 @@ interface MobilePanelTabsProps {
   setInputText: (text: string) => void;
   loading: boolean;
   handleSubmit: () => void;
+  onCancelGeneration?: () => void;
   setShowModal: (show: boolean) => void;
   setIsFileUploaderModalOpen: (open: boolean) => void;
   setIsIcsUploaderModalOpen: (open: boolean) => void;
@@ -28,6 +38,7 @@ export default function MobilePanelTabs({
   setInputText,
   loading,
   handleSubmit,
+  onCancelGeneration,
   setShowModal,
   setIsFileUploaderModalOpen,
   setIsIcsUploaderModalOpen,
@@ -168,38 +179,59 @@ export default function MobilePanelTabs({
               </h3>
               <div className="relative">
                 <textarea
-                  className="w-full p-4 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-xl resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base placeholder-gray-400 dark:placeholder-dark-textDisabled touch-manipulation"
+                  className="w-full p-4 pr-20 pb-12 bg-gray-50 dark:bg-dark-paper border dark:border-dark-divider rounded-xl resize-none text-black dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base placeholder-gray-400 dark:placeholder-dark-textDisabled touch-manipulation"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Describe your schedule to generate events..."
                   rows={3}
-                  style={{ fontSize: '16px' }} // Prevents zoom on iOS
+                  style={{ fontSize: "16px" }} // Prevents zoom on iOS
                 />
-                <button
-                  className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-200 touch-manipulation ${
-                    listening
-                      ? "bg-red-500 hover:bg-red-600 active:bg-red-700"
-                      : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover active:bg-gray-400 dark:active:bg-dark-actionSelected"
-                  }`}
-                  onClick={handleListen}
-                >
-                  <Mic
-                    size={18}
-                    className={
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <button
+                    className={`p-2 rounded-full transition-all duration-200 touch-manipulation ${
                       listening
-                        ? "text-white"
-                        : "text-black dark:text-dark-textPrimary"
-                    }
-                  />
-                </button>
+                        ? "bg-red-500 hover:bg-red-600 active:bg-red-700"
+                        : "bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover active:bg-gray-400 dark:active:bg-dark-actionSelected"
+                    }`}
+                    onClick={handleListen}
+                    title={listening ? "Stop voice input" : "Start voice input"}
+                  >
+                    <Mic
+                      size={18}
+                      className={
+                        listening
+                          ? "text-white"
+                          : "text-black dark:text-dark-textPrimary"
+                      }
+                    />
+                  </button>
+                  {loading ? (
+                    <button
+                      className="p-2 rounded-full transition-all duration-200 touch-manipulation bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover active:bg-gray-400 dark:active:bg-dark-actionSelected"
+                      onClick={() => onCancelGeneration?.()}
+                      title="Stop generating"
+                    >
+                      <Square
+                        size={18}
+                        fill="currentColor"
+                        className="text-black dark:text-dark-textPrimary"
+                      />
+                    </button>
+                  ) : (
+                    <button
+                      className="p-2 rounded-full transition-all duration-200 touch-manipulation bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover active:bg-gray-400 dark:active:bg-dark-actionSelected disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSubmit}
+                      disabled={!inputText.trim()}
+                      title="Generate"
+                    >
+                      <CircleArrowUp
+                        size={18}
+                        className="text-black dark:text-dark-textPrimary"
+                      />
+                    </button>
+                  )}
+                </div>
               </div>
-              <button
-                className="w-full py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base touch-manipulation"
-                disabled={loading}
-                onClick={handleSubmit}
-              >
-                {loading ? "Generating..." : "Generate Events"}
-              </button>
             </div>
 
             {/* Actions */}
@@ -278,23 +310,6 @@ export default function MobilePanelTabs({
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Suggested Events */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <Target
-                  size={18}
-                  className="text-blue-600 dark:text-blue-400"
-                />
-                <h3 className="font-semibold text-blue-800 dark:text-blue-400">
-                  AI Suggestions
-                </h3>
-              </div>
-              <p className="text-blue-700 dark:text-blue-300 text-sm mt-1">
-                Tap the refresh icon on the calendar to get smart suggestions
-                for your day.
-              </p>
-            </div>
           </div>
         ) : (
           <div className="p-4 flex flex-col gap-6">
@@ -311,7 +326,7 @@ export default function MobilePanelTabs({
                     onChange={(e) => setGoalToAdd(e.target.value)}
                     placeholder="Enter goal title..."
                     className="w-full px-4 py-3 border dark:border-dark-divider rounded-xl bg-white dark:bg-dark-paper text-gray-900 dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base touch-manipulation"
-                    style={{ fontSize: '16px' }} // Prevents zoom on iOS
+                    style={{ fontSize: "16px" }} // Prevents zoom on iOS
                   />
                   <select
                     value={currentDuration}
