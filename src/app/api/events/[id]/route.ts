@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
+import { normalizeUrls } from "@/lib/url";
 
 export async function DELETE(
   req: Request,
@@ -60,6 +61,7 @@ export async function PUT(
   try {
     const id = (await params).id;
     const { title, start, end, links } = await req.json();
+    const normalizedLinks = normalizeUrls(links);
 
     const updatedEvent = await prisma.event.updateMany({
       where: { id: id, userId: session.user.id },
@@ -67,7 +69,7 @@ export async function PUT(
         title,
         start: new Date(start),
         end: new Date(end),
-        links: Array.isArray(links) ? links : undefined,
+        links: Array.isArray(normalizedLinks) ? normalizedLinks : undefined,
       },
     });
 

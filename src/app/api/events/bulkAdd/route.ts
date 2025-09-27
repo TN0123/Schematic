@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
+import { normalizeUrls } from "@/lib/url";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -21,15 +22,19 @@ export async function POST(req: Request) {
 
     const createdEvents = await prisma.$transaction(
       events.map((event) =>
-        prisma.event.create({
-          data: {
-            title: event.title,
-            start: new Date(event.start),
-            end: new Date(event.end),
-            links: Array.isArray(event.links) ? event.links : undefined,
-            userId: session.user.id!,
-          },
-        })
+        // Normalize each event's links
+        {
+          const normalizedLinks = normalizeUrls(event.links);
+          return prisma.event.create({
+            data: {
+              title: event.title,
+              start: new Date(event.start),
+              end: new Date(event.end),
+              links: Array.isArray(normalizedLinks) ? normalizedLinks : undefined,
+              userId: session.user.id!,
+            },
+          });
+        }
       )
     );
 

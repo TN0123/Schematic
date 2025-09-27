@@ -1,6 +1,7 @@
 import { Event } from "../types";
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { normalizeUrl } from "@/lib/url";
 
 function formatDateTimeLocal(date: Date) {
   const offset = date.getTimezoneOffset();
@@ -79,7 +80,9 @@ export default function EventEditModal({
     >
       <div
         className={`relative z-50 w-full max-w-lg transform rounded-2xl bg-white/90 dark:bg-dark-secondary/90 p-6 shadow-2xl ring-1 ring-black/5 backdrop-saturate-150 transition-all duration-200 ${
-          isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
+          isVisible
+            ? "opacity-100 translate-y-0 scale-100"
+            : "opacity-0 translate-y-2 scale-95"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -164,7 +167,8 @@ export default function EventEditModal({
                         type="button"
                         className="px-2.5 py-1.5 text-sm text-green-600 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                         onClick={() => {
-                          updateLinkAt(idx, editingValue.trim());
+                          const normalized = normalizeUrl(editingValue.trim());
+                          updateLinkAt(idx, normalized);
                           setEditingIndex(null);
                           setEditingValue("");
                         }}

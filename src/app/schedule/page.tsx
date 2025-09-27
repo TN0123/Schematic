@@ -26,7 +26,7 @@ import { useCalendarData } from "./hooks/useCalendarData";
 import { useCalendarState } from "./hooks/useCalendarState";
 import { useDailySummary } from "./hooks/useDailySummary";
 import { GenerationResult } from "./types";
-import { isSameDay, isRangeInsideFetched } from "./utils/calendarHelpers";
+import { normalizeUrls } from "@/lib/url";
 
 export default function CalendarApp() {
   const { data: session, status } = useSession({
@@ -179,11 +179,12 @@ export default function CalendarApp() {
       calendarState.newEvent.start &&
       calendarState.newEvent.end
     ) {
+      const normalizedLinks = normalizeUrls(calendarState.newEvent.links);
       await calendarData.addEvent({
         title: calendarState.newEvent.title,
         start: calendarState.newEvent.start,
         end: calendarState.newEvent.end,
-        links: calendarState.newEvent.links,
+        links: normalizedLinks,
       });
 
       calendarState.setShowCreationModal(false);
@@ -203,11 +204,12 @@ export default function CalendarApp() {
 
     if (!calendarState.eventToEdit) return;
     try {
+      const normalizedLinks = normalizeUrls(calendarState.newEvent.links);
       await calendarData.editEvent(calendarState.eventToEdit.id, {
         title: calendarState.newEvent.title,
         start: calendarState.newEvent.start,
         end: calendarState.newEvent.end,
-        links: calendarState.newEvent.links,
+        links: normalizedLinks,
       });
 
       console.log("Event updated successfully");

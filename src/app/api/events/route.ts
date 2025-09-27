@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
+import { normalizeUrls } from "@/lib/url";
 
 
 export async function GET(req: NextRequest) {
@@ -41,8 +42,9 @@ export async function POST(req: Request) {
 
   try {
     const { title, start, end, links } = await req.json();
+    const normalizedLinks = normalizeUrls(links);
     const event = await prisma.event.create({
-      data: { title, start: new Date(start), end: new Date(end), userId: session.user.id, links: Array.isArray(links) ? links : undefined },
+      data: { title, start: new Date(start), end: new Date(end), userId: session.user.id, links: Array.isArray(normalizedLinks) ? normalizedLinks : undefined },
     });
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
