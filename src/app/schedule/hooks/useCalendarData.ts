@@ -494,11 +494,32 @@ export const useCalendarData = (
   );
 
   // Reject suggestion
-  const rejectSuggestion = useCallback((suggestionId: string) => {
-    setEvents((currentEvents) =>
-      currentEvents.filter((e) => e.id !== suggestionId)
-    );
-  }, []);
+  const rejectSuggestion = useCallback(
+    async (suggestionId: string) => {
+      // Optimistically remove from local state
+      setEvents((currentEvents) =>
+        currentEvents.filter((e) => e.id !== suggestionId)
+      );
+
+      try {
+        const userTimezone = getUserTimezone();
+        await fetch(`/api/generate-events/suggest`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userId,
+            timezone: userTimezone,
+            eventId: suggestionId,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to persist suggestion dismissal:", error);
+      }
+    },
+    [userId]
+  );
 
   // Reminder functions
   const createReminder = useCallback(

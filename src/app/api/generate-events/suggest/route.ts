@@ -4,6 +4,12 @@ import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import crypto from "crypto";
 
+function makeStableSuggestionId(title: string, start: string, end: string) {
+  const base = `${title}|${start}|${end}`;
+  const hash = crypto.createHash("sha256").update(base).digest("hex");
+  return `suggestion-${hash.slice(0, 12)}`;
+}
+
 export async function POST(request: Request) {
   try {
     const { userId, timezone, force } = await request.json();
@@ -57,7 +63,37 @@ export async function POST(request: Request) {
       });
 
     if (cache && cache.eventsHash === eventsHash) {
-      const payload = JSON.parse(cache.payload);
+      const payload = JSON.parse(cache.payload || "{}");
+      const originalEvents = Array.isArray(payload.events) ? payload.events : [];
+
+      // Backfill missing IDs deterministically and persist back to cache if needed
+      let needsUpdate = false;
+      const eventsWithIds = originalEvents.map((e: any) => {
+        if (e && !e.id && e.title && e.start && e.end) {
+          needsUpdate = true;
+          return {
+            ...e,
+            id: makeStableSuggestionId(e.title, e.start, e.end),
+          };
+        }
+        return e;
+      });
+
+      if (needsUpdate) {
+        await prisma.dailySuggestionsCache.update({
+          where: {
+            userId_timezone_dayKey: { userId, timezone, dayKey },
+          },
+          data: {
+            payload: JSON.stringify({
+              events: eventsWithIds,
+              reminders: Array.isArray(payload.reminders)
+                ? payload.reminders
+                : [],
+            }),
+          },
+        });
+      }
 
       const formattedReminders = (payload.reminders || []).map((reminder: any) => ({
         id: `ai-suggestion-${Date.now()}-${Math.random()}`,
@@ -69,7 +105,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          events: payload.events || [],
+          events: eventsWithIds,
           reminders: formattedReminders,
         },
         { status: 200 }
@@ -81,7 +117,6 @@ export async function POST(request: Request) {
     const cleanedResult = result.replace(/```json|```/g, "").trim();
     const parsedResult = JSON.parse(cleanedResult);
 
-    // Handle backward compatibility - if result is array, it's just events
     let events = [];
     let reminders = [];
 
@@ -93,6 +128,17 @@ export async function POST(request: Request) {
       events = parsedResult.events || [];
       reminders = parsedResult.reminders || [];
     }
+
+    // Assign deterministic IDs to suggestions if missing (for cache + client)
+    const eventsWithIds = (events || []).map((e: any) => {
+      if (e && e.title && e.start && e.end) {
+        return {
+          ...e,
+          id: e.id || makeStableSuggestionId(e.title, e.start, e.end),
+        };
+      }
+      return e;
+    });
 
     // Format reminders for local state (don't save to database)
     const formattedReminders = reminders.map((reminder: any) => ({
@@ -114,20 +160,20 @@ export async function POST(request: Request) {
       },
       update: {
         eventsHash,
-        payload: JSON.stringify({ events, reminders }),
+        payload: JSON.stringify({ events: eventsWithIds, reminders }),
       },
       create: {
         userId,
         timezone,
         dayKey,
         eventsHash,
-        payload: JSON.stringify({ events, reminders }),
+        payload: JSON.stringify({ events: eventsWithIds, reminders }),
       },
     });
 
     return NextResponse.json(
       {
-        events,
+        events: eventsWithIds,
         reminders: formattedReminders,
       },
       { status: 200 }
@@ -136,6 +182,70 @@ export async function POST(request: Request) {
     console.error("Error suggesting events and reminders:", error);
     return NextResponse.json(
       { error: "Failed to suggest events and reminders" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { userId, timezone, eventId } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+    if (!timezone) {
+      return NextResponse.json({ error: "Missing timezone" }, { status: 400 });
+    }
+    if (!eventId) {
+      return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+    }
+
+    const targetDate = new Date();
+    const { dayKey } = getUtcDayBoundsForTimezone(targetDate, timezone);
+
+    const cache = await prisma.dailySuggestionsCache.findUnique({
+      where: {
+        userId_timezone_dayKey: {
+          userId,
+          timezone,
+          dayKey,
+        },
+      },
+    });
+
+    if (!cache) {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    const payload = JSON.parse(cache.payload || "{}");
+    const existingEvents = Array.isArray(payload.events) ? payload.events : [];
+    const filteredEvents = existingEvents.filter((e: any) => e?.id !== eventId);
+
+    // No-op if nothing changed
+    if (filteredEvents.length === existingEvents.length) {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    await prisma.dailySuggestionsCache.update({
+      where: {
+        userId_timezone_dayKey: { userId, timezone, dayKey },
+      },
+      data: {
+        payload: JSON.stringify({
+          events: filteredEvents,
+          reminders: Array.isArray(payload.reminders)
+            ? payload.reminders
+            : [],
+        }),
+      },
+    });
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Error dismissing suggestion:", error);
+    return NextResponse.json(
+      { error: "Failed to dismiss suggestion" },
       { status: 500 }
     );
   }
