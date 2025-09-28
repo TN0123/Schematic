@@ -128,6 +128,35 @@ function parseAIResponse(response: string): [string, any] {
   ];
 }
 
+// Normalize escaped sequences like \n, \r, \t into actual characters
+function normalizeEscapedSequences(input: string): string {
+  if (typeof input !== "string" || input.length === 0) return input;
+  return input
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t");
+}
+
+// Recursively normalize all string fields within an object/array
+function deepNormalizeEscapedSequences<T>(value: T): T {
+  if (typeof value === "string") {
+    return normalizeEscapedSequences(value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => deepNormalizeEscapedSequences(v)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedKey = normalizeEscapedSequences(key);
+      result[normalizedKey] = deepNormalizeEscapedSequences(val);
+    }
+    return result as unknown as T;
+  }
+  return value;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -348,11 +377,14 @@ export async function POST(req: NextRequest) {
           // Send parsing status
           sendEvent("status", { message: "Processing response..." });
 
+          // Normalize the final streamed response for readability
+          const cleanFullResponse = normalizeEscapedSequences(fullResponse);
+
           // Update conversation history
           const updatedHistory = [
             ...history,
             { role: "user", parts: userPrompt },
-            { role: "model", parts: fullResponse },
+            { role: "model", parts: cleanFullResponse },
           ];
 
           // Update context
@@ -375,7 +407,7 @@ export async function POST(req: NextRequest) {
           if (actionMode === "ask") {
             // For "ask" mode, return the response directly as text
             sendEvent("result", {
-              result: fullResponse,
+              result: cleanFullResponse,
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
@@ -385,9 +417,11 @@ export async function POST(req: NextRequest) {
           } else {
             // For "edit" mode, use robust parsing
             const [message, changes] = parseAIResponse(fullResponse);
+            const cleanedMessage = normalizeEscapedSequences(message);
+            const cleanedChanges = deepNormalizeEscapedSequences(changes);
 
             sendEvent("result", {
-              result: [message, changes],
+              result: [cleanedMessage, cleanedChanges],
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
