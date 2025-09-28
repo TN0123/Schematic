@@ -414,6 +414,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           unselect={onUnselect}
           unselectAuto={true}
           selectable={true}
+          selectMirror={true}
           dateClick={onDateClick}
           eventResize={onEventUpdate}
           eventDrop={onEventUpdate}

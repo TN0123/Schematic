@@ -187,6 +187,17 @@ export const useCalendarState = (
 
       setLastClickedDate(selectedStart);
 
+      // Prefill new event with the selected range and open creation modal
+      setNewEvent({
+        id: "",
+        title: "",
+        start: selectedStart,
+        end: selectedEnd,
+        links: [],
+      });
+      setModalInitialTab("event");
+      setShowCreationModal(true);
+
       const eventsInRange = events.filter((event) => {
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
