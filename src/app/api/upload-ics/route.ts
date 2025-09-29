@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import ical from "node-ical";
 
 export const config = {
@@ -8,6 +10,11 @@ export const config = {
 };
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -19,21 +26,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Restrict to .ics content and limit size to 1MB
+    const allowedMimeTypes = new Set([
+      "text/calendar",
+      "application/octet-stream", // some browsers may send this for .ics
+    ]);
+    const maxBytes = 1 * 1024 * 1024;
+
+    if (typeof file.size === "number" && file.size > maxBytes) {
+      return NextResponse.json(
+        { message: "File too large. Max 1MB" },
+        { status: 413 }
+      );
+    }
+
+    if (file.type && !allowedMimeTypes.has(file.type)) {
+      return NextResponse.json(
+        { message: "Unsupported file type" },
+        { status: 415 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const icsString = buffer.toString("utf-8");
     const data = ical.parseICS(icsString);
 
-    const events = [];
+    const events: Array<{ id: string; title: string; start: Date; end: Date }> = [];
 
     for (const k in data) {
-      if (data.hasOwnProperty(k)) {
-        const event = data[k];
-        if (event.type === "VEVENT") {
+      if (Object.prototype.hasOwnProperty.call(data, k)) {
+        const event: any = (data as any)[k];
+        if (event && event.type === "VEVENT") {
           events.push({
-            id: event.uid,
-            title: event.summary,
-            start: event.start,
-            end: event.end,
+            id: String(event.uid ?? k),
+            title: String(event.summary ?? "Untitled Event"),
+            start: new Date(event.start),
+            end: new Date(event.end),
           });
         }
       }

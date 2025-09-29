@@ -632,16 +632,30 @@ export default function WriteEditor({
     onPendingChanges?.(pendingChanges);
   }, [pendingChanges, onPendingChanges]);
 
+  const escapeHtml = (unsafe: string): string => {
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
   const getHighlightedHTML = (
     text: string,
     highlight: string | null
   ): string => {
-    if (!highlight) return text;
-    const escaped = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(escaped, "g");
-    return text.replace(
+    if (!highlight) return escapeHtml(text);
+    const escapedText = escapeHtml(text);
+    const escapedHighlight = escapeHtml(highlight);
+    const escapedForRegex = escapedHighlight.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&"
+    );
+    const regex = new RegExp(escapedForRegex, "g");
+    return escapedText.replace(
       regex,
-      `<mark class="bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary">${highlight}</mark>`
+      `<mark class="bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary">${escapedHighlight}</mark>`
     );
   };
 
@@ -653,16 +667,16 @@ export default function WriteEditor({
     highlightText?: string
   ): string => {
     if ((start === null || end === null || start === end) && !highlightText)
-      return text;
+      return escapeHtml(text);
 
     const highlightClass =
       variant === "selection"
         ? "bg-purple-100 dark:bg-purple-900 dark:text-dark-textPrimary"
         : "bg-green-100 text-gray-800 dark:text-dark-textPrimary dark:bg-green-900";
 
-    const before = text.slice(0, start!);
-    const highlight = text.slice(start!, end!);
-    const after = text.slice(end!);
+    const before = escapeHtml(text.slice(0, start!));
+    const highlight = escapeHtml(text.slice(start!, end!));
+    const after = escapeHtml(text.slice(end!));
 
     if (variant === "selection") {
       return (
@@ -743,7 +757,9 @@ export default function WriteEditor({
   }
 
   if (suggestion) {
-    displayHtml += `<span class="text-gray-400 dark:text-gray-500">${suggestion}</span>`;
+    displayHtml += `<span class="text-gray-400 dark:text-gray-500">${escapeHtml(
+      suggestion
+    )}</span>`;
   }
 
   return (
