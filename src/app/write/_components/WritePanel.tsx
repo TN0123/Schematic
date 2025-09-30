@@ -4,6 +4,7 @@ import {
   PanelRightOpen,
   RefreshCw,
   CircleArrowUp,
+  CircleStop,
   UserPen,
   Info,
   AlertCircle,
@@ -12,7 +13,10 @@ import {
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
 import { motion, AnimatePresence } from "framer-motion";
-import { useModifierKeyLabel, isPrimaryModifierPressed } from "@/components/utils/platform";
+import {
+  useModifierKeyLabel,
+  isPrimaryModifierPressed,
+} from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
 
@@ -260,6 +264,7 @@ export default function WritePanel({
   }>({ isOpen: false, before: "", after: "" });
   const [actionMode, setActionMode] = useState<"ask" | "edit">("edit");
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const chatAbortControllerRef = useRef<AbortController | null>(null);
 
   // Helper function to add toast notifications
   const addToast = (
@@ -352,13 +357,20 @@ export default function WritePanel({
     if (premiumRemainingUses === 0 && selectedModel !== "basic") {
       setSelectedModel("basic");
       wasPremiumDisabledRef.current = true;
-      addToast("Premium uses exhausted - automatically switched to basic model", "warning");
+      addToast(
+        "Premium uses exhausted - automatically switched to basic model",
+        "warning"
+      );
     }
   }, [premiumRemainingUses, selectedModel]);
 
   // Notify when premium uses become available again
   useEffect(() => {
-    if (premiumRemainingUses !== null && premiumRemainingUses > 0 && wasPremiumDisabledRef.current) {
+    if (
+      premiumRemainingUses !== null &&
+      premiumRemainingUses > 0 &&
+      wasPremiumDisabledRef.current
+    ) {
       wasPremiumDisabledRef.current = false;
       addToast("Premium model is now available again!", "success");
     }
@@ -519,7 +531,6 @@ export default function WritePanel({
       let fullStreamingResponse = "";
       let assistantMessageId: string | null = null;
       let currentStreamingMessage = "";
-      let hasShownPreparingState = false;
 
       // Add a typing indicator for the message
       const typingMessageObj = {
@@ -531,12 +542,14 @@ export default function WritePanel({
       assistantMessageId = typingMessageObj.id;
       setMessages((prev) => [...prev, typingMessageObj]);
 
-      // Show "preparing changes" state in ChangeHandler for edit mode
+      // Hide ChangeHandler while generating by clearing any previous changes
       if (actionMode === "edit") {
-        setChanges({ "!PREPARING!": "Preparing suggested changes..." });
+        setChanges({});
       }
 
       try {
+        const controller = new AbortController();
+        chatAbortControllerRef.current = controller;
         // Make the POST request to the chat endpoint (now with streaming)
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -552,6 +565,7 @@ export default function WritePanel({
             model: selectedModel,
             actionMode,
           }),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -620,18 +634,7 @@ export default function WritePanel({
                       )
                     );
 
-                    // Show "preparing changes" after message starts appearing
-                    if (
-                      actionMode === "edit" &&
-                      !hasShownPreparingState &&
-                      currentStreamingMessage.length > 20
-                    ) {
-                      setChanges({
-                        "!PREPARING!":
-                          "Analyzing content and preparing suggested changes...",
-                      });
-                      hasShownPreparingState = true;
-                    }
+                    // Keep ChangeHandler hidden during generation; do not set interim states
                   }
                 } else if (data.result !== undefined) {
                   // This is the final result - parse the complete response
@@ -714,12 +717,28 @@ export default function WritePanel({
         }
 
         resolve();
-      } catch (error) {
-        console.error("Error in streaming request:", error);
-        addToast("Streaming request failed", "error");
-        reject(error);
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          // Swallow aborts as a user cancellation
+          resolve();
+        } else {
+          console.error("Error in streaming request:", error);
+          addToast("Streaming request failed", "error");
+          reject(error);
+        }
+      } finally {
+        chatAbortControllerRef.current = null;
       }
     });
+  };
+
+  const cancelChatRequest = () => {
+    try {
+      chatAbortControllerRef.current?.abort();
+    } catch {}
+    // Remove any typing indicator message
+    setMessages((prev) => prev.filter((m) => !m.isTyping));
+    setIsChatLoading(false);
   };
 
   const handleSubmit = async () => {
@@ -754,6 +773,8 @@ export default function WritePanel({
     if (!selected) return;
     onImproveStart();
     setIsImproving(true);
+    // Hide ChangeHandler while generating by clearing any previous changes
+    setChanges({});
 
     try {
       const getSurroundingWords = (
@@ -838,8 +859,12 @@ export default function WritePanel({
     });
 
     setIsChatLoading(true);
+    // Hide ChangeHandler while generating by clearing any previous changes
+    setChanges({});
 
     try {
+      const controller = new AbortController();
+      chatAbortControllerRef.current = controller;
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -854,6 +879,7 @@ export default function WritePanel({
           documentId,
           actionMode: retryActionMode,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -878,12 +904,17 @@ export default function WritePanel({
       }
 
       setHistory(data.history);
-    } catch (error) {
-      console.error(error);
-      const errorState = handleNetworkError(error as Error);
-      addToast(errorState.message, "error");
+    } catch (error: any) {
+      if (error?.name === "AbortError") {
+        // cancelled by user
+      } else {
+        console.error(error);
+        const errorState = handleNetworkError(error as Error);
+        addToast(errorState.message, "error");
+      }
     } finally {
       setIsChatLoading(false);
+      chatAbortControllerRef.current = null;
     }
   };
 
@@ -907,7 +938,9 @@ export default function WritePanel({
   const wrapperClass =
     variant === "mobile"
       ? "w-full h-full bg-white dark:bg-dark-background flex flex-col"
-      : `${isCollapsed ? "lg:w-14" : "w-full lg:w-1/3"} hidden lg:flex lg:h-full h-[50vh] lg:border-l-2 border-t-2 lg:border-t-0 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex-col transition-all duration-200`;
+      : `${
+          isCollapsed ? "lg:w-14" : "w-full lg:w-1/3"
+        } hidden lg:flex lg:h-full h-[50vh] lg:border-l-2 border-t-2 lg:border-t-0 border-gray-300 dark:border-dark-divider bg-white dark:bg-dark-background flex-col transition-all duration-200`;
 
   const innerScrollClass =
     variant === "mobile"
@@ -920,7 +953,10 @@ export default function WritePanel({
       : "flex flex-col w-full h-[38vh] max-h-[38vh] lg:h-[600px] lg:max-h-[600px] px-2 py-1 gap-1 overflow-y-auto dark:border-dark-divider";
 
   return (
-    <aside className={wrapperClass} id={variant === "mobile" ? "write-panel-mobile" : "write-panel"}>
+    <aside
+      className={wrapperClass}
+      id={variant === "mobile" ? "write-panel-mobile" : "write-panel"}
+    >
       {/* Toast Notifications */}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast) => (
@@ -1076,14 +1112,22 @@ export default function WritePanel({
                     <RefreshCw size={20} />
                   </button>
                 )}
-
-                <button
-                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
-                  onClick={handleSubmit}
-                  disabled={isChatLoading}
-                >
-                  <CircleArrowUp size={20} />
-                </button>
+                {isChatLoading ? (
+                  <button
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    onClick={cancelChatRequest}
+                    title="Stop generating"
+                  >
+                    <CircleStop size={20} />
+                  </button>
+                ) : (
+                  <button
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    onClick={handleSubmit}
+                  >
+                    <CircleArrowUp size={20} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1141,7 +1185,10 @@ export default function WritePanel({
                 onChange={(e) => {
                   const newModel = e.target.value as ModelType;
                   if (newModel !== "basic" && premiumRemainingUses === 0) {
-                    addToast("Premium model unavailable - no uses remaining", "warning");
+                    addToast(
+                      "Premium model unavailable - no uses remaining",
+                      "warning"
+                    );
                     return;
                   }
                   setSelectedModel(newModel);
@@ -1150,27 +1197,35 @@ export default function WritePanel({
                 disabled={isChatLoading}
               >
                 <option value="basic">Gemini 2.5 Flash</option>
-                <option 
-                  value="gpt-4.1" 
+                <option
+                  value="gpt-4.1"
                   disabled={premiumRemainingUses === 0}
-                  className={premiumRemainingUses === 0 ? "text-gray-400 dark:text-gray-500" : ""}
+                  className={
+                    premiumRemainingUses === 0
+                      ? "text-gray-400 dark:text-gray-500"
+                      : ""
+                  }
                 >
                   GPT-4.1 (Premium)
                 </option>
-                <option 
-                  value="claude-sonnet-4" 
+                <option
+                  value="claude-sonnet-4"
                   disabled={premiumRemainingUses === 0}
-                  className={premiumRemainingUses === 0 ? "text-gray-400 dark:text-gray-500" : ""}
+                  className={
+                    premiumRemainingUses === 0
+                      ? "text-gray-400 dark:text-gray-500"
+                      : ""
+                  }
                 >
                   Claude Sonnet 4 (Premium)
                 </option>
               </select>
               <div className="relative group">
                 <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48 pointer-events-none">
-                  {premiumRemainingUses === null 
-                    ? "Loading premium usage..." 
-                    : premiumRemainingUses === 0 
-                    ? "Premium model uses exhausted. Switch to basic model or wait for usage to reset." 
+                  {premiumRemainingUses === null
+                    ? "Loading premium usage..."
+                    : premiumRemainingUses === 0
+                    ? "Premium model uses exhausted. Switch to basic model or wait for usage to reset."
                     : `Premium model uses remaining: ${premiumRemainingUses}. Premium model provides higher quality AI responses.`}
                 </div>
                 <button className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200 cursor-help">
@@ -1311,20 +1366,28 @@ export default function WritePanel({
       )}
 
       {/* ChangeHandler for mobile variant */}
-      {variant === "mobile" && changes && Object.keys(changes).length > 0 && applyChange && rejectChange && appendChange && acceptAllChanges && rejectAllChanges && setActiveHighlight && (
-        <div className="border-t border-gray-200 dark:border-dark-divider p-2">
-          <ChangeHandler
-            changes={changes}
-            applyChange={applyChange}
-            rejectChange={rejectChange}
-            appendChange={appendChange}
-            acceptAllChanges={acceptAllChanges}
-            rejectAllChanges={rejectAllChanges}
-            setActiveHighlight={setActiveHighlight}
-            isStreaming={isChatLoading}
-          />
-        </div>
-      )}
+      {variant === "mobile" &&
+        changes &&
+        Object.keys(changes).length > 0 &&
+        applyChange &&
+        rejectChange &&
+        appendChange &&
+        acceptAllChanges &&
+        rejectAllChanges &&
+        setActiveHighlight && (
+          <div className="border-t border-gray-200 dark:border-dark-divider p-2">
+            <ChangeHandler
+              changes={changes}
+              applyChange={applyChange}
+              rejectChange={rejectChange}
+              appendChange={appendChange}
+              acceptAllChanges={acceptAllChanges}
+              rejectAllChanges={rejectAllChanges}
+              setActiveHighlight={setActiveHighlight}
+              isStreaming={isChatLoading}
+            />
+          </div>
+        )}
     </aside>
   );
 }

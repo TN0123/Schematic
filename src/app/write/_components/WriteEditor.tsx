@@ -915,8 +915,8 @@ export default function WriteEditor({
           }`}
           id="write-editor"
         >
-          <div className="w-full flex flex-col gap-6 px-2">
-            <div className="relative" ref={editorContainerRef}>
+          <div className="w-full h-full flex flex-col gap-6 px-2">
+            <div className="relative h-full" ref={editorContainerRef}>
               {tooltipState.visible && (
                 <div
                   className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-dark-secondary dark:text-dark-textPrimary whitespace-nowrap pointer-events-none"
@@ -938,7 +938,7 @@ export default function WriteEditor({
                   </span>
                 </div>
               )}
-              <div className="w-full overflow-hidden min-h-48 p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
+              <div className="w-full h-full overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
                 <div
                   className="absolute top-0 left-0 w-full h-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
                   aria-hidden="true"
