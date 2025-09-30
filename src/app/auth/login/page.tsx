@@ -1,10 +1,11 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useModifierKeyLabel } from "@/components/utils/platform";
 import { Calendar, ClipboardList, PenLine, Check } from "lucide-react";
 import { redirect } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +26,31 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  const pricingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showPricingTooltip, setShowPricingTooltip] = useState(false);
+
+  const handleScrollTo = (section: "write" | "bulletin" | "schedule") => {
+    const el = document.getElementById(`feature-${section}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handlePricingClick = () => {
+    setShowPricingTooltip(true);
+    if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
+    pricingTimeoutRef.current = setTimeout(
+      () => setShowPricingTooltip(false),
+      1500
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
+    };
+  }, []);
 
   const features = [
     {
@@ -69,19 +95,173 @@ export default function Login() {
     },
   ];
 
+  const navItems = ["Write", "Bulletin", "Schedule", "Pricing", "Login"];
+
+  // Animation variants
+  const pageVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+  } as const;
+
+  const fadeUpVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.45, ease: "easeOut" },
+    },
+  } as const;
+
+  const fadeDownVariants = {
+    hidden: { opacity: 0, y: -12 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: "easeOut", delay: 0.05 },
+    },
+  } as const;
+
+  const staggerVariants = {
+    hidden: {},
+    visible: {
+      transition: { staggerChildren: 0.08, delayChildren: 0.12 },
+    },
+  } as const;
+
   return (
-    <div className="min-h-screen bg-white dark:bg-dark-background transition-colors duration-200">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="text-center py-24 sm:py-32 space-y-8">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-dark-textPrimary">
-            Your AI Productivity Assistant
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-600 dark:text-dark-textSecondary max-w-3xl mx-auto">
+    <motion.div
+      className="min-h-screen bg-white dark:bg-dark-background transition-colors duration-200"
+      initial="hidden"
+      animate="visible"
+      variants={pageVariants}
+    >
+      <motion.nav className="sticky top-4 z-40" variants={fadeDownVariants}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="h-14 rounded-2xl border border-white/30 dark:border-white/10 bg-white/60 dark:bg-dark-paper/30 backdrop-blur-xl backdrop-saturate-150 shadow-lg ring-1 ring-black/5 dark:ring-white/5">
+            <div className="h-full flex items-center justify-center md:justify-between px-4">
+              <div className="flex items-center gap-2">
+                <img src="/favicon.ico" alt="" className="h-6 w-6 shadow-xl" />
+                <span className="text-base sm:text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
+                  Schematic
+                </span>
+              </div>
+              <div className="hidden md:flex items-center gap-6">
+                {navItems.map((item) => {
+                  const baseButtonClasses =
+                    "inline-flex items-center h-10 px-1 text-sm text-gray-700 dark:text-dark-textSecondary hover:text-gray-900 dark:hover:text-dark-textPrimary transition-colors";
+                  if (item === "Pricing") {
+                    return (
+                      <div
+                        key={item}
+                        className="relative flex items-center h-10"
+                      >
+                        <button
+                          type="button"
+                          onClick={handlePricingClick}
+                          className={baseButtonClasses}
+                        >
+                          {item}
+                        </button>
+                        <AnimatePresence>
+                          {showPricingTooltip && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              transition={{ duration: 0.18, ease: "easeOut" }}
+                              className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50"
+                            >
+                              <div className="px-3 py-1.5 text-xs text-center font-medium rounded-md border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-900/80 text-gray-900 dark:text-gray-100 shadow-lg backdrop-blur-md">
+                                Coming soon!
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  }
+                  if (
+                    item === "Write" ||
+                    item === "Bulletin" ||
+                    item === "Schedule"
+                  ) {
+                    return (
+                      <div
+                        key={item}
+                        className="relative flex items-center h-10"
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleScrollTo(
+                              item.toLowerCase() as
+                                | "write"
+                                | "bulletin"
+                                | "schedule"
+                            )
+                          }
+                          className={baseButtonClasses}
+                        >
+                          {item}
+                        </button>
+                      </div>
+                    );
+                  }
+                  if (item === "Login") {
+                    return (
+                      <div
+                        key={item}
+                        className="relative flex items-center h-10"
+                      >
+                        <button
+                          type="button"
+                          onClick={handleGoogleSignIn}
+                          className={baseButtonClasses}
+                        >
+                          {item}
+                        </button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={item} className="relative flex items-center h-10">
+                      <button type="button" className={baseButtonClasses}>
+                        {item}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.nav>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-24">
+        <motion.div
+          className="text-center py-24 sm:py-48 space-y-8"
+          variants={staggerVariants}
+        >
+          <motion.h1
+            className="text-4xl sm:text-6xl lg:text-7xl tracking-tight text-gray-900 dark:text-dark-textPrimary"
+            variants={fadeUpVariants}
+          >
+            Your AI Productivity Workspace
+          </motion.h1>
+          <motion.p
+            className="text-lg sm:text-xl text-gray-600 dark:text-dark-textSecondary max-w-3xl mx-auto"
+            variants={fadeUpVariants}
+          >
             Schematic helps you stay organized, focused, and productive with
             intelligent task management and personalized assistance.
-          </p>
+          </motion.p>
 
-          <div className="flex w-full items-center justify-center pt-4">
+          <motion.div
+            className="flex w-full items-center justify-center pt-4"
+            variants={fadeUpVariants}
+          >
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
@@ -133,12 +313,18 @@ export default function Login() {
                 <span>Continue with Google</span>
               )}
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Three Feature Boxes Section */}
         <div className="pb-12 sm:pb-16">
-          <div className="grid lg:grid-cols-3 gap-8">
+          <motion.div
+            className="grid lg:grid-cols-3 gap-8 items-stretch"
+            variants={staggerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+          >
             {features.map((feature, index) => {
               const Icon = feature.icon;
               const colorClassesMap = {
@@ -161,43 +347,58 @@ export default function Login() {
               const colorClasses =
                 colorClassesMap[feature.color as keyof typeof colorClassesMap];
 
+              const sectionId =
+                feature.title === "Write"
+                  ? "feature-write"
+                  : feature.title === "Bulletin"
+                  ? "feature-bulletin"
+                  : feature.title === "Schedule"
+                  ? "feature-schedule"
+                  : undefined;
+
               return (
-                <div
+                <motion.div
                   key={index}
-                  className={`bg-white dark:bg-dark-secondary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 p-8 border ${colorClasses.border} hover:scale-105`}
+                  id={sectionId}
+                  variants={fadeUpVariants}
+                  className="h-full"
                 >
                   <div
-                    className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${colorClasses.bg} mb-6`}
+                    className={`h-full flex flex-col bg-white dark:bg-dark-secondary rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300 will-change-transform p-8 border ${colorClasses.border} hover:scale-105`}
                   >
-                    <Icon className={`h-6 w-6 ${colorClasses.icon}`} />
+                    <div
+                      className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${colorClasses.bg} mb-6`}
+                    >
+                      <Icon className={`h-6 w-6 ${colorClasses.icon}`} />
+                    </div>
+
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-dark-textPrimary mb-4">
+                      {feature.title}
+                    </h3>
+
+                    <p className="text-gray-600 dark:text-dark-textSecondary mb-6">
+                      {feature.description}
+                    </p>
+
+                    <ul className="space-y-3 mt-auto">
+                      {feature.highlights.map((highlight, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <Check
+                            className={`h-5 w-5 ${colorClasses.icon} flex-shrink-0 mt-0.5`}
+                          />
+                          <span className="text-sm text-gray-600 dark:text-dark-textSecondary">
+                            {highlight}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-dark-textPrimary mb-4">
-                    {feature.title}
-                  </h3>
-
-                  <p className="text-gray-600 dark:text-dark-textSecondary mb-6">
-                    {feature.description}
-                  </p>
-
-                  <ul className="space-y-3">
-                    {feature.highlights.map((highlight, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <Check
-                          className={`h-5 w-5 ${colorClasses.icon} flex-shrink-0 mt-0.5`}
-                        />
-                        <span className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                          {highlight}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }
