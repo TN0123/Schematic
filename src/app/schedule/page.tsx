@@ -519,6 +519,10 @@ export default function CalendarApp() {
               calendarState.showCalendarHeader
                 ? "calendar-header-visible"
                 : "calendar-header-hidden"
+            } ${
+              calendarState.isShiftPressed || calendarState.shiftSelectionActive
+                ? "shift-select-active"
+                : ""
             }`}
           >
             {/* Reminders Bar - replaces calendar header when visible */}
@@ -575,6 +579,9 @@ export default function CalendarApp() {
                 unreadNonAIReminders={calendarState.unreadNonAIReminders}
                 onAcceptSuggestion={calendarData.acceptSuggestion}
                 onRejectSuggestion={calendarData.rejectSuggestion}
+                isShiftPressed={calendarState.isShiftPressed}
+                shiftSelectionActive={calendarState.shiftSelectionActive}
+                setLastSelectWasShift={calendarState.setLastSelectWasShift}
               />
             </motion.div>
           </div>
@@ -614,6 +621,10 @@ export default function CalendarApp() {
               calendarState.showCalendarHeader
                 ? "calendar-header-visible"
                 : "calendar-header-hidden"
+            } ${
+              calendarState.isShiftPressed || calendarState.shiftSelectionActive
+                ? "shift-select-active"
+                : ""
             }`}
           >
             {/* Reminders Bar - Mobile */}
@@ -671,6 +682,9 @@ export default function CalendarApp() {
                 onAcceptSuggestion={calendarData.acceptSuggestion}
                 onRejectSuggestion={calendarData.rejectSuggestion}
                 isMobile={true}
+                isShiftPressed={calendarState.isShiftPressed}
+                shiftSelectionActive={calendarState.shiftSelectionActive}
+                setLastSelectWasShift={calendarState.setLastSelectWasShift}
               />
             </motion.div>
           </div>

@@ -221,6 +221,40 @@ main {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
+/* Shift-select visual treatment: gray selection mirror and crosshair cursor */
+.shift-select-active .fc-timegrid-slot,
+.shift-select-active .fc-daygrid-day {
+  cursor: crosshair !important;
+}
+
+/* Mirror selection rectangle (FullCalendar uses fc-highlight for selection mirror) */
+.shift-select-active .fc .fc-highlight {
+  background: rgba(100, 116, 139, 0.25) !important; /* slate-500/25 */
+  outline: 2px dashed rgba(100, 116, 139, 0.6) !important;
+  outline-offset: -1px !important;
+  border: none !important;
+  box-shadow: none !important;
+  mix-blend-mode: multiply;
+}
+
+html.dark .shift-select-active .fc .fc-highlight {
+  background: rgba(148, 163, 184, 0.2) !important; /* slate-400/20 */
+  outline-color: rgba(148, 163, 184, 0.6) !important;
+}
+
+/* Hide event-like mirror block during Shift selection so only gray cells show */
+.shift-select-active .fc .fc-bgevent,
+.shift-select-active .fc .fc-event.fc-mirror,
+.shift-select-active .fc .fc-timegrid-selection,
+.shift-select-active .fc .fc-timegrid-event-mirror {
+  display: none !important;
+}
+
+/* Differentiate from create-event mirror (default selectMirror=true) */
+.fc .fc-highlight {
+  transition: background-color 120ms ease-in-out, border-color 120ms ease-in-out !important;
+}
+
 .fc-day-today {
     background-color: #f7fafc !important;
     }  

@@ -32,6 +32,9 @@ interface CalendarComponentProps {
   onAcceptSuggestion: (suggestionId: string) => void;
   onRejectSuggestion: (suggestionId: string) => void;
   isMobile?: boolean;
+  isShiftPressed?: boolean;
+  shiftSelectionActive?: boolean;
+  setLastSelectWasShift?: (wasShift: boolean) => void;
 }
 
 // Smart Tooltip Component
@@ -133,6 +136,9 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       onAcceptSuggestion,
       onRejectSuggestion,
       isMobile = false,
+      isShiftPressed = false,
+      shiftSelectionActive = false,
+      setLastSelectWasShift,
     },
     ref
   ) => {
@@ -414,7 +420,12 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           unselect={onUnselect}
           unselectAuto={true}
           selectable={true}
-          selectMirror={true}
+          selectMirror={!isShiftPressed && !shiftSelectionActive}
+          selectAllow={(selectInfo) => {
+            const wasShift = !!(selectInfo as any)?.jsEvent?.shiftKey;
+            setLastSelectWasShift?.(wasShift);
+            return true;
+          }}
           dateClick={onDateClick}
           eventResize={onEventUpdate}
           eventDrop={onEventUpdate}

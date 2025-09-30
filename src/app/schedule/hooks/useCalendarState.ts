@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { EventImpl } from "@fullcalendar/core/internal";
 import {
   EventChangeArg,
@@ -77,6 +77,19 @@ export const useCalendarState = (
   // Initialize suggestions state
   const [hasFetchedInitialSuggestions, setHasFetchedInitialSuggestions] =
     useState(false);
+
+  // Keyboard modifier tracking
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  // Prevent clearing selection when we programmatically unselect after Shift selection
+  const [suppressNextUnselectClear, setSuppressNextUnselectClear] =
+    useState(false);
+  // Persist styling for shift selection area after mouseup
+  const [shiftSelectionActive, setShiftSelectionActive] = useState(false);
+  // Robust detection of whether the last drag selection was initiated with Shift
+  const lastSelectWasShiftRef = useRef(false);
+  const setLastSelectWasShift = useCallback((wasShift: boolean) => {
+    lastSelectWasShiftRef.current = wasShift;
+  }, []);
 
   // Computed values
   const unreadReminders = useMemo(() => {
@@ -187,32 +200,49 @@ export const useCalendarState = (
 
       setLastClickedDate(selectedStart);
 
-      // Prefill new event with the selected range and open creation modal
-      setNewEvent({
-        id: "",
-        title: "",
-        start: selectedStart,
-        end: selectedEnd,
-        links: [],
-      });
-      setModalInitialTab("event");
-      setShowCreationModal(true);
-
+      // Determine events within the dragged region
       const eventsInRange = events.filter((event) => {
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
         return eventStart < selectedEnd && eventEnd > selectedStart;
       });
-
       setSelectedEventIds(new Set(eventsInRange.map((e) => e.id)));
+
+      const wasShift =
+        lastSelectWasShiftRef.current ||
+        !!(selectInfo as any)?.jsEvent?.shiftKey ||
+        isShiftPressed;
+
+      // If Shift is NOT pressed, this is a normal create flow
+      if (!wasShift) {
+        setNewEvent({
+          id: "",
+          title: "",
+          start: selectedStart,
+          end: selectedEnd,
+          links: [],
+        });
+        setModalInitialTab("event");
+        setShowCreationModal(true);
+        setShiftSelectionActive(false);
+      } else {
+        // In Shift-select mode, keep the area highlight visible (no unselect)
+        setShiftSelectionActive(true);
+      }
     },
-    [events]
+    [events, isShiftPressed]
   );
 
   // Handle unselect
   const handleUnselect = useCallback(() => {
+    if (suppressNextUnselectClear) {
+      // Consume the suppression and keep current selection
+      setSuppressNextUnselectClear(false);
+      return;
+    }
     setSelectedEventIds(new Set());
-  }, []);
+    setShiftSelectionActive(false);
+  }, [suppressNextUnselectClear]);
 
   // Handle keyboard shortcuts
   const handleBackspaceDelete = useCallback(() => {
@@ -329,6 +359,9 @@ export const useCalendarState = (
   // Set up keyboard event listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        setIsShiftPressed(true);
+      }
       if (e.key === "Backspace" && selectedEventIds.size > 0) {
         handleBackspaceDelete();
       } else if (
@@ -347,8 +380,17 @@ export const useCalendarState = (
         // Note: handlePasteEvents needs bulkAddEvents function, so it should be called from parent
       }
     };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") {
+        setIsShiftPressed(false);
+      }
+    };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [selectedEventIds, copiedEvents, handleBackspaceDelete, handleCopyEvents]);
 
   return {
@@ -428,5 +470,9 @@ export const useCalendarState = (
     handlePasteEvents,
     handleDatesSet,
     handleDateClick,
+    isShiftPressed,
+    shiftSelectionActive,
+    setShiftSelectionActive,
+    setLastSelectWasShift,
   };
 };
