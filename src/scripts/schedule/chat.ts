@@ -216,6 +216,7 @@ IMPORTANT:
 - Use proper JSON syntax with double quotes
 - Escape any quotes within strings
 - Never include markdown code blocks or additional text outside the JSON
+- Always speak to the user in a friendly, engaging, and conversational tone
 `;
 
   const userPrompt = instructions;

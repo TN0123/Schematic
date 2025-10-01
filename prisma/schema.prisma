@@ -31,6 +31,7 @@ model User {
   /// Timestamp when the user last dismissed the product updates modal
   lastSeenUpdatesAt        DateTime?
   DailySuggestionsCache    DailySuggestionsCache[]
+  createdAt                DateTime               @default(now())
 }
 
 model Account {
