@@ -293,6 +293,11 @@ export const useCalendarData = (
 
       try {
         const userTimezone = getUserTimezone();
+        // Get the current goals view from localStorage
+        const goalsView = (typeof window !== "undefined" 
+          ? localStorage.getItem("goals-panel-active-tab") 
+          : null) as "list" | "text" | "todo" | null;
+        
         const response = await fetch("/api/generate-events", {
           method: "POST",
           headers: {
@@ -302,6 +307,7 @@ export const useCalendarData = (
             text: inputText,
             timezone: userTimezone,
             userId: userId,
+            goalsView: goalsView || "list",
           }),
           signal: options?.signal,
         });

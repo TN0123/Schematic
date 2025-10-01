@@ -60,7 +60,8 @@ export async function scheduleChat(
   instructions: string,
   history: any[],
   userId?: string,
-  timezone?: string
+  timezone?: string,
+  goalsView?: "list" | "text" | "todo"
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
@@ -68,6 +69,7 @@ export async function scheduleChat(
 
   let context = "";
   let goals: { title: string; type: string }[] = [];
+  let goalsContext = "";
   let events: { title: string; start: Date; end: Date }[] = [];
   let recentNotes: { title: string; content: string }[] = [];
 
@@ -88,18 +90,54 @@ export async function scheduleChat(
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { scheduleContext: true },
+        select: { scheduleContext: true, goalText: true },
       });
       if (user && user.scheduleContext) {
         context = user.scheduleContext;
         originalContext = user.scheduleContext;
       }
-      goals = await prisma.goal.findMany({
-        where: {
-          userId,
-        },
-        select: { title: true, type: true },
-      });
+      
+      // Fetch goals context based on the selected view
+      if (goalsView === "text" && user?.goalText) {
+        goalsContext = `User's Goals (Free-form Text):\n${user.goalText}`;
+      } else if (goalsView === "todo") {
+        // Fetch the most recent todo bulletin
+        const todoBulletins = await prisma.bulletin.findMany({
+          where: {
+            userId,
+            type: "todo",
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+          select: { title: true, data: true },
+        });
+        
+        if (todoBulletins.length > 0) {
+          const todo = todoBulletins[0];
+          const items = (todo.data as any)?.items || [];
+          const uncheckedItems = items.filter((item: any) => !item.checked);
+          const checkedItems = items.filter((item: any) => item.checked);
+          
+          goalsContext = `User's To-Do List (${todo.title}):\n`;
+          if (uncheckedItems.length > 0) {
+            goalsContext += `Pending Tasks:\n${uncheckedItems.map((item: any) => `- [ ] ${item.text}`).join("\n")}\n`;
+          }
+          if (checkedItems.length > 0) {
+            goalsContext += `Completed Tasks:\n${checkedItems.map((item: any) => `- [x] ${item.text}`).join("\n")}`;
+          }
+        } else {
+          goalsContext = "User has no to-do lists created yet.";
+        }
+      } else {
+        // Default to list view (structured goals)
+        goals = await prisma.goal.findMany({
+          where: {
+            userId,
+          },
+          select: { title: true, type: true },
+        });
+        goalsContext = `User's Goals:\n${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}`;
+      }
 
       const startOfDay = new Date(userNow);
       startOfDay.setHours(0, 0, 0, 0);
@@ -130,8 +168,7 @@ export async function scheduleChat(
 You are an AI life assistant helping a user manage their schedule and providing helpful advice to the user.
 Current date: ${new Date().toISOString()}.
 
-User goals:
-${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}
+${goalsContext || "User has not set any goals."}
 
 Today's remaining events:
 ${events

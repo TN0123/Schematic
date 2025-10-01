@@ -3,7 +3,7 @@ import { scheduleChat } from "@/scripts/schedule/chat";
 
 export async function POST(req: Request) {
   try {
-    const { instructions, history = [], userId, timezone } = await req.json();
+    const { instructions, history = [], userId, timezone, goalsView } = await req.json();
 
     if (!instructions || !userId || !timezone) {
       return NextResponse.json(
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     }
 
     const { response, contextUpdated, toolCalls, contextChange } =
-      await scheduleChat(instructions, history, userId, timezone);
+      await scheduleChat(instructions, history, userId, timezone, goalsView);
 
     return NextResponse.json(
       { response, contextUpdated, toolCalls, contextChange },

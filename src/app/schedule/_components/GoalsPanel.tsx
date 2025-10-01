@@ -48,21 +48,9 @@ export default function GoalsPanel() {
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
 
-  // Initialize activeTab from localStorage
-  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
-    if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem(
-        "goals-panel-active-tab"
-      ) as ActiveTab;
-      if (
-        savedTab &&
-        (savedTab === "list" || savedTab === "text" || savedTab === "todo")
-      ) {
-        return savedTab;
-      }
-    }
-    return "list";
-  });
+  // Always start with "list" to match server-side render
+  const [activeTab, setActiveTab] = useState<ActiveTab>("list");
+  const [isMounted, setIsMounted] = useState(false);
 
   const [goalText, setGoalText] = useState<string>("");
   const [isLoadingGoalText, setIsLoadingGoalText] = useState<boolean>(false);
@@ -120,14 +108,30 @@ export default function GoalsPanel() {
 
   useEffect(() => {
     fetchGoals();
+    setIsMounted(true);
   }, []);
+
+  // Load saved active tab from localStorage after mount (client-side only)
+  useEffect(() => {
+    if (isMounted) {
+      const savedTab = localStorage.getItem(
+        "goals-panel-active-tab"
+      ) as ActiveTab;
+      if (
+        savedTab &&
+        (savedTab === "list" || savedTab === "text" || savedTab === "todo")
+      ) {
+        setActiveTab(savedTab);
+      }
+    }
+  }, [isMounted]);
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (isMounted) {
       localStorage.setItem("goals-panel-active-tab", activeTab);
     }
-  }, [activeTab]);
+  }, [activeTab, isMounted]);
 
   // Separate useEffect for fetchGoalText that depends on session
   useEffect(() => {

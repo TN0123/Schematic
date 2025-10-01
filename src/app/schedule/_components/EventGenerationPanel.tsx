@@ -169,6 +169,13 @@ export default function EventGenerationPanel({
 
     try {
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      // Get the current goals view from localStorage
+      const goalsView = (
+        typeof window !== "undefined"
+          ? localStorage.getItem("goals-panel-active-tab")
+          : null
+      ) as "list" | "text" | "todo" | null;
+
       const res = await fetch("/api/schedule/chat", {
         method: "POST",
         body: JSON.stringify({
@@ -176,6 +183,7 @@ export default function EventGenerationPanel({
           history: chatMessages,
           userId,
           timezone: userTimezone,
+          goalsView: goalsView || "list",
         }),
       });
 

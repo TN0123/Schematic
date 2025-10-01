@@ -13,8 +13,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { text, timezone, userId } = await req.json();
-    const result = await generate_events(text, timezone, userId);
+    const { text, timezone, userId, goalsView } = await req.json();
+    const result = await generate_events(text, timezone, userId, goalsView);
 
     const cleanedResult = result.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanedResult);
