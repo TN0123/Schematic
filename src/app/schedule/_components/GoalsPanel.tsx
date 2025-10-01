@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Menu, X } from "lucide-react";
+import {
+  Menu,
+  X,
+  ChevronDown,
+  Circle,
+  CheckCircle,
+  Plus,
+  Loader2,
+} from "lucide-react";
 import GoalCard from "./GoalCard";
 
 export enum GoalDuration {
@@ -16,7 +24,20 @@ export interface Goal {
   type: GoalDuration;
 }
 
-type ActiveTab = "list" | "text";
+interface TodoItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
+interface TodoBulletin {
+  id: string;
+  title: string;
+  data: { items: TodoItem[] };
+  updatedAt: Date;
+}
+
+type ActiveTab = "list" | "text" | "todo";
 
 export default function GoalsPanel() {
   const [goalToAdd, setGoalToAdd] = useState<string>("");
@@ -26,12 +47,34 @@ export default function GoalsPanel() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("list");
+
+  // Initialize activeTab from localStorage
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem(
+        "goals-panel-active-tab"
+      ) as ActiveTab;
+      if (
+        savedTab &&
+        (savedTab === "list" || savedTab === "text" || savedTab === "todo")
+      ) {
+        return savedTab;
+      }
+    }
+    return "list";
+  });
+
   const [goalText, setGoalText] = useState<string>("");
   const [isLoadingGoalText, setIsLoadingGoalText] = useState<boolean>(false);
   const [isSavingGoalText, setIsSavingGoalText] = useState<boolean>(false);
   const { data: session } = useSession();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [todoBulletins, setTodoBulletins] = useState<TodoBulletin[]>([]);
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
+  const [isTodoSelectorOpen, setIsTodoSelectorOpen] = useState(false);
+  const [isSavingTodo, setIsSavingTodo] = useState(false);
+  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -79,19 +122,11 @@ export default function GoalsPanel() {
     fetchGoals();
   }, []);
 
-  // Load saved active tab from localStorage on mount
-  useEffect(() => {
-    const savedTab = localStorage.getItem(
-      "goals-panel-active-tab"
-    ) as ActiveTab;
-    if (savedTab && (savedTab === "list" || savedTab === "text")) {
-      setActiveTab(savedTab);
-    }
-  }, []);
-
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem("goals-panel-active-tab", activeTab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("goals-panel-active-tab", activeTab);
+    }
   }, [activeTab]);
 
   // Separate useEffect for fetchGoalText that depends on session
@@ -100,6 +135,13 @@ export default function GoalsPanel() {
       fetchGoalText();
     }
   }, [session?.user?.email]);
+
+  // Fetch todo bulletins when switching to todo tab (also runs on mount)
+  useEffect(() => {
+    if (activeTab === "todo") {
+      fetchTodoBulletins();
+    }
+  }, [activeTab]);
 
   // Track if goal text has been initially loaded
   const [hasLoadedInitialGoalText, setHasLoadedInitialGoalText] =
@@ -153,6 +195,24 @@ export default function GoalsPanel() {
     };
   }, [isMobileOpen]);
 
+  useEffect(() => {
+    // Close dropdown when clicking outside
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (isDropdownOpen && !target.closest("#view-dropdown")) {
+        setIsDropdownOpen(false);
+      }
+      if (isTodoSelectorOpen && !target.closest("#todo-selector")) {
+        setIsTodoSelectorOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen, isTodoSelectorOpen]);
+
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
       prevFilters.includes(duration)
@@ -190,6 +250,32 @@ export default function GoalsPanel() {
       console.error("Error fetching goal text:", error);
     } finally {
       setIsLoadingGoalText(false);
+    }
+  };
+
+  const fetchTodoBulletins = async () => {
+    try {
+      const response = await fetch("/api/bulletins");
+      if (!response.ok) {
+        throw new Error("Failed to fetch bulletins");
+      }
+      const data = await response.json();
+      const todos = data
+        .filter((item: any) => item.type === "todo")
+        .map((item: any) => ({
+          ...item,
+          updatedAt: new Date(item.updatedAt),
+        }))
+        .sort(
+          (a: TodoBulletin, b: TodoBulletin) =>
+            b.updatedAt.getTime() - a.updatedAt.getTime()
+        );
+      setTodoBulletins(todos);
+      if (todos.length > 0 && !selectedTodoId) {
+        setSelectedTodoId(todos[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching todo bulletins:", error);
     }
   };
 
@@ -237,6 +323,79 @@ export default function GoalsPanel() {
 
     setGoals((prevGoals) => prevGoals.filter((goal) => goal.id !== id));
     setRemovingGoals((prev) => prev.filter((id) => id !== id));
+  };
+
+  const saveTodo = async (id: string, items: TodoItem[]) => {
+    setIsSavingTodo(true);
+    try {
+      // Update local state immediately
+      setTodoBulletins((prev) =>
+        prev.map((todo) =>
+          todo.id === id
+            ? { ...todo, data: { items }, updatedAt: new Date() }
+            : todo
+        )
+      );
+
+      const response = await fetch(`/api/bulletins/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: { items } }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save todo");
+      }
+
+      // Re-fetch to get the latest data
+      await fetchTodoBulletins();
+    } catch (error) {
+      console.error("Error saving todo:", error);
+    } finally {
+      setIsSavingTodo(false);
+    }
+  };
+
+  const addTodoItem = () => {
+    if (!selectedTodoId) return;
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const newItemId = crypto.randomUUID();
+    const newItems = [
+      ...selectedTodo.data.items,
+      { id: newItemId, text: "", checked: false },
+    ];
+    saveTodo(selectedTodoId, newItems);
+
+    setTimeout(() => {
+      const textarea = textareaRefs.current[newItemId];
+      if (textarea) {
+        textarea.focus();
+      }
+    }, 100);
+  };
+
+  const updateTodoItem = (itemId: string, updates: Partial<TodoItem>) => {
+    if (!selectedTodoId) return;
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const newItems = selectedTodo.data.items.map((item) =>
+      item.id === itemId ? { ...item, ...updates } : item
+    );
+    saveTodo(selectedTodoId, newItems);
+  };
+
+  const removeTodoItem = (itemId: string) => {
+    if (!selectedTodoId) return;
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const newItems = selectedTodo.data.items.filter(
+      (item) => item.id !== itemId
+    );
+    saveTodo(selectedTodoId, newItems);
   };
 
   const MobileToggle = () => (
@@ -315,10 +474,6 @@ export default function GoalsPanel() {
   );
 
   const calculateDynamicSizing = () => {
-    const wordCount = goalText
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length;
     const charCount = goalText.length;
 
     // Start with very large text and scale down dramatically
@@ -398,6 +553,211 @@ export default function GoalsPanel() {
     </div>
   );
 
+  const renderTodoTab = () => {
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    const uncheckedItems =
+      selectedTodo?.data.items.filter((item) => !item.checked) || [];
+    const checkedItems =
+      selectedTodo?.data.items.filter((item) => item.checked) || [];
+
+    if (todoBulletins.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+          <div className="text-gray-400 dark:text-dark-textSecondary mb-2">
+            No to-do lists found
+          </div>
+          <div className="text-sm text-gray-400 dark:text-dark-textSecondary">
+            Create a to-do list in the Bulletin section first
+          </div>
+        </div>
+      );
+    }
+
+    if (!selectedTodo) return null;
+
+    return (
+      <div className="flex flex-col h-full">
+        {/* Todo Selector Dropdown */}
+        <div className="mb-4 relative" id="todo-selector">
+          <button
+            onClick={() => setIsTodoSelectorOpen(!isTodoSelectorOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-900 dark:text-dark-textPrimary bg-gray-100 dark:bg-dark-actionHover rounded-md hover:bg-gray-200 dark:hover:bg-dark-divider transition-all duration-200 border border-gray-300 dark:border-dark-divider"
+          >
+            <span className="truncate">{selectedTodo.title || "Untitled"}</span>
+            <ChevronDown
+              size={16}
+              className={`ml-2 flex-shrink-0 transition-transform duration-200 ${
+                isTodoSelectorOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {isTodoSelectorOpen && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+              {todoBulletins.map((todo) => (
+                <button
+                  key={todo.id}
+                  onClick={() => {
+                    setSelectedTodoId(todo.id);
+                    setIsTodoSelectorOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
+                    todo.id === selectedTodoId
+                      ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                      : "text-gray-700 dark:text-dark-textSecondary"
+                  }`}
+                >
+                  {todo.title || "Untitled"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Todo Items Container (scrollable) */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {selectedTodo.data.items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <div className="text-gray-400 dark:text-dark-textSecondary mb-4">
+                No tasks yet
+              </div>
+              <button
+                onClick={addTodoItem}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                Add your first task
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {/* Unchecked Items */}
+              {uncheckedItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="group flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150"
+                >
+                  <button
+                    onClick={() => updateTodoItem(item.id, { checked: true })}
+                    aria-label="Check task"
+                    className="relative mt-0.5"
+                  >
+                    <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
+                  </button>
+                  <textarea
+                    ref={(el) => {
+                      if (el) textareaRefs.current[item.id] = el;
+                    }}
+                    rows={1}
+                    value={item.text}
+                    onChange={(e) => {
+                      e.target.style.height = "auto";
+                      e.target.style.height =
+                        Math.max(20, e.target.scrollHeight) + "px";
+                      updateTodoItem(item.id, { text: e.target.value });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        addTodoItem();
+                      } else if (
+                        e.key === "Backspace" &&
+                        e.currentTarget.value === "" &&
+                        selectedTodo.data.items.length > 1
+                      ) {
+                        e.preventDefault();
+                        removeTodoItem(item.id);
+                      }
+                    }}
+                    placeholder="Write a task..."
+                    className="flex-grow bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-sm leading-5"
+                    style={{ minHeight: "20px" }}
+                  />
+                  <button
+                    onClick={() => removeTodoItem(item.id)}
+                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                    aria-label="Delete item"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Add Item Button */}
+              <button
+                onClick={addTodoItem}
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm"
+                aria-label="Add new todo item"
+              >
+                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span>Add a task</span>
+              </button>
+
+              {/* Completed Items */}
+              {checkedItems.length > 0 && (
+                <div className="mt-6 space-y-1">
+                  <div className="flex items-center gap-2 py-2">
+                    <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
+                    <span className="text-xs font-medium text-gray-500 dark:text-dark-textSecondary">
+                      Completed • {checkedItems.length}
+                    </span>
+                    <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
+                  </div>
+                  {checkedItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex items-start gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150"
+                    >
+                      <button
+                        onClick={() =>
+                          updateTodoItem(item.id, { checked: false })
+                        }
+                        aria-label="Uncheck task"
+                        className="relative mt-0.5"
+                      >
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      </button>
+                      <textarea
+                        ref={(el) => {
+                          if (el) textareaRefs.current[item.id] = el;
+                        }}
+                        rows={1}
+                        value={item.text}
+                        onChange={(e) => {
+                          e.target.style.height = "auto";
+                          e.target.style.height =
+                            Math.max(20, e.target.scrollHeight) + "px";
+                          updateTodoItem(item.id, { text: e.target.value });
+                        }}
+                        className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-sm leading-5"
+                        style={{ minHeight: "20px" }}
+                      />
+                      <button
+                        onClick={() => removeTodoItem(item.id)}
+                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                        aria-label="Delete item"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Saving Indicator */}
+        {isSavingTodo && (
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 text-xs text-gray-400 dark:text-dark-textSecondary">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Saving...</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <MobileToggle />
@@ -419,44 +779,69 @@ export default function GoalsPanel() {
               Goals
             </h1>
 
-            {/* Tab Navigation */}
-            <div className="flex gap-6">
+            {/* View Dropdown */}
+            <div className="relative" id="view-dropdown">
               <button
-                onClick={() => setActiveTab("list")}
-                className={`relative pb-1 text-sm font-medium transition-all duration-300 ${
-                  activeTab === "list"
-                    ? "text-gray-900 dark:text-dark-textPrimary"
-                    : "text-gray-400 dark:text-dark-textSecondary hover:text-gray-600 dark:hover:text-dark-textPrimary"
-                }`}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-dark-textPrimary bg-gray-100 dark:bg-dark-actionHover rounded-md hover:bg-gray-200 dark:hover:bg-dark-divider transition-all duration-200 border border-gray-300 dark:border-dark-divider"
               >
-                List
-                {/* Animated underline */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-dark-textPrimary rounded-full transition-all duration-300 ${
-                    activeTab === "list"
-                      ? "opacity-100 scale-x-100"
-                      : "opacity-0 scale-x-0"
+                {activeTab === "list"
+                  ? "List"
+                  : activeTab === "text"
+                  ? "Text"
+                  : "To-do"}
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform duration-200 ${
+                    isDropdownOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
-              <button
-                onClick={() => setActiveTab("text")}
-                className={`relative pb-1 text-sm font-medium transition-all duration-300 ${
-                  activeTab === "text"
-                    ? "text-gray-900 dark:text-dark-textPrimary"
-                    : "text-gray-400 dark:text-dark-textSecondary hover:text-gray-600 dark:hover:text-dark-textPrimary"
-                }`}
-              >
-                Text
-                {/* Animated underline */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-dark-textPrimary rounded-full transition-all duration-300 ${
-                    activeTab === "text"
-                      ? "opacity-100 scale-x-100"
-                      : "opacity-0 scale-x-0"
-                  }`}
-                />
-              </button>
+
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      setActiveTab("list");
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
+                      activeTab === "list"
+                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                        : "text-gray-700 dark:text-dark-textSecondary"
+                    }`}
+                  >
+                    List
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("text");
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
+                      activeTab === "text"
+                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                        : "text-gray-700 dark:text-dark-textSecondary"
+                    }`}
+                  >
+                    Text
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("todo");
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 rounded-b-md ${
+                      activeTab === "todo"
+                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                        : "text-gray-700 dark:text-dark-textSecondary"
+                    }`}
+                  >
+                    To-do
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
@@ -473,7 +858,11 @@ export default function GoalsPanel() {
 
         {/* Tab Content */}
         <div className="flex-1 w-full overflow-hidden">
-          {activeTab === "list" ? renderListTab() : renderTextTab()}
+          {activeTab === "list"
+            ? renderListTab()
+            : activeTab === "text"
+            ? renderTextTab()
+            : renderTodoTab()}
         </div>
       </aside>
     </>
