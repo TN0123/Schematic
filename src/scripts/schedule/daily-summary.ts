@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 export async function daily_summary(
   date: Date,
   timezone: string,
-  userId: string
+  userId: string,
+  goalsView?: "list" | "text" | "todo"
 ) {
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
@@ -37,17 +38,54 @@ export async function daily_summary(
     },
   });
 
-  const goals = await prisma.goal.findMany({
-    where: {
-      userId,
-    },
-    select: { title: true, type: true },
-  });
-
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { scheduleContext: true },
+    select: { scheduleContext: true, goalText: true },
   });
+
+  let goalsContext = "";
+  
+  // Fetch goals context based on the selected view
+  if (goalsView === "text" && user?.goalText) {
+    goalsContext = `User's Goals (Free-form Text):\n${user.goalText}`;
+  } else if (goalsView === "todo") {
+    // Fetch the most recent todo bulletin
+    const todoBulletins = await prisma.bulletin.findMany({
+      where: {
+        userId,
+        type: "todo",
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 1,
+      select: { title: true, data: true },
+    });
+    
+    if (todoBulletins.length > 0) {
+      const todo = todoBulletins[0];
+      const items = (todo.data as any)?.items || [];
+      const uncheckedItems = items.filter((item: any) => !item.checked);
+      const checkedItems = items.filter((item: any) => item.checked);
+      
+      goalsContext = `User's To-Do List (${todo.title}):\n`;
+      if (uncheckedItems.length > 0) {
+        goalsContext += `Pending Tasks:\n${uncheckedItems.map((item: any) => `- [ ] ${item.text}`).join("\n")}\n`;
+      }
+      if (checkedItems.length > 0) {
+        goalsContext += `Completed Tasks:\n${checkedItems.map((item: any) => `- [x] ${item.text}`).join("\n")}`;
+      }
+    } else {
+      goalsContext = "User has no to-do lists created yet.";
+    }
+  } else {
+    // Default to list view (structured goals)
+    const goals = await prisma.goal.findMany({
+      where: {
+        userId,
+      },
+      select: { title: true, type: true },
+    });
+    goalsContext = `User's Goals:\n${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}`;
+  }
 
   // If no events for the day, return a simple message
   if (eventsForDay.length === 0) {
@@ -102,9 +140,7 @@ export async function daily_summary(
       })
       .join("\n")}
     
-      Here are the user's goals:
-
-      ${goals.map((goal) => `*   ${goal.title} (${goal.type} GOAL)`).join("\n")}
+    ${goalsContext || "User has not set any goals."}
       `;
 
   // console.log(prompt);

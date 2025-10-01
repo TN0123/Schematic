@@ -14,6 +14,10 @@ export const useDailySummary = (userId: string | undefined) => {
       setDailySummaryLoading(true);
       try {
         const userTimezone = getUserTimezone();
+        // Get the current goals view from localStorage
+        const goalsView = (typeof window !== "undefined" 
+          ? localStorage.getItem("goals-panel-active-tab") 
+          : null) as "list" | "text" | "todo" | null;
 
         const response = await fetch("/api/daily-summary", {
           method: "POST",
@@ -24,6 +28,7 @@ export const useDailySummary = (userId: string | undefined) => {
             date: date.toISOString(),
             timezone: userTimezone,
             userId: userId,
+            goalsView: goalsView || "list",
           }),
         });
         if (!response.ok) {

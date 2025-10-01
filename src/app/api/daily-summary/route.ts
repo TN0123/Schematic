@@ -6,7 +6,7 @@ import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    const { date, timezone, userId } = await request.json();
+    const { date, timezone, userId, goalsView } = await request.json();
 
     const targetDate = new Date(date);
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     // Generate new summary and upsert cache
-    const result = await daily_summary(targetDate, timezone, userId);
+    const result = await daily_summary(targetDate, timezone, userId, goalsView);
 
     await prisma.dailySummaryCache.upsert({
       where: {
