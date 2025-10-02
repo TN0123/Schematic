@@ -9,6 +9,10 @@ import {
   Info,
   AlertCircle,
   X,
+  ArrowLeft,
+  FileText,
+  FileUp,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
@@ -19,6 +23,8 @@ import {
 } from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
+import Link from "next/link";
+import { useDebouncedCallback } from "use-debounce";
 
 export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
 
@@ -201,6 +207,15 @@ export default function WritePanel({
   acceptAllChanges,
   rejectAllChanges,
   setActiveHighlight,
+  // Document props
+  title,
+  onTitleChange,
+  onExport,
+  isAutocompleteEnabled,
+  onAutocompleteToggle,
+  isMobile,
+  isSaving,
+  isSavingContent,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -237,6 +252,15 @@ export default function WritePanel({
   acceptAllChanges?: () => void;
   rejectAllChanges?: () => void;
   setActiveHighlight?: (text: string | null) => void;
+  // Document props
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  onExport?: () => void;
+  isAutocompleteEnabled?: boolean;
+  onAutocompleteToggle?: () => void;
+  isMobile?: boolean;
+  isSaving?: boolean;
+  isSavingContent?: boolean;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -937,13 +961,78 @@ export default function WritePanel({
       </div>
 
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full items-center justify-between gap-2 lg:gap-3">
+          {!isCollapsed && variant === "desktop" && (
+            <>
+              <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+                <Link
+                  href="/write"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
+                  title="Back to Documents"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Link>
+                <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider hidden lg:block"></div>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <FileText className="w-5 h-5 dark:text-dark-textSecondary flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={title || ""}
+                    onChange={(e) => onTitleChange?.(e.target.value)}
+                    className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden min-w-0"
+                    placeholder="Untitled Document"
+                  />
+                  {(isSaving || isSavingContent) && (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary flex-shrink-0" />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Autocomplete toggle - icon only with tooltip */}
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => onAutocompleteToggle?.()}
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      isAutocompleteEnabled && !isMobile
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+                        : "bg-gray-100 dark:bg-dark-secondary text-gray-600 dark:text-dark-textSecondary hover:bg-gray-200 dark:hover:bg-dark-hover"
+                    }`}
+                    aria-pressed={isAutocompleteEnabled && !isMobile}
+                    aria-label="Toggle autocomplete"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    {isAutocompleteEnabled && !isMobile
+                      ? "Autocomplete On"
+                      : "Autocomplete Off"}
+                  </div>
+                </div>
+
+                {/* Export button - icon only with tooltip */}
+                <div className="relative group">
+                  <button
+                    onClick={() => onExport?.()}
+                    className="p-2 rounded-lg bg-gray-100 dark:bg-dark-secondary text-gray-600 dark:text-dark-textSecondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200"
+                    aria-label="Export to PDF"
+                  >
+                    <FileUp className="w-4 h-4" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    Export to PDF
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           {variant === "desktop" && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 ${
                 isCollapsed ? "" : "p-2"
               }`}
+              title={isCollapsed ? "Expand panel" : "Collapse panel"}
             >
               {isCollapsed ? (
                 <PanelRightOpen
@@ -957,23 +1046,6 @@ export default function WritePanel({
                 />
               )}
             </button>
-          )}
-          {!isCollapsed && (
-            <div className="flex flex-col items-end justify-center transition-all">
-              <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
-                AI Writing Assistant
-              </h2>
-              <p className="text-xs text-center mt-1">
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                  {modKeyLabel.toLowerCase()}
-                </kbd>{" "}
-                +{" "}
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                  enter
-                </kbd>{" "}
-                to continue writing
-              </p>
-            </div>
           )}
         </div>
       </div>
