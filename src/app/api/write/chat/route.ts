@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { streamText, convertToModelMessages } from "ai";
+import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
@@ -7,126 +8,6 @@ import { PrismaClient } from "@prisma/client";
 import { contextUpdate } from "@/scripts/write/context-update";
 
 const prisma = new PrismaClient();
-
-// Robust function to parse LLM response with multiple fallback strategies
-function parseAIResponse(response: string): [string, any] {
-  // Strategy 1: Try to parse as direct JSON array
-  try {
-    const parsed = JSON.parse(response);
-    if (Array.isArray(parsed) && parsed.length >= 2) {
-      return [parsed[0], parsed[1]];
-    }
-  } catch (error) {
-    // Continue to next strategy
-  }
-
-  // Strategy 2: Handle responses wrapped in ```json blocks
-  if (response.includes("```json")) {
-    try {
-      const jsonStart = response.indexOf("```json") + 7;
-      const jsonEnd = response.lastIndexOf("```");
-      const jsonContent = response.slice(jsonStart, jsonEnd).trim();
-      const parsed = JSON.parse(jsonContent);
-      if (Array.isArray(parsed) && parsed.length >= 2) {
-        return [parsed[0], parsed[1]];
-      }
-    } catch (error) {
-      // Continue to next strategy
-    }
-  }
-
-  // Strategy 3: Extract array-like content using regex
-  try {
-    const arrayMatch = response.match(/\[\s*"[^"]*",\s*\{[\s\S]*\}\s*\]/);
-    if (arrayMatch) {
-      const cleanedContent = arrayMatch[0]
-        .replace(/\\n/g, "\n")
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, "\\");
-
-      const parsed = JSON.parse(cleanedContent);
-      if (Array.isArray(parsed) && parsed.length >= 2) {
-        return [parsed[0], parsed[1]];
-      }
-    }
-  } catch (error) {
-    // Continue to next strategy
-  }
-
-  // Strategy 4: Try to extract manually using string manipulation
-  try {
-    const lines = response.split("\n");
-    let insideArray = false;
-    let arrayContent = "";
-    let bracketCount = 0;
-
-    for (const line of lines) {
-      if (line.trim().startsWith("[")) {
-        insideArray = true;
-        arrayContent += line + "\n";
-        bracketCount += (line.match(/\[/g) || []).length;
-        bracketCount -= (line.match(/\]/g) || []).length;
-      } else if (insideArray) {
-        arrayContent += line + "\n";
-        bracketCount += (line.match(/\[/g) || []).length;
-        bracketCount -= (line.match(/\]/g) || []).length;
-
-        if (bracketCount <= 0 && line.includes("]")) {
-          break;
-        }
-      }
-    }
-
-    if (arrayContent) {
-      const parsed = JSON.parse(arrayContent.trim());
-      if (Array.isArray(parsed) && parsed.length >= 2) {
-        return [parsed[0], parsed[1]];
-      }
-    }
-  } catch (error) {
-    // Continue to fallback
-  }
-
-  // Strategy 5: Extract using more aggressive regex patterns
-  try {
-    // Look for the message part (first string in quotes)
-    const messageMatch = response.match(/"([^"]+(?:\\"[^"]*)*)",/);
-    const message = messageMatch
-      ? messageMatch[1].replace(/\\"/g, '"')
-      : "AI response could not be parsed properly.";
-
-    // Look for JSON object pattern after the message
-    const objMatch = response.match(/\{[\s\S]*\}/);
-    if (objMatch) {
-      let jsonStr = objMatch[0];
-
-      // Try to fix common JSON formatting issues
-      jsonStr = jsonStr
-        .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":') // Add quotes to property names
-        .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, (match, content) => {
-          // Fix escaped content in string values
-          return `: "${content
-            .replace(/\n/g, "\\n")
-            .replace(/\r/g, "\\r")
-            .replace(/\t/g, "\\t")}"`;
-        });
-
-      const changes = JSON.parse(jsonStr);
-      return [message, changes];
-    }
-  } catch (error) {
-    // Continue to final fallback
-  }
-
-  // Final fallback: Return a safe default
-  console.warn("Could not parse AI response, using fallback", {
-    response: response.substring(0, 200),
-  });
-  return [
-    "I apologize, but there was an issue processing my response. Please try again.",
-    { "!ADD_TO_END!": "" },
-  ];
-}
 
 // Normalize escaped sequences like \n, \r, \t into actual characters
 function normalizeEscapedSequences(input: string): string {
@@ -157,6 +38,81 @@ function deepNormalizeEscapedSequences<T>(value: T): T {
   return value;
 }
 
+// Simple diff-based fallback to generate change map from original and revised text
+function generateChangeMapFromDiff(
+  originalText: string,
+  revisedText: string
+): Record<string, string> {
+  // If texts are identical, no changes
+  if (originalText === revisedText) {
+    return {};
+  }
+
+  // If original is empty, add everything to the end
+  if (!originalText || originalText.trim() === "") {
+    return { "!ADD_TO_END!": revisedText };
+  }
+
+  // If revised is empty or significantly shorter, it's likely a deletion scenario
+  if (!revisedText || revisedText.trim() === "") {
+    return { [originalText]: "" };
+  }
+
+  // Strategy: find common prefix and suffix, then create a single replacement
+  let prefixEnd = 0;
+  const minLength = Math.min(originalText.length, revisedText.length);
+
+  // Find common prefix
+  while (
+    prefixEnd < minLength &&
+    originalText[prefixEnd] === revisedText[prefixEnd]
+  ) {
+    prefixEnd++;
+  }
+
+  // Find common suffix
+  let suffixStart = 0;
+  while (
+    suffixStart < minLength - prefixEnd &&
+    originalText[originalText.length - 1 - suffixStart] ===
+      revisedText[revisedText.length - 1 - suffixStart]
+  ) {
+    suffixStart++;
+  }
+
+  // Extract the changed portion
+  const originalChanged = originalText.slice(
+    prefixEnd,
+    originalText.length - suffixStart
+  );
+  const revisedChanged = revisedText.slice(
+    prefixEnd,
+    revisedText.length - suffixStart
+  );
+
+  // If no change detected (shouldn't happen given earlier check), return empty
+  if (originalChanged === revisedChanged) {
+    return {};
+  }
+
+  // If original changed part is empty, we're adding at a position
+  if (originalChanged === "") {
+    return { "!ADD_TO_END!": revisedChanged };
+  }
+
+  // Otherwise, create a replacement mapping
+  return { [originalChanged]: revisedChanged };
+}
+
+// Schema for structured change generation
+const changeSchema = z.object({
+  revisedText: z
+    .string()
+    .describe(
+      "The complete revised version of the user's text with all changes applied"
+    ),
+});
+
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -170,7 +126,7 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     console.log(
-      `[CHAT] Streaming request started - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
+      `[CHAT] Dual-stream request started - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
         0,
         8
       )}...`
@@ -184,107 +140,7 @@ export async function POST(req: NextRequest) {
 
     const context = document?.context;
 
-    // Create system prompt
-    const systemPrompt =
-      actionMode === "edit"
-        ? `
-        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
-
-        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
-        BEGINNING OF CONTEXT
-        ${context}
-        END OF CONTEXT
-
-        Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
-        modify the content accordingly. 
-        
-        Your job is to return an array of EXACTLY two items in strict JSON format:
-            1. A string of text responding to what the user said to you.
-            2. a JSON object that contains the changes that should be made to the original text.
-
-        CRITICAL: Your entire response must be a valid JSON array with exactly two elements.
-
-        The JSON object must have the following properties:
-        - each key is a snippet or section from the original text that you think should be replaced with new text
-        - each value is the new text that should replace the original text
-        - only include parts of the text that need to be changed, do not include any text that does not need to be changed
-        - if you want to add text to the end of the original text, use the key "!ADD_TO_END!" and have the value as the text to add
-
-        FORMATTING RULES:
-        - Do NOT wrap your response in json blocks or any other formatting
-        - Do NOT include any text before or after the JSON array
-        - Ensure all strings in the JSON are properly escaped (use \\\\n for newlines, \\\\" for quotes)
-        - Never use more than one key "!ADD_TO_END!" in the JSON object
-
-        If the user has no text so far, use the key "!ADD_TO_END!" and have the value be the text that you think should be added 
-        to the end of the text. Never put output text in the string of text, only in the JSON object.
-
-        Do not ever mention the JSON object in your response to the user. Your response must be 
-        written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
-        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
-        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
-        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
-    `
-        : `
-        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
-
-        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
-        BEGINNING OF CONTEXT
-        ${context}
-        END OF CONTEXT
-
-        Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
-        
-        You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
-        
-        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
-        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
-        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
-        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
-        
-        Do not include any other text in your response, only your answer to the user's question.
-    `;
-
-    const userPrompt = `
-    Here is the current text:
-    """
-    ${currentText}
-    """
-
-    Here is what the user asked for:
-    """
-    ${instructions}
-    """
-  `;
-
-    // Build UI-style messages with parts[], then convert to ModelMessages
-    const uiMessages = [
-      { role: "system" as const, parts: [{ type: "text", text: systemPrompt }] },
-      ...history.map((entry: any) => {
-        const role = (entry.role === "model" ? "assistant" : entry.role) as
-          | "user"
-          | "assistant";
-
-        let textContent = "";
-        if (typeof entry.parts === "string") {
-          textContent = entry.parts;
-        } else if (Array.isArray(entry.parts)) {
-          textContent = entry.parts
-            .map((p: any) => (typeof p === "string" ? p : p?.text ?? ""))
-            .join("");
-        } else if (entry.parts && typeof entry.parts === "object") {
-          textContent = entry.parts.text ?? String(entry.parts);
-        }
-
-        return { role, parts: [{ type: "text", text: textContent }] };
-      }),
-      { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
-    ];
-
-    const messages = convertToModelMessages(uiMessages);
-
     // Select model and check usage
-    // Default to Gemini to satisfy type checker; will be overridden below
     let selectedModelProvider = google("gemini-2.5-flash");
     let remainingUses: number | null = null;
 
@@ -335,20 +191,79 @@ export async function POST(req: NextRequest) {
       console.log("Using Gemini Flash (basic model)");
     }
 
-    // Stream the response using Vercel AI SDK
+    if (actionMode === "ask") {
+      // ASK MODE: Simple streaming text response (no changes needed)
+      const systemPrompt = `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
+        
+        You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
+        
+        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+        
+        Do not include any other text in your response, only your answer to the user's question.
+      `;
+
+      const userPrompt = `
+        Here is the current text:
+        """
+        ${currentText}
+        """
+
+        Here is what the user asked for:
+        """
+        ${instructions}
+        """
+      `;
+
+      const uiMessages = [
+        {
+          role: "system" as const,
+          parts: [{ type: "text", text: systemPrompt }],
+        },
+        ...history.map((entry: any) => {
+          const role = (entry.role === "model" ? "assistant" : entry.role) as
+            | "user"
+            | "assistant";
+
+          let textContent = "";
+          if (typeof entry.parts === "string") {
+            textContent = entry.parts;
+          } else if (Array.isArray(entry.parts)) {
+            textContent = entry.parts
+              .map((p: any) => (typeof p === "string" ? p : p?.text ?? ""))
+              .join("");
+          } else if (entry.parts && typeof entry.parts === "object") {
+            textContent = entry.parts.text ?? String(entry.parts);
+          }
+
+          return { role, parts: [{ type: "text", text: textContent }] };
+        }),
+        { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
+      ];
+
+      const messages = convertToModelMessages(uiMessages);
+
     const result = await streamText({
       model: selectedModelProvider,
       messages,
       temperature: 0.7,
     });
 
-    // Create streaming response
     let fullResponse = "";
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Helper function to send SSE data
         const sendEvent = (eventType: string, data: any) => {
           const sseData = `event: ${eventType}\ndata: ${JSON.stringify(
             data
@@ -357,27 +272,16 @@ export async function POST(req: NextRequest) {
         };
 
         try {
-          // Send initial status
           sendEvent("status", { message: "Starting AI processing..." });
 
-          let chunkCount = 0;
-
-          // Stream the text
+            // Stream text deltas
           for await (const delta of result.textStream) {
             fullResponse += delta;
-            chunkCount++;
+              sendEvent("assistant-delta", { delta });
+            }
 
-            sendEvent("chunk", {
-              chunk: delta,
-              progress: chunkCount,
-              partial: fullResponse,
-            });
-          }
+            sendEvent("assistant-complete", { text: fullResponse });
 
-          // Send parsing status
-          sendEvent("status", { message: "Processing response..." });
-
-          // Normalize the final streamed response for readability
           const cleanFullResponse = normalizeEscapedSequences(fullResponse);
 
           // Update conversation history
@@ -403,9 +307,6 @@ export async function POST(req: NextRequest) {
             };
           }
 
-          // Handle different response formats based on action mode
-          if (actionMode === "ask") {
-            // For "ask" mode, return the response directly as text
             sendEvent("result", {
               result: cleanFullResponse,
               history: updatedHistory,
@@ -414,29 +315,234 @@ export async function POST(req: NextRequest) {
               contextChange: contextUpdateResult.contextChange,
               actionMode: "ask",
             });
+
+            sendEvent("complete", { message: "Processing complete" });
+            console.log(`[CHAT] Ask mode completed - Model: ${model}`);
+          } catch (error) {
+            console.error("[CHAT] Error in ask mode streaming:", error);
+            sendEvent("error", {
+              error: "Failed to generate content",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+            });
           } else {
-            // For "edit" mode, use robust parsing
-            const [message, changes] = parseAIResponse(fullResponse);
-            const cleanedMessage = normalizeEscapedSequences(message);
-            const cleanedChanges = deepNormalizeEscapedSequences(changes);
+      // EDIT MODE: Dual-stream architecture
+      // Stream 1: User-visible assistant text
+      // Stream 2: Structured change generation (parallel)
+
+      const assistantTextPrompt = `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to provide a brief, friendly response to the user explaining what changes you're making to their text.
+        
+        Your response should be conversational and helpful, explaining your approach or reasoning.
+        
+        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
+        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        "Improvement Suggestion:") — just write as a human might naturally continue or respond.
+        
+        Keep your response concise (2-3 sentences maximum).
+      `;
+
+      const revisedTextPrompt = `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+
+        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        BEGINNING OF CONTEXT
+        ${context}
+        END OF CONTEXT
+
+        Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
+        modify the content accordingly.
+        
+        You must return the COMPLETE revised version of the user's text with all requested changes applied.
+        
+        If the user has no text so far, return the new text that should be created.
+        
+        Return ONLY the revised text, without any explanations, comments, or formatting.
+      `;
+
+      const userPrompt = `
+        Here is the current text:
+        """
+        ${currentText}
+        """
+
+        Here is what the user asked for:
+        """
+        ${instructions}
+        """
+      `;
+
+      const uiMessages = [
+        ...history.map((entry: any) => {
+          const role = (entry.role === "model" ? "assistant" : entry.role) as
+            | "user"
+            | "assistant";
+
+          let textContent = "";
+          if (typeof entry.parts === "string") {
+            textContent = entry.parts;
+          } else if (Array.isArray(entry.parts)) {
+            textContent = entry.parts
+              .map((p: any) => (typeof p === "string" ? p : p?.text ?? ""))
+              .join("");
+          } else if (entry.parts && typeof entry.parts === "object") {
+            textContent = entry.parts.text ?? String(entry.parts);
+          }
+
+          return { role, parts: [{ type: "text", text: textContent }] };
+        }),
+        { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
+      ];
+
+      const encoder = new TextEncoder();
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (eventType: string, data: any) => {
+            const sseData = `event: ${eventType}\ndata: ${JSON.stringify(
+              data
+            )}\n\n`;
+            controller.enqueue(encoder.encode(sseData));
+          };
+
+          try {
+            sendEvent("status", { message: "Starting AI processing..." });
+
+            // PARALLEL STREAM 1: Assistant text (for user to see)
+            const assistantMessagesUI = [
+              {
+                role: "system" as const,
+                parts: [{ type: "text", text: assistantTextPrompt }],
+              },
+              ...uiMessages,
+            ];
+            const assistantMessages = convertToModelMessages(assistantMessagesUI);
+
+            const assistantTextStream = streamText({
+              model: selectedModelProvider,
+              messages: assistantMessages,
+              temperature: 0.7,
+            });
+
+            // PARALLEL STREAM 2: Revised text generation (for change map)
+            const revisedMessagesUI = [
+              {
+                role: "system" as const,
+                parts: [{ type: "text", text: revisedTextPrompt }],
+              },
+              ...uiMessages,
+            ];
+            const revisedMessages = convertToModelMessages(revisedMessagesUI);
+
+            const revisedTextPromise = streamText({
+              model: selectedModelProvider,
+              messages: revisedMessages,
+              temperature: 0.7,
+            });
+
+            // Start both streams concurrently
+            const [assistantResult, revisedResult] = await Promise.all([
+              assistantTextStream,
+              revisedTextPromise,
+            ]);
+
+            let assistantFullText = "";
+            let revisedFullText = "";
+
+            // Stream assistant text deltas to frontend immediately
+            const assistantStreamPromise = (async () => {
+              for await (const delta of assistantResult.textStream) {
+                assistantFullText += delta;
+                sendEvent("assistant-delta", { delta });
+              }
+              sendEvent("assistant-complete", { text: assistantFullText });
+            })();
+
+            // Collect revised text in background
+            const revisedStreamPromise = (async () => {
+              for await (const delta of revisedResult.textStream) {
+                revisedFullText += delta;
+              }
+            })();
+
+            // Wait for both to complete
+            await Promise.all([assistantStreamPromise, revisedStreamPromise]);
+
+            sendEvent("status", { message: "Generating changes..." });
+
+            // Normalize text
+            const cleanAssistantText =
+              normalizeEscapedSequences(assistantFullText);
+            const cleanRevisedText = normalizeEscapedSequences(revisedFullText);
+
+            // Generate change map using diff
+            const changeMap = generateChangeMapFromDiff(
+              currentText,
+              cleanRevisedText
+            );
+            const normalizedChangeMap = deepNormalizeEscapedSequences(changeMap);
+
+            sendEvent("changes-final", { changes: normalizedChangeMap });
+
+            // Update conversation history with the assistant's response
+            const updatedHistory = [
+              ...history,
+              { role: "user", parts: userPrompt },
+              { role: "model", parts: cleanAssistantText },
+            ];
+
+            // Update context
+            sendEvent("status", { message: "Updating context..." });
+            let contextUpdateResult;
+            try {
+              contextUpdateResult = await contextUpdate(
+                updatedHistory,
+                documentId
+              );
+            } catch (error) {
+              console.error("Context update failed:", error);
+              contextUpdateResult = {
+                contextUpdated: false,
+                contextChange: null,
+              };
+            }
 
             sendEvent("result", {
-              result: [cleanedMessage, cleanedChanges],
+              result: [cleanAssistantText, normalizedChangeMap],
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
               contextChange: contextUpdateResult.contextChange,
               actionMode: "edit",
             });
-          }
 
-          // Send completion event
           sendEvent("complete", { message: "Processing complete" });
-          console.log(
-            `[CHAT] Streaming request completed successfully - Model: ${model}`
-          );
+            console.log(`[CHAT] Edit mode dual-stream completed - Model: ${model}`);
         } catch (error) {
-          console.error("[CHAT] Error in streaming:", error);
+            console.error("[CHAT] Error in edit mode streaming:", error);
           sendEvent("error", {
             error: "Failed to generate content",
             message: error instanceof Error ? error.message : "Unknown error",
@@ -447,7 +553,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Return SSE response
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
@@ -458,6 +563,7 @@ export async function POST(req: NextRequest) {
         "Access-Control-Allow-Headers": "Content-Type",
       },
     });
+    }
   } catch (error) {
     console.error("Error setting up streaming:", error);
     return new Response(
