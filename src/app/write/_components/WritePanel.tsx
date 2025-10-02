@@ -551,7 +551,7 @@ export default function WritePanel({
         const controller = new AbortController();
         chatAbortControllerRef.current = controller;
         // Make the POST request to the chat endpoint (now with streaming)
-        const response = await fetch("/api/chat", {
+        const response = await fetch("/api/write/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -805,7 +805,7 @@ export default function WritePanel({
 
       const { before, after } = getSurroundingWords(inputText, selected, 25);
 
-      const response = await fetch("/api/chat/improve", {
+      const response = await fetch("/api/write/chat/improve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -865,7 +865,7 @@ export default function WritePanel({
     try {
       const controller = new AbortController();
       chatAbortControllerRef.current = controller;
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/write/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1328,7 +1328,7 @@ export default function WritePanel({
               <button
                 onClick={async () => {
                   try {
-                    const response = await fetch("/api/context", {
+                    const response = await fetch("/api/write/context", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
