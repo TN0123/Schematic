@@ -316,6 +316,7 @@ export const useCalendarData = (
         let eventsAdded = 0;
         let remindersAdded = 0;
         const resultEvents: Array<{
+          id?: string;
           title: string;
           date: string;
           time?: string;
