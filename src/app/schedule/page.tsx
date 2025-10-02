@@ -609,6 +609,20 @@ export default function CalendarApp() {
             userId={userId || ""}
             generationResult={generationResult}
             onClearGenerationResult={handleClearGenerationResult}
+            onEditGeneratedEvent={async (id, data) => {
+              try {
+                await calendarData.editEvent(id, data);
+              } catch (e) {
+                console.error("Failed to persist generated event edit", e);
+              }
+            }}
+            onDeleteGeneratedEvent={async (id) => {
+              try {
+                await calendarData.deleteEvent(id);
+              } catch (e) {
+                console.error("Failed to delete generated event", e);
+              }
+            }}
           />
         </div>
 

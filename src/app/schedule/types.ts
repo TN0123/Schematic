@@ -2,6 +2,7 @@ export interface GenerationResult {
   eventsCount: number;
   remindersCount: number;
   events: Array<{
+    id?: string;
     title: string;
     date: string;
     time?: string;

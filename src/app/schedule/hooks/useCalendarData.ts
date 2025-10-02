@@ -341,6 +341,7 @@ export const useCalendarData = (
           createdEvents.forEach((event: Event) => {
             const eventStart = new Date(event.start);
             resultEvents.push({
+              id: event.id,
               title: event.title,
               date: formatDateForDisplay(eventStart),
               time: formatTimeForDisplay(eventStart),

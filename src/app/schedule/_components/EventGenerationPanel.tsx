@@ -12,8 +12,11 @@ import {
   CircleArrowUp,
   Eye,
   CircleStop,
+  Pen,
+  X,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +24,12 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import ScheduleContextModal from "./ScheduleContextModal";
+import EventEditModal from "./EventEditModal";
+import { Event as CalendarEvent } from "../types";
+import {
+  formatDateForDisplay,
+  formatTimeForDisplay,
+} from "../utils/calendarHelpers";
 
 interface ChatMessage {
   role: "user" | "model";
@@ -43,9 +52,11 @@ interface GenerationResult {
   eventsCount: number;
   remindersCount: number;
   events: Array<{
+    id?: string;
     title: string;
     date: string;
     time?: string;
+    links?: string[];
   }>;
   reminders: Array<{
     title: string;
@@ -69,6 +80,11 @@ interface EventGenerationPanelProps {
   userId: string;
   generationResult?: GenerationResult | null;
   onClearGenerationResult?: () => void;
+  onEditGeneratedEvent?: (
+    id: string,
+    data: { title: string; start: Date; end: Date; links?: string[] }
+  ) => Promise<void> | void;
+  onDeleteGeneratedEvent?: (id: string) => Promise<void> | void;
 }
 
 export default function EventGenerationPanel({
@@ -86,6 +102,8 @@ export default function EventGenerationPanel({
   userId,
   generationResult,
   onClearGenerationResult,
+  onEditGeneratedEvent,
+  onDeleteGeneratedEvent,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
@@ -103,6 +121,128 @@ export default function EventGenerationPanel({
   }>({ isOpen: false, before: "", after: "" });
   const [isGenerationResultExpanded, setIsGenerationResultExpanded] =
     useState(false);
+  const [localGenerationResult, setLocalGenerationResult] =
+    useState<GenerationResult | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEventIndex, setEditingEventIndex] = useState<number | null>(
+    null
+  );
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  useEffect(() => {
+    if (generationResult) {
+      setLocalGenerationResult({
+        ...generationResult,
+        events: generationResult.events.map((e) => ({ ...e })),
+        reminders: generationResult.reminders.map((r) => ({ ...r })),
+      });
+    } else {
+      setLocalGenerationResult(null);
+    }
+  }, [generationResult]);
+
+  const formatTwo = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
+  const parseDateTime = (dateStr: string, timeStr?: string) => {
+    let dt: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const t = timeStr && /^\d{2}:\d{2}$/.test(timeStr) ? timeStr : "09:00";
+      dt = new Date(`${dateStr}T${t}`);
+    } else {
+      const combined = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+      dt = new Date(combined);
+      if (isNaN(dt.getTime())) {
+        dt = new Date();
+      }
+    }
+    return dt;
+  };
+
+  const toLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = formatTwo(date.getMonth() + 1);
+    const day = formatTwo(date.getDate());
+    return `${year}-${month}-${day}`;
+  };
+
+  const toLocalTimeString = (date: Date) => {
+    return `${formatTwo(date.getHours())}:${formatTwo(date.getMinutes())}`;
+  };
+
+  const openEditModalForIndex = (index: number) => {
+    if (!localGenerationResult) return;
+    const item = localGenerationResult.events[index];
+    const start = parseDateTime(item.date, item.time);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const evt: CalendarEvent = {
+      id: `gen-${index}`,
+      title: item.title,
+      start,
+      end,
+      links: item.links || [],
+      isSuggestion: true,
+    };
+    setEditingEventIndex(index);
+    setEditingEvent(evt);
+    setIsEditModalOpen(true);
+  };
+
+  const applyEditToLocal = () => {
+    if (
+      localGenerationResult &&
+      editingEvent &&
+      typeof editingEventIndex === "number"
+    ) {
+      const next = { ...localGenerationResult };
+      next.events = next.events.map((e, i) => ({ ...e }));
+      const edited = { ...next.events[editingEventIndex] };
+      edited.title = editingEvent.title;
+      if (editingEvent.start) {
+        edited.date = formatDateForDisplay(editingEvent.start);
+        edited.time = formatTimeForDisplay(editingEvent.start);
+      }
+      edited.links = editingEvent.links || [];
+      next.events[editingEventIndex] = edited;
+      setLocalGenerationResult(next);
+
+      // Persist to calendar if we have an event id and callback
+      if (edited.id && onEditGeneratedEvent) {
+        try {
+          const start = editingEvent.start;
+          const end =
+            editingEvent.end || new Date(start.getTime() + 60 * 60 * 1000);
+          onEditGeneratedEvent(edited.id, {
+            title: editingEvent.title,
+            start,
+            end,
+            links: editingEvent.links,
+          });
+        } catch (e) {
+          console.error("Failed to persist edited generated event", e);
+        }
+      }
+    }
+  };
+
+  const deleteLocalAtIndex = (index: number) => {
+    if (!localGenerationResult) return;
+    const target = localGenerationResult.events[index];
+    const next: GenerationResult = {
+      ...localGenerationResult,
+      events: localGenerationResult.events.filter((_, i) => i !== index),
+      reminders: localGenerationResult.reminders.map((r) => ({ ...r })),
+      eventsCount: Math.max(0, localGenerationResult.eventsCount - 1),
+    };
+    setLocalGenerationResult(next);
+
+    if (target?.id && onDeleteGeneratedEvent) {
+      try {
+        onDeleteGeneratedEvent(target.id);
+      } catch (e) {
+        console.error("Failed to delete generated event from calendar", e);
+      }
+    }
+  };
 
   const eventList = dailySummary.split("ADVICE")[0];
   const advice = dailySummary.split("ADVICE")[1];
@@ -431,7 +571,7 @@ export default function EventGenerationPanel({
             <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">
               {/* Generation Result Summary */}
               <AnimatePresence>
-                {generationResult && (
+                {localGenerationResult && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -448,22 +588,28 @@ export default function EventGenerationPanel({
                           )
                         }
                       >
-                        Generated{" "}
-                        {generationResult.eventsCount +
-                          generationResult.remindersCount}{" "}
-                        items
-                        {generationResult.eventsCount > 0 &&
-                        generationResult.remindersCount > 0
-                          ? ` (${generationResult.eventsCount} events, ${generationResult.remindersCount} reminders)`
-                          : generationResult.eventsCount > 0
-                          ? ` (${generationResult.eventsCount} events)`
-                          : ` (${generationResult.remindersCount} reminders)`}
+                        {(() => {
+                          const eventsLen = localGenerationResult.events.length;
+                          const remindersLen =
+                            localGenerationResult.reminders.length;
+                          return (
+                            <>
+                              Generated {eventsLen + remindersLen} items
+                              {eventsLen > 0 && remindersLen > 0
+                                ? ` (${eventsLen} events, ${remindersLen} reminders)`
+                                : eventsLen > 0
+                                ? ` (${eventsLen} events)`
+                                : ` (${remindersLen} reminders)`}
+                            </>
+                          );
+                        })()}
                       </button>
                       {onClearGenerationResult && (
                         <button
                           onClick={() => {
                             onClearGenerationResult();
                             setIsGenerationResultExpanded(false);
+                            setLocalGenerationResult(null);
                           }}
                           className="text-gray-400 dark:text-dark-textDisabled hover:text-gray-600 dark:hover:text-dark-textSecondary text-xs ml-2 transition-colors duration-200"
                         >
@@ -482,24 +628,55 @@ export default function EventGenerationPanel({
                           className="mt-2 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md shadow-sm max-h-40 overflow-y-auto"
                         >
                           <div className="p-3 space-y-3">
-                            {generationResult.events.length > 0 && (
+                            {localGenerationResult.events.length > 0 && (
                               <div>
                                 <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
                                   Events
                                 </h4>
                                 <div className="space-y-1">
-                                  {generationResult.events.map(
+                                  {localGenerationResult.events.map(
                                     (event, index) => (
                                       <div
                                         key={index}
                                         className="text-xs text-gray-600 dark:text-dark-textSecondary"
                                       >
-                                        <div className="font-medium">
-                                          {event.title}
-                                        </div>
-                                        <div className="text-gray-500 dark:text-dark-textDisabled">
-                                          {event.date}
-                                          {event.time && ` at ${event.time}`}
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div>
+                                            <div className="font-medium">
+                                              {event.title}
+                                            </div>
+                                            <div className="text-gray-500 dark:text-dark-textDisabled">
+                                              {event.date}
+                                              {event.time &&
+                                                ` at ${event.time}`}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+                                              title="Edit"
+                                              onClick={() =>
+                                                openEditModalForIndex(index)
+                                              }
+                                            >
+                                              <Pen
+                                                size={14}
+                                                className="text-gray-700 dark:text-dark-textSecondary"
+                                              />
+                                            </button>
+                                            <button
+                                              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+                                              title="Delete"
+                                              onClick={() =>
+                                                deleteLocalAtIndex(index)
+                                              }
+                                            >
+                                              <X
+                                                size={14}
+                                                className="text-gray-700 dark:text-dark-textSecondary"
+                                              />
+                                            </button>
+                                          </div>
                                         </div>
                                       </div>
                                     )
@@ -508,13 +685,13 @@ export default function EventGenerationPanel({
                               </div>
                             )}
 
-                            {generationResult.reminders.length > 0 && (
+                            {localGenerationResult.reminders.length > 0 && (
                               <div>
                                 <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
                                   Reminders
                                 </h4>
                                 <div className="space-y-1">
-                                  {generationResult.reminders.map(
+                                  {localGenerationResult.reminders.map(
                                     (reminder, index) => (
                                       <div
                                         key={index}
@@ -815,6 +992,45 @@ export default function EventGenerationPanel({
           </div>
         )}
       </aside>
+      {/* Edit Event Modal */}
+      {isEditModalOpen && editingEvent && (
+        <EventEditModal
+          newEvent={editingEvent}
+          setNewEvent={
+            ((value: SetStateAction<CalendarEvent>) => {
+              setEditingEvent((prev) => {
+                if (!prev) return prev;
+                if (typeof value === "function") {
+                  const updater = value as (
+                    prev: CalendarEvent
+                  ) => CalendarEvent;
+                  return updater(prev);
+                }
+                return value;
+              });
+            }) as unknown as Dispatch<SetStateAction<CalendarEvent>>
+          }
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingEvent(null);
+            setEditingEventIndex(null);
+          }}
+          handleEditEvent={() => {
+            applyEditToLocal();
+            setIsEditModalOpen(false);
+            setEditingEvent(null);
+            setEditingEventIndex(null);
+          }}
+          handleDeleteEvent={() => {
+            if (typeof editingEventIndex === "number") {
+              deleteLocalAtIndex(editingEventIndex);
+            }
+            setIsEditModalOpen(false);
+            setEditingEvent(null);
+            setEditingEventIndex(null);
+          }}
+        />
+      )}
       {/* Context Diff Modal */}
       {contextDiffModal.isOpen && (
         <div
