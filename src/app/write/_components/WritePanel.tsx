@@ -9,6 +9,10 @@ import {
   Info,
   AlertCircle,
   X,
+  ArrowLeft,
+  FileText,
+  FileUp,
+  Loader2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap } from "./WriteEditor";
@@ -19,6 +23,8 @@ import {
 } from "@/components/utils/platform";
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
+import Link from "next/link";
+import { useDebouncedCallback } from "use-debounce";
 
 export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
 
@@ -201,6 +207,15 @@ export default function WritePanel({
   acceptAllChanges,
   rejectAllChanges,
   setActiveHighlight,
+  // Document props
+  title,
+  onTitleChange,
+  onExport,
+  isAutocompleteEnabled,
+  onAutocompleteToggle,
+  isMobile,
+  isSaving,
+  isSavingContent,
 }: {
   inputText: string;
   setChanges: (changes: ChangeMap) => void;
@@ -237,6 +252,15 @@ export default function WritePanel({
   acceptAllChanges?: () => void;
   rejectAllChanges?: () => void;
   setActiveHighlight?: (text: string | null) => void;
+  // Document props
+  title?: string;
+  onTitleChange?: (title: string) => void;
+  onExport?: () => void;
+  isAutocompleteEnabled?: boolean;
+  onAutocompleteToggle?: () => void;
+  isMobile?: boolean;
+  isSaving?: boolean;
+  isSavingContent?: boolean;
 }) {
   const [messages, setMessages] = useState<MessageProps[]>([]);
   const [instructions, setInstructions] = useState<string>("");
@@ -428,109 +452,11 @@ export default function WritePanel({
     };
   }, []);
 
-  // Helper function to extract streaming message from partial response
-  const extractStreamingMessage = (partialResponse: string): string | null => {
-    try {
-      // Look for the start of the JSON array and first string
-      const arrayStart = partialResponse.indexOf("[");
-      if (arrayStart === -1) return null;
-
-      const firstQuote = partialResponse.indexOf('"', arrayStart);
-      if (firstQuote === -1) return null;
-
-      // Find the end of the message string, handling escaped quotes
-      let messageEnd = firstQuote + 1;
-      let escaped = false;
-
-      while (messageEnd < partialResponse.length) {
-        const char = partialResponse[messageEnd];
-        if (escaped) {
-          escaped = false;
-        } else if (char === "\\") {
-          escaped = true;
-        } else if (char === '"') {
-          // Check if this quote is followed by a comma (end of first element)
-          const nextNonSpace = partialResponse
-            .slice(messageEnd + 1)
-            .match(/^\s*,/);
-          if (nextNonSpace) {
-            // This is the end of the first element
-            const message = partialResponse.slice(firstQuote + 1, messageEnd);
-            return message.replace(/\\"/g, '"').replace(/\\n/g, "\n");
-          } else {
-            // This might be the end of the entire message if it's the last element
-            const nextNonSpace2 = partialResponse
-              .slice(messageEnd + 1)
-              .match(/^\s*\]/);
-            if (nextNonSpace2) {
-              const message = partialResponse.slice(firstQuote + 1, messageEnd);
-              return message.replace(/\\"/g, '"').replace(/\\n/g, "\n");
-            }
-          }
-        }
-        messageEnd++;
-      }
-
-      // If we haven't found the end, return the partial message so far
-      if (messageEnd > firstQuote + 1) {
-        const partialMessage = partialResponse.slice(
-          firstQuote + 1,
-          messageEnd
-        );
-        return partialMessage.replace(/\\"/g, '"').replace(/\\n/g, "\n");
-      }
-    } catch (error) {
-      // Silent fail for extraction
-    }
-    return null;
-  };
-
-  // Helper function to parse complete response for changes
-  const parseCompleteResponse = (response: string): [string, any] | null => {
-    try {
-      const parsed = JSON.parse(response);
-      if (Array.isArray(parsed) && parsed.length >= 2) {
-        return [parsed[0], parsed[1]];
-      }
-    } catch (error) {
-      // Continue to fallback parsing strategies
-    }
-
-    // Use the same robust parsing from the original function as fallback
-    try {
-      const messageMatch = response.match(/"([^"]+(?:\\"[^"]*)*)",/);
-      const message = messageMatch
-        ? messageMatch[1].replace(/\\"/g, '"')
-        : "AI response could not be parsed properly.";
-
-      const objMatch = response.match(/\{[\s\S]*\}/);
-      if (objMatch) {
-        let jsonStr = objMatch[0];
-        jsonStr = jsonStr
-          .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":')
-          .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, (match, content) => {
-            return `: "${content
-              .replace(/\n/g, "\\n")
-              .replace(/\r/g, "\\r")
-              .replace(/\t/g, "\\t")}"`;
-          });
-
-        const changes = JSON.parse(jsonStr);
-        return [message, changes];
-      }
-    } catch (error) {
-      // Continue to final fallback
-    }
-
-    return null;
-  };
-
-  // Function to handle streaming responses
+  // Function to handle streaming responses with new dual-stream architecture
   const handleStreamingResponse = async (requestPayload: any) => {
     return new Promise<void>(async (resolve, reject) => {
-      let fullStreamingResponse = "";
       let assistantMessageId: string | null = null;
-      let currentStreamingMessage = "";
+      let currentAssistantText = "";
 
       // Add a typing indicator for the message
       const typingMessageObj = {
@@ -550,8 +476,9 @@ export default function WritePanel({
       try {
         const controller = new AbortController();
         chatAbortControllerRef.current = controller;
-        // Make the POST request to the chat endpoint (now with streaming)
-        const response = await fetch("/api/chat", {
+
+        // Make the POST request to the chat endpoint
+        const response = await fetch("/api/write/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -596,7 +523,7 @@ export default function WritePanel({
             if (line.trim() === "") continue;
 
             if (line.startsWith("event:")) {
-              const eventType = line.substring(6).trim();
+              // Event type line, skip
               continue;
             }
 
@@ -605,40 +532,37 @@ export default function WritePanel({
                 const jsonData = line.substring(5).trim();
                 const data = JSON.parse(jsonData);
 
-                // Handle different event types based on the data structure
-                if (data.chunk !== undefined) {
-                  // Accumulate the full response
-                  fullStreamingResponse += data.chunk;
+                // Handle new event types from dual-stream architecture
+                if (data.delta !== undefined) {
+                  // assistant-delta event: streaming text from the assistant
+                  currentAssistantText += data.delta;
 
-                  // Extract and stream just the message portion
-                  const streamedMessage = extractStreamingMessage(
-                    fullStreamingResponse
+                  // Update the chat message with streaming content
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            message: currentAssistantText,
+                            isTyping: true,
+                          }
+                        : msg
+                    )
                   );
-
-                  if (
-                    streamedMessage &&
-                    streamedMessage !== currentStreamingMessage
-                  ) {
-                    currentStreamingMessage = streamedMessage;
-
-                    // Update the chat message with streaming content
-                    setMessages((prev) =>
-                      prev.map((msg) =>
-                        msg.id === assistantMessageId
-                          ? {
-                              ...msg,
-                              message: currentStreamingMessage,
-                              isTyping: true,
-                            }
-                          : msg
-                      )
-                    );
-
-                    // Keep ChangeHandler hidden during generation; do not set interim states
+                } else if (data.text !== undefined) {
+                  // assistant-complete event: final text received
+                  currentAssistantText = data.text;
+                } else if (data.changes !== undefined) {
+                  // changes-final event: change map is ready
+                  if (actionMode === "edit") {
+                    setChanges(data.changes);
                   }
                 } else if (data.result !== undefined) {
-                  // This is the final result - parse the complete response
-                  if (data.remainingUses !== null) {
+                  // result event: final consolidated result
+                  if (
+                    data.remainingUses !== null &&
+                    data.remainingUses !== undefined
+                  ) {
                     setPremiumRemainingUses(data.remainingUses);
                   }
 
@@ -648,31 +572,9 @@ export default function WritePanel({
                   if (actionMode === "ask") {
                     finalMessage = data.result;
                   } else {
-                    // Parse the complete response for changes
-                    const parseResult = parseCompleteResponse(
-                      fullStreamingResponse
-                    );
-                    if (parseResult) {
-                      [finalMessage, finalChanges] = parseResult;
-                    } else {
-                      // Fallback: try to use the streamed message and server-provided result
-                      finalMessage =
-                        currentStreamingMessage ||
-                        data.result[0] ||
-                        "AI response was generated successfully.";
-                      finalChanges = data.result[1] || {};
-
-                      // If we still don't have changes but have a message, create a gentle fallback
-                      if (
-                        Object.keys(finalChanges).length === 0 &&
-                        finalMessage
-                      ) {
-                        finalChanges = {
-                          "!PARSING_ERROR!":
-                            "The AI response was generated but couldn't be processed into editable changes. Please try your request again.",
-                        };
-                      }
-                    }
+                    // For edit mode, use the streamed assistant text and parsed changes
+                    finalMessage = data.result[0] || currentAssistantText;
+                    finalChanges = data.result[1] || {};
                   }
 
                   // Update the final message (no longer typing)
@@ -693,18 +595,21 @@ export default function WritePanel({
 
                   setLastRequest(requestPayload);
 
-                  // Apply the final changes for edit mode
-                  if (actionMode === "edit") {
+                  // Apply the final changes for edit mode (if not already applied)
+                  if (
+                    actionMode === "edit" &&
+                    Object.keys(finalChanges).length > 0
+                  ) {
                     setChanges(finalChanges);
                   }
 
                   setHistory(data.history);
                 } else if (data.message && data.message.includes("complete")) {
-                  // Stream is complete
+                  // complete event: stream is done
                   resolve();
                   return;
                 } else if (data.error) {
-                  // Error occurred
+                  // error event
                   addToast(data.message || "Streaming failed", "error");
                   reject(new Error(data.message));
                   return;
@@ -805,7 +710,7 @@ export default function WritePanel({
 
       const { before, after } = getSurroundingWords(inputText, selected, 25);
 
-      const response = await fetch("/api/chat/improve", {
+      const response = await fetch("/api/write/chat/improve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -825,11 +730,71 @@ export default function WritePanel({
         return;
       }
 
-      const data = await response.json();
-      if (data.remainingUses !== null) {
-        setPremiumRemainingUses(data.remainingUses);
+      if (!response.body) {
+        throw new Error("No response body");
       }
-      setChanges(data.result);
+
+      // Handle streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete SSE messages in the buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.trim() === "") continue;
+
+          if (line.startsWith("event:")) {
+            continue;
+          }
+
+          if (line.startsWith("data:")) {
+            try {
+              const jsonData = line.substring(5).trim();
+              const data = JSON.parse(jsonData);
+
+              // Handle different event types
+              if (data.delta !== undefined) {
+                // assistant-delta event: We could show live preview here if desired
+                // For now, just continue
+              } else if (data.changes !== undefined) {
+                // changes-final event: apply the changes
+                setChanges(data.changes);
+              } else if (data.result !== undefined) {
+                // result event: final result
+                if (
+                  data.remainingUses !== null &&
+                  data.remainingUses !== undefined
+                ) {
+                  setPremiumRemainingUses(data.remainingUses);
+                }
+                // Apply final changes if not already applied
+                if (Object.keys(data.result).length > 0) {
+                  setChanges(data.result);
+                }
+              } else if (data.message && data.message.includes("complete")) {
+                // complete event
+                break;
+              } else if (data.error) {
+                // error event
+                addToast(data.message || "Improvement failed", "error");
+                throw new Error(data.message);
+              }
+            } catch (parseError) {
+              console.error("Error parsing SSE data:", parseError);
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
@@ -865,7 +830,7 @@ export default function WritePanel({
     try {
       const controller = new AbortController();
       chatAbortControllerRef.current = controller;
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/write/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -996,13 +961,78 @@ export default function WritePanel({
       </div>
 
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full items-center justify-between gap-2 lg:gap-3">
+          {!isCollapsed && variant === "desktop" && (
+            <>
+              <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+                <Link
+                  href="/write"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
+                  title="Back to Documents"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Link>
+                <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider hidden lg:block"></div>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <FileText className="w-5 h-5 dark:text-dark-textSecondary flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={title || ""}
+                    onChange={(e) => onTitleChange?.(e.target.value)}
+                    className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden min-w-0"
+                    placeholder="Untitled Document"
+                  />
+                  {(isSaving || isSavingContent) && (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary flex-shrink-0" />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Autocomplete toggle - icon only with tooltip */}
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => onAutocompleteToggle?.()}
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      isAutocompleteEnabled && !isMobile
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+                        : "bg-gray-100 dark:bg-dark-secondary text-gray-600 dark:text-dark-textSecondary hover:bg-gray-200 dark:hover:bg-dark-hover"
+                    }`}
+                    aria-pressed={isAutocompleteEnabled && !isMobile}
+                    aria-label="Toggle autocomplete"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    {isAutocompleteEnabled && !isMobile
+                      ? "Autocomplete On"
+                      : "Autocomplete Off"}
+                  </div>
+                </div>
+
+                {/* Export button - icon only with tooltip */}
+                <div className="relative group">
+                  <button
+                    onClick={() => onExport?.()}
+                    className="p-2 rounded-lg bg-gray-100 dark:bg-dark-secondary text-gray-600 dark:text-dark-textSecondary hover:bg-gray-200 dark:hover:bg-dark-hover transition-all duration-200"
+                    aria-label="Export to PDF"
+                  >
+                    <FileUp className="w-4 h-4" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    Export to PDF
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           {variant === "desktop" && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover transition-colors duration-200 ${
                 isCollapsed ? "" : "p-2"
               }`}
+              title={isCollapsed ? "Expand panel" : "Collapse panel"}
             >
               {isCollapsed ? (
                 <PanelRightOpen
@@ -1016,23 +1046,6 @@ export default function WritePanel({
                 />
               )}
             </button>
-          )}
-          {!isCollapsed && (
-            <div className="flex flex-col items-end justify-center transition-all">
-              <h2 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
-                AI Writing Assistant
-              </h2>
-              <p className="text-xs text-center mt-1">
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                  {modKeyLabel.toLowerCase()}
-                </kbd>{" "}
-                +{" "}
-                <kbd className="px-1 py-0.5 text-xs rounded border bg-gray-50 dark:bg-dark-secondary">
-                  enter
-                </kbd>{" "}
-                to continue writing
-              </p>
-            </div>
           )}
         </div>
       </div>
@@ -1328,7 +1341,7 @@ export default function WritePanel({
               <button
                 onClick={async () => {
                   try {
-                    const response = await fetch("/api/context", {
+                    const response = await fetch("/api/write/context", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",

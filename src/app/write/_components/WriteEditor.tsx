@@ -10,17 +10,13 @@ import {
 import { ChangeHandler } from "./ChangeHandler";
 import {
   Info,
-  FileUp,
   FileText,
-  Loader2,
-  ArrowLeft,
   AlertCircle,
   RefreshCw,
   X,
+  Loader2,
 } from "lucide-react";
-import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
-import Link from "next/link";
 import {
   useModifierKeyLabel,
   isPrimaryModifierPressed,
@@ -66,6 +62,10 @@ export default function WriteEditor({
   isChatLoading,
   onRegisterMobileChangeAPI,
   onPendingChanges,
+  onTitleChange,
+  onExport,
+  isAutocompleteEnabled,
+  onAutocompleteToggle,
 }: {
   setInput: (input: string) => void;
   changes: any;
@@ -89,6 +89,10 @@ export default function WriteEditor({
     setActiveHighlight: (text: string | null) => void;
   }) => void;
   onPendingChanges?: (changes: ChangeMap) => void;
+  onTitleChange?: (title: string) => void;
+  onExport?: () => void;
+  isAutocompleteEnabled?: boolean;
+  onAutocompleteToggle?: () => void;
 }) {
   const modKeyLabel = useModifierKeyLabel();
   const [loading, setLoading] = useState(false);
@@ -107,9 +111,6 @@ export default function WriteEditor({
   const [generatedEnd, setGeneratedEnd] = useState<number | null>(null);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
-  const [title, setTitle] = useState(
-    currentDocument?.title || "Untitled Document"
-  );
   const [tooltipState, setTooltipState] = useState<{
     top: number;
     left: number;
@@ -117,7 +118,6 @@ export default function WriteEditor({
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
-  const [isAutocompleteEnabled, setIsAutocompleteEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Helper function to add toast notifications
@@ -377,19 +377,6 @@ export default function WriteEditor({
     }
   }, [pendingChanges]);
 
-  useEffect(() => {
-    setTitle(currentDocument?.title || "Untitled Document");
-  }, [currentDocument?.id]);
-
-  // Debounced save for title
-  const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
-    if (currentDocument && newTitle !== currentDocument.title) {
-      // Update the document with new title
-      currentDocument.title = newTitle;
-      onSaveDocument();
-    }
-  }, 800);
-
   useLayoutEffect(() => {
     if (
       selectionStart !== null &&
@@ -537,64 +524,6 @@ export default function WriteEditor({
   const rejectAllChanges = () => {
     clearSuggestionAndCancel();
     setPendingChanges({});
-  };
-
-  const handleExport = () => {
-    if (!inputText.trim()) {
-      addToast("Please add some content before exporting.", "warning");
-      return;
-    }
-
-    try {
-      // Create new PDF document
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      // Set up Google Docs-style formatting
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 25.4; // 1 inch margins like Google Docs
-      const lineHeight = 6; // Line spacing
-      const fontSize = 11; // Standard document font size
-
-      pdf.setFont("times", "normal");
-      pdf.setFontSize(fontSize);
-
-      // Split text into lines that fit within margins
-      const maxWidth = pageWidth - margin * 2;
-      const lines = pdf.splitTextToSize(inputText, maxWidth);
-
-      let yPosition = margin;
-      let currentPage = 1;
-
-      // Add lines to PDF, handling page breaks
-      for (let i = 0; i < lines.length; i++) {
-        // Check if we need a new page
-        if (yPosition + lineHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPosition = margin;
-          currentPage++;
-        }
-
-        pdf.text(lines[i], margin, yPosition);
-        yPosition += lineHeight;
-      }
-
-      // Generate filename with timestamp
-      const now = new Date();
-      const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, "");
-      const filename = `document_${timestamp}.pdf`;
-
-      // Download the PDF
-      pdf.save(filename);
-      addToast("PDF exported successfully!", "success", 2000);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      addToast("Failed to generate PDF. Please try again.", "error");
-    }
   };
 
   const appendChange = (newText: string) => {
@@ -802,73 +731,9 @@ export default function WriteEditor({
         ))}
       </div>
 
-      <div className="w-full max-w-[1200px] flex items-center justify-between py-4 px-4 gap-2 lg:gap-3">
-        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
-          <Link
-            href="/write"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Documents
-          </Link>
-          <div className="h-6 w-px bg-gray-200 dark:bg-dark-divider hidden lg:block"></div>
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <FileText className="w-5 h-5 dark:text-dark-textSecondary flex-shrink-0" />
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                debouncedSaveTitle(e.target.value);
-              }}
-              className="text-lg w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 text-gray-900 dark:text-dark-textPrimary text-ellipsis overflow-hidden min-w-0"
-              placeholder="Untitled Document"
-            />
-            {(isSaving || isSavingContent) && (
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400 dark:text-dark-textSecondary flex-shrink-0" />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Autocomplete toggle */}
-          <div className="hidden sm:block">
-            <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-dark-textSecondary select-none">
-              <span className="hidden sm:inline">Autocomplete</span>
-              <button
-                type="button"
-                onClick={() => setIsAutocompleteEnabled((v) => !v)}
-                className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors duration-200 border ${
-                  isAutocompleteEnabled && !isMobile
-                    ? "bg-purple-500/60 border-purple-500/60"
-                    : "bg-gray-200 dark:bg-dark-secondary border-gray-300 dark:border-dark-divider"
-                }`}
-                aria-pressed={isAutocompleteEnabled && !isMobile}
-                aria-label="Toggle autocomplete"
-              >
-                <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white dark:bg-dark-paper shadow transition-transform duration-200 ${
-                    isAutocompleteEnabled && !isMobile
-                      ? "translate-x-4"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </label>
-          </div>
-
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center bg-gray-50 dark:bg-dark-secondary gap-2 px-4 py-2 text-xs border border-gray-200 dark:border-dark-divider rounded-lg hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 font-medium text-gray-700 dark:text-dark-textSecondary shadow-sm hover:shadow-md flex-shrink-0"
-          >
-            Export
-            <FileUp className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Error Banner */}
       {error && (
-        <div className="w-full max-w-[1200px] px-4 mb-4">
+        <div className="w-full max-w-[1200px] px-4 mb-4 mt-4">
           <div className="flex items-center gap-3 px-4 py-3 bg-red-50 dark:bg-dark-secondary border border-red-200 dark:border-dark-divider rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <div className="flex-1">
@@ -905,7 +770,7 @@ export default function WriteEditor({
         </div>
       )}
 
-      <div className="w-full flex-1 flex flex-col lg:flex-row items-stretch px-4 gap-2 max-w-[1200px] h-[calc(100dvh-208px)] lg:h-[calc(100vh-80px)] overflow-hidden min-h-0">
+      <div className="w-full flex-1 flex flex-col lg:flex-row items-stretch px-4 pt-4 gap-2 max-w-[1200px] h-full overflow-hidden min-h-0">
         <div
           className={`transition-all duration-500 flex flex-col h-full bg-white dark:bg-dark-paper shadow-xl p-8 border border-gray-100 dark:border-dark-divider overflow-y-auto min-h-0 ${
             Object.keys(pendingChanges).length !== 0 &&

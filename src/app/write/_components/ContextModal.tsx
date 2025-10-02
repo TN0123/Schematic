@@ -20,7 +20,7 @@ export default function ContextModal({
   useEffect(() => {
     if (isOpen && documentId) {
       setIsLoading(true);
-      fetch(`/api/context?documentId=${documentId}`)
+      fetch(`/api/write/context?documentId=${documentId}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.context) {
@@ -38,7 +38,7 @@ export default function ContextModal({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/context", {
+      const response = await fetch("/api/write/context", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

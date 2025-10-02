@@ -26,11 +26,14 @@ export function ChangeHandler({
   const [editedSuggestion, setEditedSuggestion] = useState<string>("");
 
   // Check if we're in special states
-  const isPreparingChanges = changeKeys.length === 1 && changeKeys[0] === "!PREPARING!";
-  const isParsingError = changeKeys.length === 1 && changeKeys[0] === "!PARSING_ERROR!";
-  
+  const isPreparingChanges =
+    changeKeys.length === 1 && changeKeys[0] === "!PREPARING!";
+  const isParsingError =
+    changeKeys.length === 1 && changeKeys[0] === "!PARSING_ERROR!";
+
   const currentKey = changeKeys[currentChangeIndex] ?? null;
-  const totalChanges = (isPreparingChanges || isParsingError) ? 0 : changeKeys.length;
+  const totalChanges =
+    isPreparingChanges || isParsingError ? 0 : changeKeys.length;
 
   // Reset to first change when changes update
   useEffect(() => {
@@ -106,7 +109,9 @@ export function ChangeHandler({
           </h3>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 bg-gray-400 dark:bg-dark-textDisabled rounded-full animate-pulse"></div>
-            <span className="text-xs text-gray-500 dark:text-dark-textSecondary">Preparing...</span>
+            <span className="text-xs text-gray-500 dark:text-dark-textSecondary">
+              Preparing...
+            </span>
           </div>
         </div>
 
@@ -121,7 +126,7 @@ export function ChangeHandler({
     );
   }
 
-  // Show parsing error state  
+  // Show parsing error state
   if (isParsingError) {
     return (
       <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
@@ -131,7 +136,9 @@ export function ChangeHandler({
           </h3>
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-500 dark:text-orange-400" />
-            <span className="text-sm text-orange-600 dark:text-orange-400">Processing Issue</span>
+            <span className="text-sm text-orange-600 dark:text-orange-400">
+              Processing Issue
+            </span>
           </div>
         </div>
 
@@ -141,7 +148,8 @@ export function ChangeHandler({
               {changes["!PARSING_ERROR!"]}
             </div>
             <div className="text-sm text-orange-500 dark:text-dark-textSecondary">
-              You can see the AI's response in the chat above and try rephrasing your request.
+              You can see the AI's response in the chat above and try rephrasing
+              your request.
             </div>
           </div>
         </div>
@@ -196,15 +204,13 @@ export function ChangeHandler({
           value={editedSuggestion}
           onChange={(e) => setEditedSuggestion(e.target.value)}
           className="flex-1 text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap bg-transparent border-none resize-none outline-none focus:ring-0 min-h-[100px]"
-          placeholder={isStreaming ? "AI is generating content..." : "Edit the suggestion before accepting..."}
+          placeholder={
+            isStreaming
+              ? "AI is generating content..."
+              : "Edit the suggestion before accepting..."
+          }
           readOnly={isStreaming}
         />
-        {isStreaming && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
-            <div className="animate-pulse">●</div>
-            <span>Generating...</span>
-          </div>
-        )}
       </div>
 
       <div className="flex flex-col gap-2">

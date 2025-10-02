@@ -9,6 +9,8 @@ import { ChevronUp, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { isMobileBrowser } from "@/components/utils/platform";
+import jsPDF from "jspdf";
+import { useDebouncedCallback } from "use-debounce";
 
 import { ChangeMap } from "@/app/write/_components/WriteEditor";
 import { ModelType } from "@/app/write/_components/WritePanel";
@@ -51,6 +53,9 @@ export default function DocumentEditorPage() {
     rejectAllChanges: () => void;
     setActiveHighlight: (text: string | null) => void;
   } | null>(null);
+  const [isAutocompleteEnabled, setIsAutocompleteEnabled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [title, setTitle] = useState("");
 
   useEffect(() => {
     if (isMobileBrowser()) return;
@@ -189,6 +194,87 @@ export default function DocumentEditorPage() {
     }
   }, [document?.content]);
 
+  // Sync title with document
+  useEffect(() => {
+    if (document) {
+      setTitle(document.title || "Untitled Document");
+    }
+  }, [document?.id]);
+
+  // Detect mobile devices
+  useEffect(() => {
+    const detectMobile = () => {
+      if (typeof window === "undefined") return;
+      const ua = navigator.userAgent || (navigator as any).vendor || "";
+      const isTouch = window.matchMedia?.("(pointer: coarse)").matches || false;
+      const isSmallViewport = window.innerWidth <= 768;
+      const isMobileUA =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          ua
+        );
+      setIsMobile(isTouch || isMobileUA || isSmallViewport);
+    };
+    detectMobile();
+  }, []);
+
+  // Debounced save for title
+  const debouncedSaveTitle = useDebouncedCallback((newTitle: string) => {
+    if (document && newTitle !== document.title) {
+      document.title = newTitle;
+      handleSaveDocument();
+    }
+  }, 800);
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    debouncedSaveTitle(newTitle);
+  };
+
+  const handleExport = () => {
+    if (!input.trim()) {
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 25.4;
+      const lineHeight = 6;
+      const fontSize = 11;
+
+      pdf.setFont("times", "normal");
+      pdf.setFontSize(fontSize);
+
+      const maxWidth = pageWidth - margin * 2;
+      const lines = pdf.splitTextToSize(input, maxWidth);
+
+      let yPosition = margin;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (yPosition + lineHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(lines[i], margin, yPosition);
+        yPosition += lineHeight;
+      }
+
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, "");
+      const filename = `document_${timestamp}.pdf`;
+
+      pdf.save(filename);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
+  };
+
   return (
     <div className="flex w-full h-[calc(100dvh-64px)] md:h-[100dvh] lg:h-screen overflow-hidden flex-col lg:flex-row bg-gray-200 dark:bg-dark-secondary transition-all duration-200">
       <div className="flex w-full flex-1 lg:h-full overflow-hidden justify-center">
@@ -210,6 +296,10 @@ export default function DocumentEditorPage() {
             mobileChangeApiRef.current = api;
           }}
           onPendingChanges={setMobilePendingChanges}
+          onTitleChange={handleTitleChange}
+          onExport={handleExport}
+          isAutocompleteEnabled={isAutocompleteEnabled}
+          onAutocompleteToggle={() => setIsAutocompleteEnabled((v) => !v)}
         />
       </div>
       <WritePanel
@@ -228,6 +318,14 @@ export default function DocumentEditorPage() {
           setSelected("");
         }}
         onChatLoadingChange={setIsChatLoading}
+        title={title}
+        onTitleChange={handleTitleChange}
+        onExport={handleExport}
+        isAutocompleteEnabled={isAutocompleteEnabled}
+        onAutocompleteToggle={() => setIsAutocompleteEnabled((v) => !v)}
+        isMobile={isMobile}
+        isSaving={isSaving}
+        isSavingContent={false}
       />
       {/* Desktop sidebar above; Mobile Assistant Button + Bottom Sheet */}
       {isMounted &&
@@ -339,6 +437,16 @@ export default function DocumentEditorPage() {
                   setActiveHighlight={(text) =>
                     mobileChangeApiRef.current?.setActiveHighlight(text)
                   }
+                  title={title}
+                  onTitleChange={handleTitleChange}
+                  onExport={handleExport}
+                  isAutocompleteEnabled={isAutocompleteEnabled}
+                  onAutocompleteToggle={() =>
+                    setIsAutocompleteEnabled((v) => !v)
+                  }
+                  isMobile={isMobile}
+                  isSaving={isSaving}
+                  isSavingContent={false}
                 />
               </div>
             </motion.div>
