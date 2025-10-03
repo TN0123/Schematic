@@ -10,6 +10,7 @@ import {
   Trash2,
   Search,
   PenLine,
+  Edit2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Document } from "@prisma/client";
@@ -24,6 +25,9 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showRenameModal, setShowRenameModal] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -86,6 +90,39 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
     }
   };
 
+  const handleRenameDocument = async (documentId: string) => {
+    if (!newTitle.trim()) return;
+
+    setRenaming(documentId);
+    try {
+      const document = documents.find((doc) => doc.id === documentId);
+      const response = await fetch(`/api/documents`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: documentId,
+          title: newTitle.trim(),
+          content: document?.content || "",
+        }),
+      });
+
+      if (response.ok) {
+        const updatedDoc = await response.json();
+        setDocuments((prevDocs) =>
+          prevDocs.map((doc) => (doc.id === documentId ? updatedDoc : doc))
+        );
+        setShowRenameModal(null);
+        setNewTitle("");
+      } else {
+        console.error("Failed to rename document");
+      }
+    } catch (error) {
+      console.error("Failed to rename document:", error);
+    } finally {
+      setRenaming(null);
+    }
+  };
+
   const filteredDocuments = documents.filter((doc) =>
     doc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -96,7 +133,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
       <header className="bg-white dark:bg-dark-paper border-b border-gray-200 dark:border-dark-divider">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 sm:py-4 sm:h-16 gap-3 sm:gap-4 lg:gap-0">
-                        {/* Top row: Title */}
+            {/* Top row: Title */}
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 bg-purple-600 rounded-lg flex items-center justify-center">
                 <PenLine className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
@@ -190,6 +227,19 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                             className="absolute right-0 top-full mt-1 bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg shadow-lg py-1 z-10 min-w-[120px]"
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <button
+                              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-secondary flex items-center gap-2"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setNewTitle(doc.title);
+                                setShowRenameModal(doc.id);
+                                setOpenDropdown(null);
+                              }}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                              Rename
+                            </button>
                             <button
                               className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
                               onClick={(e) => {
@@ -292,6 +342,76 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       "Delete"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRenameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowRenameModal(null);
+              setNewTitle("");
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-dark-paper rounded-2xl shadow-xl w-full max-w-sm"
+            >
+              <div className="p-4 sm:p-6">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 mx-auto flex items-center justify-center mb-3 sm:mb-4">
+                  <Edit2 className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2 text-center">
+                  Rename Document
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-dark-textSecondary mb-4 text-center">
+                  Enter a new name for this document
+                </p>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newTitle.trim()) {
+                      handleRenameDocument(showRenameModal!);
+                    }
+                  }}
+                  placeholder="Document name"
+                  className="w-full px-4 py-2.5 mb-4 sm:mb-6 bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-sm text-gray-900 dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  autoFocus
+                />
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <button
+                    onClick={() => {
+                      setShowRenameModal(null);
+                      setNewTitle("");
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-dark-secondary text-sm font-medium text-gray-700 dark:text-dark-textSecondary rounded-lg hover:bg-gray-200 dark:hover:bg-dark-divider transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleRenameDocument(showRenameModal!)}
+                    disabled={!newTitle.trim() || renaming === showRenameModal}
+                    className="flex-1 px-4 py-2.5 bg-purple-600 text-sm font-medium text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 disabled:bg-purple-400 disabled:cursor-not-allowed"
+                  >
+                    {renaming === showRenameModal ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Rename"
                     )}
                   </button>
                 </div>
