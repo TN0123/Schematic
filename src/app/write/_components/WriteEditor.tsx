@@ -14,6 +14,7 @@ import {
   useModifierKeyLabel,
   isPrimaryModifierPressed,
 } from "@/components/utils/platform";
+import { useWriteSettings } from "@/components/WriteSettingsProvider";
 
 // Import utilities
 import {
@@ -79,6 +80,7 @@ export default function WriteEditor({
   onAutocompleteToggle?: () => void;
 }) {
   const modKeyLabel = useModifierKeyLabel();
+  const { viewMode } = useWriteSettings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
   const [inputText, setInputText] = useState("");
@@ -842,8 +844,10 @@ export default function WriteEditor({
   let displayHtml: string;
   let displayText: string;
 
-  // Use diff view if there are pending changes
-  if (diffRanges.length > 0) {
+  // Use diff view if there are pending changes AND diff mode is enabled
+  const useDiffView = viewMode === "diff" && diffRanges.length > 0;
+
+  if (useDiffView) {
     displayText = diffText;
     displayHtml = getDiffHighlightedHTML(diffText, diffRanges, activeHighlight);
   } else if (activeHighlight !== null) {
@@ -871,7 +875,7 @@ export default function WriteEditor({
     );
   }
 
-  if (suggestion && diffRanges.length === 0) {
+  if (suggestion && !useDiffView) {
     displayHtml += `<span class="text-gray-400 dark:text-gray-500">${escapeHtml(
       suggestion
     )}</span>`;
@@ -1002,16 +1006,16 @@ export default function WriteEditor({
                   ref={textareaRef}
                   id="write-editor"
                   className={`w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border ${
-                    diffRanges.length > 0 ? "cursor-not-allowed" : ""
+                    useDiffView ? "cursor-not-allowed" : ""
                   }`}
                   style={{
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
                   }}
-                  value={diffRanges.length > 0 ? diffText : inputText}
+                  value={useDiffView ? diffText : inputText}
                   onChange={handleTextChange}
                   onScroll={handleScroll}
-                  readOnly={diffRanges.length > 0}
+                  readOnly={useDiffView}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
@@ -1079,28 +1083,31 @@ export default function WriteEditor({
             </div>
           </div>
         </div>
-        <div
-          className={`hidden lg:block transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
-            Object.keys(pendingChanges).length !== 0 &&
-            Object.keys(pendingChanges)[0] !== ""
-              ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
-              : "flex-[0_0_0%] max-w-0 opacity-0 -translate-x-10"
-          }`}
-        >
-          <ChangeHandler
-            changes={pendingChanges}
-            applyChange={applyChange}
-            rejectChange={rejectChange}
-            appendChange={appendChange}
-            acceptAllChanges={acceptAllChanges}
-            rejectAllChanges={rejectAllChanges}
-            setActiveHighlight={setActiveHighlight}
-            isStreaming={false}
-          />
-        </div>
+        {viewMode === "changeHandler" && (
+          <div
+            className={`hidden lg:block transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
+              Object.keys(pendingChanges).length !== 0 &&
+              Object.keys(pendingChanges)[0] !== ""
+                ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
+                : "flex-[0_0_0%] max-w-0 opacity-0 -translate-x-10"
+            }`}
+          >
+            <ChangeHandler
+              changes={pendingChanges}
+              applyChange={applyChange}
+              rejectChange={rejectChange}
+              appendChange={appendChange}
+              acceptAllChanges={acceptAllChanges}
+              rejectAllChanges={rejectAllChanges}
+              setActiveHighlight={setActiveHighlight}
+              isStreaming={false}
+            />
+          </div>
+        )}
       </div>
-      {/* Mobile assistant tip */}
-      {Object.keys(pendingChanges).length !== 0 &&
+      {/* Mobile assistant tip - only show in changeHandler mode */}
+      {viewMode === "changeHandler" &&
+        Object.keys(pendingChanges).length !== 0 &&
         Object.keys(pendingChanges)[0] !== "" && (
           <div className="lg:hidden w-full px-4 pb-4">
             <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">

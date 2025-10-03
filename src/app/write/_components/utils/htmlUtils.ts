@@ -167,7 +167,7 @@ export const getDiffHighlightedHTML = (
 
     // Add old text with strikethrough (red background)
     const oldText = escapeHtml(text.slice(range.oldStart, range.oldEnd));
-    html += `<span class="bg-red-100 dark:bg-red-500/30 ${borderClass}">${oldText}</span>`;
+    html += `<span class="bg-red-100 dark:bg-red-500/30 line-through ${borderClass}">${oldText}</span>`;
 
     // Add new text (green background)
     const newText = escapeHtml(text.slice(range.newStart, range.newEnd));
