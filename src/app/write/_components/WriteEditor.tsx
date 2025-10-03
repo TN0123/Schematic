@@ -8,14 +8,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { ChangeHandler } from "./ChangeHandler";
-import {
-  Info,
-  FileText,
-  AlertCircle,
-  RefreshCw,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Info, AlertCircle, RefreshCw, X, Loader2 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   useModifierKeyLabel,
@@ -27,9 +20,6 @@ import {
   parseApiError,
   handleNetworkError,
   ErrorState,
-  addToast,
-  removeToast,
-  ToastNotification,
   escapeHtml,
   getHighlightedHTML,
   getHighlightedHTMLWithRange,
@@ -88,7 +78,6 @@ export default function WriteEditor({
   const modKeyLabel = useModifierKeyLabel();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [inputText, setInputText] = useState("");
   const [pendingChanges, setPendingChanges] = useState<ChangeMap>({});
   const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
@@ -119,29 +108,6 @@ export default function WriteEditor({
   const lastContentRef = useRef<string>("");
   const lastSavedContentForUndoRef = useRef<string>("");
   const textEditTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Helper function to add toast notifications
-  const addToastNotification = (
-    message: string,
-    type: ToastNotification["type"] = "error",
-    duration = 5000
-  ) => {
-    const newToast = addToast(toasts, message, type, duration);
-    setToasts(newToast);
-
-    if (duration > 0) {
-      setTimeout(() => {
-        setToasts((prev) =>
-          removeToast(prev, newToast[newToast.length - 1].id)
-        );
-      }, duration);
-    }
-  };
-
-  // Helper function to remove toast
-  const removeToastNotification = (id: string) => {
-    setToasts((prev) => removeToast(prev, id));
-  };
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -187,14 +153,6 @@ export default function WriteEditor({
           setAutocompleteError(errorState.message);
           setSuggestion("");
 
-          // Only show toast for serious errors, not rate limiting or temporary issues
-          if (errorState.type === "auth" || errorState.type === "validation") {
-            addToastNotification(
-              `Autocomplete error: ${errorState.message}`,
-              "warning",
-              3000
-            );
-          }
           return;
         }
 
@@ -215,15 +173,6 @@ export default function WriteEditor({
         const errorState = handleNetworkError(error as Error);
         setAutocompleteError(errorState.message);
         setSuggestion("");
-
-        // Only show toast for network errors
-        if (errorState.type === "network") {
-          addToastNotification(
-            `Autocomplete unavailable: ${errorState.message}`,
-            "warning",
-            3000
-          );
-        }
       }
     },
     300
@@ -385,7 +334,6 @@ export default function WriteEditor({
         const errorState = await parseApiError(response);
         errorState.retryAction = handleContinue;
         setError(errorState);
-        addToastNotification(errorState.message, "error");
         return;
       }
 
@@ -405,16 +353,12 @@ export default function WriteEditor({
       if (remainingUses !== null) {
         setPremiumRemainingUses(remainingUses);
       }
-
-      // Show success feedback for generation
-      addToastNotification("Content generated successfully!", "success", 2000);
     } catch (error) {
       console.error("Generation error:", error);
       setLoading(false);
       const errorState = handleNetworkError(error as Error);
       errorState.retryAction = handleContinue;
       setError(errorState);
-      addToastNotification(errorState.message, "error");
     }
   };
 
@@ -471,13 +415,6 @@ export default function WriteEditor({
           ...prev,
           [lastOperation.original]: lastOperation.replacement,
         }));
-
-        // Show a toast to indicate the suggestion is back
-        addToastNotification(
-          "Suggestion restored to review panel",
-          "info",
-          2000
-        );
       } else if (lastOperation.type === "accept-all-suggestions") {
         // Restore text before all suggestions were accepted
         setInputText(lastOperation.previousContent);
@@ -487,15 +424,6 @@ export default function WriteEditor({
 
         // Restore all suggestions to pending changes
         setPendingChanges(lastOperation.acceptedChanges);
-
-        // Show a toast
-        addToastNotification(
-          `${
-            Object.keys(lastOperation.acceptedChanges).length
-          } suggestions restored`,
-          "info",
-          2000
-        );
       } else if (lastOperation.type === "append-suggestion") {
         // Restore text before appending
         setInputText(lastOperation.previousContent);
@@ -508,9 +436,6 @@ export default function WriteEditor({
           ...prev,
           "!ADD_TO_END!": lastOperation.appendedText,
         }));
-
-        // Show a toast
-        addToastNotification("Appended suggestion restored", "info", 2000);
       }
 
       // Remove the operation from the undo stack
@@ -568,8 +493,6 @@ export default function WriteEditor({
           delete updated[lastRedoOperation.original];
           return updated;
         });
-
-        addToastNotification("Suggestion re-applied", "info", 2000);
       } else if (lastRedoOperation.type === "accept-all-suggestions") {
         // Re-apply all suggestions
         setInputText(lastRedoOperation.newContent);
@@ -579,14 +502,6 @@ export default function WriteEditor({
 
         // Clear pending changes
         setPendingChanges({});
-
-        addToastNotification(
-          `${
-            Object.keys(lastRedoOperation.acceptedChanges).length
-          } suggestions re-applied`,
-          "info",
-          2000
-        );
       } else if (lastRedoOperation.type === "append-suggestion") {
         // Re-apply the append
         setInputText(lastRedoOperation.newContent);
@@ -600,8 +515,6 @@ export default function WriteEditor({
           delete updated["!ADD_TO_END!"];
           return updated;
         });
-
-        addToastNotification("Appended text re-applied", "info", 2000);
       }
 
       // Remove the operation from the redo stack
@@ -907,44 +820,6 @@ export default function WriteEditor({
 
   return (
     <div className="w-full flex flex-col justify-center items-center h-full">
-      {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] max-w-[400px] transition-all duration-300 ${
-              toast.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-red-300"
-                : toast.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-green-300"
-                : toast.type === "warning"
-                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-yellow-300"
-                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-blue-300"
-            }`}
-          >
-            {toast.type === "error" && (
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "success" && (
-              <FileText className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "warning" && (
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "info" && (
-              <Info className="w-5 h-5 flex-shrink-0" />
-            )}
-            <span className="flex-1 text-sm font-medium">{toast.message}</span>
-            <button
-              onClick={() => removeToastNotification(toast.id)}
-              className="p-1 hover:bg-black/10 dark:hover:bg-dark-actionHover rounded transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-
       {/* Error Banner */}
       {error && (
         <div className="w-full max-w-[1200px] px-4 mb-4 mt-4">

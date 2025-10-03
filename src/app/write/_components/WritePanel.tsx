@@ -43,13 +43,6 @@ interface ErrorState {
   type: "network" | "server" | "auth" | "validation" | "unknown";
 }
 
-interface ToastNotification {
-  id: string;
-  message: string;
-  type: "error" | "success" | "warning" | "info";
-  duration?: number;
-}
-
 // Typing animation component
 function TypingIndicator() {
   return (
@@ -284,30 +277,7 @@ export default function WritePanel({
     after: string;
   }>({ isOpen: false, before: "", after: "" });
   const [actionMode, setActionMode] = useState<"ask" | "edit">("edit");
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const chatAbortControllerRef = useRef<AbortController | null>(null);
-
-  // Helper function to add toast notifications
-  const addToast = (
-    message: string,
-    type: ToastNotification["type"] = "error",
-    duration = 5000
-  ) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const toast: ToastNotification = { id, message, type, duration };
-    setToasts((prev) => [...prev, toast]);
-
-    if (duration > 0) {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, duration);
-    }
-  };
-
-  // Helper function to remove toast
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
 
   // Helper function to parse API errors
   const parseApiError = async (response: Response): Promise<ErrorState> => {
@@ -378,10 +348,6 @@ export default function WritePanel({
     if (premiumRemainingUses === 0 && selectedModel !== "basic") {
       setSelectedModel("basic");
       wasPremiumDisabledRef.current = true;
-      addToast(
-        "Premium uses exhausted - automatically switched to basic model",
-        "warning"
-      );
     }
   }, [premiumRemainingUses, selectedModel]);
 
@@ -393,7 +359,6 @@ export default function WritePanel({
       wasPremiumDisabledRef.current
     ) {
       wasPremiumDisabledRef.current = false;
-      addToast("Premium model is now available again!", "success");
     }
   }, [premiumRemainingUses]);
 
@@ -607,7 +572,6 @@ export default function WritePanel({
                   return;
                 } else if (data.error) {
                   // error event
-                  addToast(data.message || "Streaming failed", "error");
                   reject(new Error(data.message));
                   return;
                 }
@@ -625,7 +589,6 @@ export default function WritePanel({
           resolve();
         } else {
           console.error("Error in streaming request:", error);
-          addToast("Streaming request failed", "error");
           reject(error);
         }
       } finally {
@@ -665,7 +628,6 @@ export default function WritePanel({
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
-      addToast(errorState.message, "error");
     } finally {
       setIsChatLoading(false);
     }
@@ -723,7 +685,6 @@ export default function WritePanel({
 
       if (!response.ok) {
         const errorState = await parseApiError(response);
-        addToast(errorState.message, "error");
         return;
       }
 
@@ -783,7 +744,6 @@ export default function WritePanel({
                 break;
               } else if (data.error) {
                 // error event
-                addToast(data.message || "Improvement failed", "error");
                 throw new Error(data.message);
               }
             } catch (parseError) {
@@ -795,7 +755,6 @@ export default function WritePanel({
     } catch (error) {
       console.error(error);
       const errorState = handleNetworkError(error as Error);
-      addToast(errorState.message, "error");
     } finally {
       setIsImproving(false);
     }
@@ -846,7 +805,6 @@ export default function WritePanel({
 
       if (!response.ok) {
         const errorState = await parseApiError(response);
-        addToast(errorState.message, "error");
         return;
       }
 
@@ -872,7 +830,6 @@ export default function WritePanel({
       } else {
         console.error(error);
         const errorState = handleNetworkError(error as Error);
-        addToast(errorState.message, "error");
       }
     } finally {
       setIsChatLoading(false);
@@ -919,44 +876,6 @@ export default function WritePanel({
       className={wrapperClass}
       id={variant === "mobile" ? "write-panel-mobile" : "write-panel"}
     >
-      {/* Toast Notifications */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px] max-w-[400px] transition-all duration-300 ${
-              toast.type === "error"
-                ? "bg-red-50 border-red-200 text-red-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-red-300"
-                : toast.type === "success"
-                ? "bg-green-50 border-green-200 text-green-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-green-300"
-                : toast.type === "warning"
-                ? "bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-yellow-300"
-                : "bg-blue-50 border-blue-200 text-blue-800 dark:bg-dark-secondary dark:border-dark-divider dark:text-blue-300"
-            }`}
-          >
-            {toast.type === "error" && (
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "success" && (
-              <Sparkles className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "warning" && (
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            )}
-            {toast.type === "info" && (
-              <Info className="w-5 h-5 flex-shrink-0" />
-            )}
-            <span className="flex-1 text-sm font-medium">{toast.message}</span>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="p-1 hover:bg-black/10 dark:hover:bg-dark-actionHover rounded transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-
       <div className="w-full flex items-center justify-between px-4 py-4 border-b border-gray-200 dark:border-dark-divider transition-all">
         <div className="flex w-full items-center justify-between gap-2 lg:gap-3">
           {!isCollapsed && variant === "desktop" && (
@@ -1195,10 +1114,6 @@ export default function WritePanel({
                 onChange={(e) => {
                   const newModel = e.target.value as ModelType;
                   if (newModel !== "basic" && premiumRemainingUses === 0) {
-                    addToast(
-                      "Premium model unavailable - no uses remaining",
-                      "warning"
-                    );
                     return;
                   }
                   setSelectedModel(newModel);
@@ -1360,10 +1275,6 @@ export default function WritePanel({
                     });
                   } catch (error) {
                     console.error("Failed to revert context", error);
-                    addToast(
-                      "Failed to revert context. Please try again.",
-                      "error"
-                    );
                   }
                 }}
                 className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition"
