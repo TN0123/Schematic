@@ -158,9 +158,9 @@ export function ChangeHandler({
   }
 
   return (
-    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
+    <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-md h-full transition-all duration-200">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm text-center w-full font-semibold text-gray-800 dark:text-dark-textPrimary">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-dark-textPrimary">
           {totalChanges} Change(s) Remaining
         </h3>
         {totalChanges > 1 && (
@@ -170,13 +170,13 @@ export function ChangeHandler({
         )}
       </div>
 
-      <div className="flex-grow overflow-hidden bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
+      <div className="flex-grow overflow-hidden bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-md p-5 flex flex-col gap-2 relative">
         <div className="flex items-center justify-between">
           {totalChanges > 1 && (
             <div className="flex items-center gap-1">
               <button
                 onClick={handlePrevious}
-                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                 title="Previous change"
               >
                 <ChevronLeft
@@ -186,7 +186,7 @@ export function ChangeHandler({
               </button>
               <button
                 onClick={handleNext}
-                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                className="p-1 hover:bg-gray-200 dark:hover:bg-dark-hover rounded transition-colors duration-200"
                 title="Next change"
               >
                 <ChevronRight
@@ -200,7 +200,7 @@ export function ChangeHandler({
         <textarea
           value={editedSuggestion}
           onChange={(e) => setEditedSuggestion(e.target.value)}
-          className="flex-1 text-sm text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap bg-transparent border-none resize-none outline-none focus:ring-0 min-h-[100px]"
+          className="flex-1 bg-transparent text-gray-900 dark:text-dark-textPrimary font-normal whitespace-pre-wrap border-none resize-none outline-none focus:ring-0 min-h-[100px]"
           placeholder={
             isStreaming
               ? "AI is generating content..."

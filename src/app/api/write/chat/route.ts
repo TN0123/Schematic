@@ -38,7 +38,137 @@ function deepNormalizeEscapedSequences<T>(value: T): T {
   return value;
 }
 
-// Simple diff-based fallback to generate change map from original and revised text
+// Split text into paragraphs, preserving empty lines
+function splitIntoParagraphs(text: string): string[] {
+  // Split by double newlines or single newlines, but preserve the separators
+  const paragraphs: string[] = [];
+  let current = "";
+  
+  for (let i = 0; i < text.length; i++) {
+    current += text[i];
+    
+    // Check if we're at a paragraph boundary (double newline or end of text)
+    if (
+      (text[i] === "\n" && (text[i + 1] === "\n" || i === text.length - 1)) ||
+      i === text.length - 1
+    ) {
+      if (current.trim()) {
+        paragraphs.push(current);
+      }
+      current = "";
+      // Skip the second newline if it exists
+      if (text[i + 1] === "\n") {
+        i++;
+      }
+    }
+  }
+  
+  // Handle any remaining text
+  if (current.trim()) {
+    paragraphs.push(current);
+  }
+  
+  return paragraphs.length > 0 ? paragraphs : [text];
+}
+
+// Simple LCS-based diff algorithm to find matching and changed paragraphs
+function findChangedParagraphs(
+  originalParagraphs: string[],
+  revisedParagraphs: string[]
+): Record<string, string> {
+  const changes: Record<string, string> = {};
+  
+  // Build a map of original paragraph -> index for quick lookup
+  const originalMap = new Map<string, number[]>();
+  originalParagraphs.forEach((para, idx) => {
+    const normalized = para.trim();
+    if (!originalMap.has(normalized)) {
+      originalMap.set(normalized, []);
+    }
+    originalMap.get(normalized)!.push(idx);
+  });
+  
+  // Track which original paragraphs have been matched
+  const matchedOriginal = new Set<number>();
+  const matchedRevised = new Set<number>();
+  
+  // First pass: find exact matches
+  revisedParagraphs.forEach((revisedPara, revIdx) => {
+    const normalized = revisedPara.trim();
+    const originalIndices = originalMap.get(normalized);
+    
+    if (originalIndices && originalIndices.length > 0) {
+      // Find the first unmatched original index
+      const unmatchedIdx = originalIndices.find(idx => !matchedOriginal.has(idx));
+      if (unmatchedIdx !== undefined) {
+        matchedOriginal.add(unmatchedIdx);
+        matchedRevised.add(revIdx);
+      }
+    }
+  });
+  
+  // Second pass: identify changes
+  let origIdx = 0;
+  let revIdx = 0;
+  
+  while (origIdx < originalParagraphs.length || revIdx < revisedParagraphs.length) {
+    // Skip matched paragraphs
+    while (origIdx < originalParagraphs.length && matchedOriginal.has(origIdx)) {
+      origIdx++;
+    }
+    while (revIdx < revisedParagraphs.length && matchedRevised.has(revIdx)) {
+      revIdx++;
+    }
+    
+    // Collect consecutive unmatched paragraphs
+    let originalChunk = "";
+    let revisedChunk = "";
+    
+    const origStart = origIdx;
+    const revStart = revIdx;
+    
+    // Collect original paragraphs until we hit a match or end
+    while (origIdx < originalParagraphs.length && !matchedOriginal.has(origIdx)) {
+      originalChunk += originalParagraphs[origIdx];
+      origIdx++;
+      
+      // Look ahead to see if the next paragraph is matched
+      if (origIdx < originalParagraphs.length && matchedOriginal.has(origIdx)) {
+        break;
+      }
+    }
+    
+    // Collect revised paragraphs until we hit a match or end
+    while (revIdx < revisedParagraphs.length && !matchedRevised.has(revIdx)) {
+      revisedChunk += revisedParagraphs[revIdx];
+      revIdx++;
+      
+      // Look ahead to see if the next paragraph is matched
+      if (revIdx < revisedParagraphs.length && matchedRevised.has(revIdx)) {
+        break;
+      }
+    }
+    
+    // Create a change entry if we found unmatched content
+    if (originalChunk || revisedChunk) {
+      if (originalChunk.trim()) {
+        changes[originalChunk] = revisedChunk;
+      } else if (revisedChunk.trim()) {
+        // This is a pure addition
+        changes["!ADD_TO_END!"] = revisedChunk;
+      }
+    }
+    
+    // If we haven't made progress, break to avoid infinite loop
+    if (origIdx === origStart && revIdx === revStart) {
+      break;
+    }
+  }
+  
+  return changes;
+}
+
+// Enhanced diff-based function to generate change map from original and revised text
 function generateChangeMapFromDiff(
   originalText: string,
   revisedText: string
@@ -58,50 +188,27 @@ function generateChangeMapFromDiff(
     return { [originalText]: "" };
   }
 
-  // Strategy: find common prefix and suffix, then create a single replacement
-  let prefixEnd = 0;
-  const minLength = Math.min(originalText.length, revisedText.length);
-
-  // Find common prefix
-  while (
-    prefixEnd < minLength &&
-    originalText[prefixEnd] === revisedText[prefixEnd]
-  ) {
-    prefixEnd++;
-  }
-
-  // Find common suffix
-  let suffixStart = 0;
-  while (
-    suffixStart < minLength - prefixEnd &&
-    originalText[originalText.length - 1 - suffixStart] ===
-      revisedText[revisedText.length - 1 - suffixStart]
-  ) {
-    suffixStart++;
-  }
-
-  // Extract the changed portion
-  const originalChanged = originalText.slice(
-    prefixEnd,
-    originalText.length - suffixStart
-  );
-  const revisedChanged = revisedText.slice(
-    prefixEnd,
-    revisedText.length - suffixStart
-  );
-
-  // If no change detected (shouldn't happen given earlier check), return empty
-  if (originalChanged === revisedChanged) {
+  // Split into paragraphs and find changes
+  const originalParagraphs = splitIntoParagraphs(originalText);
+  const revisedParagraphs = splitIntoParagraphs(revisedText);
+  
+  // If only one paragraph each, fall back to simple replacement
+  if (originalParagraphs.length === 1 && revisedParagraphs.length === 1) {
+    if (originalText.trim() !== revisedText.trim()) {
+      return { [originalText]: revisedText };
+    }
     return {};
   }
-
-  // If original changed part is empty, we're adding at a position
-  if (originalChanged === "") {
-    return { "!ADD_TO_END!": revisedChanged };
+  
+  // Use paragraph-level diffing
+  const changes = findChangedParagraphs(originalParagraphs, revisedParagraphs);
+  
+  // If no changes detected but texts are different, fall back to full replacement
+  if (Object.keys(changes).length === 0 && originalText !== revisedText) {
+    return { [originalText]: revisedText };
   }
-
-  // Otherwise, create a replacement mapping
-  return { [originalChanged]: revisedChanged };
+  
+  return changes;
 }
 
 // Schema for structured change generation
