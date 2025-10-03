@@ -23,6 +23,8 @@ import {
   escapeHtml,
   getHighlightedHTML,
   getHighlightedHTMLWithRange,
+  buildDiffText,
+  getDiffHighlightedHTML,
   UndoOperation,
   createTextEditOperation,
   createAcceptSuggestionOperation,
@@ -32,6 +34,7 @@ import {
   ChangeMap,
   MobileChangeAPI,
   ModelType,
+  DiffRange,
 } from "./utils";
 
 export default function WriteEditor({
@@ -110,6 +113,10 @@ export default function WriteEditor({
   const lastContentRef = useRef<string>("");
   const lastSavedContentForUndoRef = useRef<string>("");
   const textEditTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Diff-based highlighting state
+  const [diffText, setDiffText] = useState<string>("");
+  const [diffRanges, setDiffRanges] = useState<DiffRange[]>([]);
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -287,6 +294,21 @@ export default function WriteEditor({
       setTooltipState((p) => ({ ...p, visible: false }));
     }
   }, [changes]);
+
+  // Build diff text and ranges when pendingChanges updates
+  useEffect(() => {
+    if (Object.keys(pendingChanges).length > 0) {
+      const { modifiedText, diffRanges: ranges } = buildDiffText(
+        inputText,
+        pendingChanges
+      );
+      setDiffText(modifiedText);
+      setDiffRanges(ranges);
+    } else {
+      setDiffText("");
+      setDiffRanges([]);
+    }
+  }, [pendingChanges, inputText]);
 
   useEffect(() => {
     if (Object.keys(pendingChanges).length === 0) {
@@ -818,14 +840,21 @@ export default function WriteEditor({
   }, [inputText, generatedStart, generatedEnd]);
 
   let displayHtml: string;
+  let displayText: string;
 
-  if (activeHighlight !== null) {
+  // Use diff view if there are pending changes
+  if (diffRanges.length > 0) {
+    displayText = diffText;
+    displayHtml = getDiffHighlightedHTML(diffText, diffRanges, activeHighlight);
+  } else if (activeHighlight !== null) {
+    displayText = inputText;
     displayHtml = getHighlightedHTML(inputText, activeHighlight);
   } else if (
     selectionStart !== null &&
     selectionEnd !== null &&
     selectionStart !== selectionEnd
   ) {
+    displayText = inputText;
     displayHtml = getHighlightedHTMLWithRange(
       inputText,
       selectionStart,
@@ -833,6 +862,7 @@ export default function WriteEditor({
       "selection"
     );
   } else {
+    displayText = inputText;
     displayHtml = getHighlightedHTMLWithRange(
       inputText,
       generatedStart,
@@ -841,7 +871,7 @@ export default function WriteEditor({
     );
   }
 
-  if (suggestion) {
+  if (suggestion && diffRanges.length === 0) {
     displayHtml += `<span class="text-gray-400 dark:text-gray-500">${escapeHtml(
       suggestion
     )}</span>`;
@@ -971,14 +1001,17 @@ export default function WriteEditor({
                 <textarea
                   ref={textareaRef}
                   id="write-editor"
-                  className="w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border"
+                  className={`w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border ${
+                    diffRanges.length > 0 ? "cursor-not-allowed" : ""
+                  }`}
                   style={{
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
                   }}
-                  value={inputText}
+                  value={diffRanges.length > 0 ? diffText : inputText}
                   onChange={handleTextChange}
                   onScroll={handleScroll}
+                  readOnly={diffRanges.length > 0}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;

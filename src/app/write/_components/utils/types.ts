@@ -18,3 +18,11 @@ export interface MobileChangeAPI {
 }
 
 export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
+
+export interface DiffRange {
+  oldStart: number;
+  oldEnd: number;
+  newStart: number;
+  newEnd: number;
+  changeKey: string; // The original text that's being replaced
+}
