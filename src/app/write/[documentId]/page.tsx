@@ -12,8 +12,8 @@ import { isMobileBrowser } from "@/components/utils/platform";
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 
-import { ChangeMap } from "@/app/write/_components/WriteEditor";
-import { ModelType } from "@/app/write/_components/WritePanel";
+import { ChangeMap } from "@/app/write/_components/utils";
+import { ModelType } from "@/app/write/_components/utils";
 
 interface Document {
   id: string;
