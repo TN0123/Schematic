@@ -376,7 +376,9 @@ export async function POST(req: NextRequest) {
         Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
         modify the content accordingly.
         
-        You must return the COMPLETE revised version of the user's text with all requested changes applied.
+        CRITICAL: The changes you make will be parsed by a diff-based function to generate a change map that will be applied to the user's text. 
+        You must return the ENTIRE, COMPLETE revised version of the user's text with all requested changes applied. If the user has told you to update a specific section, 
+        still return the ENTIRE, COMPLETE new text that should be in the user's document.
         
         If the user has no text so far, return the new text that should be created.
         

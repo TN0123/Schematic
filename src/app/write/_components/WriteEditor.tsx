@@ -97,6 +97,8 @@ export default function WriteEditor({
     visible: boolean;
   }>({ top: 0, left: 0, visible: false });
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
   const [isMobile, setIsMobile] = useState(false);
 
@@ -196,13 +198,6 @@ export default function WriteEditor({
     }
   }, [currentDocument?.id]);
 
-  const updateTextareaHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  };
-
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.focus();
@@ -234,9 +229,44 @@ export default function WriteEditor({
     }
   }, [isAutocompleteEnabled, isMobile, debouncedFetchAutocomplete]);
 
+  // Sync scroll between textarea and overlay
+  const handleScroll = useCallback(() => {
+    if (textareaRef.current && overlayRef.current) {
+      // Directly manipulate transform for instant, smooth scrolling
+      const scrollTop = textareaRef.current.scrollTop;
+      const scrollLeft = textareaRef.current.scrollLeft;
+      overlayRef.current.style.transform = `translate(-${scrollLeft}px, -${scrollTop}px)`;
+    }
+  }, []);
+
+  // Initialize overlay transform on mount
   useEffect(() => {
-    updateTextareaHeight();
-  }, [inputText]);
+    if (overlayRef.current) {
+      overlayRef.current.style.transform = `translate(0px, 0px)`;
+    }
+  }, []);
+
+  // Watch textarea width changes and update overlay width dynamically
+  useEffect(() => {
+    if (!textareaRef.current || !overlayRef.current) return;
+
+    const updateOverlayWidth = () => {
+      if (textareaRef.current && overlayRef.current) {
+        overlayRef.current.style.width = `${textareaRef.current.clientWidth}px`;
+      }
+    };
+
+    // Initial width set
+    updateOverlayWidth();
+
+    // Watch for resize changes
+    const resizeObserver = new ResizeObserver(updateOverlayWidth);
+    resizeObserver.observe(textareaRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (isImproving) {
@@ -712,7 +742,6 @@ export default function WriteEditor({
     debouncedSaveContent(newValue);
     setGeneratedStart(null);
     setGeneratedEnd(null);
-    updateTextareaHeight();
 
     clearSuggestionAndCancel();
     if (
@@ -869,8 +898,8 @@ export default function WriteEditor({
           }`}
           id="write-editor"
         >
-          <div className="w-full h-full flex flex-col gap-6 px-2">
-            <div className="relative" ref={editorContainerRef}>
+          <div className="w-full h-full flex flex-col px-2">
+            <div className="relative flex-1 min-h-0" ref={editorContainerRef}>
               {tooltipState.visible && (
                 <div
                   className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-dark-secondary dark:text-dark-textPrimary whitespace-nowrap pointer-events-none"
@@ -892,22 +921,26 @@ export default function WriteEditor({
                   </span>
                 </div>
               )}
-              <div className="w-full p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed">
-                {/* Invisible sizer to ensure container grows with content height */}
+              <div className="w-full h-full relative">
+                {/* Overlay for highlights - synced scroll with textarea */}
                 <div
-                  className="w-full whitespace-pre-wrap p-6 text-base leading-relaxed invisible break-words"
+                  className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden"
                   aria-hidden="true"
                 >
-                  {inputText}
-                  {suggestion ? suggestion : ""}
+                  <div
+                    ref={overlayRef}
+                    id="highlight-overlay"
+                    className="w-full whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words font-sans box-border"
+                    style={{
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      willChange: "transform, width",
+                    }}
+                    dangerouslySetInnerHTML={{
+                      __html: displayHtml,
+                    }}
+                  />
                 </div>
-                <div
-                  className="absolute top-0 left-0 w-full pointer-events-none whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{
-                    __html: displayHtml,
-                  }}
-                />
                 <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
                   {selectedModel !== "basic" &&
                     premiumRemainingUses !== null && (
@@ -938,9 +971,14 @@ export default function WriteEditor({
                 <textarea
                   ref={textareaRef}
                   id="write-editor"
-                  className="w-full absolute top-0 left-0 overflow-hidden p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent"
+                  className="w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border"
+                  style={{
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                  }}
                   value={inputText}
                   onChange={handleTextChange}
+                  onScroll={handleScroll}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
@@ -1002,7 +1040,6 @@ export default function WriteEditor({
                       }
                     }
                   }}
-                  onInput={updateTextareaHeight}
                   placeholder="Start typing here..."
                 />
               </div>

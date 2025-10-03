@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { Check, X, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
-import { ChangeMap } from "./WriteEditor";
+import { ChangeMap } from "./utils";
 
 export function ChangeHandler({
   changes,
@@ -160,7 +160,7 @@ export function ChangeHandler({
   return (
     <div className="w-full sticky top-24 flex flex-col p-4 border border-gray-300 dark:border-dark-divider gap-4 bg-white dark:bg-dark-paper rounded-2xl h-full transition-all duration-200">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-dark-textPrimary">
+        <h3 className="text-sm text-center w-full font-semibold text-gray-800 dark:text-dark-textPrimary">
           {totalChanges} Change(s) Remaining
         </h3>
         {totalChanges > 1 && (
@@ -172,9 +172,6 @@ export function ChangeHandler({
 
       <div className="flex-grow overflow-hidden bg-gray-100 dark:bg-dark-secondary border border-gray-300 dark:border-dark-divider rounded-xl p-5 flex flex-col gap-4 relative">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600 dark:text-dark-textSecondary font-medium">
-            Suggested:
-          </span>
           {totalChanges > 1 && (
             <div className="flex items-center gap-1">
               <button
@@ -234,14 +231,14 @@ export function ChangeHandler({
           <button
             onClick={handleAcceptAll}
             disabled={isStreaming}
-            className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Accept All
           </button>
           <button
             onClick={handleRejectAll}
             disabled={isStreaming}
-            className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reject All
           </button>
