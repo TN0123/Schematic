@@ -46,6 +46,34 @@ interface ToastNotification {
   duration?: number;
 }
 
+// Undo stack types
+type UndoOperation =
+  | {
+      type: "text-edit";
+      previousContent: string;
+      newContent: string;
+      cursorPosition: number;
+    }
+  | {
+      type: "accept-suggestion";
+      original: string;
+      replacement: string;
+      previousContent: string;
+      newContent: string;
+    }
+  | {
+      type: "accept-all-suggestions";
+      previousContent: string;
+      newContent: string;
+      acceptedChanges: ChangeMap;
+    }
+  | {
+      type: "append-suggestion";
+      appendedText: string;
+      previousContent: string;
+      newContent: string;
+    };
+
 export default function WriteEditor({
   setInput,
   changes,
@@ -119,6 +147,15 @@ export default function WriteEditor({
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [suggestion, setSuggestion] = useState("");
   const [isMobile, setIsMobile] = useState(false);
+
+  // Undo/Redo system
+  const [undoStack, setUndoStack] = useState<UndoOperation[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoOperation[]>([]);
+  const isUndoingRef = useRef(false);
+  const isRedoingRef = useRef(false);
+  const lastContentRef = useRef<string>("");
+  const lastSavedContentForUndoRef = useRef<string>("");
+  const textEditTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to add toast notifications
   const addToast = (
@@ -305,6 +342,11 @@ export default function WriteEditor({
   useEffect(() => {
     if (currentDocument) {
       setInputText(currentDocument.content);
+      lastContentRef.current = currentDocument.content;
+      lastSavedContentForUndoRef.current = currentDocument.content;
+      // Clear undo and redo stacks when switching documents
+      setUndoStack([]);
+      setRedoStack([]);
     }
   }, [currentDocument?.id]);
 
@@ -489,11 +531,216 @@ export default function WriteEditor({
     [handleContinue, setInput]
   );
 
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return;
+
+    // Clear any pending text edit timer
+    if (textEditTimerRef.current) {
+      clearTimeout(textEditTimerRef.current);
+      textEditTimerRef.current = null;
+    }
+
+    const lastOperation = undoStack[undoStack.length - 1];
+    isUndoingRef.current = true;
+
+    try {
+      // Push to redo stack before undoing
+      setRedoStack((prev) => [...prev, lastOperation]);
+
+      if (lastOperation.type === "text-edit") {
+        // Restore previous text content
+        setInputText(lastOperation.previousContent);
+        setInput(lastOperation.previousContent);
+        lastContentRef.current = lastOperation.previousContent;
+        lastSavedContentForUndoRef.current = lastOperation.previousContent;
+
+        // Restore cursor position
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.selectionStart = lastOperation.cursorPosition;
+            textareaRef.current.selectionEnd = lastOperation.cursorPosition;
+            textareaRef.current.focus();
+          }
+        }, 0);
+      } else if (lastOperation.type === "accept-suggestion") {
+        // Restore text before suggestion was accepted
+        setInputText(lastOperation.previousContent);
+        setInput(lastOperation.previousContent);
+        lastContentRef.current = lastOperation.previousContent;
+        lastSavedContentForUndoRef.current = lastOperation.previousContent;
+
+        // Restore the suggestion to pending changes
+        setPendingChanges((prev) => ({
+          ...prev,
+          [lastOperation.original]: lastOperation.replacement,
+        }));
+
+        // Show a toast to indicate the suggestion is back
+        addToast("Suggestion restored to review panel", "info", 2000);
+      } else if (lastOperation.type === "accept-all-suggestions") {
+        // Restore text before all suggestions were accepted
+        setInputText(lastOperation.previousContent);
+        setInput(lastOperation.previousContent);
+        lastContentRef.current = lastOperation.previousContent;
+        lastSavedContentForUndoRef.current = lastOperation.previousContent;
+
+        // Restore all suggestions to pending changes
+        setPendingChanges(lastOperation.acceptedChanges);
+
+        // Show a toast
+        addToast(
+          `${
+            Object.keys(lastOperation.acceptedChanges).length
+          } suggestions restored`,
+          "info",
+          2000
+        );
+      } else if (lastOperation.type === "append-suggestion") {
+        // Restore text before appending
+        setInputText(lastOperation.previousContent);
+        setInput(lastOperation.previousContent);
+        lastContentRef.current = lastOperation.previousContent;
+        lastSavedContentForUndoRef.current = lastOperation.previousContent;
+
+        // Restore the append suggestion to pending changes
+        setPendingChanges((prev) => ({
+          ...prev,
+          "!ADD_TO_END!": lastOperation.appendedText,
+        }));
+
+        // Show a toast
+        addToast("Appended suggestion restored", "info", 2000);
+      }
+
+      // Remove the operation from the undo stack
+      setUndoStack((prev) => prev.slice(0, -1));
+    } finally {
+      // Reset the flag after a short delay to allow the text change to settle
+      setTimeout(() => {
+        isUndoingRef.current = false;
+      }, 50);
+    }
+  }, [undoStack, setInput]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return;
+
+    // Clear any pending text edit timer
+    if (textEditTimerRef.current) {
+      clearTimeout(textEditTimerRef.current);
+      textEditTimerRef.current = null;
+    }
+
+    const lastRedoOperation = redoStack[redoStack.length - 1];
+    isRedoingRef.current = true;
+
+    try {
+      // Push back to undo stack
+      setUndoStack((prev) => [...prev, lastRedoOperation]);
+
+      if (lastRedoOperation.type === "text-edit") {
+        // Restore the new text content (redo the edit)
+        setInputText(lastRedoOperation.newContent);
+        setInput(lastRedoOperation.newContent);
+        lastContentRef.current = lastRedoOperation.newContent;
+        lastSavedContentForUndoRef.current = lastRedoOperation.newContent;
+
+        // Restore cursor position to end of edit
+        setTimeout(() => {
+          if (textareaRef.current) {
+            const cursorPos = lastRedoOperation.newContent.length;
+            textareaRef.current.selectionStart = cursorPos;
+            textareaRef.current.selectionEnd = cursorPos;
+            textareaRef.current.focus();
+          }
+        }, 0);
+      } else if (lastRedoOperation.type === "accept-suggestion") {
+        // Re-apply the suggestion
+        setInputText(lastRedoOperation.newContent);
+        setInput(lastRedoOperation.newContent);
+        lastContentRef.current = lastRedoOperation.newContent;
+        lastSavedContentForUndoRef.current = lastRedoOperation.newContent;
+
+        // Remove from pending changes if it's there
+        setPendingChanges((prev) => {
+          const updated = { ...prev };
+          delete updated[lastRedoOperation.original];
+          return updated;
+        });
+
+        addToast("Suggestion re-applied", "info", 2000);
+      } else if (lastRedoOperation.type === "accept-all-suggestions") {
+        // Re-apply all suggestions
+        setInputText(lastRedoOperation.newContent);
+        setInput(lastRedoOperation.newContent);
+        lastContentRef.current = lastRedoOperation.newContent;
+        lastSavedContentForUndoRef.current = lastRedoOperation.newContent;
+
+        // Clear pending changes
+        setPendingChanges({});
+
+        addToast(
+          `${
+            Object.keys(lastRedoOperation.acceptedChanges).length
+          } suggestions re-applied`,
+          "info",
+          2000
+        );
+      } else if (lastRedoOperation.type === "append-suggestion") {
+        // Re-apply the append
+        setInputText(lastRedoOperation.newContent);
+        setInput(lastRedoOperation.newContent);
+        lastContentRef.current = lastRedoOperation.newContent;
+        lastSavedContentForUndoRef.current = lastRedoOperation.newContent;
+
+        // Remove from pending changes if it's there
+        setPendingChanges((prev) => {
+          const updated = { ...prev };
+          delete updated["!ADD_TO_END!"];
+          return updated;
+        });
+
+        addToast("Appended text re-applied", "info", 2000);
+      }
+
+      // Remove the operation from the redo stack
+      setRedoStack((prev) => prev.slice(0, -1));
+    } finally {
+      // Reset the flag after a short delay to allow the text change to settle
+      setTimeout(() => {
+        isRedoingRef.current = false;
+      }, 50);
+    }
+  }, [redoStack, setInput]);
+
   const applyChange = (original: string, replacement: string) => {
     clearSuggestionAndCancel();
+
+    // Clear any pending text edit timer
+    if (textEditTimerRef.current) {
+      clearTimeout(textEditTimerRef.current);
+      textEditTimerRef.current = null;
+    }
+
+    // Record undo operation
+    if (!isUndoingRef.current && !isRedoingRef.current) {
+      const undoOp: UndoOperation = {
+        type: "accept-suggestion",
+        original,
+        replacement,
+        previousContent: inputText,
+        newContent: inputText.replace(original, replacement),
+      };
+      setUndoStack((prev) => [...prev, undoOp]);
+      // Clear redo stack when new operation is performed
+      setRedoStack([]);
+    }
+
     const updated = inputText.replace(original, replacement);
     setInputText(updated);
     setInput(updated);
+    lastContentRef.current = updated;
+    lastSavedContentForUndoRef.current = updated;
     const updatedChanges = { ...pendingChanges };
     delete updatedChanges[original];
     setPendingChanges(updatedChanges);
@@ -508,6 +755,39 @@ export default function WriteEditor({
 
   const acceptAllChanges = () => {
     clearSuggestionAndCancel();
+
+    // Clear any pending text edit timer
+    if (textEditTimerRef.current) {
+      clearTimeout(textEditTimerRef.current);
+      textEditTimerRef.current = null;
+    }
+
+    // Record undo operation
+    if (
+      !isUndoingRef.current &&
+      !isRedoingRef.current &&
+      Object.keys(pendingChanges).length > 0
+    ) {
+      let updatedText = inputText;
+      for (const [original, replacement] of Object.entries(pendingChanges)) {
+        if (original === "!ADD_TO_END!") {
+          updatedText += replacement;
+        } else {
+          updatedText = updatedText.replace(original, replacement);
+        }
+      }
+
+      const undoOp: UndoOperation = {
+        type: "accept-all-suggestions",
+        previousContent: inputText,
+        newContent: updatedText,
+        acceptedChanges: { ...pendingChanges },
+      };
+      setUndoStack((prev) => [...prev, undoOp]);
+      // Clear redo stack when new operation is performed
+      setRedoStack([]);
+    }
+
     let updatedText = inputText;
     for (const [original, replacement] of Object.entries(pendingChanges)) {
       if (original === "!ADD_TO_END!") {
@@ -518,6 +798,8 @@ export default function WriteEditor({
     }
     setInputText(updatedText);
     setInput(updatedText);
+    lastContentRef.current = updatedText;
+    lastSavedContentForUndoRef.current = updatedText;
     setPendingChanges({});
   };
 
@@ -528,9 +810,31 @@ export default function WriteEditor({
 
   const appendChange = (newText: string) => {
     clearSuggestionAndCancel();
+
+    // Clear any pending text edit timer
+    if (textEditTimerRef.current) {
+      clearTimeout(textEditTimerRef.current);
+      textEditTimerRef.current = null;
+    }
+
+    // Record undo operation
+    if (!isUndoingRef.current && !isRedoingRef.current) {
+      const undoOp: UndoOperation = {
+        type: "append-suggestion",
+        appendedText: newText,
+        previousContent: inputText,
+        newContent: inputText + newText,
+      };
+      setUndoStack((prev) => [...prev, undoOp]);
+      // Clear redo stack when new operation is performed
+      setRedoStack([]);
+    }
+
     const updatedText = inputText + newText;
     setInputText(updatedText);
     setInput(updatedText);
+    lastContentRef.current = updatedText;
+    lastSavedContentForUndoRef.current = updatedText;
     const updatedChanges = { ...pendingChanges };
     delete updatedChanges["!ADD_TO_END!"];
     setPendingChanges(updatedChanges);
@@ -624,6 +928,34 @@ export default function WriteEditor({
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart ?? 0;
     cursorPositionRef.current = cursorPos;
+
+    // Debounced undo recording for text edits
+    // Only record after user stops typing for 500ms
+    if (!isUndoingRef.current && !isRedoingRef.current) {
+      // Clear any existing timer
+      if (textEditTimerRef.current) {
+        clearTimeout(textEditTimerRef.current);
+      }
+
+      // Set a new timer to record the undo operation
+      textEditTimerRef.current = setTimeout(() => {
+        if (lastSavedContentForUndoRef.current !== newValue) {
+          const undoOp: UndoOperation = {
+            type: "text-edit",
+            previousContent: lastSavedContentForUndoRef.current,
+            newContent: newValue,
+            cursorPosition: cursorPos,
+          };
+          setUndoStack((prev) => [...prev, undoOp]);
+          // Clear redo stack when new operation is performed
+          setRedoStack([]);
+          lastSavedContentForUndoRef.current = newValue;
+        }
+      }, 500);
+
+      lastContentRef.current = newValue;
+    }
+
     setInput(newValue);
     setInputText(newValue);
     debouncedSaveContent(newValue);
@@ -648,6 +980,50 @@ export default function WriteEditor({
       document.removeEventListener("keydown", handleKeyPress);
     };
   }, [handleKeyPress]);
+
+  // Keyboard shortcut for undo (Ctrl+Z / Cmd+Z)
+  useEffect(() => {
+    const handleUndoKeyPress = (event: KeyboardEvent) => {
+      if (
+        isPrimaryModifierPressed(event) &&
+        event.key === "z" &&
+        !event.shiftKey
+      ) {
+        // Only handle if the textarea is focused
+        if (document.activeElement === textareaRef.current) {
+          event.preventDefault();
+          handleUndo();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleUndoKeyPress);
+    return () => {
+      document.removeEventListener("keydown", handleUndoKeyPress);
+    };
+  }, [handleUndo]);
+
+  // Keyboard shortcut for redo (Ctrl+Y / Cmd+Y)
+  useEffect(() => {
+    const handleRedoKeyPress = (event: KeyboardEvent) => {
+      if (
+        isPrimaryModifierPressed(event) &&
+        event.key === "y" &&
+        !event.shiftKey
+      ) {
+        // Only handle if the textarea is focused
+        if (document.activeElement === textareaRef.current) {
+          event.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleRedoKeyPress);
+    return () => {
+      document.removeEventListener("keydown", handleRedoKeyPress);
+    };
+  }, [handleRedo]);
 
   useEffect(() => {
     if (
