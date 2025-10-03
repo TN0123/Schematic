@@ -1312,7 +1312,7 @@ export default function WriteEditor({
             acceptAllChanges={acceptAllChanges}
             rejectAllChanges={rejectAllChanges}
             setActiveHighlight={setActiveHighlight}
-            isStreaming={isChatLoading || false}
+            isStreaming={false}
           />
         </div>
       </div>

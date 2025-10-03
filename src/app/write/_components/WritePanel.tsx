@@ -1397,7 +1397,7 @@ export default function WritePanel({
               acceptAllChanges={acceptAllChanges}
               rejectAllChanges={rejectAllChanges}
               setActiveHighlight={setActiveHighlight}
-              isStreaming={isChatLoading}
+              isStreaming={false}
             />
           </div>
         )}

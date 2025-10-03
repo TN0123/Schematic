@@ -209,6 +209,7 @@ export function ChangeHandler({
               ? "AI is generating content..."
               : "Edit the suggestion before accepting..."
           }
+          readOnly={isStreaming}
         />
       </div>
 
@@ -216,6 +217,7 @@ export function ChangeHandler({
         <div className="flex items-center justify-end gap-1">
           <button
             onClick={handleAccept}
+            disabled={isStreaming}
             className="px-1 py-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-sm hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors duration-200 flex items-center gap-1.5 border border-green-100 dark:border-green-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check size={14} className="text-green-600 dark:text-green-400" />
@@ -223,6 +225,7 @@ export function ChangeHandler({
           </button>
           <button
             onClick={handleReject}
+            disabled={isStreaming}
             className="px-1 py-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors duration-200 flex items-center gap-1.5 border border-red-100 dark:border-red-800/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X size={14} className="text-red-600 dark:text-red-400" />
@@ -230,12 +233,14 @@ export function ChangeHandler({
           </button>
           <button
             onClick={handleAcceptAll}
+            disabled={isStreaming}
             className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Accept All
           </button>
           <button
             onClick={handleRejectAll}
+            disabled={isStreaming}
             className="px-1 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-600 rounded-sm dark:text-gray-400 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reject All

@@ -481,31 +481,32 @@ export async function POST(req: NextRequest) {
               sendEvent("assistant-complete", { text: assistantFullText });
             })();
 
-            // Collect revised text in background
+            // Collect revised text in background and send changes as soon as ready
             const revisedStreamPromise = (async () => {
               for await (const delta of revisedResult.textStream) {
                 revisedFullText += delta;
               }
+              
+              // Generate and send changes immediately after revised text completes
+              // Don't wait for assistant text
+              sendEvent("status", { message: "Generating changes..." });
+              
+              const cleanRevisedText = normalizeEscapedSequences(revisedFullText);
+              const changeMap = generateChangeMapFromDiff(
+                currentText,
+                cleanRevisedText
+              );
+              const normalizedChangeMap = deepNormalizeEscapedSequences(changeMap);
+              
+              sendEvent("changes-final", { changes: normalizedChangeMap });
             })();
 
             // Wait for both to complete
             await Promise.all([assistantStreamPromise, revisedStreamPromise]);
 
-            sendEvent("status", { message: "Generating changes..." });
-
-            // Normalize text
+            // Normalize assistant text for history
             const cleanAssistantText =
               normalizeEscapedSequences(assistantFullText);
-            const cleanRevisedText = normalizeEscapedSequences(revisedFullText);
-
-            // Generate change map using diff
-            const changeMap = generateChangeMapFromDiff(
-              currentText,
-              cleanRevisedText
-            );
-            const normalizedChangeMap = deepNormalizeEscapedSequences(changeMap);
-
-            sendEvent("changes-final", { changes: normalizedChangeMap });
 
             // Update conversation history with the assistant's response
             const updatedHistory = [
@@ -531,7 +532,7 @@ export async function POST(req: NextRequest) {
             }
 
             sendEvent("result", {
-              result: [cleanAssistantText, normalizedChangeMap],
+              result: [cleanAssistantText, {}],
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
