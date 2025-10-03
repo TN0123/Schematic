@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText, convertToModelMessages } from "ai";
+import { streamText, generateObject, convertToModelMessages } from "ai";
 import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
@@ -9,215 +9,16 @@ import { contextUpdate } from "@/scripts/write/context-update";
 
 const prisma = new PrismaClient();
 
-// Normalize escaped sequences like \n, \r, \t into actual characters
-function normalizeEscapedSequences(input: string): string {
-  if (typeof input !== "string" || input.length === 0) return input;
-  return input
-    .replace(/\\r\\n/g, "\n")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t");
-}
-
-// Recursively normalize all string fields within an object/array
-function deepNormalizeEscapedSequences<T>(value: T): T {
-  if (typeof value === "string") {
-    return normalizeEscapedSequences(value) as unknown as T;
-  }
-  if (Array.isArray(value)) {
-    return value.map((v) => deepNormalizeEscapedSequences(v)) as unknown as T;
-  }
-  if (value && typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-      const normalizedKey = normalizeEscapedSequences(key);
-      result[normalizedKey] = deepNormalizeEscapedSequences(val);
-    }
-    return result as unknown as T;
-  }
-  return value;
-}
-
-// Split text into paragraphs, preserving empty lines
-function splitIntoParagraphs(text: string): string[] {
-  // Split by double newlines or single newlines, but preserve the separators
-  const paragraphs: string[] = [];
-  let current = "";
-  
-  for (let i = 0; i < text.length; i++) {
-    current += text[i];
-    
-    // Check if we're at a paragraph boundary (double newline or end of text)
-    if (
-      (text[i] === "\n" && (text[i + 1] === "\n" || i === text.length - 1)) ||
-      i === text.length - 1
-    ) {
-      if (current.trim()) {
-        paragraphs.push(current);
-      }
-      current = "";
-      // Skip the second newline if it exists
-      if (text[i + 1] === "\n") {
-        i++;
-      }
-    }
-  }
-  
-  // Handle any remaining text
-  if (current.trim()) {
-    paragraphs.push(current);
-  }
-  
-  return paragraphs.length > 0 ? paragraphs : [text];
-}
-
-// Simple LCS-based diff algorithm to find matching and changed paragraphs
-function findChangedParagraphs(
-  originalParagraphs: string[],
-  revisedParagraphs: string[]
-): Record<string, string> {
-  const changes: Record<string, string> = {};
-  
-  // Build a map of original paragraph -> index for quick lookup
-  const originalMap = new Map<string, number[]>();
-  originalParagraphs.forEach((para, idx) => {
-    const normalized = para.trim();
-    if (!originalMap.has(normalized)) {
-      originalMap.set(normalized, []);
-    }
-    originalMap.get(normalized)!.push(idx);
-  });
-  
-  // Track which original paragraphs have been matched
-  const matchedOriginal = new Set<number>();
-  const matchedRevised = new Set<number>();
-  
-  // First pass: find exact matches
-  revisedParagraphs.forEach((revisedPara, revIdx) => {
-    const normalized = revisedPara.trim();
-    const originalIndices = originalMap.get(normalized);
-    
-    if (originalIndices && originalIndices.length > 0) {
-      // Find the first unmatched original index
-      const unmatchedIdx = originalIndices.find(idx => !matchedOriginal.has(idx));
-      if (unmatchedIdx !== undefined) {
-        matchedOriginal.add(unmatchedIdx);
-        matchedRevised.add(revIdx);
-      }
-    }
-  });
-  
-  // Second pass: identify changes
-  let origIdx = 0;
-  let revIdx = 0;
-  
-  while (origIdx < originalParagraphs.length || revIdx < revisedParagraphs.length) {
-    // Skip matched paragraphs
-    while (origIdx < originalParagraphs.length && matchedOriginal.has(origIdx)) {
-      origIdx++;
-    }
-    while (revIdx < revisedParagraphs.length && matchedRevised.has(revIdx)) {
-      revIdx++;
-    }
-    
-    // Collect consecutive unmatched paragraphs
-    let originalChunk = "";
-    let revisedChunk = "";
-    
-    const origStart = origIdx;
-    const revStart = revIdx;
-    
-    // Collect original paragraphs until we hit a match or end
-    while (origIdx < originalParagraphs.length && !matchedOriginal.has(origIdx)) {
-      originalChunk += originalParagraphs[origIdx];
-      origIdx++;
-      
-      // Look ahead to see if the next paragraph is matched
-      if (origIdx < originalParagraphs.length && matchedOriginal.has(origIdx)) {
-        break;
-      }
-    }
-    
-    // Collect revised paragraphs until we hit a match or end
-    while (revIdx < revisedParagraphs.length && !matchedRevised.has(revIdx)) {
-      revisedChunk += revisedParagraphs[revIdx];
-      revIdx++;
-      
-      // Look ahead to see if the next paragraph is matched
-      if (revIdx < revisedParagraphs.length && matchedRevised.has(revIdx)) {
-        break;
-      }
-    }
-    
-    // Create a change entry if we found unmatched content
-    if (originalChunk || revisedChunk) {
-      if (originalChunk.trim()) {
-        changes[originalChunk] = revisedChunk;
-      } else if (revisedChunk.trim()) {
-        // This is a pure addition
-        changes["!ADD_TO_END!"] = revisedChunk;
-      }
-    }
-    
-    // If we haven't made progress, break to avoid infinite loop
-    if (origIdx === origStart && revIdx === revStart) {
-      break;
-    }
-  }
-  
-  return changes;
-}
-
-// Enhanced diff-based function to generate change map from original and revised text
-function generateChangeMapFromDiff(
-  originalText: string,
-  revisedText: string
-): Record<string, string> {
-  // If texts are identical, no changes
-  if (originalText === revisedText) {
-    return {};
-  }
-
-  // If original is empty, add everything to the end
-  if (!originalText || originalText.trim() === "") {
-    return { "!ADD_TO_END!": revisedText };
-  }
-
-  // If revised is empty or significantly shorter, it's likely a deletion scenario
-  if (!revisedText || revisedText.trim() === "") {
-    return { [originalText]: "" };
-  }
-
-  // Split into paragraphs and find changes
-  const originalParagraphs = splitIntoParagraphs(originalText);
-  const revisedParagraphs = splitIntoParagraphs(revisedText);
-  
-  // If only one paragraph each, fall back to simple replacement
-  if (originalParagraphs.length === 1 && revisedParagraphs.length === 1) {
-    if (originalText.trim() !== revisedText.trim()) {
-      return { [originalText]: revisedText };
-    }
-    return {};
-  }
-  
-  // Use paragraph-level diffing
-  const changes = findChangedParagraphs(originalParagraphs, revisedParagraphs);
-  
-  // If no changes detected but texts are different, fall back to full replacement
-  if (Object.keys(changes).length === 0 && originalText !== revisedText) {
-    return { [originalText]: revisedText };
-  }
-  
-  return changes;
-}
-
-// Schema for structured change generation
-const changeSchema = z.object({
-  revisedText: z
-    .string()
-    .describe(
-      "The complete revised version of the user's text with all changes applied"
-    ),
+// Schema for change map generation
+const changeMapSchema = z.object({
+  changes: z
+    .array(
+      z.object({
+        original: z.string().describe("The original text to replace, or '!ADD_TO_END!' to append new content"),
+        replacement: z.string().describe("The new text to replace the original with"),
+      })
+    )
+    .describe("An array of text replacements to apply to the document"),
 });
 
 export async function POST(req: NextRequest) {
@@ -232,12 +33,7 @@ export async function POST(req: NextRequest) {
       actionMode = "edit",
     } = await req.json();
 
-    console.log(
-      `[CHAT] Dual-stream request started - Model: ${model}, Action: ${actionMode}, User: ${userId?.substring(
-        0,
-        8
-      )}...`
-    );
+    
 
     // Get document context
     const document = await prisma.document.findUnique({
@@ -284,22 +80,22 @@ export async function POST(req: NextRequest) {
         } else {
           // Fall back to Gemini
           selectedModelProvider = google("gemini-2.5-flash");
-          console.log("Using Gemini Flash (fallback - no premium uses remaining)");
+          
         }
       } catch (error) {
-        console.error("Error checking premium usage:", error);
+        
         // Fall back to Gemini
         selectedModelProvider = google("gemini-2.5-flash");
-        console.log("Using Gemini Flash (fallback - error checking premium)");
+        
       }
     } else {
       // Use Gemini for basic model
       selectedModelProvider = google("gemini-2.5-flash");
-      console.log("Using Gemini Flash (basic model)");
+      
     }
 
     if (actionMode === "ask") {
-      // ASK MODE: Simple streaming text response (no changes needed)
+      // ASK MODE: Simple streaming text response
       const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
 
@@ -360,62 +156,60 @@ export async function POST(req: NextRequest) {
 
       const messages = convertToModelMessages(uiMessages);
 
-    const result = await streamText({
-      model: selectedModelProvider,
-      messages,
-      temperature: 0.7,
-    });
+      const result = await streamText({
+        model: selectedModelProvider,
+        messages,
+        temperature: 0.7,
+      });
 
-    let fullResponse = "";
-    const encoder = new TextEncoder();
+      let fullResponse = "";
+      const encoder = new TextEncoder();
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = (eventType: string, data: any) => {
-          const sseData = `event: ${eventType}\ndata: ${JSON.stringify(
-            data
-          )}\n\n`;
-          controller.enqueue(encoder.encode(sseData));
-        };
+      const stream = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (eventType: string, data: any) => {
+            const sseData = `event: ${eventType}\ndata: ${JSON.stringify(
+              data
+            )}\n\n`;
+            controller.enqueue(encoder.encode(sseData));
+          };
 
-        try {
-          sendEvent("status", { message: "Starting AI processing..." });
+          try {
+            sendEvent("status", { message: "Starting AI processing..." });
 
             // Stream text deltas
-          for await (const delta of result.textStream) {
-            fullResponse += delta;
+            for await (const delta of result.textStream) {
+              fullResponse += delta;
               sendEvent("assistant-delta", { delta });
             }
 
             sendEvent("assistant-complete", { text: fullResponse });
 
-          const cleanFullResponse = normalizeEscapedSequences(fullResponse);
+            // Update conversation history
+            const updatedHistory = [
+              ...history,
+              { role: "user", parts: userPrompt },
+              { role: "model", parts: fullResponse },
+            ];
 
-          // Update conversation history
-          const updatedHistory = [
-            ...history,
-            { role: "user", parts: userPrompt },
-            { role: "model", parts: cleanFullResponse },
-          ];
-
-          // Update context
-          sendEvent("status", { message: "Updating context..." });
-          let contextUpdateResult;
-          try {
-            contextUpdateResult = await contextUpdate(
-              updatedHistory,
-              documentId
-            );
-          } catch (error) {
-            console.error("Context update failed:", error);
-            contextUpdateResult = {
-              contextUpdated: false,
-              contextChange: null,
-            };
-          }
+            // Update context
+            sendEvent("status", { message: "Updating context..." });
+            let contextUpdateResult;
+            try {
+              contextUpdateResult = await contextUpdate(
+                updatedHistory,
+                documentId
+              );
+            } catch (error) {
+              console.error("Context update failed:", error);
+              contextUpdateResult = {
+                contextUpdated: false,
+                contextChange: null,
+              };
+            }
 
             sendEvent("result", {
-              result: cleanFullResponse,
+              result: fullResponse,
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
@@ -424,9 +218,9 @@ export async function POST(req: NextRequest) {
             });
 
             sendEvent("complete", { message: "Processing complete" });
-            console.log(`[CHAT] Ask mode completed - Model: ${model}`);
+            
           } catch (error) {
-            console.error("[CHAT] Error in ask mode streaming:", error);
+            
             sendEvent("error", {
               error: "Failed to generate content",
               message: error instanceof Error ? error.message : "Unknown error",
@@ -446,12 +240,9 @@ export async function POST(req: NextRequest) {
           "Access-Control-Allow-Methods": "POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
         },
-            });
-          } else {
-      // EDIT MODE: Dual-stream architecture
-      // Stream 1: User-visible assistant text
-      // Stream 2: Structured change generation (parallel)
-
+      });
+    } else {
+      // EDIT MODE: Stream assistant text + generate change map JSON
       const assistantTextPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
 
@@ -472,24 +263,32 @@ export async function POST(req: NextRequest) {
         Keep your response concise (2-3 sentences maximum).
       `;
 
-      const revisedTextPrompt = `
-        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+      const changeMapPrompt = `
+        You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
 
         Here is the context for what the user is writing (will be empty if the user has not written anything yet):
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT
 
-        Your job is to understand what the user has written so far and help the user improve, edit, expand, condense, rewrite, or otherwise 
-        modify the content accordingly.
+        Your job is to analyze the current text and the user's request, then generate an array of changes.
         
-        CRITICAL: The changes you make will be parsed by a diff-based function to generate a change map that will be applied to the user's text. 
-        You must return the ENTIRE, COMPLETE revised version of the user's text with all requested changes applied. If the user has told you to update a specific section, 
-        still return the ENTIRE, COMPLETE new text that should be in the user's document.
+        Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
         
-        If the user has no text so far, return the new text that should be created.
+        Rules for generating changes:
+        1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
+        2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
+        3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
+        4. Choose text snippets that are unique enough to be found in the document (include enough context)
+        5. If replacing multiple separate sections, create multiple change objects in the array
+        6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
+        7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
         
-        Return ONLY the revised text, without any explanations, comments, or formatting.
+        Example changes array:
+        - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
+        - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
+        - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
+        - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
       `;
 
       const userPrompt = `
@@ -540,7 +339,8 @@ export async function POST(req: NextRequest) {
           try {
             sendEvent("status", { message: "Starting AI processing..." });
 
-            // PARALLEL STREAM 1: Assistant text (for user to see)
+            // Start both tasks in parallel
+            // 1. Stream assistant text (for user to see)
             const assistantMessagesUI = [
               {
                 role: "system" as const,
@@ -550,78 +350,73 @@ export async function POST(req: NextRequest) {
             ];
             const assistantMessages = convertToModelMessages(assistantMessagesUI);
 
-            const assistantTextStream = streamText({
-              model: selectedModelProvider,
-              messages: assistantMessages,
-              temperature: 0.7,
-            });
-
-            // PARALLEL STREAM 2: Revised text generation (for change map)
-            const revisedMessagesUI = [
+            // 2. Generate change map JSON (not streamed)
+            const changeMapMessagesUI = [
               {
                 role: "system" as const,
-                parts: [{ type: "text", text: revisedTextPrompt }],
+                parts: [{ type: "text", text: changeMapPrompt }],
               },
               ...uiMessages,
             ];
-            const revisedMessages = convertToModelMessages(revisedMessagesUI);
+            const changeMapMessages = convertToModelMessages(changeMapMessagesUI);
 
-            const revisedTextPromise = streamText({
+            const changeMapPromise = generateObject({
               model: selectedModelProvider,
-              messages: revisedMessages,
-              temperature: 0.7,
+              messages: changeMapMessages,
+              schema: changeMapSchema,
             });
 
-            // Start both streams concurrently
-            const [assistantResult, revisedResult] = await Promise.all([
-              assistantTextStream,
-              revisedTextPromise,
-            ]);
-
             let assistantFullText = "";
-            let revisedFullText = "";
 
-            // Stream assistant text deltas to frontend immediately
+            // Start streaming assistant text immediately (don't create promise wrapper)
+            
+            let deltaCount = 0;
+            
             const assistantStreamPromise = (async () => {
-              for await (const delta of assistantResult.textStream) {
-                assistantFullText += delta;
-                sendEvent("assistant-delta", { delta });
+              try {
+                const result = await streamText({
+                  model: selectedModelProvider,
+                  messages: assistantMessages,
+                  temperature: 0.7,
+                });
+
+                for await (const delta of result.textStream) {
+                  assistantFullText += delta;
+                  deltaCount++;
+                  
+                  sendEvent("assistant-delta", { delta });
+                }
+                
+                
+                sendEvent("assistant-complete", { text: assistantFullText });
+              } catch (error) {
+                
+                throw error;
               }
-              sendEvent("assistant-complete", { text: assistantFullText });
             })();
 
-            // Collect revised text in background and send changes as soon as ready
-            const revisedStreamPromise = (async () => {
-              for await (const delta of revisedResult.textStream) {
-                revisedFullText += delta;
+            // Wait for change map to be ready
+            const changeMapGenPromise = (async () => {
+              const changeMapResult = await changeMapPromise;
+              const changesArray = changeMapResult.object.changes;
+              
+              // Convert array format to Record<string, string> format expected by frontend
+              const changeMap: Record<string, string> = {};
+              for (const change of changesArray) {
+                changeMap[change.original] = change.replacement;
               }
               
-              // Generate and send changes immediately after revised text completes
-              // Don't wait for assistant text
-              sendEvent("status", { message: "Generating changes..." });
-              
-              const cleanRevisedText = normalizeEscapedSequences(revisedFullText);
-              const changeMap = generateChangeMapFromDiff(
-                currentText,
-                cleanRevisedText
-              );
-              const normalizedChangeMap = deepNormalizeEscapedSequences(changeMap);
-              
-              sendEvent("changes-final", { changes: normalizedChangeMap });
+              sendEvent("changes-final", { changes: changeMap });
             })();
 
             // Wait for both to complete
-            await Promise.all([assistantStreamPromise, revisedStreamPromise]);
-
-            // Normalize assistant text for history
-            const cleanAssistantText =
-              normalizeEscapedSequences(assistantFullText);
+            await Promise.all([assistantStreamPromise, changeMapGenPromise]);
 
             // Update conversation history with the assistant's response
             const updatedHistory = [
               ...history,
               { role: "user", parts: userPrompt },
-              { role: "model", parts: cleanAssistantText },
+              { role: "model", parts: assistantFullText },
             ];
 
             // Update context
@@ -633,7 +428,7 @@ export async function POST(req: NextRequest) {
                 documentId
               );
             } catch (error) {
-              console.error("Context update failed:", error);
+              
               contextUpdateResult = {
                 contextUpdated: false,
                 contextChange: null,
@@ -641,7 +436,7 @@ export async function POST(req: NextRequest) {
             }
 
             sendEvent("result", {
-              result: [cleanAssistantText, {}],
+              result: [assistantFullText, {}],
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
@@ -649,33 +444,33 @@ export async function POST(req: NextRequest) {
               actionMode: "edit",
             });
 
-          sendEvent("complete", { message: "Processing complete" });
-            console.log(`[CHAT] Edit mode dual-stream completed - Model: ${model}`);
-        } catch (error) {
-            console.error("[CHAT] Error in edit mode streaming:", error);
-          sendEvent("error", {
-            error: "Failed to generate content",
-            message: error instanceof Error ? error.message : "Unknown error",
-          });
-        } finally {
-          controller.close();
-        }
-      },
-    });
+            sendEvent("complete", { message: "Processing complete" });
+            
+          } catch (error) {
+            
+            sendEvent("error", {
+              error: "Failed to generate content",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+          } finally {
+            controller.close();
+          }
+        },
+      });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
     }
   } catch (error) {
-    console.error("Error setting up streaming:", error);
+    
     return new Response(
       JSON.stringify({ error: "Failed to start streaming" }),
       {

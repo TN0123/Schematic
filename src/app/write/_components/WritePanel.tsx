@@ -106,8 +106,8 @@ export function Message({
 }: MessageProps & {
   onShowContextDiff?: (before: string, after: string) => void;
 }) {
-  // If it's a typing indicator, render the TypingIndicator component
-  if (isTyping) {
+  // If typing has started but no content yet, show typing indicator
+  if (isTyping && !message) {
     return <TypingIndicator />;
   }
 
@@ -126,22 +126,17 @@ export function Message({
             ? "bg-blue-50 dark:bg-dark-secondary text-right"
             : "bg-gray-50 dark:bg-dark-paper text-left"
         } ${
-          isStreaming ? "border-2 border-blue-200 dark:border-blue-600" : ""
+          isStreaming || isTyping
+            ? "border-2 border-purple-200 dark:border-purple-600"
+            : ""
         }`}
       >
         <div className="flex items-start gap-2">
           <p className="text-gray-900 dark:text-dark-textPrimary text-xs flex-1">
             {message}
-            {isStreaming && (
-              <motion.span
-                animate={{ opacity: [1, 0.5, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-                className="inline-block ml-1 w-2 h-4 bg-blue-500 dark:bg-blue-400"
-              />
-            )}
           </p>
-          {isStreaming && (
-            <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
+          {(isStreaming || isTyping) && (
+            <div className="flex items-center text-xs text-purple-600 dark:text-purple-400">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -149,7 +144,7 @@ export function Message({
               >
                 <RefreshCw size={12} />
               </motion.div>
-              <span>Streaming...</span>
+              <span>Editing...</span>
             </div>
           )}
         </div>
@@ -262,6 +257,13 @@ export default function WritePanel({
   >([]);
   const [isImproving, setIsImproving] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const messageIdCounter = useRef(0);
+
+  // Generate unique message IDs
+  const generateMessageId = useCallback(() => {
+    messageIdCounter.current += 1;
+    return `msg-${Date.now()}-${messageIdCounter.current}`;
+  }, []);
 
   // Notify parent component of loading state changes
   useEffect(() => {
@@ -421,13 +423,14 @@ export default function WritePanel({
       let currentAssistantText = "";
 
       // Add a typing indicator for the message
+      const msgId = generateMessageId();
       const typingMessageObj = {
         message: "",
         role: "assistant" as const,
         isTyping: true,
-        id: Date.now().toString(),
+        id: msgId,
       };
-      assistantMessageId = typingMessageObj.id;
+      assistantMessageId = msgId;
       setMessages((prev) => [...prev, typingMessageObj]);
 
       // Hide ChangeHandler while generating by clearing any previous changes
@@ -512,15 +515,19 @@ export default function WritePanel({
                     )
                   );
                 } else if (data.text !== undefined) {
-                  // assistant-complete event: final text received
+                  // assistant-complete event: final text received, keep typing indicator for edit mode
                   currentAssistantText = data.text;
+
+                  // Don't stop typing indicator here - wait for changes to be ready
                 } else if (data.changes !== undefined) {
                   // changes-final event: change map is ready
+
                   if (actionMode === "edit") {
                     setChanges(data.changes);
                   }
                 } else if (data.result !== undefined) {
-                  // result event: final consolidated result
+                  // result event: final consolidated result - NOW we can stop the typing indicator
+
                   if (
                     data.remainingUses !== null &&
                     data.remainingUses !== undefined
@@ -575,9 +582,7 @@ export default function WritePanel({
                   reject(new Error(data.message));
                   return;
                 }
-              } catch (parseError) {
-                console.error("Error parsing SSE data:", parseError);
-              }
+              } catch (parseError) {}
             }
           }
         }
@@ -588,7 +593,6 @@ export default function WritePanel({
           // Swallow aborts as a user cancellation
           resolve();
         } else {
-          console.error("Error in streaming request:", error);
           reject(error);
         }
       } finally {
@@ -617,7 +621,11 @@ export default function WritePanel({
       actionMode,
     };
 
-    const userMessage = { message: instructions, role: "user" as const };
+    const userMessage = {
+      message: instructions,
+      role: "user" as const,
+      id: generateMessageId(),
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInstructions("");
     setIsChatLoading(true);
@@ -626,7 +634,6 @@ export default function WritePanel({
       // Use streaming endpoint (now unified in main chat route)
       await handleStreamingResponse(requestPayload);
     } catch (error) {
-      console.error(error);
       const errorState = handleNetworkError(error as Error);
     } finally {
       setIsChatLoading(false);
@@ -746,14 +753,11 @@ export default function WritePanel({
                 // error event
                 throw new Error(data.message);
               }
-            } catch (parseError) {
-              console.error("Error parsing SSE data:", parseError);
-            }
+            } catch (parseError) {}
           }
         }
       }
     } catch (error) {
-      console.error(error);
       const errorState = handleNetworkError(error as Error);
     } finally {
       setIsImproving(false);
@@ -815,6 +819,7 @@ export default function WritePanel({
         role: "assistant" as const,
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
+        id: generateMessageId(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -828,7 +833,6 @@ export default function WritePanel({
       if (error?.name === "AbortError") {
         // cancelled by user
       } else {
-        console.error(error);
         const errorState = handleNetworkError(error as Error);
       }
     } finally {
@@ -1163,10 +1167,10 @@ export default function WritePanel({
             </div>
           </div>
           <div ref={scrollContainerRef} className={messagesContainerClass}>
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {messages.map((msg, index) => (
                 <Message
-                  key={index}
+                  key={msg.id || index}
                   message={msg.message}
                   role={msg.role}
                   contextUpdated={msg.contextUpdated}
@@ -1273,9 +1277,7 @@ export default function WritePanel({
                       before: "",
                       after: "",
                     });
-                  } catch (error) {
-                    console.error("Failed to revert context", error);
-                  }
+                  } catch (error) {}
                 }}
                 className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition"
               >
