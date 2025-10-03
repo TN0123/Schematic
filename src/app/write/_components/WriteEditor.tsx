@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { ChangeHandler } from "./ChangeHandler";
+import { DiffChangeHandler } from "./DiffChangeHandler";
 import { Info, AlertCircle, RefreshCw, X, Loader2 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import {
@@ -119,6 +120,9 @@ export default function WriteEditor({
   // Diff-based highlighting state
   const [diffText, setDiffText] = useState<string>("");
   const [diffRanges, setDiffRanges] = useState<DiffRange[]>([]);
+  const [showHandleChangesTooltip, setShowHandleChangesTooltip] =
+    useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -350,6 +354,22 @@ export default function WriteEditor({
     setSuggestion("");
     setAutocompleteError(null);
     debouncedFetchAutocomplete.cancel();
+  };
+
+  const handleReadonlyClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (useDiffView) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setTooltipPosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setShowHandleChangesTooltip(true);
+
+      // Hide tooltip after 2 seconds
+      setTimeout(() => {
+        setShowHandleChangesTooltip(false);
+      }, 1000);
+    }
   };
 
   const handleContinue = async () => {
@@ -847,6 +867,44 @@ export default function WriteEditor({
   // Use diff view if there are pending changes AND diff mode is enabled
   const useDiffView = viewMode === "diff" && diffRanges.length > 0;
 
+  // Scroll to active change when it changes
+  useEffect(() => {
+    if (!activeHighlight || !textareaRef.current) return;
+
+    // Find the range for the active change
+    const activeRange = diffRanges.find(
+      (range) => range.changeKey === activeHighlight
+    );
+
+    if (activeRange) {
+      // In diff view, scroll to the old text position
+      const scrollPosition = activeRange.oldStart;
+
+      // Calculate approximate line height and scroll position
+      const textarea = textareaRef.current;
+      const textBeforeChange = useDiffView
+        ? diffText.slice(0, scrollPosition)
+        : inputText.slice(0, inputText.indexOf(activeHighlight));
+
+      const lineHeight = 24; // Approximate line height in pixels
+      const lines = textBeforeChange.split("\n").length;
+      const scrollTop = Math.max(0, (lines - 5) * lineHeight); // Offset by 5 lines for context
+
+      textarea.scrollTop = scrollTop;
+    } else if (!useDiffView && inputText.includes(activeHighlight)) {
+      // In change handler view, find the position in original text
+      const position = inputText.indexOf(activeHighlight);
+      const textarea = textareaRef.current;
+      const textBeforeChange = inputText.slice(0, position);
+
+      const lineHeight = 24;
+      const lines = textBeforeChange.split("\n").length;
+      const scrollTop = Math.max(0, (lines - 5) * lineHeight);
+
+      textarea.scrollTop = scrollTop;
+    }
+  }, [activeHighlight, diffRanges, useDiffView, diffText, inputText]);
+
   if (useDiffView) {
     displayText = diffText;
     displayHtml = getDiffHighlightedHTML(diffText, diffRanges, activeHighlight);
@@ -1016,6 +1074,7 @@ export default function WriteEditor({
                   onChange={handleTextChange}
                   onScroll={handleScroll}
                   readOnly={useDiffView}
+                  onClick={handleReadonlyClick}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
@@ -1079,6 +1138,21 @@ export default function WriteEditor({
                   }}
                   placeholder="Start typing here..."
                 />
+                {/* Handle changes tooltip */}
+                {showHandleChangesTooltip && useDiffView && (
+                  <div
+                    className="absolute z-30 pointer-events-none"
+                    style={{
+                      left: tooltipPosition.x,
+                      top: tooltipPosition.y - 40,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div className="bg-gray-900 dark:bg-dark-secondary text-white dark:text-dark-primary text-xs px-3 py-1.5 rounded shadow-lg whitespace-nowrap">
+                      Handle changes first
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1114,6 +1188,22 @@ export default function WriteEditor({
               Suggested changes available. Open the assistant below to review.
             </div>
           </div>
+        )}
+
+      {/* Floating change handler for diff mode */}
+      {viewMode === "diff" &&
+        Object.keys(pendingChanges).length !== 0 &&
+        Object.keys(pendingChanges)[0] !== "" && (
+          <DiffChangeHandler
+            changes={pendingChanges}
+            applyChange={applyChange}
+            rejectChange={rejectChange}
+            appendChange={appendChange}
+            acceptAllChanges={acceptAllChanges}
+            rejectAllChanges={rejectAllChanges}
+            setActiveHighlight={setActiveHighlight}
+            isStreaming={false}
+          />
         )}
     </div>
   );
