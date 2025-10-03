@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   FileText,
   FileUp,
+  Settings,
   Loader2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -24,6 +25,7 @@ import {
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
 import Link from "next/link";
+import { TransitionLink } from "@/components/utils/TransitionLink";
 
 interface MessageProps {
   message: string;
@@ -103,8 +105,12 @@ export function Message({
   contextChange,
   isStreaming,
   isTyping,
+  isGeneratingChanges,
+  isCurrentAssistantMessage,
 }: MessageProps & {
   onShowContextDiff?: (before: string, after: string) => void;
+  isGeneratingChanges?: boolean;
+  isCurrentAssistantMessage?: boolean;
 }) {
   // If typing has started but no content yet, show typing indicator
   if (isTyping && !message) {
@@ -126,7 +132,10 @@ export function Message({
             ? "bg-blue-50 dark:bg-dark-secondary text-right"
             : "bg-gray-50 dark:bg-dark-paper text-left"
         } ${
-          isStreaming || isTyping
+          isGeneratingChanges &&
+          role === "assistant" &&
+          isCurrentAssistantMessage &&
+          message.trim()
             ? "border-2 border-purple-200 dark:border-purple-600"
             : ""
         }`}
@@ -135,18 +144,21 @@ export function Message({
           <p className="text-gray-900 dark:text-dark-textPrimary text-xs flex-1">
             {message}
           </p>
-          {(isStreaming || isTyping) && (
-            <div className="flex items-center text-xs text-purple-600 dark:text-purple-400">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="mr-1"
-              >
-                <RefreshCw size={12} />
-              </motion.div>
-              <span>Editing...</span>
-            </div>
-          )}
+          {isGeneratingChanges &&
+            role === "assistant" &&
+            isCurrentAssistantMessage &&
+            message.trim() && (
+              <div className="flex items-center text-xs text-purple-600 dark:text-purple-400">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="mr-1"
+                >
+                  <RefreshCw size={12} />
+                </motion.div>
+                <span>Editing...</span>
+              </div>
+            )}
         </div>
         {contextUpdated && contextChange && (
           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-divider">
@@ -257,6 +269,10 @@ export default function WritePanel({
   >([]);
   const [isImproving, setIsImproving] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isGeneratingChanges, setIsGeneratingChanges] = useState(false);
+  const [currentAssistantMessageId, setCurrentAssistantMessageId] = useState<
+    string | null
+  >(null);
   const messageIdCounter = useRef(0);
 
   // Generate unique message IDs
@@ -431,11 +447,13 @@ export default function WritePanel({
         id: msgId,
       };
       assistantMessageId = msgId;
+      setCurrentAssistantMessageId(msgId);
       setMessages((prev) => [...prev, typingMessageObj]);
 
       // Hide ChangeHandler while generating by clearing any previous changes
       if (actionMode === "edit") {
         setChanges({});
+        setIsGeneratingChanges(true);
       }
 
       try {
@@ -524,6 +542,8 @@ export default function WritePanel({
 
                   if (actionMode === "edit") {
                     setChanges(data.changes);
+                    setIsGeneratingChanges(false);
+                    setCurrentAssistantMessageId(null);
                   }
                 } else if (data.result !== undefined) {
                   // result event: final consolidated result - NOW we can stop the typing indicator
@@ -570,6 +590,8 @@ export default function WritePanel({
                     Object.keys(finalChanges).length > 0
                   ) {
                     setChanges(finalChanges);
+                    setIsGeneratingChanges(false);
+                    setCurrentAssistantMessageId(null);
                   }
 
                   setHistory(data.history);
@@ -597,6 +619,8 @@ export default function WritePanel({
         }
       } finally {
         chatAbortControllerRef.current = null;
+        setIsGeneratingChanges(false);
+        setCurrentAssistantMessageId(null);
       }
     });
   };
@@ -608,6 +632,8 @@ export default function WritePanel({
     // Remove any typing indicator message
     setMessages((prev) => prev.filter((m) => !m.isTyping));
     setIsChatLoading(false);
+    setIsGeneratingChanges(false);
+    setCurrentAssistantMessageId(null);
   };
 
   const handleSubmit = async () => {
@@ -646,6 +672,9 @@ export default function WritePanel({
     setIsImproving(true);
     // Hide ChangeHandler while generating by clearing any previous changes
     setChanges({});
+    setIsGeneratingChanges(true);
+    // For improve, we don't have a specific message ID, so we'll use a special identifier
+    setCurrentAssistantMessageId("improve");
 
     try {
       const getSurroundingWords = (
@@ -734,6 +763,8 @@ export default function WritePanel({
               } else if (data.changes !== undefined) {
                 // changes-final event: apply the changes
                 setChanges(data.changes);
+                setIsGeneratingChanges(false);
+                setCurrentAssistantMessageId(null);
               } else if (data.result !== undefined) {
                 // result event: final result
                 if (
@@ -745,6 +776,8 @@ export default function WritePanel({
                 // Apply final changes if not already applied
                 if (Object.keys(data.result).length > 0) {
                   setChanges(data.result);
+                  setIsGeneratingChanges(false);
+                  setCurrentAssistantMessageId(null);
                 }
               } else if (data.message && data.message.includes("complete")) {
                 // complete event
@@ -761,6 +794,8 @@ export default function WritePanel({
       const errorState = handleNetworkError(error as Error);
     } finally {
       setIsImproving(false);
+      setIsGeneratingChanges(false);
+      setCurrentAssistantMessageId(null);
     }
   };
 
@@ -786,6 +821,12 @@ export default function WritePanel({
     setIsChatLoading(true);
     // Hide ChangeHandler while generating by clearing any previous changes
     setChanges({});
+    if (retryActionMode === "edit") {
+      setIsGeneratingChanges(true);
+      // Create a new message ID for retry
+      const retryMessageId = generateMessageId();
+      setCurrentAssistantMessageId(retryMessageId);
+    }
 
     try {
       const controller = new AbortController();
@@ -814,18 +855,21 @@ export default function WritePanel({
 
       const data = await response.json();
 
+      const assistantMessageId = generateMessageId();
       const assistantMessage = {
         message: retryActionMode === "ask" ? data.result : data.result[0],
         role: "assistant" as const,
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
-        id: generateMessageId(),
+        id: assistantMessageId,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Only apply changes for "edit" mode
       if (retryActionMode === "edit") {
         setChanges(data.result[1]);
+        setIsGeneratingChanges(false);
+        setCurrentAssistantMessageId(null);
       }
 
       setHistory(data.history);
@@ -837,6 +881,8 @@ export default function WritePanel({
       }
     } finally {
       setIsChatLoading(false);
+      setIsGeneratingChanges(false);
+      setCurrentAssistantMessageId(null);
       chatAbortControllerRef.current = null;
     }
   };
@@ -908,25 +954,15 @@ export default function WritePanel({
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                {/* Autocomplete toggle - icon only with tooltip */}
                 <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => onAutocompleteToggle?.()}
-                    className={`p-2 rounded-lg transition-all duration-200 ${
-                      isAutocompleteEnabled && !isMobile
-                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
-                        : "bg-gray-100 dark:bg-dark-secondary text-gray-600 dark:text-dark-textSecondary hover:bg-gray-200 dark:hover:bg-dark-hover"
-                    }`}
-                    aria-pressed={isAutocompleteEnabled && !isMobile}
-                    aria-label="Toggle autocomplete"
+                  <Link
+                    href="/settings"
+                    className="inline-flex items-center gap-2 p-2 mx-2 rounded-lg bg-gray-100 dark:bg-dark-secondary shadow-sm hover:shadow-md hover:bg-gray-200 dark:hover:bg-dark-hover text-sm font-medium text-gray-600 dark:text-dark-textSecondary transition-all duration-200 backdrop-blur-sm flex-shrink-0"
                   >
-                    <Sparkles className="w-4 h-4" />
-                  </button>
+                    <Settings className="w-4 h-4" />
+                  </Link>
                   <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
-                    {isAutocompleteEnabled && !isMobile
-                      ? "Autocomplete On"
-                      : "Autocomplete Off"}
+                    Settings
                   </div>
                 </div>
 
@@ -974,7 +1010,9 @@ export default function WritePanel({
         <div className={innerScrollClass}>
           <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
             <textarea
-              className="w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled"
+              className={`w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled ${
+                isChatLoading ? "cursor-not-allowed" : ""
+              }`}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               onInput={(e) => {
@@ -1177,6 +1215,13 @@ export default function WritePanel({
                   contextChange={msg.contextChange}
                   isStreaming={msg.isStreaming}
                   isTyping={msg.isTyping}
+                  isGeneratingChanges={isGeneratingChanges}
+                  isCurrentAssistantMessage={
+                    msg.id === currentAssistantMessageId ||
+                    (currentAssistantMessageId === "improve" &&
+                      msg.role === "assistant" &&
+                      messages.indexOf(msg) === messages.length - 1)
+                  }
                 />
               ))}
             </AnimatePresence>

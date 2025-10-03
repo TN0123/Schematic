@@ -8,12 +8,14 @@ import {
   useLayoutEffect,
 } from "react";
 import { ChangeHandler } from "./ChangeHandler";
+import { DiffChangeHandler } from "./DiffChangeHandler";
 import { Info, AlertCircle, RefreshCw, X, Loader2 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   useModifierKeyLabel,
   isPrimaryModifierPressed,
 } from "@/components/utils/platform";
+import { useWriteSettings } from "@/components/WriteSettingsProvider";
 
 // Import utilities
 import {
@@ -23,6 +25,8 @@ import {
   escapeHtml,
   getHighlightedHTML,
   getHighlightedHTMLWithRange,
+  buildDiffText,
+  getDiffHighlightedHTML,
   UndoOperation,
   createTextEditOperation,
   createAcceptSuggestionOperation,
@@ -32,6 +36,7 @@ import {
   ChangeMap,
   MobileChangeAPI,
   ModelType,
+  DiffRange,
 } from "./utils";
 
 export default function WriteEditor({
@@ -76,6 +81,7 @@ export default function WriteEditor({
   onAutocompleteToggle?: () => void;
 }) {
   const modKeyLabel = useModifierKeyLabel();
+  const { viewMode } = useWriteSettings();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ErrorState | null>(null);
   const [inputText, setInputText] = useState("");
@@ -110,6 +116,13 @@ export default function WriteEditor({
   const lastContentRef = useRef<string>("");
   const lastSavedContentForUndoRef = useRef<string>("");
   const textEditTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Diff-based highlighting state
+  const [diffText, setDiffText] = useState<string>("");
+  const [diffRanges, setDiffRanges] = useState<DiffRange[]>([]);
+  const [showHandleChangesTooltip, setShowHandleChangesTooltip] =
+    useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -288,6 +301,21 @@ export default function WriteEditor({
     }
   }, [changes]);
 
+  // Build diff text and ranges when pendingChanges updates
+  useEffect(() => {
+    if (Object.keys(pendingChanges).length > 0) {
+      const { modifiedText, diffRanges: ranges } = buildDiffText(
+        inputText,
+        pendingChanges
+      );
+      setDiffText(modifiedText);
+      setDiffRanges(ranges);
+    } else {
+      setDiffText("");
+      setDiffRanges([]);
+    }
+  }, [pendingChanges, inputText]);
+
   useEffect(() => {
     if (Object.keys(pendingChanges).length === 0) {
       setActiveHighlight(null);
@@ -326,6 +354,22 @@ export default function WriteEditor({
     setSuggestion("");
     setAutocompleteError(null);
     debouncedFetchAutocomplete.cancel();
+  };
+
+  const handleReadonlyClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (useDiffView) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setTooltipPosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+      setShowHandleChangesTooltip(true);
+
+      // Hide tooltip after 2 seconds
+      setTimeout(() => {
+        setShowHandleChangesTooltip(false);
+      }, 1000);
+    }
   };
 
   const handleContinue = async () => {
@@ -818,14 +862,61 @@ export default function WriteEditor({
   }, [inputText, generatedStart, generatedEnd]);
 
   let displayHtml: string;
+  let displayText: string;
 
-  if (activeHighlight !== null) {
+  // Use diff view if there are pending changes AND diff mode is enabled
+  const useDiffView = viewMode === "diff" && diffRanges.length > 0;
+
+  // Scroll to active change when it changes
+  useEffect(() => {
+    if (!activeHighlight || !textareaRef.current) return;
+
+    // Find the range for the active change
+    const activeRange = diffRanges.find(
+      (range) => range.changeKey === activeHighlight
+    );
+
+    if (activeRange) {
+      // In diff view, scroll to the old text position
+      const scrollPosition = activeRange.oldStart;
+
+      // Calculate approximate line height and scroll position
+      const textarea = textareaRef.current;
+      const textBeforeChange = useDiffView
+        ? diffText.slice(0, scrollPosition)
+        : inputText.slice(0, inputText.indexOf(activeHighlight));
+
+      const lineHeight = 24; // Approximate line height in pixels
+      const lines = textBeforeChange.split("\n").length;
+      const scrollTop = Math.max(0, (lines - 5) * lineHeight); // Offset by 5 lines for context
+
+      textarea.scrollTop = scrollTop;
+    } else if (!useDiffView && inputText.includes(activeHighlight)) {
+      // In change handler view, find the position in original text
+      const position = inputText.indexOf(activeHighlight);
+      const textarea = textareaRef.current;
+      const textBeforeChange = inputText.slice(0, position);
+
+      const lineHeight = 24;
+      const lines = textBeforeChange.split("\n").length;
+      const scrollTop = Math.max(0, (lines - 5) * lineHeight);
+
+      textarea.scrollTop = scrollTop;
+    }
+  }, [activeHighlight, diffRanges, useDiffView, diffText, inputText]);
+
+  if (useDiffView) {
+    displayText = diffText;
+    displayHtml = getDiffHighlightedHTML(diffText, diffRanges, activeHighlight);
+  } else if (activeHighlight !== null) {
+    displayText = inputText;
     displayHtml = getHighlightedHTML(inputText, activeHighlight);
   } else if (
     selectionStart !== null &&
     selectionEnd !== null &&
     selectionStart !== selectionEnd
   ) {
+    displayText = inputText;
     displayHtml = getHighlightedHTMLWithRange(
       inputText,
       selectionStart,
@@ -833,6 +924,7 @@ export default function WriteEditor({
       "selection"
     );
   } else {
+    displayText = inputText;
     displayHtml = getHighlightedHTMLWithRange(
       inputText,
       generatedStart,
@@ -841,7 +933,7 @@ export default function WriteEditor({
     );
   }
 
-  if (suggestion) {
+  if (suggestion && !useDiffView) {
     displayHtml += `<span class="text-gray-400 dark:text-gray-500">${escapeHtml(
       suggestion
     )}</span>`;
@@ -971,14 +1063,18 @@ export default function WriteEditor({
                 <textarea
                   ref={textareaRef}
                   id="write-editor"
-                  className="w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border"
+                  className={`w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border ${
+                    useDiffView ? "cursor-not-allowed" : ""
+                  }`}
                   style={{
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
                   }}
-                  value={inputText}
+                  value={useDiffView ? diffText : inputText}
                   onChange={handleTextChange}
                   onScroll={handleScroll}
+                  readOnly={useDiffView}
+                  onClick={handleReadonlyClick}
                   onSelect={(e) => {
                     const textarea = e.currentTarget;
                     const start = textarea.selectionStart;
@@ -1042,19 +1138,63 @@ export default function WriteEditor({
                   }}
                   placeholder="Start typing here..."
                 />
+                {/* Handle changes tooltip */}
+                {showHandleChangesTooltip && useDiffView && (
+                  <div
+                    className="absolute z-30 pointer-events-none"
+                    style={{
+                      left: tooltipPosition.x,
+                      top: tooltipPosition.y - 40,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div className="bg-gray-900 dark:bg-dark-secondary text-white dark:text-dark-primary text-xs px-3 py-1.5 rounded shadow-lg whitespace-nowrap">
+                      Handle changes first
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
-        <div
-          className={`hidden lg:block transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
-            Object.keys(pendingChanges).length !== 0 &&
-            Object.keys(pendingChanges)[0] !== ""
-              ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
-              : "flex-[0_0_0%] max-w-0 opacity-0 -translate-x-10"
-          }`}
-        >
-          <ChangeHandler
+        {viewMode === "changeHandler" && (
+          <div
+            className={`hidden lg:block transition-all duration-500 ease-in-out overflow-hidden self-start h-3/4 ${
+              Object.keys(pendingChanges).length !== 0 &&
+              Object.keys(pendingChanges)[0] !== ""
+                ? "flex-[1_1_0%] max-w-[350px] opacity-100 translate-x-0"
+                : "flex-[0_0_0%] max-w-0 opacity-0 -translate-x-10"
+            }`}
+          >
+            <ChangeHandler
+              changes={pendingChanges}
+              applyChange={applyChange}
+              rejectChange={rejectChange}
+              appendChange={appendChange}
+              acceptAllChanges={acceptAllChanges}
+              rejectAllChanges={rejectAllChanges}
+              setActiveHighlight={setActiveHighlight}
+              isStreaming={false}
+            />
+          </div>
+        )}
+      </div>
+      {/* Mobile assistant tip - only show in changeHandler mode */}
+      {viewMode === "changeHandler" &&
+        Object.keys(pendingChanges).length !== 0 &&
+        Object.keys(pendingChanges)[0] !== "" && (
+          <div className="lg:hidden w-full px-4 pb-4">
+            <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">
+              Suggested changes available. Open the assistant below to review.
+            </div>
+          </div>
+        )}
+
+      {/* Floating change handler for diff mode */}
+      {viewMode === "diff" &&
+        Object.keys(pendingChanges).length !== 0 &&
+        Object.keys(pendingChanges)[0] !== "" && (
+          <DiffChangeHandler
             changes={pendingChanges}
             applyChange={applyChange}
             rejectChange={rejectChange}
@@ -1064,16 +1204,6 @@ export default function WriteEditor({
             setActiveHighlight={setActiveHighlight}
             isStreaming={false}
           />
-        </div>
-      </div>
-      {/* Mobile assistant tip */}
-      {Object.keys(pendingChanges).length !== 0 &&
-        Object.keys(pendingChanges)[0] !== "" && (
-          <div className="lg:hidden w-full px-4 pb-4">
-            <div className="text-xs text-gray-600 dark:text-dark-textSecondary bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider rounded-lg p-3">
-              Suggested changes available. Open the assistant below to review.
-            </div>
-          </div>
         )}
     </div>
   );

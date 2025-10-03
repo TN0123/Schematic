@@ -13,6 +13,7 @@ import MainWrapper from "@/components/MainWrapper";
 import PostHogProvider from "@/components/PostHogProvider";
 import GlobalSearch from "@/components/GlobalSearch";
 import { SearchProvider } from "@/components/SearchProvider";
+import { WriteSettingsProvider } from "@/components/WriteSettingsProvider";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -70,7 +71,12 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getServerSession(authOptions);
-  let updatesForUser: { id: string; title: string; description: string; publishedAt: string }[] = [];
+  let updatesForUser: {
+    id: string;
+    title: string;
+    description: string;
+    publishedAt: string;
+  }[] = [];
   if (session?.user?.id) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -154,7 +160,11 @@ export default async function RootLayout({
             gtag('config', 'G-VZSDFYLZ9M');
           `}
         </Script>
-        <Script id="ld-software" type="application/ld+json" strategy="afterInteractive">
+        <Script
+          id="ld-software"
+          type="application/ld+json"
+          strategy="afterInteractive"
+        >
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "SoftwareApplication",
@@ -180,16 +190,18 @@ export default async function RootLayout({
               <AuthProvider>
                 <PostHogProvider>
                   <SearchProvider>
-                    <Navigation />
-                    <MobileTabBar />
-                    <MainWrapper>
-                      {children}
-                      {updatesForUser.length > 0 && (
-                        <ChangelogModal updates={updatesForUser} />
-                      )}
-                    </MainWrapper>
-                    <PageTransition />
-                    <GlobalSearch />
+                    <WriteSettingsProvider>
+                      <Navigation />
+                      <MobileTabBar />
+                      <MainWrapper>
+                        {children}
+                        {updatesForUser.length > 0 && (
+                          <ChangelogModal updates={updatesForUser} />
+                        )}
+                      </MainWrapper>
+                      <PageTransition />
+                      <GlobalSearch />
+                    </WriteSettingsProvider>
                   </SearchProvider>
                 </PostHogProvider>
               </AuthProvider>
