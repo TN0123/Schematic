@@ -2,7 +2,7 @@
 
 import ThemeToggle from "@/components/ThemeToggle";
 import { useWriteSettings } from "@/components/WriteSettingsProvider";
-import { Moon, Sun, FileEdit } from "lucide-react";
+import { Moon, Sun, PenLine } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 export default function SettingsPage() {
@@ -45,8 +45,8 @@ export default function SettingsPage() {
         <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
           <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
-              <FileEdit className="w-5 h-5" />
-              Write Settings
+              <PenLine className="w-5 h-5" />
+              Write
             </h2>
           </div>
           <div className="p-4 space-y-4">
@@ -89,8 +89,7 @@ export default function SettingsPage() {
                       Diff View
                     </div>
                     <div className="text-xs text-gray-600 dark:text-dark-textSecondary">
-                      Show inline diffs with strikethrough old text and
-                      highlighted new text
+                      Show inline diffs with old text vs new text
                     </div>
                   </div>
                 </button>
