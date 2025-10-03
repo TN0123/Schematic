@@ -15,7 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChangeMap } from "./WriteEditor";
+import { ChangeMap, ModelType } from "./utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useModifierKeyLabel,
@@ -24,9 +24,6 @@ import {
 import ContextModal from "./ContextModal";
 import { ChangeHandler } from "./ChangeHandler";
 import Link from "next/link";
-import { useDebouncedCallback } from "use-debounce";
-
-export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
 
 interface MessageProps {
   message: string;

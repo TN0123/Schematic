@@ -22,57 +22,27 @@ import {
   isPrimaryModifierPressed,
 } from "@/components/utils/platform";
 
-export type ChangeMap = Record<string, string>;
-
-interface Document {
-  id: string;
-  title: string;
-  content: string;
-  updatedAt: string;
-  userId: string;
-}
-
-interface ErrorState {
-  message: string;
-  type: "network" | "server" | "auth" | "validation" | "unknown";
-  canRetry: boolean;
-  retryAction?: () => void;
-}
-
-interface ToastNotification {
-  id: string;
-  message: string;
-  type: "error" | "success" | "warning" | "info";
-  duration?: number;
-}
-
-// Undo stack types
-type UndoOperation =
-  | {
-      type: "text-edit";
-      previousContent: string;
-      newContent: string;
-      cursorPosition: number;
-    }
-  | {
-      type: "accept-suggestion";
-      original: string;
-      replacement: string;
-      previousContent: string;
-      newContent: string;
-    }
-  | {
-      type: "accept-all-suggestions";
-      previousContent: string;
-      newContent: string;
-      acceptedChanges: ChangeMap;
-    }
-  | {
-      type: "append-suggestion";
-      appendedText: string;
-      previousContent: string;
-      newContent: string;
-    };
+// Import utilities
+import {
+  parseApiError,
+  handleNetworkError,
+  ErrorState,
+  addToast,
+  removeToast,
+  ToastNotification,
+  escapeHtml,
+  getHighlightedHTML,
+  getHighlightedHTMLWithRange,
+  UndoOperation,
+  createTextEditOperation,
+  createAcceptSuggestionOperation,
+  createAcceptAllSuggestionsOperation,
+  createAppendSuggestionOperation,
+  Document,
+  ChangeMap,
+  MobileChangeAPI,
+  ModelType,
+} from "./utils";
 
 export default function WriteEditor({
   setInput,
@@ -102,20 +72,13 @@ export default function WriteEditor({
   userId?: string;
   premiumRemainingUses: number | null;
   setPremiumRemainingUses: (remainingUses: number) => void;
-  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4";
+  selectedModel: ModelType;
   currentDocument: Document | null;
   onSaveDocument: () => void;
   isSaving: boolean;
   isImproving: boolean;
   isChatLoading?: boolean;
-  onRegisterMobileChangeAPI?: (api: {
-    applyChange: (original: string, replacement: string) => void;
-    rejectChange: (original: string) => void;
-    appendChange: (newText: string) => void;
-    acceptAllChanges: () => void;
-    rejectAllChanges: () => void;
-    setActiveHighlight: (text: string | null) => void;
-  }) => void;
+  onRegisterMobileChangeAPI?: (api: MobileChangeAPI) => void;
   onPendingChanges?: (changes: ChangeMap) => void;
   onTitleChange?: (title: string) => void;
   onExport?: () => void;
@@ -158,92 +121,26 @@ export default function WriteEditor({
   const textEditTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to add toast notifications
-  const addToast = (
+  const addToastNotification = (
     message: string,
     type: ToastNotification["type"] = "error",
     duration = 5000
   ) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const toast: ToastNotification = { id, message, type, duration };
-    setToasts((prev) => [...prev, toast]);
+    const newToast = addToast(toasts, message, type, duration);
+    setToasts(newToast);
 
     if (duration > 0) {
       setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
+        setToasts((prev) =>
+          removeToast(prev, newToast[newToast.length - 1].id)
+        );
       }, duration);
     }
   };
 
   // Helper function to remove toast
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Helper function to parse API errors
-  const parseApiError = async (response: Response): Promise<ErrorState> => {
-    let message = "An unexpected error occurred";
-    let type: ErrorState["type"] = "unknown";
-    let canRetry = false;
-
-    try {
-      const errorData = await response.json();
-      message = errorData.error || errorData.message || message;
-    } catch {
-      // If we can't parse the error response, use status-based messages
-      switch (response.status) {
-        case 400:
-          message = "Invalid request. Please check your input and try again.";
-          type = "validation";
-          break;
-        case 401:
-          message = "Authentication required. Please log in and try again.";
-          type = "auth";
-          break;
-        case 403:
-          message = "Access denied. You may have reached your usage limit.";
-          type = "auth";
-          break;
-        case 429:
-          message = "Too many requests. Please wait a moment and try again.";
-          type = "server";
-          canRetry = true;
-          break;
-        case 500:
-          message = "Server error. Please try again in a moment.";
-          type = "server";
-          canRetry = true;
-          break;
-        case 503:
-          message = "Service temporarily unavailable. Please try again later.";
-          type = "server";
-          canRetry = true;
-          break;
-        default:
-          message = `Request failed with status ${response.status}`;
-          type = "server";
-          canRetry = response.status >= 500;
-      }
-    }
-
-    return { message, type, canRetry };
-  };
-
-  // Helper function to handle network errors
-  const handleNetworkError = (error: Error): ErrorState => {
-    if (error.name === "TypeError" && error.message.includes("fetch")) {
-      return {
-        message:
-          "Network connection failed. Please check your internet connection and try again.",
-        type: "network",
-        canRetry: true,
-      };
-    }
-
-    return {
-      message: error.message || "An unexpected error occurred",
-      type: "unknown",
-      canRetry: false,
-    };
+  const removeToastNotification = (id: string) => {
+    setToasts((prev) => removeToast(prev, id));
   };
 
   // Debounced save for content
@@ -292,7 +189,7 @@ export default function WriteEditor({
 
           // Only show toast for serious errors, not rate limiting or temporary issues
           if (errorState.type === "auth" || errorState.type === "validation") {
-            addToast(
+            addToastNotification(
               `Autocomplete error: ${errorState.message}`,
               "warning",
               3000
@@ -321,7 +218,7 @@ export default function WriteEditor({
 
         // Only show toast for network errors
         if (errorState.type === "network") {
-          addToast(
+          addToastNotification(
             `Autocomplete unavailable: ${errorState.message}`,
             "warning",
             3000
@@ -488,7 +385,7 @@ export default function WriteEditor({
         const errorState = await parseApiError(response);
         errorState.retryAction = handleContinue;
         setError(errorState);
-        addToast(errorState.message, "error");
+        addToastNotification(errorState.message, "error");
         return;
       }
 
@@ -510,14 +407,14 @@ export default function WriteEditor({
       }
 
       // Show success feedback for generation
-      addToast("Content generated successfully!", "success", 2000);
+      addToastNotification("Content generated successfully!", "success", 2000);
     } catch (error) {
       console.error("Generation error:", error);
       setLoading(false);
       const errorState = handleNetworkError(error as Error);
       errorState.retryAction = handleContinue;
       setError(errorState);
-      addToast(errorState.message, "error");
+      addToastNotification(errorState.message, "error");
     }
   };
 
@@ -576,7 +473,11 @@ export default function WriteEditor({
         }));
 
         // Show a toast to indicate the suggestion is back
-        addToast("Suggestion restored to review panel", "info", 2000);
+        addToastNotification(
+          "Suggestion restored to review panel",
+          "info",
+          2000
+        );
       } else if (lastOperation.type === "accept-all-suggestions") {
         // Restore text before all suggestions were accepted
         setInputText(lastOperation.previousContent);
@@ -588,7 +489,7 @@ export default function WriteEditor({
         setPendingChanges(lastOperation.acceptedChanges);
 
         // Show a toast
-        addToast(
+        addToastNotification(
           `${
             Object.keys(lastOperation.acceptedChanges).length
           } suggestions restored`,
@@ -609,7 +510,7 @@ export default function WriteEditor({
         }));
 
         // Show a toast
-        addToast("Appended suggestion restored", "info", 2000);
+        addToastNotification("Appended suggestion restored", "info", 2000);
       }
 
       // Remove the operation from the undo stack
@@ -668,7 +569,7 @@ export default function WriteEditor({
           return updated;
         });
 
-        addToast("Suggestion re-applied", "info", 2000);
+        addToastNotification("Suggestion re-applied", "info", 2000);
       } else if (lastRedoOperation.type === "accept-all-suggestions") {
         // Re-apply all suggestions
         setInputText(lastRedoOperation.newContent);
@@ -679,7 +580,7 @@ export default function WriteEditor({
         // Clear pending changes
         setPendingChanges({});
 
-        addToast(
+        addToastNotification(
           `${
             Object.keys(lastRedoOperation.acceptedChanges).length
           } suggestions re-applied`,
@@ -700,7 +601,7 @@ export default function WriteEditor({
           return updated;
         });
 
-        addToast("Appended text re-applied", "info", 2000);
+        addToastNotification("Appended text re-applied", "info", 2000);
       }
 
       // Remove the operation from the redo stack
@@ -724,13 +625,12 @@ export default function WriteEditor({
 
     // Record undo operation
     if (!isUndoingRef.current && !isRedoingRef.current) {
-      const undoOp: UndoOperation = {
-        type: "accept-suggestion",
+      const undoOp = createAcceptSuggestionOperation(
         original,
         replacement,
-        previousContent: inputText,
-        newContent: inputText.replace(original, replacement),
-      };
+        inputText,
+        inputText.replace(original, replacement)
+      );
       setUndoStack((prev) => [...prev, undoOp]);
       // Clear redo stack when new operation is performed
       setRedoStack([]);
@@ -777,12 +677,11 @@ export default function WriteEditor({
         }
       }
 
-      const undoOp: UndoOperation = {
-        type: "accept-all-suggestions",
-        previousContent: inputText,
-        newContent: updatedText,
-        acceptedChanges: { ...pendingChanges },
-      };
+      const undoOp = createAcceptAllSuggestionsOperation(
+        inputText,
+        updatedText,
+        { ...pendingChanges }
+      );
       setUndoStack((prev) => [...prev, undoOp]);
       // Clear redo stack when new operation is performed
       setRedoStack([]);
@@ -819,12 +718,11 @@ export default function WriteEditor({
 
     // Record undo operation
     if (!isUndoingRef.current && !isRedoingRef.current) {
-      const undoOp: UndoOperation = {
-        type: "append-suggestion",
-        appendedText: newText,
-        previousContent: inputText,
-        newContent: inputText + newText,
-      };
+      const undoOp = createAppendSuggestionOperation(
+        newText,
+        inputText,
+        inputText + newText
+      );
       setUndoStack((prev) => [...prev, undoOp]);
       // Clear redo stack when new operation is performed
       setRedoStack([]);
@@ -865,65 +763,6 @@ export default function WriteEditor({
     onPendingChanges?.(pendingChanges);
   }, [pendingChanges, onPendingChanges]);
 
-  const escapeHtml = (unsafe: string): string => {
-    return unsafe
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  };
-
-  const getHighlightedHTML = (
-    text: string,
-    highlight: string | null
-  ): string => {
-    if (!highlight) return escapeHtml(text);
-    const escapedText = escapeHtml(text);
-    const escapedHighlight = escapeHtml(highlight);
-    const escapedForRegex = escapedHighlight.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&"
-    );
-    const regex = new RegExp(escapedForRegex, "g");
-    return escapedText.replace(
-      regex,
-      `<mark class="bg-yellow-200 dark:bg-yellow-900 dark:text-dark-textPrimary">${escapedHighlight}</mark>`
-    );
-  };
-
-  const getHighlightedHTMLWithRange = (
-    text: string,
-    start: number | null,
-    end: number | null,
-    variant: "selection" | "generated" = "generated",
-    highlightText?: string
-  ): string => {
-    if ((start === null || end === null || start === end) && !highlightText)
-      return escapeHtml(text);
-
-    const highlightClass =
-      variant === "selection"
-        ? "bg-purple-100 dark:bg-purple-900 dark:text-dark-textPrimary"
-        : "bg-green-100 text-gray-800 dark:text-dark-textPrimary dark:bg-green-900";
-
-    const before = escapeHtml(text.slice(0, start!));
-    const highlight = escapeHtml(text.slice(start!, end!));
-    const after = escapeHtml(text.slice(end!));
-
-    if (variant === "selection") {
-      return (
-        before +
-        `<mark id="selection-highlight" class="${highlightClass}">${highlight}</mark>` +
-        after
-      );
-    }
-
-    return (
-      before + `<mark class="${highlightClass}">${highlight}</mark>` + after
-    );
-  };
-
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart ?? 0;
@@ -940,12 +779,11 @@ export default function WriteEditor({
       // Set a new timer to record the undo operation
       textEditTimerRef.current = setTimeout(() => {
         if (lastSavedContentForUndoRef.current !== newValue) {
-          const undoOp: UndoOperation = {
-            type: "text-edit",
-            previousContent: lastSavedContentForUndoRef.current,
-            newContent: newValue,
-            cursorPosition: cursorPos,
-          };
+          const undoOp = createTextEditOperation(
+            lastSavedContentForUndoRef.current,
+            newValue,
+            cursorPos
+          );
           setUndoStack((prev) => [...prev, undoOp]);
           // Clear redo stack when new operation is performed
           setRedoStack([]);
@@ -1098,7 +936,7 @@ export default function WriteEditor({
             )}
             <span className="flex-1 text-sm font-medium">{toast.message}</span>
             <button
-              onClick={() => removeToast(toast.id)}
+              onClick={() => removeToastNotification(toast.id)}
               className="p-1 hover:bg-black/10 dark:hover:bg-dark-actionHover rounded transition-colors"
             >
               <X className="w-4 h-4" />
