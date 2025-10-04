@@ -26,10 +26,8 @@ import {
   CardStatus,
   DEFAULT_COLUMNS,
   kanbanReducer,
-  calculateStats,
   filterCards,
   migrateCardData,
-  StatsPanel,
   FiltersPanel,
   SortableColumn,
 } from "./kanban";
@@ -65,7 +63,7 @@ export default function BulletinKanban({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
-  const [editingCard, setEditingCard] = useState<string | null>(null);
+
   const [columnNameEdits, setColumnNameEdits] = useState<
     Record<string, string>
   >({});
@@ -77,9 +75,6 @@ export default function BulletinKanban({
   });
 
   const sensors = useSensors(useSensor(PointerSensor));
-
-  // Calculate project statistics
-  const stats = calculateStats(cards);
 
   // Get available assignees for filter
   const availableAssignees = Array.from(
@@ -425,9 +420,6 @@ export default function BulletinKanban({
             </button>
           </div>
         </div>
-
-        {/* Stats Panel */}
-        <StatsPanel stats={stats} />
 
         {/* Filters Panel */}
         {showFilters && (

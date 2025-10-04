@@ -21,14 +21,6 @@ export interface KanbanColumn {
   limit?: number;
 }
 
-export interface ProjectStats {
-  totalTasks: number;
-  completedTasks: number;
-  overdueTasks: number;
-  highPriorityTasks: number;
-  completionRate: number;
-}
-
 export type KanbanState = {
   columns: KanbanColumn[];
   cards: KanbanCard[];

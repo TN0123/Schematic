@@ -1,4 +1,4 @@
-import { Priority, KanbanCard, ProjectStats, KanbanState } from "./types";
+import { Priority, KanbanCard, KanbanState } from "./types";
 
 export const getPriorityColor = (priority: Priority) => {
   switch (priority) {
@@ -16,25 +16,6 @@ export const getPriorityColor = (priority: Priority) => {
 export const isOverdue = (dueDate?: string) => {
   if (!dueDate) return false;
   return new Date(dueDate) < new Date();
-};
-
-export const calculateStats = (cards: KanbanCard[]): ProjectStats => {
-  const totalTasks = cards.length;
-  const completedTasks = cards.filter((card) => card.status === "done").length;
-  const overdueTasks = cards.filter((card) => isOverdue(card.dueDate)).length;
-  const highPriorityTasks = cards.filter(
-    (card) => card.priority === "high"
-  ).length;
-  const completionRate =
-    totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
-  return {
-    totalTasks,
-    completedTasks,
-    overdueTasks,
-    highPriorityTasks,
-    completionRate,
-  };
 };
 
 export const filterCards = (

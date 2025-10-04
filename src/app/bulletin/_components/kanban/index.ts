@@ -11,7 +11,6 @@ export * from "./constants";
 export * from "./reducer";
 
 // Components
-export { StatsPanel } from "./StatsPanel";
 export { FiltersPanel } from "./FiltersPanel";
 export { SortableCard } from "./SortableCard";
 export { SortableColumn } from "./SortableColumn";
