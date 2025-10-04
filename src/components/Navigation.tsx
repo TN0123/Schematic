@@ -23,7 +23,7 @@ export default function Navigation() {
   const modKeyLabel = useModifierKeyLabel();
 
   // Don't show navigation on login page
-  if (pathname === "/auth/login") return null;
+  if (pathname === "/auth/login" || pathname === "/about") return null;
 
   const navItems = [
     { href: "/write", icon: PenLine, label: "Write" },

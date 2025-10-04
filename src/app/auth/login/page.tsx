@@ -6,9 +6,11 @@ import { useModifierKeyLabel } from "@/components/utils/platform";
 import { Calendar, ClipboardList, PenLine, Check } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import Link from "next/link";
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const { data: session, status } = useSession();
   const modKeyLabel = useModifierKeyLabel();
 
@@ -31,9 +33,21 @@ export default function Login() {
   const [showPricingTooltip, setShowPricingTooltip] = useState(false);
 
   const handleScrollTo = (section: "write" | "bulletin" | "schedule") => {
-    const el = document.getElementById(`feature-${section}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Set the corresponding slide
+    const slideIndex = features.findIndex(
+      (feature) => feature.title.toLowerCase() === section
+    );
+    if (slideIndex !== -1) {
+      setCurrentSlide(slideIndex);
+    }
+
+    // Scroll to the carousel
+    const carouselEl = document.getElementById("feature-carousel");
+    if (carouselEl) {
+      const rect = carouselEl.getBoundingClientRect();
+      const scrollTop =
+        window.pageYOffset + rect.top - window.innerHeight * 0.1;
+      window.scrollTo({ top: scrollTop, behavior: "smooth" });
     }
   };
 
@@ -56,11 +70,11 @@ export default function Login() {
     {
       icon: PenLine,
       title: "Write",
-      description:
-        "AI-powered writing editor with deep integration and GitHub Copilot-style sidebar for seamless human+AI collaboration.",
+      description: "Cursor for everyday writing.",
       color: "purple",
+      image: "/write-image.png",
       highlights: [
-        "AI chat sidebar with document-level context that dynamically learns what you're writing about",
+        "AI sidebar that automatically keeps track of what you're writing about",
         "Select any text as context for AI queries",
         `Instant AI continuation with ${modKeyLabel}+Enter in your writing style`,
         `Smart text improvements with ${modKeyLabel}+I over highlighted text`,
@@ -72,8 +86,9 @@ export default function Login() {
       description:
         "AI-powered notes app that generates custom interactive layouts from natural language descriptions. Refactor and customize anytime.",
       color: "green",
+      image: "/bulletin-image.png",
       highlights: [
-        "AI-powered custom and dynamic interactive note formats from natural language descriptions",
+        "Custom interactive note formats from natural language descriptions",
         "Text notes and to-do lists",
         "Dynamic Kanban boards",
         "Knowledge graph based bookmarks",
@@ -85,9 +100,10 @@ export default function Login() {
       description:
         "Text-first calendar with personalized AI assistant that learns your preferences and optimizes your time.",
       color: "blue",
+      image: "/schedule-image.png",
       highlights: [
         "Create events through text, voice, or file uploads (PDFs, images)",
-        "AI assistant suggests events based on your availability and habits",
+        "AI assistant suggests events based on your availability, goals, and habits",
         "Chat with your personal assistant for schedule advice and optimization",
         "AI maintains context about your preferences with manual editing control",
         "View insights and analytics about where your time is being spent",
@@ -95,7 +111,18 @@ export default function Login() {
     },
   ];
 
-  const navItems = ["Write", "Bulletin", "Schedule", "Pricing", "Login"];
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+  };
+
+  const navItems = [
+    "Write",
+    "Bulletin",
+    "Schedule",
+    "Pricing",
+    "Login",
+    "About",
+  ];
 
   // Animation variants
   const pageVariants = {
@@ -172,9 +199,9 @@ export default function Login() {
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -6 }}
                               transition={{ duration: 0.18, ease: "easeOut" }}
-                              className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50"
+                              className="absolute left-[-10px] top-full mt-2 z-50"
                             >
-                              <div className="px-3 py-1.5 text-xs text-center font-medium rounded-md border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-900/80 text-gray-900 dark:text-gray-100 shadow-lg backdrop-blur-md">
+                              <div className="px-3.5 py-2 text-xs text-center font-medium rounded-lg border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-secondary text-gray-900 dark:text-dark-textPrimary shadow-lg">
                                 Coming soon!
                               </div>
                             </motion.div>
@@ -226,6 +253,18 @@ export default function Login() {
                       </div>
                     );
                   }
+                  if (item === "About") {
+                    return (
+                      <div
+                        key={item}
+                        className="relative flex items-center h-10"
+                      >
+                        <Link href="/about" className={baseButtonClasses}>
+                          {item}
+                        </Link>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={item} className="relative flex items-center h-10">
                       <button type="button" className={baseButtonClasses}>
@@ -239,9 +278,9 @@ export default function Login() {
           </div>
         </div>
       </motion.nav>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-24">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-16">
         <motion.div
-          className="text-center py-24 sm:py-48 space-y-8"
+          className="text-center py-20 sm:py-32 space-y-6"
           variants={staggerVariants}
         >
           <motion.h1
@@ -251,7 +290,7 @@ export default function Login() {
             Your AI Productivity Workspace
           </motion.h1>
           <motion.p
-            className="text-lg sm:text-xl text-gray-600 dark:text-dark-textSecondary max-w-3xl mx-auto"
+            className="text-lg sm:text-xl text-gray-600 dark:text-dark-textSecondary max-w-2xl mx-auto leading-relaxed px-4"
             variants={fadeUpVariants}
           >
             Schematic helps you stay organized, focused, and productive with
@@ -259,13 +298,13 @@ export default function Login() {
           </motion.p>
 
           <motion.div
-            className="flex w-full items-center justify-center pt-4"
+            className="flex w-full items-center justify-center pt-6"
             variants={fadeUpVariants}
           >
             <button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full sm:w-auto py-4 px-8 bg-white hover:bg-gray-50 dark:bg-dark-paper dark:hover:bg-dark-hover text-gray-900 dark:text-dark-textPrimary font-medium rounded-xl border border-gray-200 dark:border-dark-divider shadow-sm hover:shadow-lg hover:translate-y-[-2px] active:translate-y-[1px] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto py-3.5 px-8 bg-white hover:bg-gray-50 dark:bg-dark-paper dark:hover:bg-dark-hover text-gray-900 dark:text-dark-textPrimary font-semibold text-base rounded-xl border border-gray-200 dark:border-dark-divider shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -316,86 +355,157 @@ export default function Login() {
           </motion.div>
         </motion.div>
 
-        {/* Three Feature Boxes Section */}
-        <div className="pb-12 sm:pb-16">
+        {/* Feature Carousel */}
+        <div id="feature-carousel" className="pb-12 sm:pb-16">
           <motion.div
-            className="grid lg:grid-cols-3 gap-8 items-stretch"
+            className="w-full"
             variants={staggerVariants}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
           >
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-              const colorClassesMap = {
-                purple: {
-                  icon: "text-purple-600 dark:text-purple-400",
-                  bg: "bg-purple-100 dark:bg-purple-900/50",
-                  border: "border-purple-200 dark:border-purple-800/50",
-                },
-                green: {
-                  icon: "text-green-600 dark:text-green-400",
-                  bg: "bg-green-100 dark:bg-green-900/50",
-                  border: "border-green-200 dark:border-green-800/50",
-                },
-                blue: {
-                  icon: "text-blue-600 dark:text-blue-400",
-                  bg: "bg-blue-100 dark:bg-blue-900/50",
-                  border: "border-blue-200 dark:border-blue-800/50",
-                },
-              };
-              const colorClasses =
-                colorClassesMap[feature.color as keyof typeof colorClassesMap];
+            <div className="relative">
+              {/* Image Section with Overlay Header */}
+              <div className="mb-10">
+                <div className="relative overflow-hidden rounded-3xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={currentSlide}
+                      src={features[currentSlide].image}
+                      alt={`${features[currentSlide].title} feature demonstration`}
+                      className="w-full h-auto"
+                      initial={{ opacity: 0, scale: 1.02 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
+                    />
+                  </AnimatePresence>
 
-              const sectionId =
-                feature.title === "Write"
-                  ? "feature-write"
-                  : feature.title === "Bulletin"
-                  ? "feature-bulletin"
-                  : feature.title === "Schedule"
-                  ? "feature-schedule"
-                  : undefined;
+                  {/* Overlay Header */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/10 to-transparent">
+                    <div className="absolute top-8 left-8 right-8">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={currentSlide}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
+                          className="flex items-center gap-4"
+                        >
+                          {(() => {
+                            const feature = features[currentSlide];
+                            const Icon = feature.icon;
+                            const colorClassesMap = {
+                              purple: {
+                                icon: "text-purple-400",
+                                bg: "bg-purple-100/90",
+                              },
+                              green: {
+                                icon: "text-green-500",
+                                bg: "bg-green-100/90",
+                              },
+                              blue: {
+                                icon: "text-blue-400",
+                                bg: "bg-blue-100/90",
+                              },
+                            };
+                            const colorClasses =
+                              colorClassesMap[
+                                feature.color as keyof typeof colorClassesMap
+                              ];
 
-              return (
-                <motion.div
-                  key={index}
-                  id={sectionId}
-                  variants={fadeUpVariants}
-                  className="h-full"
-                >
-                  <div
-                    className={`h-full flex flex-col bg-white dark:bg-dark-secondary rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300 will-change-transform p-8 border ${colorClasses.border} hover:scale-105`}
-                  >
-                    <div
-                      className={`inline-flex items-center justify-center w-12 h-12 rounded-lg ${colorClasses.bg} mb-6`}
-                    >
-                      <Icon className={`h-6 w-6 ${colorClasses.icon}`} />
+                            return (
+                              <>
+                                <div
+                                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${colorClasses.bg} ring-1 ring-white/20`}
+                                >
+                                  <Icon
+                                    className={`h-6 w-6 ${colorClasses.icon}`}
+                                  />
+                                </div>
+                                <h3 className="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
+                                  {feature.title}
+                                </h3>
+                              </>
+                            );
+                          })()}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
-
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-dark-textPrimary mb-4">
-                      {feature.title}
-                    </h3>
-
-                    <p className="text-gray-600 dark:text-dark-textSecondary mb-6">
-                      {feature.description}
-                    </p>
-
-                    <ul className="space-y-3 mt-auto">
-                      {feature.highlights.map((highlight, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <Check
-                            className={`h-5 w-5 ${colorClasses.icon} flex-shrink-0 mt-0.5`}
-                          />
-                          <span className="text-sm text-gray-600 dark:text-dark-textSecondary">
-                            {highlight}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
-                </motion.div>
-              );
-            })}
+                </div>
+              </div>
+
+              {/* Dots Navigation */}
+              <div className="flex justify-center mb-10 gap-2.5">
+                {features.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? "w-8 h-3 bg-gray-900 dark:bg-dark-textPrimary"
+                        : "w-3 h-3 bg-gray-300 dark:bg-dark-divider hover:bg-gray-400 dark:hover:bg-dark-textSecondary"
+                    }`}
+                    aria-label={`Go to ${features[index].title} feature`}
+                  />
+                ))}
+              </div>
+
+              {/* Content Section */}
+              <div className="w-full px-4">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentSlide}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                  >
+                    {(() => {
+                      const feature = features[currentSlide];
+                      const colorClassesMap = {
+                        purple: {
+                          icon: "text-purple-600 dark:text-purple-400",
+                        },
+                        green: {
+                          icon: "text-green-600 dark:text-green-400",
+                        },
+                        blue: {
+                          icon: "text-blue-600 dark:text-blue-400",
+                        },
+                      };
+                      const colorClasses =
+                        colorClassesMap[
+                          feature.color as keyof typeof colorClassesMap
+                        ];
+
+                      return (
+                        <div className="text-center">
+                          <p className="text-base sm:text-lg text-gray-600 dark:text-dark-textSecondary max-w-3xl mx-auto mb-10 leading-relaxed">
+                            {feature.description}
+                          </p>
+
+                          <ul className="space-y-5 max-w-2xl mx-auto text-left">
+                            {feature.highlights.map((highlight, i) => (
+                              <li key={i} className="flex items-start gap-3.5">
+                                <Check
+                                  className={`h-5 w-5 ${colorClasses.icon} flex-shrink-0 mt-0.5`}
+                                />
+                                <span className="text-base text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                                  {highlight}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
           </motion.div>
         </div>
       </main>
