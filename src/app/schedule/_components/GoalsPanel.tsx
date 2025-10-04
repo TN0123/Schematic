@@ -63,6 +63,8 @@ export default function GoalsPanel() {
   const [isTodoSelectorOpen, setIsTodoSelectorOpen] = useState(false);
   const [isSavingTodo, setIsSavingTodo] = useState(false);
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
+  const [hasLoadedInitialTodos, setHasLoadedInitialTodos] = useState(false);
+  const lastSavedTodoStateRef = useRef<string>("");
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -217,6 +219,35 @@ export default function GoalsPanel() {
     };
   }, [isDropdownOpen, isTodoSelectorOpen]);
 
+  // Debounce todo saving - save after 1 second of no changes
+  useEffect(() => {
+    if (!selectedTodoId || !hasLoadedInitialTodos) return;
+
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const currentStateString = JSON.stringify(selectedTodo.data.items);
+
+    // Only save if the state has actually changed from the last saved state
+    if (currentStateString === lastSavedTodoStateRef.current) return;
+
+    const timeoutId = setTimeout(() => {
+      saveTodo(selectedTodoId, selectedTodo.data.items);
+    }, 1000); // Save after 1 second of no changes
+
+    return () => clearTimeout(timeoutId);
+  }, [todoBulletins, selectedTodoId, hasLoadedInitialTodos]);
+
+  // Update lastSavedTodoStateRef when switching between different todos
+  useEffect(() => {
+    if (!selectedTodoId) return;
+
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (selectedTodo) {
+      lastSavedTodoStateRef.current = JSON.stringify(selectedTodo.data.items);
+    }
+  }, [selectedTodoId]);
+
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
       prevFilters.includes(duration)
@@ -278,6 +309,19 @@ export default function GoalsPanel() {
       if (todos.length > 0 && !selectedTodoId) {
         setSelectedTodoId(todos[0].id);
       }
+      setHasLoadedInitialTodos(true);
+
+      // Set initial saved state
+      if (todos.length > 0) {
+        const initialTodo = todos.find(
+          (t: TodoBulletin) => t.id === (selectedTodoId || todos[0].id)
+        );
+        if (initialTodo) {
+          lastSavedTodoStateRef.current = JSON.stringify(
+            initialTodo.data.items
+          );
+        }
+      }
     } catch (error) {
       console.error("Error fetching todo bulletins:", error);
     }
@@ -330,17 +374,10 @@ export default function GoalsPanel() {
   };
 
   const saveTodo = async (id: string, items: TodoItem[]) => {
+    if (isSavingTodo) return;
+
     setIsSavingTodo(true);
     try {
-      // Update local state immediately
-      setTodoBulletins((prev) =>
-        prev.map((todo) =>
-          todo.id === id
-            ? { ...todo, data: { items }, updatedAt: new Date() }
-            : todo
-        )
-      );
-
       const response = await fetch(`/api/bulletins/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -351,8 +388,8 @@ export default function GoalsPanel() {
         throw new Error("Failed to save todo");
       }
 
-      // Re-fetch to get the latest data
-      await fetchTodoBulletins();
+      // Update the last saved state after successful save
+      lastSavedTodoStateRef.current = JSON.stringify(items);
     } catch (error) {
       console.error("Error saving todo:", error);
     } finally {
@@ -370,7 +407,15 @@ export default function GoalsPanel() {
       ...selectedTodo.data.items,
       { id: newItemId, text: "", checked: false },
     ];
-    saveTodo(selectedTodoId, newItems);
+
+    // Update local state immediately
+    setTodoBulletins((prev) =>
+      prev.map((todo) =>
+        todo.id === selectedTodoId
+          ? { ...todo, data: { items: newItems }, updatedAt: new Date() }
+          : todo
+      )
+    );
 
     setTimeout(() => {
       const textarea = textareaRefs.current[newItemId];
@@ -388,7 +433,15 @@ export default function GoalsPanel() {
     const newItems = selectedTodo.data.items.map((item) =>
       item.id === itemId ? { ...item, ...updates } : item
     );
-    saveTodo(selectedTodoId, newItems);
+
+    // Update local state immediately
+    setTodoBulletins((prev) =>
+      prev.map((todo) =>
+        todo.id === selectedTodoId
+          ? { ...todo, data: { items: newItems }, updatedAt: new Date() }
+          : todo
+      )
+    );
   };
 
   const removeTodoItem = (itemId: string) => {
@@ -399,7 +452,15 @@ export default function GoalsPanel() {
     const newItems = selectedTodo.data.items.filter(
       (item) => item.id !== itemId
     );
-    saveTodo(selectedTodoId, newItems);
+
+    // Update local state immediately
+    setTodoBulletins((prev) =>
+      prev.map((todo) =>
+        todo.id === selectedTodoId
+          ? { ...todo, data: { items: newItems }, updatedAt: new Date() }
+          : todo
+      )
+    );
   };
 
   const MobileToggle = () => (
