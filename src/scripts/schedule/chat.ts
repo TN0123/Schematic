@@ -166,7 +166,18 @@ export async function scheduleChat(
 
   const systemPrompt = `
 You are an AI life assistant helping a user manage their schedule and providing helpful advice to the user.
-Current date: ${new Date().toISOString()}.
+Current date: ${userNow.toLocaleString("en-US", {
+  timeZone: timezone || "UTC",
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+  timeZoneName: "short",
+})}.
 
 ${goalsContext || "User has not set any goals."}
 
