@@ -10,7 +10,8 @@ import {
 
 export const useCalendarData = (
   userId: string | undefined,
-  refreshDailySummary?: () => void
+  refreshDailySummary?: () => void,
+  suggestionsEnabled?: boolean
 ) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -404,6 +405,12 @@ export const useCalendarData = (
       return;
     }
 
+    // Check if suggestions are enabled (unless forced)
+    if (!force && suggestionsEnabled === false) {
+      console.log("Suggestions are disabled");
+      return;
+    }
+
     try {
       const userTimezone = getUserTimezone();
 
@@ -454,7 +461,7 @@ export const useCalendarData = (
     } catch (error) {
       console.error("Error suggesting events and reminders:", error);
     }
-  }, [userId]);
+  }, [userId, suggestionsEnabled]);
 
   // Refresh suggestions when triggered by event changes affecting today
   useEffect(() => {

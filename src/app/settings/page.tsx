@@ -2,11 +2,13 @@
 
 import ThemeToggle from "@/components/ThemeToggle";
 import { useWriteSettings } from "@/components/WriteSettingsProvider";
-import { Moon, Sun, PenLine } from "lucide-react";
+import { useScheduleSettings } from "@/components/ScheduleSettingsProvider";
+import { Moon, Sun, PenLine, Calendar } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 export default function SettingsPage() {
   const { viewMode, setViewMode } = useWriteSettings();
+  const { suggestionsEnabled, setSuggestionsEnabled } = useScheduleSettings();
 
   return (
     <div className="flex flex-col items-center justify-start h-screen pt-24 bg-gray-50 dark:bg-dark-background transition-all overflow-y-auto">
@@ -37,6 +39,42 @@ export default function SettingsPage() {
                 <ThemeToggle />
                 <Sun className="text-yellow-600 dark:text-yellow-400 w-4 h-4" />
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Schedule Settings */}
+        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
+          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Schedule
+            </h2>
+          </div>
+          <div className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                  AI Event Suggestions
+                </span>
+                <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                  Automatically suggest events based on your schedule
+                </span>
+              </div>
+              <button
+                onClick={() => setSuggestionsEnabled(!suggestionsEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  suggestionsEnabled
+                    ? "bg-blue-600"
+                    : "bg-gray-300 dark:bg-dark-divider"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    suggestionsEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ import PostHogProvider from "@/components/PostHogProvider";
 import GlobalSearch from "@/components/GlobalSearch";
 import { SearchProvider } from "@/components/SearchProvider";
 import { WriteSettingsProvider } from "@/components/WriteSettingsProvider";
+import { ScheduleSettingsProvider } from "@/components/ScheduleSettingsProvider";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -191,16 +192,18 @@ export default async function RootLayout({
                 <PostHogProvider>
                   <SearchProvider>
                     <WriteSettingsProvider>
-                      <Navigation />
-                      <MobileTabBar />
-                      <MainWrapper>
-                        {children}
-                        {updatesForUser.length > 0 && (
-                          <ChangelogModal updates={updatesForUser} />
-                        )}
-                      </MainWrapper>
-                      <PageTransition />
-                      <GlobalSearch />
+                      <ScheduleSettingsProvider>
+                        <Navigation />
+                        <MobileTabBar />
+                        <MainWrapper>
+                          {children}
+                          {updatesForUser.length > 0 && (
+                            <ChangelogModal updates={updatesForUser} />
+                          )}
+                        </MainWrapper>
+                        <PageTransition />
+                        <GlobalSearch />
+                      </ScheduleSettingsProvider>
                     </WriteSettingsProvider>
                   </SearchProvider>
                 </PostHogProvider>

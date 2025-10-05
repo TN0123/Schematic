@@ -27,6 +27,7 @@ import { useCalendarState } from "./hooks/useCalendarState";
 import { useDailySummary } from "./hooks/useDailySummary";
 import { GenerationResult } from "./types";
 import { normalizeUrls } from "@/lib/url";
+import { useScheduleSettings } from "@/components/ScheduleSettingsProvider";
 
 export default function CalendarApp() {
   const { data: session, status } = useSession({
@@ -37,11 +38,15 @@ export default function CalendarApp() {
   });
   const userId = session?.user?.id;
 
+  // Get schedule settings
+  const { suggestionsEnabled } = useScheduleSettings();
+
   // Initialize our custom hooks
   const dailySummary = useDailySummary(userId);
   const calendarData = useCalendarData(
     userId,
-    dailySummary.refreshDailySummary
+    dailySummary.refreshDailySummary,
+    suggestionsEnabled
   );
 
   const calendarState = useCalendarState(
@@ -407,16 +412,42 @@ export default function CalendarApp() {
 
   // Initialize suggestions
   useEffect(() => {
-    if (!calendarState.hasFetchedInitialSuggestions && userId) {
+    if (
+      !calendarState.hasFetchedInitialSuggestions &&
+      userId &&
+      suggestionsEnabled
+    ) {
       calendarData.fetchSuggestions();
       calendarState.setHasFetchedInitialSuggestions(true);
     }
   }, [
     calendarState.hasFetchedInitialSuggestions,
     userId,
+    suggestionsEnabled,
     calendarData,
     calendarState,
   ]);
+
+  // Track previous value to detect actual toggles (not initial mount)
+  const prevSuggestionsEnabled = useRef<boolean | undefined>(undefined);
+
+  // Clear suggestions only when the user actively toggles the setting off
+  useEffect(() => {
+    // Skip initial mount - only react to actual changes
+    if (prevSuggestionsEnabled.current !== undefined) {
+      if (!suggestionsEnabled && prevSuggestionsEnabled.current) {
+        // User just toggled OFF - clear suggestions
+        calendarData.setEvents((currentEvents) =>
+          currentEvents.filter((e) => !e.isSuggestion)
+        );
+        calendarData.setReminders((currentReminders) =>
+          currentReminders.filter((r) => !r.isAISuggested)
+        );
+      }
+    }
+    // Update the previous value
+    prevSuggestionsEnabled.current = suggestionsEnabled;
+  }, [suggestionsEnabled, calendarData]);
 
   // Immediately toggle refresh icon spin on suggestions loading state change
   useEffect(() => {
@@ -488,6 +519,12 @@ export default function CalendarApp() {
 
   // Wrapper for fetch suggestions to include loading state
   const handleFetchSuggestions = async () => {
+    if (!suggestionsEnabled) {
+      console.log(
+        "Suggestions are disabled. Enable them in Settings to use this feature."
+      );
+      return;
+    }
     calendarState.setSuggestionsLoading(true);
     try {
       await calendarData.fetchSuggestions(true);
