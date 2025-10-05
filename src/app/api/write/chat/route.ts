@@ -108,12 +108,12 @@ export async function POST(req: NextRequest) {
         
         You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
         
-        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
+        Your response MUST be written in natural, plain, human-like text — STRICTLY AVOID using Markdown formatting such 
         as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
-        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        or similar characters. AVOID artificial section headers (e.g., "Feature Review:" or 
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
         
-        Do not include any other text in your response, only your answer to the user's question.
+        DO NOT include any other text in your response, only your answer to the user's question.
       `;
 
       const userPrompt = `
@@ -159,7 +159,6 @@ export async function POST(req: NextRequest) {
       const result = await streamText({
         model: selectedModelProvider,
         messages,
-        temperature: 0.7,
       });
 
       let fullResponse = "";
@@ -255,9 +254,9 @@ export async function POST(req: NextRequest) {
         
         Your response should be conversational and helpful, explaining your approach or reasoning.
         
-        Your response must be written in natural, plain, human-like text — strictly avoid using Markdown formatting such 
-        as **bold**, _italics_, or any other markup. Do not format text using asterisks, underscores, 
-        or similar characters. Avoid artificial section headers (e.g., "Feature Review:" or 
+        Your response MUST be written in natural, plain, human-like text — STRICTLY AVOID using Markdown formatting such 
+        as **bold**, _italics_, or any other markup. DO NOT format text using asterisks, underscores, 
+        or similar characters. AVOID artificial section headers (e.g., "Feature Review:" or 
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
         
         Keep your response concise (2-3 sentences maximum).
@@ -377,7 +376,6 @@ export async function POST(req: NextRequest) {
                 const result = await streamText({
                   model: selectedModelProvider,
                   messages: assistantMessages,
-                  temperature: 0.7,
                 });
 
                 for await (const delta of result.textStream) {
