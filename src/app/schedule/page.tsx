@@ -355,9 +355,17 @@ export default function CalendarApp() {
         isContentEditable ||
         role === "textbox";
 
+      // Disable shortcuts when any modal is open
+      const isAnyScheduleModalOpen =
+        calendarState.showCreationModal ||
+        calendarState.showEditModal ||
+        calendarState.isFileUploaderModalOpen ||
+        calendarState.isIcsUploaderModalOpen;
+
       // Single-key shortcuts: m (month), w (week), d (day)
       if (
         !isTextInputFocused &&
+        !isAnyScheduleModalOpen &&
         !e.ctrlKey &&
         !e.metaKey &&
         !e.altKey &&
@@ -408,6 +416,10 @@ export default function CalendarApp() {
     calendarState.selectedEventIds,
     calendarState.copiedEvents,
     handlePasteEvents,
+    calendarState.showCreationModal,
+    calendarState.showEditModal,
+    calendarState.isFileUploaderModalOpen,
+    calendarState.isIcsUploaderModalOpen,
   ]);
 
   // Initialize suggestions
