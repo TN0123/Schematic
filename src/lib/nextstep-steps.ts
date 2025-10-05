@@ -125,6 +125,17 @@ export const steps: Tour[] = [
         showControls: true,
         showSkip: true,
       },
+      {
+        icon: "",
+        title: "Write Settings",
+        content: "Modify the settings for the write editor here.",
+        selector: "#write-settings-button",
+        side: "bottom-right",
+        pointerRadius: 0,
+        pointerPadding: 0,
+        showControls: true,
+        showSkip: true,
+      },
     ],
   },
 ];

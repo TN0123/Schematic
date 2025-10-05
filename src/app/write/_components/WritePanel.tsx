@@ -958,6 +958,7 @@ export default function WritePanel({
                   <Link
                     href="/settings"
                     className="inline-flex items-center gap-2 p-2 mx-2 rounded-lg bg-gray-100 dark:bg-dark-secondary shadow-sm hover:shadow-md hover:bg-gray-200 dark:hover:bg-dark-hover text-sm font-medium text-gray-600 dark:text-dark-textSecondary transition-all duration-200 backdrop-blur-sm flex-shrink-0"
+                    id="write-settings-button"
                   >
                     <Settings className="w-4 h-4" />
                   </Link>
