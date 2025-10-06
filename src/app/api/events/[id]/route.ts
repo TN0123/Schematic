@@ -63,8 +63,21 @@ export async function PUT(
     const { title, start, end, links } = await req.json();
     const normalizedLinks = normalizeUrls(links);
 
-    const updatedEvent = await prisma.event.updateMany({
-      where: { id: id, userId: session.user.id },
+    // First, verify the event exists and belongs to the user
+    const existingEvent = await prisma.event.findUnique({
+      where: { id },
+    });
+
+    if (!existingEvent || existingEvent.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Event not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    // Now update the event
+    const updatedEvent = await prisma.event.update({
+      where: { id },
       data: {
         title,
         start: new Date(start),
@@ -73,17 +86,7 @@ export async function PUT(
       },
     });
 
-    if (updatedEvent.count === 0) {
-      return NextResponse.json(
-        { error: "Event not found or unauthorized" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: "Event updated successfully" },
-      { status: 200 }
-    );
+    return NextResponse.json(updatedEvent, { status: 200 });
   } catch (error) {
     console.error("Error updating event:", error);
     return NextResponse.json(

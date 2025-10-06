@@ -133,7 +133,9 @@ export const useCalendarData = (
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update event");
+        const errorText = await res.text();
+        console.error("Failed to update event:", errorText);
+        throw new Error(`Failed to update event: ${res.status}`);
       }
 
       setEvents((prevEvents) =>

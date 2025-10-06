@@ -150,7 +150,6 @@ export const useCalendarState = (
 
         try {
           await acceptSuggestion(event.id);
-          console.log("Suggestion accepted and updated successfully");
         } catch (error) {
           console.error("Error handling suggestion update:", error);
           info.revert();
@@ -165,7 +164,6 @@ export const useCalendarState = (
               ? (event.extendedProps.links as string[])
               : undefined,
           });
-          console.log("Event updated successfully");
         } catch (error) {
           console.error("Error updating event:", error);
           info.revert();
