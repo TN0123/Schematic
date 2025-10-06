@@ -679,6 +679,31 @@ export default function GoalsPanel() {
           )}
         </div>
 
+        {/* Progress Indicator */}
+        {selectedTodo && selectedTodo.data.items.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
+              <span>Progress</span>
+              <span>
+                {checkedItems.length}/{selectedTodo.data.items.length} completed
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-dark-secondary rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${
+                    selectedTodo.data.items.length > 0
+                      ? (checkedItems.length / selectedTodo.data.items.length) *
+                        100
+                      : 0
+                  }%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Todo Items Container (scrollable) */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {selectedTodo.data.items.length === 0 ? (
