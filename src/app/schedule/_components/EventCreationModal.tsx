@@ -38,6 +38,19 @@ export default function EventCreationModal({
     return () => cancelAnimationFrame(id);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const handleReminderSubmit = () => {
     if (!reminderText.trim() || !reminderTime || !onCreateReminder) {
       return;
@@ -260,7 +273,10 @@ export default function EventCreationModal({
                 onChange={(e) => setIsAISuggested(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="isAISuggested" className="text-sm text-gray-700 dark:text-dark-textSecondary">
+              <label
+                htmlFor="isAISuggested"
+                className="text-sm text-gray-700 dark:text-dark-textSecondary"
+              >
                 Mark as AI-suggested
               </label>
             </div>

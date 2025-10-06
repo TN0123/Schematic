@@ -31,6 +31,19 @@ export default function EventEditModal({
     return () => cancelAnimationFrame(id);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const links = Array.isArray(newEvent.links) ? newEvent.links : [];
   const updateLinkAt = (idx: number, value: string) => {
     const next = [...links];

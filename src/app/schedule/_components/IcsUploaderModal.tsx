@@ -30,6 +30,19 @@ export default function IcsUploaderModal({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   const handleUpload = async () => {
     if (!file) {
       setStatusMessage("Please select a file first.");

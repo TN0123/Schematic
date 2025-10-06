@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { EventImpl } from "@fullcalendar/core/internal";
 
 interface DeleteEventModalProps {
@@ -15,6 +16,19 @@ export function DeleteEventModal({
   onClose,
   onDelete,
 }: DeleteEventModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   const isBulkDelete = !event || selectedCount > 1;
