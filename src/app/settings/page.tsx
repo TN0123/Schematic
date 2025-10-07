@@ -34,7 +34,20 @@ export default function SettingsPage() {
       // Sync subscription data
       syncSubscription(sessionId);
     } else {
-      fetchSubscriptionStatus();
+      fetchSubscriptionStatus().then((status) => {
+        // Check if user signed in with intent to checkout
+        const shouldCheckout = sessionStorage.getItem("checkout_after_signin");
+        if (shouldCheckout === "true") {
+          sessionStorage.removeItem("checkout_after_signin");
+
+          // Only trigger checkout if user doesn't already have premium
+          if (status?.tier !== "premium") {
+            setTimeout(() => {
+              handleUpgrade();
+            }, 500);
+          }
+        }
+      });
     }
   }, []);
 
@@ -69,15 +82,23 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setSubscriptionStatus(data);
+        return data;
       }
     } catch (error) {
       console.error("Error fetching subscription status:", error);
     } finally {
       setLoading(false);
     }
+    return null;
   };
 
   const handleUpgrade = async () => {
+    // Prevent upgrading if already premium
+    if (subscriptionStatus?.tier === "premium") {
+      console.log("User already has premium subscription");
+      return;
+    }
+
     setUpgrading(true);
     try {
       // You'll need to set your Stripe price ID in environment variables

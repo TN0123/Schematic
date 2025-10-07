@@ -29,6 +29,19 @@ export default function Login() {
     }
   };
 
+  const handlePremiumSignUp = async () => {
+    setIsLoading(true);
+    try {
+      // Store intent to checkout after sign-in
+      sessionStorage.setItem("checkout_after_signin", "true");
+      await signIn("google", { callbackUrl: "/settings" });
+    } catch (error) {
+      console.error("Error signing in:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleScrollTo = (section: "write" | "bulletin" | "schedule") => {
     // Set the corresponding slide
     const slideIndex = features.findIndex(
@@ -591,9 +604,6 @@ export default function Login() {
               className="rounded-2xl border-2 border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-dark-paper p-8 relative hover:shadow-2xl transition-shadow duration-300"
               variants={fadeUpVariants}
             >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 dark:bg-blue-500 text-white text-sm font-semibold rounded-full">
-                Most Popular
-              </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-2">
                 Premium
               </h3>
@@ -626,11 +636,11 @@ export default function Login() {
                 </li>
               </ul>
               <button
-                onClick={handleGoogleSignIn}
+                onClick={handlePremiumSignUp}
                 disabled={isLoading}
                 className="w-full py-3 px-6 rounded-lg bg-blue-600 dark:bg-blue-500 text-white font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Start Free Trial
+                Get Started
               </button>
             </motion.div>
           </motion.div>
