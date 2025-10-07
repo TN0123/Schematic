@@ -4,6 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
 import { PrismaClient } from "@prisma/client";
+import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
 
 const prisma = new PrismaClient();
 
@@ -82,12 +83,10 @@ export async function POST(req: NextRequest) {
     // Support explicit model selection: "basic" | "gpt-4.1" | "claude-sonnet-4"
     if ((model === "gpt-4.1" || model === "claude-sonnet-4") && userId) {
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { premiumRemainingUses: true },
-        });
+        // Check if user can use premium models
+        const usageCheck = await canUsePremiumModel(userId);
 
-        if (user && user.premiumRemainingUses > 0) {
+        if (usageCheck.allowed) {
           if (model === "gpt-4.1") {
             selectedModelProvider = openai("gpt-4.1");
           } else if (model === "claude-sonnet-4") {
@@ -95,24 +94,14 @@ export async function POST(req: NextRequest) {
             selectedModelProvider = anthropic(anthropicModelId);
           }
 
-          // Decrement usage
-          const updatedUser = await prisma.user.update({
-            where: { id: userId },
-            data: {
-              premiumRemainingUses: {
-                decrement: 1,
-              },
-            },
-            select: {
-              premiumRemainingUses: true,
-            },
-          });
-
-          remainingUses = updatedUser.premiumRemainingUses;
+          // Track the usage
+          const usageResult = await trackPremiumUsage(userId);
+          remainingUses = usageResult.remainingUses;
+          console.log(`Using premium model - Remaining uses: ${remainingUses}`);
         } else {
-          // Fall back to Gemini
+          // Fall back to Gemini if limit reached
           selectedModelProvider = google("gemini-2.5-flash");
-          console.log("Using Gemini Flash (fallback - no premium uses remaining)");
+          console.log(`Premium model denied: ${usageCheck.reason}`);
         }
       } catch (error) {
         console.error("Error checking premium usage:", error);

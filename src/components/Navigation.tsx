@@ -80,11 +80,7 @@ export default function Navigation() {
           <>
             <TransitionLink
               href="/settings"
-              className={`p-2 rounded-lg transition-colors duration-200 ${
-                pathname === "/settings"
-                  ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover"
-              }`}
+              className="p-2 rounded-lg transition-colors duration-200 text-gray-600 hover:bg-gray-100 dark:text-dark-textSecondary dark:hover:bg-dark-hover"
             >
               <Settings className="w-6 h-6" />
             </TransitionLink>

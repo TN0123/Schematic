@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { canCreateDocument } from "@/lib/subscription";
 
 // Get all documents for the current user
 export async function GET() {
@@ -45,6 +46,21 @@ export async function POST(request: Request) {
 
   if (!user) {
     return new NextResponse("User not found", { status: 404 });
+  }
+
+  // Check if user can create a new document
+  const canCreate = await canCreateDocument(user.id);
+  
+  if (!canCreate.allowed) {
+    return NextResponse.json(
+      {
+        error: "Document limit reached",
+        message: canCreate.reason,
+        currentCount: canCreate.currentCount,
+        limit: canCreate.limit,
+      },
+      { status: 403 }
+    );
   }
 
   const { title, content } = await request.json();

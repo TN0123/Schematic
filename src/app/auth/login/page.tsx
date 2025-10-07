@@ -29,8 +29,18 @@ export default function Login() {
     }
   };
 
-  const pricingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showPricingTooltip, setShowPricingTooltip] = useState(false);
+  const handlePremiumSignUp = async () => {
+    setIsLoading(true);
+    try {
+      // Store intent to checkout after sign-in
+      sessionStorage.setItem("checkout_after_signin", "true");
+      await signIn("google", { callbackUrl: "/settings" });
+    } catch (error) {
+      console.error("Error signing in:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleScrollTo = (section: "write" | "bulletin" | "schedule") => {
     // Set the corresponding slide
@@ -52,18 +62,40 @@ export default function Login() {
   };
 
   const handlePricingClick = () => {
-    setShowPricingTooltip(true);
-    if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
-    pricingTimeoutRef.current = setTimeout(
-      () => setShowPricingTooltip(false),
-      1500
-    );
+    const pricingEl = document.getElementById("pricing-section");
+    if (pricingEl) {
+      const rect = pricingEl.getBoundingClientRect();
+      const scrollTop =
+        window.pageYOffset + rect.top - window.innerHeight * 0.1;
+      window.scrollTo({ top: scrollTop, behavior: "smooth" });
+    }
   };
 
+  // Handle hash navigation on page load (e.g., from /auth/login#pricing-section)
   useEffect(() => {
-    return () => {
-      if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
-    };
+    // Prevent browser from auto-scrolling to hash
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    const hash = window.location.hash;
+    if (hash === "#pricing-section") {
+      // Immediately scroll to top to prevent FOUC
+      window.scrollTo(0, 0);
+
+      // Wait for animations to complete before scrolling to pricing
+      const timer = setTimeout(() => {
+        const pricingEl = document.getElementById("pricing-section");
+        if (pricingEl) {
+          const rect = pricingEl.getBoundingClientRect();
+          const scrollTop =
+            window.pageYOffset + rect.top - window.innerHeight * 0.1;
+          window.scrollTo({ top: scrollTop, behavior: "smooth" });
+        }
+      }, 800); // Wait for initial animations to complete
+
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const features = [
@@ -192,21 +224,6 @@ export default function Login() {
                         >
                           {item}
                         </button>
-                        <AnimatePresence>
-                          {showPricingTooltip && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -6 }}
-                              transition={{ duration: 0.18, ease: "easeOut" }}
-                              className="absolute left-[-10px] top-full mt-2 z-50"
-                            >
-                              <div className="px-3.5 py-2 text-xs text-center font-medium rounded-lg border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-secondary text-gray-900 dark:text-dark-textPrimary shadow-lg">
-                                Coming soon!
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
                       </div>
                     );
                   }
@@ -506,6 +523,126 @@ export default function Login() {
                 </AnimatePresence>
               </div>
             </div>
+          </motion.div>
+        </div>
+
+        {/* Pricing Section */}
+        <div id="pricing-section" className="pb-20 sm:pb-32">
+          <motion.div
+            className="text-center mb-16"
+            variants={staggerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            <motion.h2
+              className="text-3xl sm:text-5xl font-bold text-gray-900 dark:text-dark-textPrimary mb-4"
+              variants={fadeUpVariants}
+            >
+              Plans & Pricing
+            </motion.h2>
+            <motion.p
+              className="text-lg text-gray-600 dark:text-dark-textSecondary max-w-2xl mx-auto"
+              variants={fadeUpVariants}
+            >
+              Start free and upgrade when you need more
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto px-4"
+            variants={staggerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            {/* Free Plan */}
+            <motion.div
+              className="rounded-2xl border-2 border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper p-8 hover:shadow-xl transition-shadow duration-300"
+              variants={fadeUpVariants}
+            >
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-2">
+                Free
+              </h3>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-gray-900 dark:text-dark-textPrimary">
+                  $0
+                </span>
+                <span className="text-gray-600 dark:text-dark-textSecondary">
+                  /month
+                </span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>10 documents</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>10 notes</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>10 weekly premium AI uses</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span>All core features</span>
+                </li>
+              </ul>
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full py-3 px-6 rounded-lg border-2 border-gray-300 dark:border-dark-divider text-gray-900 dark:text-dark-textPrimary font-semibold hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Get Started
+              </button>
+            </motion.div>
+
+            {/* Premium Plan */}
+            <motion.div
+              className="rounded-2xl border-2 border-blue-500 dark:border-blue-400 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-dark-paper p-8 relative hover:shadow-2xl transition-shadow duration-300"
+              variants={fadeUpVariants}
+            >
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-dark-textPrimary mb-2">
+                Premium
+              </h3>
+              <div className="mb-6">
+                <span className="text-4xl font-bold text-gray-900 dark:text-dark-textPrimary">
+                  $5.99
+                </span>
+                <span className="text-gray-600 dark:text-dark-textSecondary">
+                  /month
+                </span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <span className="font-medium">Unlimited documents</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <span className="font-medium">Unlimited notes</span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <span className="font-medium">
+                    150 monthly premium AI uses
+                  </span>
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 dark:text-dark-textSecondary">
+                  <Check className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <span className="font-medium">Priority support</span>
+                </li>
+              </ul>
+              <button
+                onClick={handlePremiumSignUp}
+                disabled={isLoading}
+                className="w-full py-3 px-6 rounded-lg bg-blue-600 dark:bg-blue-500 text-white font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Get Started
+              </button>
+            </motion.div>
           </motion.div>
         </div>
       </main>
