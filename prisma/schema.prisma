@@ -15,7 +15,6 @@ model User {
   image                    String?
   hasCompletedScheduleTour Boolean                 @default(false)
   hasCompletedWriteTour    Boolean                 @default(false)
-  premiumRemainingUses     Int                     @default(10)
   accounts                 Account[]
   bulletins                Bulletin[]
   events                   Event[]

@@ -29,26 +29,18 @@ export async function generate(
     try {
       const prisma = require("@/lib/prisma").default;
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { premiumRemainingUses: true },
-      });
+      // Import subscription utilities
+      const { canUsePremiumModel, trackPremiumUsage } = await import(
+        "@/lib/subscription"
+      );
 
-      if (user && user.premiumRemainingUses > 0) {
+      const canUse = await canUsePremiumModel(userId);
+
+      if (canUse) {
         console.log("using premium model", selectedModel);
 
-        // Decrement usage
-        const updatedUser = await prisma.user.update({
-          where: { id: userId },
-          data: {
-            premiumRemainingUses: {
-              decrement: 1,
-            },
-          },
-          select: {
-            premiumRemainingUses: true,
-          },
-        });
+        // Track usage
+        await trackPremiumUsage(userId);
 
         if (selectedModel === "gpt-4.1") {
           const { OpenAI } = require("openai");
@@ -58,9 +50,16 @@ export async function generate(
             model: "gpt-4.1",
             input: prompt,
           });
+
+          // Get updated usage stats
+          const { getUserUsageStats } = await import("@/lib/subscription");
+          const usageStats = await getUserUsageStats(userId);
+
           return {
             text: response.output_text,
-            remainingUses: updatedUser.premiumRemainingUses,
+            remainingUses: usageStats
+              ? usageStats.premiumUses.limit - usageStats.premiumUses.used
+              : 0,
           };
         } else {
           const { anthropic } = require("@ai-sdk/anthropic");
@@ -75,9 +74,16 @@ export async function generate(
           const text = (response.content || [])
             .map((c: any) => (c.type === "text" ? c.text : ""))
             .join("");
+
+          // Get updated usage stats
+          const { getUserUsageStats } = await import("@/lib/subscription");
+          const usageStats = await getUserUsageStats(userId);
+
           return {
             text,
-            remainingUses: updatedUser.premiumRemainingUses,
+            remainingUses: usageStats
+              ? usageStats.premiumUses.limit - usageStats.premiumUses.used
+              : 0,
           };
         }
       }

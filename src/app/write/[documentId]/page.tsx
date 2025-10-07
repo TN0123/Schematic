@@ -32,9 +32,7 @@ export default function DocumentEditorPage() {
   const [selected, setSelected] = useState<string>("");
   const [lastRequest, setLastRequest] = useState<any>(null);
   const [userId, setUserId] = useState<string | undefined>();
-  const [premiumRemainingUses, setPremiumRemainingUses] = useState<
-    number | null
-  >(null);
+  const [premiumUsesRemaining, setPremiumUsesRemaining] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState<ModelType>("gpt-4.1");
   const [isSaving, setIsSaving] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
@@ -88,6 +86,24 @@ export default function DocumentEditorPage() {
     fetchUserId();
   }, []);
 
+  // Fetch usage stats
+  useEffect(() => {
+    async function fetchUsageStats() {
+      try {
+        const res = await fetch("/api/subscription/status");
+        const data = await res.json();
+        if (data.usage?.premiumUses) {
+          const remaining =
+            data.usage.premiumUses.limit - data.usage.premiumUses.used;
+          setPremiumUsesRemaining(remaining);
+        }
+      } catch (error) {
+        console.error("Failed to fetch usage stats:", error);
+      }
+    }
+    fetchUsageStats();
+  }, []);
+
   // Ensure portal renders only on client and lock body scroll when open
   useEffect(() => {
     setIsMounted(true);
@@ -105,21 +121,6 @@ export default function DocumentEditorPage() {
       if (b) b.style.overflow = "unset";
     };
   }, [isAssistantOpen]);
-
-  useEffect(() => {
-    async function fetchPremiumUsage() {
-      try {
-        const res = await fetch("/api/user/premium-usage");
-        if (res.ok) {
-          const data = await res.json();
-          setPremiumRemainingUses(data.remainingUses);
-        }
-      } catch (error) {
-        console.error("Failed to fetch premium usage:", error);
-      }
-    }
-    fetchPremiumUsage();
-  }, []);
 
   useEffect(() => {
     async function fetchDocument() {
@@ -284,8 +285,8 @@ export default function DocumentEditorPage() {
           setSelected={setSelected}
           onChangesAccepted={() => setLastRequest(null)}
           userId={userId}
-          premiumRemainingUses={premiumRemainingUses}
-          setPremiumRemainingUses={setPremiumRemainingUses}
+          premiumUsesRemaining={premiumUsesRemaining}
+          setPremiumUsesRemaining={setPremiumUsesRemaining}
           selectedModel={selectedModel}
           currentDocument={document}
           onSaveDocument={handleSaveDocument}
@@ -310,8 +311,8 @@ export default function DocumentEditorPage() {
         setLastRequest={setLastRequest}
         userId={userId}
         documentId={document?.id}
-        premiumRemainingUses={premiumRemainingUses}
-        setPremiumRemainingUses={setPremiumRemainingUses}
+        premiumUsesRemaining={premiumUsesRemaining}
+        setPremiumUsesRemaining={setPremiumUsesRemaining}
         onModelChange={setSelectedModel}
         onImproveStart={() => {
           setIsImproving(true);
@@ -406,8 +407,8 @@ export default function DocumentEditorPage() {
                   setLastRequest={setLastRequest}
                   userId={userId}
                   documentId={document?.id}
-                  premiumRemainingUses={premiumRemainingUses}
-                  setPremiumRemainingUses={setPremiumRemainingUses}
+                  premiumUsesRemaining={premiumUsesRemaining}
+                  setPremiumUsesRemaining={setPremiumUsesRemaining}
                   onModelChange={setSelectedModel}
                   onImproveStart={() => {
                     setIsImproving(true);
