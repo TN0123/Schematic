@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       ],
       success_url: `${origin}/settings?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/settings?canceled=true`,
+      allow_promotion_codes: true, // Enable promotion/coupon codes
       metadata: {
         userId: user.id,
       },
