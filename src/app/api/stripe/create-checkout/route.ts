@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
       customer: customerId,
       mode: "subscription",
       payment_method_types: ["card"],
+      payment_method_collection: "if_required",
       line_items: [
         {
           price: priceId,
