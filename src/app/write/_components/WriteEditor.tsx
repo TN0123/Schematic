@@ -65,7 +65,7 @@ export default function WriteEditor({
   setSelected: (selected: string) => void;
   onChangesAccepted: () => void;
   userId?: string;
-  premiumUsesRemaining: number;
+  premiumUsesRemaining: number | null;
   setPremiumUsesRemaining: (remainingUses: number) => void;
   selectedModel: ModelType;
   currentDocument: Document | null;
@@ -1034,18 +1034,20 @@ export default function WriteEditor({
                   />
                 </div>
                 <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
-                  {selectedModel !== "basic" && premiumUsesRemaining > 0 && (
-                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
-                      <Info className="w-3 h-3 cursor-help" />
-                      Premium model uses remaining: {premiumUsesRemaining}
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                        The premium model is used for both {modKeyLabel}+Enter
-                        generation and AI sidebar suggestions. If you have 0
-                        premium uses left, the system will automatically switch
-                        to the default model.
+                  {selectedModel !== "basic" &&
+                    premiumUsesRemaining !== null &&
+                    premiumUsesRemaining > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
+                        <Info className="w-3 h-3 cursor-help" />
+                        Premium model uses remaining: {premiumUsesRemaining}
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                          The premium model is used for both {modKeyLabel}+Enter
+                          generation and AI sidebar suggestions. If you have 0
+                          premium uses left, the system will automatically
+                          switch to the default model.
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
                 <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
                   {loading && (

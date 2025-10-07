@@ -32,7 +32,9 @@ export default function DocumentEditorPage() {
   const [selected, setSelected] = useState<string>("");
   const [lastRequest, setLastRequest] = useState<any>(null);
   const [userId, setUserId] = useState<string | undefined>();
-  const [premiumUsesRemaining, setPremiumUsesRemaining] = useState<number>(0);
+  const [premiumUsesRemaining, setPremiumUsesRemaining] = useState<
+    number | null
+  >(null);
   const [selectedModel, setSelectedModel] = useState<ModelType>("gpt-4.1");
   const [isSaving, setIsSaving] = useState(false);
   const [isImproving, setIsImproving] = useState(false);

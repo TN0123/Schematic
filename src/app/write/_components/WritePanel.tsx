@@ -235,7 +235,7 @@ export default function WritePanel({
   ) => void;
   userId: string | undefined;
   documentId: any;
-  premiumUsesRemaining: number;
+  premiumUsesRemaining: number | null;
   setPremiumUsesRemaining: (remainingUses: number) => void;
   onModelChange: (model: ModelType) => void;
   onImproveStart: () => void;
@@ -363,7 +363,12 @@ export default function WritePanel({
 
   // Auto-switch to basic model when premium uses run out
   useEffect(() => {
-    if (premiumUsesRemaining === 0 && selectedModel !== "basic") {
+    // Only auto-switch if we have loaded the usage data (not null) and it's 0
+    if (
+      premiumUsesRemaining !== null &&
+      premiumUsesRemaining === 0 &&
+      selectedModel !== "basic"
+    ) {
       setSelectedModel("basic");
       wasPremiumDisabledRef.current = true;
     }
@@ -371,7 +376,11 @@ export default function WritePanel({
 
   // Notify when premium uses become available again
   useEffect(() => {
-    if (premiumUsesRemaining > 0 && wasPremiumDisabledRef.current) {
+    if (
+      premiumUsesRemaining !== null &&
+      premiumUsesRemaining > 0 &&
+      wasPremiumDisabledRef.current
+    ) {
       wasPremiumDisabledRef.current = false;
     }
   }, [premiumUsesRemaining]);
@@ -1152,7 +1161,11 @@ export default function WritePanel({
                 value={selectedModel}
                 onChange={(e) => {
                   const newModel = e.target.value as ModelType;
-                  if (newModel !== "basic" && premiumUsesRemaining === 0) {
+                  if (
+                    newModel !== "basic" &&
+                    premiumUsesRemaining !== null &&
+                    premiumUsesRemaining === 0
+                  ) {
                     return;
                   }
                   setSelectedModel(newModel);
@@ -1163,9 +1176,11 @@ export default function WritePanel({
                 <option value="basic">Gemini 2.5 Flash</option>
                 <option
                   value="gpt-4.1"
-                  disabled={premiumUsesRemaining === 0}
+                  disabled={
+                    premiumUsesRemaining !== null && premiumUsesRemaining === 0
+                  }
                   className={
-                    premiumUsesRemaining === 0
+                    premiumUsesRemaining !== null && premiumUsesRemaining === 0
                       ? "text-gray-400 dark:text-gray-500"
                       : ""
                   }
@@ -1174,9 +1189,11 @@ export default function WritePanel({
                 </option>
                 <option
                   value="claude-sonnet-4"
-                  disabled={premiumUsesRemaining === 0}
+                  disabled={
+                    premiumUsesRemaining !== null && premiumUsesRemaining === 0
+                  }
                   className={
-                    premiumUsesRemaining === 0
+                    premiumUsesRemaining !== null && premiumUsesRemaining === 0
                       ? "text-gray-400 dark:text-gray-500"
                       : ""
                   }
@@ -1186,7 +1203,9 @@ export default function WritePanel({
               </select>
               <div className="relative group">
                 <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded shadow-lg text-xs text-gray-600 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 transform translate-y-1 group-hover:translate-y-0 w-48 pointer-events-none">
-                  {premiumUsesRemaining === 0
+                  {premiumUsesRemaining === null
+                    ? "Loading premium usage..."
+                    : premiumUsesRemaining === 0
                     ? "Premium model uses exhausted. Switch to basic model or wait for usage to reset."
                     : `Premium model uses remaining: ${premiumUsesRemaining}. Premium model provides higher quality AI responses.`}
                 </div>
