@@ -198,7 +198,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleManageSubscription}
                       disabled={upgrading}
-                      className="px-4 py-2 border border-gray-300 dark:border-dark-divider text-gray-700 dark:text-dark-textPrimary font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-dark-tertiary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-gray-300 dark:border-dark-divider text-gray-700 dark:text-dark-textPrimary font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {upgrading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
