@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import UsageIndicator from "@/components/UsageIndicator";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 interface TodoItem {
   id: string;
@@ -156,6 +158,9 @@ export default function BulletinClient() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<BulletinItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Upgrade prompt state
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -382,6 +387,13 @@ export default function BulletinClient() {
       }),
     });
 
+    if (response.status === 403) {
+      // Note limit reached
+      setShowUpgradePrompt(true);
+      setShowDropdown(false);
+      return;
+    }
+
     const newBulletin = await response.json();
     setItems([newBulletin, ...items]);
     setExpandedItemId(newBulletin.id);
@@ -400,6 +412,13 @@ export default function BulletinClient() {
         schema,
       }),
     });
+
+    if (response.status === 403) {
+      // Note limit reached
+      setShowUpgradePrompt(true);
+      setShowDynamicCreator(false);
+      return;
+    }
 
     const newBulletin = await response.json();
     setItems([newBulletin, ...items]);
@@ -422,7 +441,9 @@ export default function BulletinClient() {
         createPortal(
           <button
             className={`md:hidden fixed bottom-24 right-6 z-50 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 transform ${
-              isSidebarOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+              isSidebarOpen
+                ? "scale-0 opacity-0 pointer-events-none"
+                : "scale-100 opacity-100"
             }`}
             onClick={() => setIsSidebarOpen(true)}
           >
@@ -796,7 +817,7 @@ export default function BulletinClient() {
 
       {/* Mobile Bottom Sheet Sidebar */}
       <AnimatePresence>
-      {isSidebarOpen && (
+        {isSidebarOpen && (
           <motion.div
             className="md:hidden fixed inset-0 z-50 flex flex-col"
             initial={{ opacity: 0 }}
@@ -804,31 +825,31 @@ export default function BulletinClient() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-                        {/* Backdrop */}
+            {/* Backdrop */}
             <motion.div
               className="flex-1 bg-black bg-opacity-50"
-          onClick={() => setIsSidebarOpen(false)}
+              onClick={() => setIsSidebarOpen(false)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             />
-            
+
             {/* Bottom Sheet */}
             <motion.div
               className="bg-white dark:bg-dark-background dark:text-dark-textPrimary rounded-t-3xl shadow-2xl flex flex-col max-h-[calc(85vh-5rem)] min-h-[calc(60vh-5rem)] mb-20"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ 
-                type: "spring", 
-                damping: 30, 
+              transition={{
+                type: "spring",
+                damping: 30,
                 stiffness: 300,
-                duration: 0.3 
+                duration: 0.3,
               }}
             >
               {/* Top padding */}
               <div className="py-3" />
-              
+
               {/* Header */}
               <div className="px-6 pb-4 border-b border-gray-200 dark:border-dark-divider">
                 <div className="flex items-center justify-between mb-4">
@@ -854,9 +875,9 @@ export default function BulletinClient() {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Search */}
-                <div className="relative">
+                <div className="relative mb-4">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-light-subtle dark:text-dark-textSecondary" />
                   <input
                     type="text"
@@ -865,6 +886,11 @@ export default function BulletinClient() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-dark-divider bg-gray-50 dark:bg-dark-background text-light-heading dark:text-dark-textPrimary placeholder:text-light-subtle dark:placeholder:text-dark-textSecondary focus:outline-none focus:border-green-500 dark:focus:border-green-400 transition-colors text-base"
                   />
+                </div>
+
+                {/* Usage Indicator */}
+                <div className="mb-4">
+                  <UsageIndicator type="bulletins" />
                 </div>
 
                 {/* Mobile Dropdown */}
@@ -934,13 +960,15 @@ export default function BulletinClient() {
                   </motion.div>
                 )}
               </div>
-              
+
               {/* Notes List */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
                 <div className="space-y-3 pb-6">
                   {items
                     .filter((item) =>
-                      item.title.toLowerCase().includes(searchQuery.toLowerCase())
+                      item.title
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase())
                     )
                     .sort(
                       (a, b) =>
@@ -971,7 +999,7 @@ export default function BulletinClient() {
                                 ? "text-green-600 dark:text-green-400"
                                 : "text-light-icon dark:text-dark-icon"
                             }`;
-                            
+
                             switch (item.type) {
                               case "text":
                                 return <NotepadText className={iconClass} />;
@@ -1009,13 +1037,15 @@ export default function BulletinClient() {
                         >
                           {stripHtml(item.content) || "No content"}
                         </p>
-                        
+
                         <div className="flex justify-between items-center mt-3">
-                          <span className={`text-xs ${
-                            item.id === expandedItemId
-                              ? "text-green-500/70 dark:text-green-400/70"
-                              : "text-gray-400 dark:text-gray-500"
-                          }`}>
+                          <span
+                            className={`text-xs ${
+                              item.id === expandedItemId
+                                ? "text-green-500/70 dark:text-green-400/70"
+                                : "text-gray-400 dark:text-gray-500"
+                            }`}
+                          >
                             {new Date(item.updatedAt).toLocaleDateString()}
                           </span>
                           {item.id === expandedItemId && (
@@ -1056,6 +1086,14 @@ export default function BulletinClient() {
         itemTitle={itemToDelete?.title || ""}
         isDeleting={isDeleting}
       />
+
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          type="bulletins"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

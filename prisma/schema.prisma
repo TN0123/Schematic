@@ -31,7 +31,20 @@ model User {
   /// Timestamp when the user last dismissed the product updates modal
   lastSeenUpdatesAt        DateTime?
   DailySuggestionsCache    DailySuggestionsCache[]
-  createdAt                DateTime               @default(now())
+  createdAt                DateTime                @default(now())
+  
+  // Stripe & Subscription fields
+  stripeCustomerId         String?                 @unique
+  stripeSubscriptionId     String?                 @unique
+  stripePriceId            String?
+  stripeCurrentPeriodEnd   DateTime?
+  subscriptionStatus       String?                 @default("free") // "free", "active", "canceled", "past_due"
+  
+  // Usage tracking
+  weeklyPremiumUsesResetAt DateTime?
+  monthlyPremiumUsesResetAt DateTime?
+  weeklyPremiumUsesCount   Int                     @default(0)
+  monthlyPremiumUsesCount  Int                     @default(0)
 }
 
 model Account {

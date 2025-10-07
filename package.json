@@ -69,6 +69,7 @@
     "react-speech-recognition": "^4.0.1",
     "react-switch": "^7.1.0",
     "remark-gfm": "^4.0.1",
+    "stripe": "^19.1.0",
     "use-debounce": "^10.0.4",
     "zod": "^3.25.76"
   },

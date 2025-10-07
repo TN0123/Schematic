@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Document } from "@prisma/client";
+import UsageIndicator from "@/components/UsageIndicator";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 interface DocumentListProps {
   initialDocuments: Document[];
@@ -28,6 +30,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
   const [showRenameModal, setShowRenameModal] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -57,9 +60,15 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Untitled Document", content: "" }),
       });
+
       if (response.ok) {
         const newDoc = await response.json();
         router.push(`/write/${newDoc.id}`);
+      } else if (response.status === 403) {
+        // Document limit reached
+        setShowUpgradePrompt(true);
+      } else {
+        console.error("Failed to create document");
       }
     } catch (error) {
       console.error("Failed to create document:", error);
@@ -143,8 +152,11 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
               </h1>
             </div>
 
-            {/* Bottom row: Search */}
+            {/* Bottom row: Search and Usage */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 lg:gap-4">
+              <div className="hidden sm:block sm:w-48 lg:w-56">
+                <UsageIndicator type="documents" />
+              </div>
               <div className="relative flex-1 sm:flex-none">
                 <Search className="w-4 h-4 text-gray-400 absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2" />
                 <input
@@ -420,6 +432,14 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Upgrade Prompt Modal */}
+      {showUpgradePrompt && (
+        <UpgradePrompt
+          type="documents"
+          onClose={() => setShowUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

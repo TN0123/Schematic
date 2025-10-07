@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { canCreateBulletin } from "@/lib/subscription";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -39,6 +40,21 @@ export async function POST(request: Request) {
 
   if (!user) {
     return new NextResponse("User not found", { status: 404 });
+  }
+
+  // Check if user can create a new bulletin
+  const canCreate = await canCreateBulletin(user.id);
+  
+  if (!canCreate.allowed) {
+    return NextResponse.json(
+      {
+        error: "Bulletin limit reached",
+        message: canCreate.reason,
+        currentCount: canCreate.currentCount,
+        limit: canCreate.limit,
+      },
+      { status: 403 }
+    );
   }
 
   const {
