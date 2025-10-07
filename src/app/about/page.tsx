@@ -8,11 +8,9 @@ import {
   Zap,
   Shield,
   Users,
-  ArrowLeft,
 } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
-import { motion, AnimatePresence } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import Script from "next/script";
 
 const fadeUpVariants = {
@@ -30,24 +28,6 @@ const staggerVariants = {
 };
 
 export default function About() {
-  const pricingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showPricingTooltip, setShowPricingTooltip] = useState(false);
-
-  const handlePricingClick = () => {
-    setShowPricingTooltip(true);
-    if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
-    pricingTimeoutRef.current = setTimeout(
-      () => setShowPricingTooltip(false),
-      1500
-    );
-  };
-
-  useEffect(() => {
-    return () => {
-      if (pricingTimeoutRef.current) clearTimeout(pricingTimeoutRef.current);
-    };
-  }, []);
-
   const features = [
     {
       icon: PenLine,
@@ -217,28 +197,12 @@ export default function About() {
                           key={item}
                           className="relative flex items-center h-10"
                         >
-                          <button
-                            type="button"
-                            onClick={handlePricingClick}
+                          <TransitionLink
+                            href="/auth/login#pricing-section"
                             className={baseButtonClasses}
                           >
                             {item}
-                          </button>
-                          <AnimatePresence>
-                            {showPricingTooltip && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -6 }}
-                                transition={{ duration: 0.18, ease: "easeOut" }}
-                                className="absolute left-[-10px] top-full mt-2 z-50"
-                              >
-                                <div className="px-3.5 py-2 text-xs text-center font-medium rounded-lg border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-secondary text-gray-900 dark:text-dark-textPrimary shadow-lg">
-                                  Coming soon!
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                          </TransitionLink>
                         </div>
                       );
                     }
