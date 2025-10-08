@@ -2,12 +2,39 @@ export async function generate(
   startText: string,
   endText: string,
   userId?: string,
-  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4" = "gpt-4.1"
+  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4" = "gpt-4.1",
+  documentId?: string
 ) {
+  // Get document context if documentId is provided
+  let context = "";
+  if (documentId) {
+    try {
+      const { PrismaClient } = require("@prisma/client");
+      const prisma = new PrismaClient();
+      
+      const document = await prisma.document.findUnique({
+        where: { id: documentId },
+        select: { context: true },
+      });
+      
+      context = document?.context || "";
+      await prisma.$disconnect();
+    } catch (error) {
+      console.error("Error fetching document context:", error);
+      context = "";
+    }
+  }
+
   let prompt = `
   You are an AI writing assistant tasked with helping someone continue whatever text that have generated so far. 
   You will either be continuing the text at the end or in the middle of a paragraph. 
-  
+
+  Here is general context around what the user is working on (may be empty if the user has not written anything yet):
+
+  BEGINNING OF CONTEXT
+  ${context}
+  END OF CONTEXT
+
   If you are in the middle of a paragraph, you will be given the text that has been generated before as well as 
   the text that has been generated after. 
   
@@ -16,6 +43,7 @@ export async function generate(
   You will continue immediately where the user left off where it says CONTINUE WRITING HERE.
   Absolutely do not repeat any of the characters in their text so far, only generate the 
   continuation of their text. Try to match the user's tone as closely as possible. 
+  Generate a maximum of 2 additional sentences. 
   
   Here is the text so far: ${startText} CONTINUE WRITING HERE ${endText}
   `;
@@ -27,7 +55,6 @@ export async function generate(
   // Premium models: GPT-4.1 and Claude Sonnet 4
   if (userId && (selectedModel === "gpt-4.1" || selectedModel === "claude-sonnet-4")) {
     try {
-      const prisma = require("@/lib/prisma").default;
 
       // Import subscription utilities
       const { canUsePremiumModel, trackPremiumUsage } = await import(

@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
 
-        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+        Here is general context around what the user is working on (will be empty if the user has not written anything yet):
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT

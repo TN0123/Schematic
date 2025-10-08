@@ -399,6 +399,7 @@ export default function WriteEditor({
           endText: `${after}`,
           userId,
           model: selectedModel,
+          documentId: currentDocument?.id,
         }),
       });
 
@@ -1059,12 +1060,7 @@ export default function WriteEditor({
                     }{" "}
                     words
                   </div>
-                  {loading && (
-                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
-                      Generating...
-                    </div>
-                  )}
-                  {isImproving && (
+                  {(isImproving || loading) && (
                     <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
                     </div>
