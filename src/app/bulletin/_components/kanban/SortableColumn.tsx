@@ -23,6 +23,7 @@ interface SortableColumnProps {
   columnNameEdit: string;
   onColumnNameEditChange: (value: string) => void;
   activeId: string | null;
+  selectedCardId: string | null;
 }
 
 function SortableColumnComponent({
@@ -39,6 +40,7 @@ function SortableColumnComponent({
   columnNameEdit,
   onColumnNameEditChange,
   activeId,
+  selectedCardId,
 }: SortableColumnProps) {
   const {
     attributes,
@@ -127,7 +129,7 @@ function SortableColumnComponent({
           items={cards.map((card) => card.id)}
           strategy={verticalListSortingStrategy}
         >
-          <ul className="flex flex-col gap-2 sm:gap-3 px-1">
+          <ul className="flex flex-col gap-2 sm:gap-3 px-1 py-2">
             {cards.map((card) => (
               <SortableCard
                 key={card.id}
@@ -135,6 +137,7 @@ function SortableColumnComponent({
                 onChange={(updates) => onUpdateCard(card.id, updates)}
                 onRemove={() => onRemoveCard(card.id)}
                 activeId={activeId}
+                isSelected={selectedCardId === card.id}
               />
             ))}
           </ul>

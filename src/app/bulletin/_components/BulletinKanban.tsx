@@ -63,6 +63,7 @@ export default function BulletinKanban({
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   const [columnNameEdits, setColumnNameEdits] = useState<
     Record<string, string>
@@ -87,6 +88,20 @@ export default function BulletinKanban({
 
   // Filter cards based on current filters
   const filteredCards = filterCards(cards, filters);
+
+  // Initialize selected card to first card when component loads
+  useEffect(() => {
+    if (filteredCards.length > 0 && !selectedCardId) {
+      setSelectedCardId(filteredCards[0].id);
+    }
+    // If selected card is no longer in filtered cards, select first available card
+    if (
+      selectedCardId &&
+      !filteredCards.find((card) => card.id === selectedCardId)
+    ) {
+      setSelectedCardId(filteredCards.length > 0 ? filteredCards[0].id : null);
+    }
+  }, [filteredCards, selectedCardId]);
 
   useEffect(() => {
     const titleChanged = title !== lastSaved.current.title;
@@ -327,6 +342,161 @@ export default function BulletinKanban({
     return () => document.removeEventListener("keydown", handleKeyPress);
   }, [handleKeyPress]);
 
+  // Keyboard navigation for cards
+  useEffect(() => {
+    const handleCardNavigation = (event: KeyboardEvent) => {
+      if (!selectedCardId || filteredCards.length === 0) return;
+
+      const selectedCard = cards.find((card) => card.id === selectedCardId);
+      if (!selectedCard) return;
+
+      // Get cards in current column (including filtered out ones for movement)
+      const currentColumnCards = cards.filter(
+        (card) => card.columnId === selectedCard.columnId
+      );
+      const currentCardIndex = currentColumnCards.findIndex(
+        (card) => card.id === selectedCardId
+      );
+
+      // Navigation with arrow keys
+      if (event.key === "ArrowUp" && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        // Navigate to previous card in current column
+        if (currentCardIndex > 0) {
+          setSelectedCardId(currentColumnCards[currentCardIndex - 1].id);
+        }
+      } else if (
+        event.key === "ArrowDown" &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+        // Navigate to next card in current column
+        if (currentCardIndex < currentColumnCards.length - 1) {
+          setSelectedCardId(currentColumnCards[currentCardIndex + 1].id);
+        }
+      } else if (
+        event.key === "ArrowLeft" &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+        // Navigate to previous column's first card
+        const currentColumnIndex = columns.findIndex(
+          (col) => col.id === selectedCard.columnId
+        );
+        if (currentColumnIndex > 0) {
+          const prevColumn = columns[currentColumnIndex - 1];
+          const prevColumnCards = cards.filter(
+            (card) => card.columnId === prevColumn.id
+          );
+          if (prevColumnCards.length > 0) {
+            setSelectedCardId(prevColumnCards[0].id);
+          }
+        }
+      } else if (
+        event.key === "ArrowRight" &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+        // Navigate to next column's first card
+        const currentColumnIndex = columns.findIndex(
+          (col) => col.id === selectedCard.columnId
+        );
+        if (currentColumnIndex < columns.length - 1) {
+          const nextColumn = columns[currentColumnIndex + 1];
+          const nextColumnCards = cards.filter(
+            (card) => card.columnId === nextColumn.id
+          );
+          if (nextColumnCards.length > 0) {
+            setSelectedCardId(nextColumnCards[0].id);
+          }
+        }
+      }
+
+      // Move card between columns with Cmd/Ctrl + Left/Right
+      else if ((event.metaKey || event.ctrlKey) && event.key === "ArrowLeft") {
+        event.preventDefault();
+        const currentColumnIndex = columns.findIndex(
+          (col) => col.id === selectedCard.columnId
+        );
+        if (currentColumnIndex > 0) {
+          const targetColumn = columns[currentColumnIndex - 1];
+          const newStatus: CardStatus =
+            targetColumn.id === "done"
+              ? "done"
+              : targetColumn.id === "in-progress"
+              ? "in-progress"
+              : "todo";
+          updateCard(selectedCardId, {
+            columnId: targetColumn.id,
+            status: newStatus,
+          });
+        }
+      } else if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key === "ArrowRight"
+      ) {
+        event.preventDefault();
+        const currentColumnIndex = columns.findIndex(
+          (col) => col.id === selectedCard.columnId
+        );
+        if (currentColumnIndex < columns.length - 1) {
+          const targetColumn = columns[currentColumnIndex + 1];
+          const newStatus: CardStatus =
+            targetColumn.id === "done"
+              ? "done"
+              : targetColumn.id === "in-progress"
+              ? "in-progress"
+              : "todo";
+          updateCard(selectedCardId, {
+            columnId: targetColumn.id,
+            status: newStatus,
+          });
+        }
+      }
+
+      // Move card within column with Ctrl + Up/Down
+      else if (event.ctrlKey && event.key === "ArrowUp" && !event.metaKey) {
+        event.preventDefault();
+        if (currentCardIndex > 0) {
+          const cardIndex = cards.findIndex(
+            (card) => card.id === selectedCardId
+          );
+          const targetCardIndex = cards.findIndex(
+            (card) => card.id === currentColumnCards[currentCardIndex - 1].id
+          );
+          if (cardIndex !== -1 && targetCardIndex !== -1) {
+            dispatch({
+              type: "SET_CARDS",
+              payload: arrayMove(cards, cardIndex, targetCardIndex),
+            });
+          }
+        }
+      } else if (event.ctrlKey && event.key === "ArrowDown" && !event.metaKey) {
+        event.preventDefault();
+        if (currentCardIndex < currentColumnCards.length - 1) {
+          const cardIndex = cards.findIndex(
+            (card) => card.id === selectedCardId
+          );
+          const targetCardIndex = cards.findIndex(
+            (card) => card.id === currentColumnCards[currentCardIndex + 1].id
+          );
+          if (cardIndex !== -1 && targetCardIndex !== -1) {
+            dispatch({
+              type: "SET_CARDS",
+              payload: arrayMove(cards, cardIndex, targetCardIndex),
+            });
+          }
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleCardNavigation);
+    return () => document.removeEventListener("keydown", handleCardNavigation);
+  }, [selectedCardId, filteredCards, cards, columns, updateCard, dispatch]);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && hasUnsavedChanges) {
@@ -488,6 +658,7 @@ export default function BulletinKanban({
                           }))
                         }
                         activeId={activeId}
+                        selectedCardId={selectedCardId}
                       />
                     );
                   })}

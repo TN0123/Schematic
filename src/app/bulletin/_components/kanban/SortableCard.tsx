@@ -11,6 +11,7 @@ interface SortableCardProps {
   onChange: (updates: Partial<KanbanCard>) => void;
   onRemove: () => void;
   activeId: string | null;
+  isSelected: boolean;
 }
 
 export function SortableCard({
@@ -18,6 +19,7 @@ export function SortableCard({
   onChange,
   onRemove,
   activeId,
+  isSelected,
 }: SortableCardProps) {
   const {
     attributes,
@@ -65,6 +67,11 @@ export function SortableCard({
       className={`bg-white dark:bg-dark-secondary rounded-lg border dark:border-dark-divider shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing touch-manipulation
         ${isCardOverdue ? "border-l-4 border-l-red-500" : ""}
         ${isExpanded ? "min-h-32" : "min-h-16"}
+        ${
+          isSelected
+            ? "ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-dark-background"
+            : ""
+        }
       `}
     >
       <div className="p-3">
