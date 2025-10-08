@@ -304,7 +304,7 @@ export default function Login() {
             className="text-4xl sm:text-6xl lg:text-7xl tracking-tight text-gray-900 dark:text-dark-textPrimary"
             variants={fadeUpVariants}
           >
-            Your AI Productivity Workspace
+            The workspace that thinks with you
           </motion.h1>
           <motion.p
             className="text-lg sm:text-xl text-gray-600 dark:text-dark-textSecondary max-w-2xl mx-auto leading-relaxed px-4"
