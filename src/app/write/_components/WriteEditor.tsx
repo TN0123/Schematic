@@ -1050,6 +1050,15 @@ export default function WriteEditor({
                     )}
                 </div>
                 <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
+                  <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
+                    {
+                      inputText
+                        .trim()
+                        .split(/\s+/)
+                        .filter((word) => word.length > 0).length
+                    }{" "}
+                    words
+                  </div>
                   {loading && (
                     <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
                       Generating...
