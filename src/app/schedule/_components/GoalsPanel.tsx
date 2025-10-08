@@ -48,8 +48,7 @@ export default function GoalsPanel() {
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
 
-  // Always start with "list" to match server-side render
-  const [activeTab, setActiveTab] = useState<ActiveTab>("list");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("todo");
   const [isMounted, setIsMounted] = useState(false);
 
   const [goalText, setGoalText] = useState<string>("");
