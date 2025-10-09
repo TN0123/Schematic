@@ -52,20 +52,62 @@ export async function POST(req: NextRequest) {
     const data = ical.parseICS(icsString);
 
     const events: Array<{ id: string; title: string; start: Date; end: Date }> = [];
+    const seenEventKeys = new Set<string>();
 
     for (const k in data) {
       if (Object.prototype.hasOwnProperty.call(data, k)) {
         const event: any = (data as any)[k];
+        
         if (event && event.type === "VEVENT") {
+          // Skip events without valid start/end dates
+          if (!event.start || !event.end) {
+            continue;
+          }
+
+          // Skip recurring event definitions (those with RRULE but no specific instance)
+          // We only want actual event instances
+          if (event.rrule && !event.recurrenceid) {
+            continue;
+          }
+
+          const uid = String(event.uid ?? k);
+          const startDate = new Date(event.start);
+          const endDate = new Date(event.end);
+
+          // Skip invalid dates
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            continue;
+          }
+
+          // Create a unique key based on title, start, and end to catch all duplicates
+          // This handles cases where the same event appears with different UIDs
+          const normalizedTitle = String(event.summary ?? "Untitled Event")
+            .toLowerCase()
+            .trim();
+          const eventKey = `${normalizedTitle}|${startDate.toISOString()}|${endDate.toISOString()}`;
+
+          // Skip if we've already seen this exact event instance
+          if (seenEventKeys.has(eventKey)) {
+            continue;
+          }
+
+          seenEventKeys.add(eventKey);
+
+          // Generate a unique ID for this specific event instance
+          const uniqueId = `${uid}_${startDate.getTime()}`;
+
           events.push({
-            id: String(event.uid ?? k),
+            id: uniqueId,
             title: String(event.summary ?? "Untitled Event"),
-            start: new Date(event.start),
-            end: new Date(event.end),
+            start: startDate,
+            end: endDate,
           });
         }
       }
     }
+
+    // Sort events by start time for better UX
+    events.sort((a, b) => a.start.getTime() - b.start.getTime());
 
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {

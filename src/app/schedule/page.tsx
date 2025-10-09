@@ -328,16 +328,22 @@ export default function CalendarApp() {
   // Handle extracted events from file uploads
   useEffect(() => {
     if (calendarState.extractedEvents.length > 0) {
+      // Create a local copy to avoid race conditions
+      const eventsToAdd = [...calendarState.extractedEvents];
+
+      // Clear immediately to prevent duplicate processing
+      calendarState.setExtractedEvents([]);
+
       const saveEvents = async () => {
         try {
-          await calendarData.bulkAddEvents(calendarState.extractedEvents);
+          await calendarData.bulkAddEvents(eventsToAdd);
         } catch (error) {
           console.error("Error saving events:", error);
         }
       };
       saveEvents();
     }
-  }, [calendarState.extractedEvents, calendarData]);
+  }, [calendarState.extractedEvents, calendarData, calendarState]);
 
   // Enhanced keyboard handlers
   useEffect(() => {
