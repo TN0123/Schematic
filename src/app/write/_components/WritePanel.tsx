@@ -677,7 +677,6 @@ export default function WritePanel({
     setIsImproving(true);
     // Hide ChangeHandler while generating by clearing any previous changes
     setChanges({});
-    setIsGeneratingChanges(true);
     // For improve, we don't have a specific message ID, so we'll use a special identifier
     setCurrentAssistantMessageId("improve");
 
@@ -768,7 +767,6 @@ export default function WritePanel({
               } else if (data.changes !== undefined) {
                 // changes-final event: apply the changes
                 setChanges(data.changes);
-                setIsGeneratingChanges(false);
                 setCurrentAssistantMessageId(null);
               } else if (data.result !== undefined) {
                 // result event: final result
@@ -781,7 +779,6 @@ export default function WritePanel({
                 // Apply final changes if not already applied
                 if (Object.keys(data.result).length > 0) {
                   setChanges(data.result);
-                  setIsGeneratingChanges(false);
                   setCurrentAssistantMessageId(null);
                 }
               } else if (data.message && data.message.includes("complete")) {
