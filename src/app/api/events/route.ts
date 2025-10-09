@@ -16,17 +16,29 @@ export async function GET(req: NextRequest) {
   const end = searchParams.get("end");
 
   try {
+    // Query for events that overlap with the requested range
+    // An event overlaps if: event.start < range.end AND event.end > range.start
     const events = await prisma.event.findMany({
       where: {
         userId: session.user.id,
-        start: {
-          gte: start ? new Date(start) : undefined,
-        },
-        end: {
-          lte: end ? new Date(end) : undefined,
-        },
+        AND: [
+          {
+            start: {
+              lt: end ? new Date(end) : undefined,
+            },
+          },
+          {
+            end: {
+              gt: start ? new Date(start) : undefined,
+            },
+          },
+        ],
+      },
+      orderBy: {
+        start: 'asc',
       },
     });
+    
     return NextResponse.json(events);
   } catch (error) {
     console.error("Error fetching events:", error);

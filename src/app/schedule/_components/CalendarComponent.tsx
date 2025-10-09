@@ -356,6 +356,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
           events={events}
+          eventAllow={(dropInfo, draggedEvent) => {
+            // Only allow dragging non-suggestion events
+            return !draggedEvent?.extendedProps?.isSuggestion;
+          }}
           eventClick={onEventClick}
           eventContent={renderEventContent}
           height="100%"
@@ -416,6 +420,8 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           allDaySlot={false}
           scrollTime={`${new Date().getHours()}:00:00`}
           editable={true}
+          eventStartEditable={true}
+          eventDurationEditable={true}
           select={onSelect}
           unselect={onUnselect}
           unselectAuto={true}

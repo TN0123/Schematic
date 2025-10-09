@@ -154,11 +154,16 @@ export const useCalendarState = (
           info.revert();
         }
       } else {
+        if (!event.start || !event.end) {
+          info.revert();
+          return;
+        }
+
         try {
           await editEvent(event.id, {
             title: event.title,
-            start: event.start!,
-            end: event.end!,
+            start: event.start,
+            end: event.end,
             links: Array.isArray(event.extendedProps.links)
               ? (event.extendedProps.links as string[])
               : undefined,
