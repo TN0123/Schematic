@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Event } from "../types";
 import { Reminder } from "./RemindersBar";
 
@@ -32,11 +32,24 @@ export default function EventCreationModal({
   const [reminderTime, setReminderTime] = useState("");
   const [isAISuggested, setIsAISuggested] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const eventTitleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setIsVisible(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // Focus and select event title when modal opens and event tab is active
+  useEffect(() => {
+    if (isVisible && activeTab === "event" && eventTitleRef.current) {
+      // Small delay to ensure the modal animation completes
+      const timeoutId = setTimeout(() => {
+        eventTitleRef.current?.focus();
+        eventTitleRef.current?.select();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isVisible, activeTab]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -158,6 +171,7 @@ export default function EventCreationModal({
               Event Title
             </label>
             <input
+              ref={eventTitleRef}
               type="text"
               className="mb-4 w-full rounded-xl border border-gray-300 bg-white/60 p-2.5 text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 dark:border-dark-divider dark:bg-dark-actionDisabledBackground dark:text-dark-textPrimary"
               value={newEvent.title}
