@@ -232,6 +232,23 @@ export default function SettingsPage() {
               </p>
               <div className="flex gap-3">
                 <button
+                  onClick={() => setViewMode("diff")}
+                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                    viewMode === "diff"
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
+                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-gray-600"
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-medium text-gray-900 dark:text-dark-textPrimary mb-1">
+                      Diff View
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                      Show inline diffs with old text vs new text
+                    </div>
+                  </div>
+                </button>
+                <button
                   onClick={() => setViewMode("changeHandler")}
                   className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
                     viewMode === "changeHandler"
@@ -246,23 +263,6 @@ export default function SettingsPage() {
                     <div className="text-xs text-gray-600 dark:text-dark-textSecondary">
                       View suggestions in a separate panel with highlighted
                       original text
-                    </div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setViewMode("diff")}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                    viewMode === "diff"
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
-                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-gray-600"
-                  }`}
-                >
-                  <div className="text-left">
-                    <div className="font-medium text-gray-900 dark:text-dark-textPrimary mb-1">
-                      Diff View
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-dark-textSecondary">
-                      Show inline diffs with old text vs new text
                     </div>
                   </div>
                 </button>
