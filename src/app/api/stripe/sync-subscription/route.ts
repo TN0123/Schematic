@@ -8,6 +8,51 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-09-30.clover",
 });
 
+/**
+ * Calculate the current billing period end date based on the subscription's billing cycle anchor
+ * This properly handles multiple billing periods (renewals)
+ */
+function calculateCurrentPeriodEnd(subscription: Stripe.Subscription): Date | null {
+  if (!subscription.billing_cycle_anchor || !subscription.items.data[0]?.price.recurring) {
+    return null;
+  }
+
+  const interval = subscription.items.data[0].price.recurring.interval;
+  const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
+  const anchorTimestamp = subscription.billing_cycle_anchor * 1000;
+  const now = Date.now();
+
+  // Start from the billing cycle anchor
+  let periodStart = new Date(anchorTimestamp);
+  let periodEnd = new Date(periodStart);
+
+  // Calculate how many milliseconds in one billing period
+  const calculatePeriodEnd = (startDate: Date): Date => {
+    const endDate = new Date(startDate);
+    if (interval === 'month') {
+      endDate.setMonth(endDate.getMonth() + intervalCount);
+    } else if (interval === 'year') {
+      endDate.setFullYear(endDate.getFullYear() + intervalCount);
+    } else if (interval === 'week') {
+      endDate.setDate(endDate.getDate() + (7 * intervalCount));
+    } else if (interval === 'day') {
+      endDate.setDate(endDate.getDate() + intervalCount);
+    }
+    return endDate;
+  };
+
+  // Find the current billing period by advancing from the anchor date
+  periodEnd = calculatePeriodEnd(periodStart);
+  
+  // Keep advancing periods until we find the one that contains "now"
+  while (periodEnd.getTime() <= now) {
+    periodStart = new Date(periodEnd);
+    periodEnd = calculatePeriodEnd(periodStart);
+  }
+
+  return periodEnd;
+}
+
 // Fallback endpoint to sync subscription data if webhooks don't work
 export async function POST(req: NextRequest) {
   try {
@@ -79,32 +124,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate the current period end from billing cycle anchor
-    // For monthly subscriptions, period end is anchor + interval
-    let currentPeriodEnd: Date | null = null;
-    
-    if (subscription.billing_cycle_anchor) {
-      // Get the interval from the first price
-      const interval = subscription.items.data[0]?.price.recurring?.interval;
-      const intervalCount = subscription.items.data[0]?.price.recurring?.interval_count || 1;
-      
-      const anchorDate = new Date(subscription.billing_cycle_anchor * 1000);
-      const periodEnd = new Date(anchorDate);
-      
-      // Calculate period end based on interval
-      if (interval === 'month') {
-        periodEnd.setMonth(periodEnd.getMonth() + intervalCount);
-      } else if (interval === 'year') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + intervalCount);
-      } else if (interval === 'week') {
-        periodEnd.setDate(periodEnd.getDate() + (7 * intervalCount));
-      } else if (interval === 'day') {
-        periodEnd.setDate(periodEnd.getDate() + intervalCount);
-      }
-      
-      currentPeriodEnd = periodEnd;
-      console.log(`[Sync Subscription] Calculated period end: ${currentPeriodEnd.toISOString()} (interval: ${interval})`);
-    }
+    // Calculate the current billing period end
+    const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+    console.log(`[Sync Subscription] Calculated period end: ${currentPeriodEnd?.toISOString()}`);
 
     const updateData = {
       stripeCustomerId: customerId,

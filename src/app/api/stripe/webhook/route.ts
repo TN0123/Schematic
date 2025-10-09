@@ -8,6 +8,51 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+/**
+ * Calculate the current billing period end date based on the subscription's billing cycle anchor
+ * This properly handles multiple billing periods (renewals)
+ */
+function calculateCurrentPeriodEnd(subscription: Stripe.Subscription): Date | null {
+  if (!subscription.billing_cycle_anchor || !subscription.items.data[0]?.price.recurring) {
+    return null;
+  }
+
+  const interval = subscription.items.data[0].price.recurring.interval;
+  const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
+  const anchorTimestamp = subscription.billing_cycle_anchor * 1000;
+  const now = Date.now();
+
+  // Start from the billing cycle anchor
+  let periodStart = new Date(anchorTimestamp);
+  let periodEnd = new Date(periodStart);
+
+  // Calculate how many milliseconds in one billing period
+  const calculatePeriodEnd = (startDate: Date): Date => {
+    const endDate = new Date(startDate);
+    if (interval === 'month') {
+      endDate.setMonth(endDate.getMonth() + intervalCount);
+    } else if (interval === 'year') {
+      endDate.setFullYear(endDate.getFullYear() + intervalCount);
+    } else if (interval === 'week') {
+      endDate.setDate(endDate.getDate() + (7 * intervalCount));
+    } else if (interval === 'day') {
+      endDate.setDate(endDate.getDate() + intervalCount);
+    }
+    return endDate;
+  };
+
+  // Find the current billing period by advancing from the anchor date
+  periodEnd = calculatePeriodEnd(periodStart);
+  
+  // Keep advancing periods until we find the one that contains "now"
+  while (periodEnd.getTime() <= now) {
+    periodStart = new Date(periodEnd);
+    periodEnd = calculatePeriodEnd(periodStart);
+  }
+
+  return periodEnd;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
@@ -93,27 +138,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
-    // Calculate the current period end from billing cycle anchor
-    let currentPeriodEnd: Date | null = null;
-    if (subscription.billing_cycle_anchor && subscription.items.data[0]?.price.recurring) {
-      const interval = subscription.items.data[0].price.recurring.interval;
-      const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
-      
-      const anchorDate = new Date(subscription.billing_cycle_anchor * 1000);
-      const periodEnd = new Date(anchorDate);
-      
-      if (interval === 'month') {
-        periodEnd.setMonth(periodEnd.getMonth() + intervalCount);
-      } else if (interval === 'year') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + intervalCount);
-      } else if (interval === 'week') {
-        periodEnd.setDate(periodEnd.getDate() + (7 * intervalCount));
-      } else if (interval === 'day') {
-        periodEnd.setDate(periodEnd.getDate() + intervalCount);
-      }
-      
-      currentPeriodEnd = periodEnd;
-    }
+  // Calculate the current billing period end
+  const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+
+  console.log(`[Subscription Update] Period end: ${currentPeriodEnd?.toISOString()}`);
 
   // Update user subscription info
   await prisma.user.update({
@@ -192,28 +220,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     console.log(`[Checkout Completed] Found user: ${user.email} (ID: ${user.id})`);
 
-    // Calculate the current period end from billing cycle anchor
-    let currentPeriodEnd: Date | null = null;
-    if (subscription.billing_cycle_anchor && subscription.items.data[0]?.price.recurring) {
-      const interval = subscription.items.data[0].price.recurring.interval;
-      const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
-      
-      const anchorDate = new Date(subscription.billing_cycle_anchor * 1000);
-      const periodEnd = new Date(anchorDate);
-      
-      if (interval === 'month') {
-        periodEnd.setMonth(periodEnd.getMonth() + intervalCount);
-      } else if (interval === 'year') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + intervalCount);
-      } else if (interval === 'week') {
-        periodEnd.setDate(periodEnd.getDate() + (7 * intervalCount));
-      } else if (interval === 'day') {
-        periodEnd.setDate(periodEnd.getDate() + intervalCount);
-      }
-      
-      currentPeriodEnd = periodEnd;
-      console.log(`[Checkout Completed] Period end: ${currentPeriodEnd.toISOString()}`);
-    }
+    // Calculate the current billing period end
+    const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+
+    console.log(`[Checkout Completed] Period end: ${currentPeriodEnd?.toISOString()}`);
 
     const updateData = {
       stripeCustomerId: customerId,
@@ -249,27 +259,10 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   
-  // Calculate period end from billing cycle anchor
-  let currentPeriodEnd: Date | null = null;
-  if (subscription.billing_cycle_anchor && subscription.items.data[0]?.price.recurring) {
-    const interval = subscription.items.data[0].price.recurring.interval;
-    const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
-    
-    const anchorDate = new Date(subscription.billing_cycle_anchor * 1000);
-    const periodEnd = new Date(anchorDate);
-    
-    if (interval === 'month') {
-      periodEnd.setMonth(periodEnd.getMonth() + intervalCount);
-    } else if (interval === 'year') {
-      periodEnd.setFullYear(periodEnd.getFullYear() + intervalCount);
-    } else if (interval === 'week') {
-      periodEnd.setDate(periodEnd.getDate() + (7 * intervalCount));
-    } else if (interval === 'day') {
-      periodEnd.setDate(periodEnd.getDate() + intervalCount);
-    }
-    
-    currentPeriodEnd = periodEnd;
-  }
+  // Calculate the current billing period end
+  const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+
+  console.log(`[Payment Succeeded] Period end: ${currentPeriodEnd?.toISOString()}`);
 
   const user = await prisma.user.findUnique({
     where: { stripeCustomerId: customerId },

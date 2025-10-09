@@ -228,6 +228,7 @@ export async function trackPremiumUsage(userId: string): Promise<{
       weeklyPremiumUsesResetAt: true,
       monthlyPremiumUsesCount: true,
       monthlyPremiumUsesResetAt: true,
+      stripeCurrentPeriodEnd: true,
     },
   });
 
@@ -241,10 +242,17 @@ export async function trackPremiumUsage(userId: string): Promise<{
       !user.monthlyPremiumUsesResetAt ||
       user.monthlyPremiumUsesResetAt <= now;
 
-    const nextResetDate = new Date();
-    nextResetDate.setMonth(nextResetDate.getMonth() + 1);
-    nextResetDate.setDate(1);
-    nextResetDate.setHours(0, 0, 0, 0);
+    // Use the Stripe billing period end date if available, otherwise calculate from current period end
+    let nextResetDate: Date;
+    if (user.stripeCurrentPeriodEnd) {
+      nextResetDate = new Date(user.stripeCurrentPeriodEnd);
+    } else {
+      // Fallback: if no period end is set, use first of next month
+      nextResetDate = new Date();
+      nextResetDate.setMonth(nextResetDate.getMonth() + 1);
+      nextResetDate.setDate(1);
+      nextResetDate.setHours(0, 0, 0, 0);
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
