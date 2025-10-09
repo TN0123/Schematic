@@ -64,6 +64,7 @@ export default function BulletinKanban({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const [columnNameEdits, setColumnNameEdits] = useState<
     Record<string, string>
@@ -219,6 +220,18 @@ export default function BulletinKanban({
 
   const toggleFilters = () => {
     dispatch({ type: "TOGGLE_FILTERS" });
+  };
+
+  const toggleCardExpanded = (cardId: string) => {
+    setExpandedCards((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(cardId)) {
+        newSet.delete(cardId);
+      } else {
+        newSet.add(cardId);
+      }
+      return newSet;
+    });
   };
 
   const handleSave = async () => {
@@ -491,11 +504,25 @@ export default function BulletinKanban({
           }
         }
       }
+
+      // Toggle card expansion with Enter key
+      else if (event.key === "Enter" && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        toggleCardExpanded(selectedCardId);
+      }
     };
 
     document.addEventListener("keydown", handleCardNavigation);
     return () => document.removeEventListener("keydown", handleCardNavigation);
-  }, [selectedCardId, filteredCards, cards, columns, updateCard, dispatch]);
+  }, [
+    selectedCardId,
+    filteredCards,
+    cards,
+    columns,
+    updateCard,
+    dispatch,
+    toggleCardExpanded,
+  ]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -659,6 +686,8 @@ export default function BulletinKanban({
                         }
                         activeId={activeId}
                         selectedCardId={selectedCardId}
+                        expandedCards={expandedCards}
+                        onToggleCardExpanded={toggleCardExpanded}
                       />
                     );
                   })}

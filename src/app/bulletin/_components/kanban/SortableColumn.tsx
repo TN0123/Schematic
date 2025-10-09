@@ -24,6 +24,8 @@ interface SortableColumnProps {
   onColumnNameEditChange: (value: string) => void;
   activeId: string | null;
   selectedCardId: string | null;
+  expandedCards: Set<string>;
+  onToggleCardExpanded: (cardId: string) => void;
 }
 
 function SortableColumnComponent({
@@ -41,6 +43,8 @@ function SortableColumnComponent({
   onColumnNameEditChange,
   activeId,
   selectedCardId,
+  expandedCards,
+  onToggleCardExpanded,
 }: SortableColumnProps) {
   const {
     attributes,
@@ -138,6 +142,8 @@ function SortableColumnComponent({
                 onRemove={() => onRemoveCard(card.id)}
                 activeId={activeId}
                 isSelected={selectedCardId === card.id}
+                isExpanded={expandedCards.has(card.id)}
+                onToggleExpanded={() => onToggleCardExpanded(card.id)}
               />
             ))}
           </ul>

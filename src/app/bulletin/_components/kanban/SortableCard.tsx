@@ -12,6 +12,8 @@ interface SortableCardProps {
   onRemove: () => void;
   activeId: string | null;
   isSelected: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
 }
 
 export function SortableCard({
@@ -20,6 +22,8 @@ export function SortableCard({
   onRemove,
   activeId,
   isSelected,
+  isExpanded,
+  onToggleExpanded,
 }: SortableCardProps) {
   const {
     attributes,
@@ -38,7 +42,6 @@ export function SortableCard({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (activeId === card.id) {
@@ -222,7 +225,7 @@ export function SortableCard({
 
         {/* Expand/Collapse Button */}
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={onToggleExpanded}
           className="w-full text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2"
         >
           {isExpanded ? "Less" : "More"}
