@@ -31,7 +31,6 @@ export const useCalendarState = (
   const [showCreationModal, setShowCreationModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isFileUploaderModalOpen, setIsFileUploaderModalOpen] = useState(false);
   const [isIcsUploaderModalOpen, setIsIcsUploaderModalOpen] = useState(false);
 
   // Event editing states
@@ -399,8 +398,6 @@ export const useCalendarState = (
     setShowEditModal,
     isDeleteModalOpen,
     setIsDeleteModalOpen,
-    isFileUploaderModalOpen,
-    setIsFileUploaderModalOpen,
     isIcsUploaderModalOpen,
     setIsIcsUploaderModalOpen,
 

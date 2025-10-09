@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Calendar,
@@ -18,6 +18,8 @@ import SpeechRecognition, {
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import EventReviewModal, { ExtractedEvent } from "./EventReviewModal";
+import { Event as CalendarEvent } from "../types";
 
 interface MobilePanelTabsProps {
   inputText: string;
@@ -26,11 +28,11 @@ interface MobilePanelTabsProps {
   handleSubmit: () => void;
   onCancelGeneration?: () => void;
   setShowModal: (show: boolean) => void;
-  setIsFileUploaderModalOpen: (open: boolean) => void;
   setIsIcsUploaderModalOpen: (open: boolean) => void;
   dailySummary: string;
   dailySummaryDate: Date | null;
   dailySummaryLoading: boolean;
+  setEvents?: (events: CalendarEvent[]) => void;
 }
 
 export default function MobilePanelTabs({
@@ -40,11 +42,11 @@ export default function MobilePanelTabs({
   handleSubmit,
   onCancelGeneration,
   setShowModal,
-  setIsFileUploaderModalOpen,
   setIsIcsUploaderModalOpen,
   dailySummary,
   dailySummaryDate,
   dailySummaryLoading,
+  setEvents,
 }: MobilePanelTabsProps) {
   const [activeTab, setActiveTab] = useState<"events" | "goals">("events");
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -55,6 +57,14 @@ export default function MobilePanelTabs({
   const [filters, setFilters] = useState<GoalDuration[]>([]);
   const [removingGoals, setRemovingGoals] = useState<string[]>([]);
   const { data: session } = useSession();
+
+  // File upload state
+  const [extractedEvents, setExtractedEvents] = useState<
+    ExtractedEvent[] | null
+  >(null);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     transcript,
@@ -135,6 +145,69 @@ export default function MobilePanelTabs({
     filters.length > 0
       ? goals.filter((goal) => filters.includes(goal.type))
       : goals;
+
+  // File upload handlers
+  const handleFileUpload = async (file: File) => {
+    setIsFileUploading(true);
+    setFileUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const isPdf = file.type === "application/pdf";
+      const uploadUrl = isPdf ? "/api/upload-pdf" : "/api/upload-image";
+
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        if (data.events.length === 0) {
+          setFileUploadError("No events found in the file.");
+        } else {
+          setExtractedEvents(data.events);
+        }
+      } else {
+        setFileUploadError("Upload failed, service is down");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setFileUploadError("An error occurred while uploading.");
+    } finally {
+      setIsFileUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleEventReviewBack = () => {
+    setExtractedEvents(null);
+    setFileUploadError(null);
+  };
+
+  const handleAddExtractedEvents = (selectedEvents: ExtractedEvent[]) => {
+    const formattedEvents = selectedEvents.map((event) => ({
+      id: event.id,
+      title: event.title,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    }));
+
+    if (setEvents) {
+      setEvents(formattedEvents);
+    }
+
+    setExtractedEvents(null);
+    setFileUploadError(null);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -234,6 +307,37 @@ export default function MobilePanelTabs({
               </div>
             </div>
 
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf, image/jpeg, image/png"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+
+            {/* File Upload Error Message */}
+            {fileUploadError && (
+              <div className="px-3 py-2 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md">
+                <p className="text-sm text-red-800 dark:text-red-200">
+                  {fileUploadError}
+                </p>
+              </div>
+            )}
+
+            {/* File Upload Loading */}
+            {isFileUploading && (
+              <div className="px-3 py-4 flex items-center justify-center">
+                <RefreshCw
+                  size={24}
+                  className="animate-spin text-blue-500 dark:text-blue-400"
+                />
+                <span className="ml-2 text-sm text-gray-600 dark:text-dark-textSecondary">
+                  Extracting events from file...
+                </span>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <h3 className="font-semibold text-gray-800 dark:text-dark-textPrimary text-base">
@@ -249,7 +353,7 @@ export default function MobilePanelTabs({
                 </button>
                 <button
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-dark-paper text-gray-700 dark:text-dark-textPrimary rounded-xl hover:bg-gray-200 dark:hover:bg-dark-actionHover active:bg-gray-300 dark:active:bg-dark-actionSelected transition-all duration-200 border dark:border-dark-divider text-sm font-medium touch-manipulation min-h-[44px]"
-                  onClick={() => setIsFileUploaderModalOpen(true)}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   <FileUp size={18} />
                   Upload
@@ -395,6 +499,30 @@ export default function MobilePanelTabs({
           </div>
         )}
       </div>
+
+      {/* Event Review Modal */}
+      {extractedEvents && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-dark-secondary rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Review Extracted Events
+              </h2>
+              <button
+                onClick={handleEventReviewBack}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-dark-textSecondary text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <EventReviewModal
+              events={extractedEvents}
+              onBack={handleEventReviewBack}
+              onAddAll={handleAddExtractedEvents}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -25,6 +25,7 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 import ScheduleContextModal from "./ScheduleContextModal";
 import EventEditModal from "./EventEditModal";
+import EventReviewModal, { ExtractedEvent } from "./EventReviewModal";
 import { Event as CalendarEvent } from "../types";
 import {
   formatDateForDisplay,
@@ -67,7 +68,6 @@ interface GenerationResult {
 
 interface EventGenerationPanelProps {
   setShowModal: (show: boolean) => void;
-  setIsFileUploaderModalOpen: (open: boolean) => void;
   setIsIcsUploaderModalOpen: (open: boolean) => void;
   inputText: string;
   setInputText: (text: string) => void;
@@ -85,11 +85,11 @@ interface EventGenerationPanelProps {
     data: { title: string; start: Date; end: Date; links?: string[] }
   ) => Promise<void> | void;
   onDeleteGeneratedEvent?: (id: string) => Promise<void> | void;
+  setEvents?: (events: CalendarEvent[]) => void;
 }
 
 export default function EventGenerationPanel({
   setShowModal,
-  setIsFileUploaderModalOpen,
   setIsIcsUploaderModalOpen,
   inputText,
   setInputText,
@@ -104,6 +104,7 @@ export default function EventGenerationPanel({
   onClearGenerationResult,
   onEditGeneratedEvent,
   onDeleteGeneratedEvent,
+  setEvents,
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
@@ -128,6 +129,15 @@ export default function EventGenerationPanel({
     null
   );
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  // File upload state
+  const [extractedEvents, setExtractedEvents] = useState<
+    ExtractedEvent[] | null
+  >(null);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (generationResult) {
@@ -396,6 +406,98 @@ export default function EventGenerationPanel({
     setChatMessages((prev) => prev.slice(0, -1));
   };
 
+  // File upload handlers
+  const handleFileUpload = async (file: File) => {
+    setIsFileUploading(true);
+    setFileUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const isPdf = file.type === "application/pdf";
+      const uploadUrl = isPdf ? "/api/upload-pdf" : "/api/upload-image";
+
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        if (data.events.length === 0) {
+          setFileUploadError("No events found in the file.");
+        } else {
+          setExtractedEvents(data.events);
+        }
+      } else {
+        setFileUploadError("Upload failed, service is down");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setFileUploadError("An error occurred while uploading.");
+    } finally {
+      setIsFileUploading(false);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const validTypes = ["application/pdf", "image/jpeg", "image/png"];
+      if (validTypes.includes(file.type)) {
+        handleFileUpload(file);
+      } else {
+        setFileUploadError("Please upload a PDF, JPEG, or PNG file.");
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleEventReviewBack = () => {
+    setExtractedEvents(null);
+    setFileUploadError(null);
+  };
+
+  const handleAddExtractedEvents = (selectedEvents: ExtractedEvent[]) => {
+    const formattedEvents = selectedEvents.map((event) => ({
+      id: event.id,
+      title: event.title,
+      start: new Date(event.start),
+      end: new Date(event.end),
+    }));
+
+    if (setEvents) {
+      setEvents(formattedEvents);
+    }
+
+    setExtractedEvents(null);
+    setFileUploadError(null);
+  };
+
   return (
     <>
       <aside
@@ -457,9 +559,10 @@ export default function EventGenerationPanel({
                 <button
                   className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
                   onClick={() => {
-                    setIsFileUploaderModalOpen(true);
+                    fileInputRef.current?.click();
                     setIsMobileOpen(false);
                   }}
+                  title="Upload PDF or Image"
                 >
                   <FileUp size={20} />
                 </button>
@@ -490,10 +593,14 @@ export default function EventGenerationPanel({
               <div className="relative">
                 <textarea
                   ref={inputTextareaRef}
-                  className={`flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent text-sm ${
+                  className={`flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent text-sm transition-colors ${
                     loading
                       ? "text-gray-400 dark:text-dark-textDisabled cursor-not-allowed"
                       : "dark:text-dark-textPrimary cursor-text"
+                  } ${
+                    isDragging
+                      ? "border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/10"
+                      : ""
                   }`}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
@@ -512,7 +619,14 @@ export default function EventGenerationPanel({
                       setIsMobileOpen(false);
                     }
                   }}
-                  placeholder="Enter your events and reminders here..."
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleFileDrop}
+                  placeholder={
+                    isDragging
+                      ? "Drop your PDF or image here..."
+                      : "Enter your events and reminders here"
+                  }
                   disabled={loading}
                 />
                 <div className="absolute bottom-2 right-2 flex items-center gap-2">
@@ -567,6 +681,37 @@ export default function EventGenerationPanel({
                 </div>
               </div>
             </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf, image/jpeg, image/png"
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+
+            {/* File Upload Error Message */}
+            {fileUploadError && (
+              <div className="px-2 py-2 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md">
+                <p className="text-sm text-red-800 dark:text-red-200">
+                  {fileUploadError}
+                </p>
+              </div>
+            )}
+
+            {/* File Upload Loading */}
+            {isFileUploading && (
+              <div className="px-2 py-4 flex items-center justify-center">
+                <RefreshCw
+                  size={24}
+                  className="animate-spin text-blue-500 dark:text-blue-400"
+                />
+                <span className="ml-2 text-sm text-gray-600 dark:text-dark-textSecondary">
+                  Extracting events from file...
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">
               {/* Generation Result Summary */}
@@ -1136,6 +1281,30 @@ export default function EventGenerationPanel({
         onClose={() => setIsScheduleContextModalOpen(false)}
         userId={userId}
       />
+
+      {/* Event Review Modal */}
+      {extractedEvents && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 dark:bg-black dark:bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-dark-secondary rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+                Review Extracted Events
+              </h2>
+              <button
+                onClick={handleEventReviewBack}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-dark-textSecondary text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <EventReviewModal
+              events={extractedEvents}
+              onBack={handleEventReviewBack}
+              onAddAll={handleAddExtractedEvents}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

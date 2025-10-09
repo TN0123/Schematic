@@ -11,7 +11,6 @@ import { RefreshCw, ChevronUp, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventGenerationPanel from "./_components/EventGenerationPanel";
 import GoalsPanel from "./_components/GoalsPanel";
-import FileUploaderModal from "./_components/FileUploaderModal";
 import IcsUploaderModal from "./_components/IcsUploaderModal";
 import EventEditModal from "./_components/EventEditModal";
 import { useNextStep } from "nextstepjs";
@@ -365,7 +364,6 @@ export default function CalendarApp() {
       const isAnyScheduleModalOpen =
         calendarState.showCreationModal ||
         calendarState.showEditModal ||
-        calendarState.isFileUploaderModalOpen ||
         calendarState.isIcsUploaderModalOpen;
 
       // Single-key shortcuts: m (month), w (week), d (day)
@@ -424,7 +422,6 @@ export default function CalendarApp() {
     handlePasteEvents,
     calendarState.showCreationModal,
     calendarState.showEditModal,
-    calendarState.isFileUploaderModalOpen,
     calendarState.isIcsUploaderModalOpen,
   ]);
 
@@ -654,9 +651,6 @@ export default function CalendarApp() {
               }
               calendarState.setShowCreationModal(show);
             }}
-            setIsFileUploaderModalOpen={
-              calendarState.setIsFileUploaderModalOpen
-            }
             setIsIcsUploaderModalOpen={calendarState.setIsIcsUploaderModalOpen}
             dailySummary={dailySummary.dailySummary}
             dailySummaryDate={dailySummary.dailySummaryDate}
@@ -678,6 +672,7 @@ export default function CalendarApp() {
                 console.error("Failed to delete generated event", e);
               }
             }}
+            setEvents={calendarState.setExtractedEvents}
           />
         </div>
 
@@ -839,10 +834,6 @@ export default function CalendarApp() {
                       }
                       calendarState.setShowCreationModal(show);
                     }}
-                    setIsFileUploaderModalOpen={(open) => {
-                      if (open) setIsMobilePanelOpen(false);
-                      calendarState.setIsFileUploaderModalOpen(open);
-                    }}
                     setIsIcsUploaderModalOpen={(open) => {
                       if (open) setIsMobilePanelOpen(false);
                       calendarState.setIsIcsUploaderModalOpen(open);
@@ -850,6 +841,7 @@ export default function CalendarApp() {
                     dailySummary={dailySummary.dailySummary}
                     dailySummaryDate={dailySummary.dailySummaryDate}
                     dailySummaryLoading={dailySummary.dailySummaryLoading}
+                    setEvents={calendarState.setExtractedEvents}
                   />
                 </div>
               </motion.div>
@@ -905,11 +897,6 @@ export default function CalendarApp() {
           onDelete={
             calendarState.eventToDelete ? handleDelete : handleDeleteMany
           }
-        />
-        <FileUploaderModal
-          isOpen={calendarState.isFileUploaderModalOpen}
-          onClose={() => calendarState.setIsFileUploaderModalOpen(false)}
-          setEvents={calendarState.setExtractedEvents}
         />
         <IcsUploaderModal
           isOpen={calendarState.isIcsUploaderModalOpen}
