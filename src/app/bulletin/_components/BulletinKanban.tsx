@@ -510,6 +510,46 @@ export default function BulletinKanban({
         event.preventDefault();
         toggleCardExpanded(selectedCardId);
       }
+
+      // Delete selected card with Backspace key
+      else if (event.key === "Backspace" && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        if (selectedCardId) {
+          // Find the next card to select after deletion
+          const currentColumnCards = cards.filter(
+            (card) => card.columnId === selectedCard.columnId
+          );
+          const currentCardIndex = currentColumnCards.findIndex(
+            (card) => card.id === selectedCardId
+          );
+
+          let nextSelectedCardId: string | null = null;
+
+          // Try to select the next card in the same column
+          if (currentCardIndex < currentColumnCards.length - 1) {
+            nextSelectedCardId = currentColumnCards[currentCardIndex + 1].id;
+          }
+          // If no next card in same column, try the previous card
+          else if (currentCardIndex > 0) {
+            nextSelectedCardId = currentColumnCards[currentCardIndex - 1].id;
+          }
+          // If no cards in current column, try to find a card in another column
+          else {
+            const remainingCards = cards.filter(
+              (card) => card.id !== selectedCardId
+            );
+            if (remainingCards.length > 0) {
+              nextSelectedCardId = remainingCards[0].id;
+            }
+          }
+
+          // Delete the card
+          removeCard(selectedCardId);
+
+          // Update selection to the next card
+          setSelectedCardId(nextSelectedCardId);
+        }
+      }
     };
 
     document.addEventListener("keydown", handleCardNavigation);
@@ -522,6 +562,7 @@ export default function BulletinKanban({
     updateCard,
     dispatch,
     toggleCardExpanded,
+    removeCard,
   ]);
 
   useEffect(() => {
