@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
+import { recordEventAction } from "@/lib/habit-ingestion";
 
 
 export async function GET(req: NextRequest) {
@@ -58,6 +59,14 @@ export async function POST(req: Request) {
     const event = await prisma.event.create({
       data: { title, start: new Date(start), end: new Date(end), userId: session.user.id, links: Array.isArray(normalizedLinks) ? normalizedLinks : undefined },
     });
+    
+    // Record habit action asynchronously (don't await to avoid blocking)
+    recordEventAction(session.user.id, 'created', {
+      title: event.title,
+      start: event.start,
+      end: event.end,
+    }, event.id).catch(err => console.error('Failed to record habit action:', err));
+    
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
     console.error("Error creating event:", error);

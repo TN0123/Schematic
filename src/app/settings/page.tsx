@@ -3,7 +3,16 @@
 import ThemeToggle from "@/components/ThemeToggle";
 import { useWriteSettings } from "@/components/WriteSettingsProvider";
 import { useScheduleSettings } from "@/components/ScheduleSettingsProvider";
-import { Moon, Sun, PenLine, Calendar, Crown, Loader2 } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  PenLine,
+  Calendar,
+  Crown,
+  Loader2,
+  TrendingUp,
+  Trash2,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import UsageIndicator from "@/components/UsageIndicator";
@@ -16,6 +25,12 @@ interface SubscriptionStatus {
   hasActiveSubscription: boolean;
 }
 
+interface HabitSettings {
+  habitLearningEnabled: boolean;
+  lastHabitRefinementAt: string | null;
+  habitCount: number;
+}
+
 export default function SettingsPage() {
   const { viewMode, setViewMode } = useWriteSettings();
   const { suggestionsEnabled, setSuggestionsEnabled } = useScheduleSettings();
@@ -23,6 +38,11 @@ export default function SettingsPage() {
     useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [habitSettings, setHabitSettings] = useState<HabitSettings | null>(
+    null
+  );
+  const [habitLoading, setHabitLoading] = useState(true);
+  const [clearingData, setClearingData] = useState(false);
 
   useEffect(() => {
     // Check if we just came back from a successful checkout
@@ -49,6 +69,9 @@ export default function SettingsPage() {
         }
       });
     }
+
+    // Fetch habit settings
+    fetchHabitSettings();
   }, []);
 
   const syncSubscription = async (sessionId: string) => {
@@ -145,6 +168,71 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchHabitSettings = async () => {
+    try {
+      const response = await fetch("/api/user/habit-settings");
+      if (response.ok) {
+        const data = await response.json();
+        setHabitSettings(data);
+      }
+    } catch (error) {
+      console.error("Error fetching habit settings:", error);
+    } finally {
+      setHabitLoading(false);
+    }
+  };
+
+  const toggleHabitLearning = async () => {
+    if (!habitSettings) return;
+
+    try {
+      const newValue = !habitSettings.habitLearningEnabled;
+      const response = await fetch("/api/user/habit-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ habitLearningEnabled: newValue }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHabitSettings((prev) => (prev ? { ...prev, ...data } : null));
+      } else {
+        alert("Failed to update habit learning settings. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error toggling habit learning:", error);
+      alert("An error occurred. Please try again.");
+    }
+  };
+
+  const clearHabitData = async () => {
+    const confirmed = confirm(
+      "Are you sure you want to delete all your habit learning data? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    setClearingData(true);
+    try {
+      const response = await fetch("/api/user/habit-settings", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Refresh habit settings
+        await fetchHabitSettings();
+        alert("All habit data has been cleared successfully.");
+      } else {
+        alert("Failed to clear habit data. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error clearing habit data:", error);
+      alert("An error occurred. Please try again.");
+    } finally {
+      setClearingData(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start h-screen pt-24 bg-gray-50 dark:bg-dark-background transition-all overflow-y-auto">
       <div className="py-6">
@@ -211,6 +299,97 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Habit Learning Settings */}
+        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
+          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Habit Learning
+            </h2>
+          </div>
+          <div className="p-4 space-y-4">
+            {habitLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                      Enable Habit Learning
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                      Learn from your patterns to suggest better events
+                    </span>
+                  </div>
+                  <button
+                    onClick={toggleHabitLearning}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      habitSettings?.habitLearningEnabled
+                        ? "bg-blue-600"
+                        : "bg-gray-300 dark:bg-dark-divider"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        habitSettings?.habitLearningEnabled
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {habitSettings && (
+                  <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
+                        Learned Habits
+                      </span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-dark-textPrimary">
+                        {habitSettings.habitCount}
+                      </span>
+                    </div>
+
+                    {habitSettings.lastHabitRefinementAt && (
+                      <p className="text-xs text-gray-600 dark:text-dark-textSecondary mb-4">
+                        Last updated:{" "}
+                        {new Date(
+                          habitSettings.lastHabitRefinementAt
+                        ).toLocaleDateString()}
+                      </p>
+                    )}
+
+                    <button
+                      onClick={clearHabitData}
+                      disabled={clearingData}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {clearingData ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Clearing...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          Clear All Habit Data
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-xs text-gray-500 dark:text-dark-textDisabled mt-2">
+                      This will permanently delete all learned habits and event
+                      tracking data.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import { suggest_events } from "@/scripts/schedule/suggest-events";
 import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import crypto from "crypto";
+import { recordEventAction } from "@/lib/habit-ingestion";
 
 function makeStableSuggestionId(title: string, start: string, end: string) {
   const base = `${title}|${start}|${end}`;
@@ -187,6 +188,60 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const { userId, timezone, eventId } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+    if (!timezone) {
+      return NextResponse.json({ error: "Missing timezone" }, { status: 400 });
+    }
+    if (!eventId) {
+      return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
+    }
+
+    const targetDate = new Date();
+    const { dayKey } = getUtcDayBoundsForTimezone(targetDate, timezone);
+
+    const cache = await prisma.dailySuggestionsCache.findUnique({
+      where: {
+        userId_timezone_dayKey: {
+          userId,
+          timezone,
+          dayKey,
+        },
+      },
+    });
+
+    if (!cache) {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    const payload = JSON.parse(cache.payload || "{}");
+    const existingEvents = Array.isArray(payload.events) ? payload.events : [];
+    const acceptedEvent = existingEvents.find((e: any) => e?.id === eventId);
+
+    // Record acceptance in habit tracking
+    if (acceptedEvent && acceptedEvent.title && acceptedEvent.start && acceptedEvent.end) {
+      recordEventAction(userId, 'accepted', {
+        title: acceptedEvent.title,
+        start: new Date(acceptedEvent.start),
+        end: new Date(acceptedEvent.end),
+      }).catch(err => console.error('Failed to record habit action:', err));
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Error accepting suggestion:", error);
+    return NextResponse.json(
+      { error: "Failed to accept suggestion" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { userId, timezone, eventId } = await request.json();
@@ -220,11 +275,21 @@ export async function DELETE(request: Request) {
 
     const payload = JSON.parse(cache.payload || "{}");
     const existingEvents = Array.isArray(payload.events) ? payload.events : [];
+    const rejectedEvent = existingEvents.find((e: any) => e?.id === eventId);
     const filteredEvents = existingEvents.filter((e: any) => e?.id !== eventId);
 
     // No-op if nothing changed
     if (filteredEvents.length === existingEvents.length) {
       return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    // Record rejection in habit tracking
+    if (rejectedEvent && rejectedEvent.title && rejectedEvent.start && rejectedEvent.end) {
+      recordEventAction(userId, 'rejected', {
+        title: rejectedEvent.title,
+        start: new Date(rejectedEvent.start),
+        end: new Date(rejectedEvent.end),
+      }).catch(err => console.error('Failed to record habit action:', err));
     }
 
     await prisma.dailySuggestionsCache.update({

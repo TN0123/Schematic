@@ -44,6 +44,13 @@ model User {
   monthlyPremiumUsesResetAt DateTime?
   weeklyPremiumUsesCount   Int                     @default(0)
   monthlyPremiumUsesCount  Int                     @default(0)
+  
+  // Habit Learning
+  habitLearningEnabled     Boolean                 @default(true)
+  lastHabitRefinementAt    DateTime?
+  eventActions             EventAction[]
+  habitProfiles            HabitProfile[]
+  habitClusters            HabitCluster[]
 }
 
 model Account {
@@ -179,4 +186,77 @@ model DailySuggestionsCache {
 
   @@unique([userId, timezone, dayKey])
   @@index([userId])
+}
+
+/// Lightweight event tracking for all calendar interactions
+model EventAction {
+  id         String   @id @default(cuid())
+  userId     String
+  eventId    String?
+  actionType String /// created, updated, deleted, accepted, rejected
+  eventTitle String
+  eventStart DateTime
+  eventEnd   DateTime
+  recordedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recordedAt])
+}
+
+enum HabitType {
+  MEAL
+  WORKOUT
+  MEETING
+  COMMUTE
+  WORK_BLOCK
+  PERSONAL
+}
+
+/// Real-time per-user habit statistics
+model HabitProfile {
+  id                 String    @id @default(cuid())
+  userId             String
+  habitType          HabitType
+  timeSlotHistogram  Json /// JSON object for histogram data
+  centroid           Json /// JSON with avgHour, avgMinute, avgDuration
+  count              Int       @default(0)
+  confidenceScore    Float     @default(0.0)
+  lastUpdatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, habitType])
+  @@index([userId])
+}
+
+/// Batch-refined semantic clusters
+model HabitCluster {
+  id             String   @id @default(cuid())
+  userId         String
+  clusterLabel   String
+  exemplarTitle  String
+  embedding      Json /// JSON array of embedding vector
+  memberEventIds String[] @default([])
+  createdAt      DateTime @default(now())
+  lastRefinedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Track batch job execution
+model BackgroundJobLog {
+  id             String    @id @default(cuid())
+  jobType        String
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  status         String /// pending, running, completed, failed
+  processedCount Int       @default(0)
+  errorMessage   String?   @db.Text
+
+  @@index([jobType])
+  @@index([startedAt])
 }

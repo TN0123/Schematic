@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
+import { recordEventActionsBatch } from "@/lib/habit-ingestion";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -37,6 +38,20 @@ export async function POST(req: Request) {
         }
       )
     );
+
+    // Record habit actions for all created events
+    recordEventActionsBatch(
+      session.user.id,
+      createdEvents.map(event => ({
+        actionType: 'created' as const,
+        eventData: {
+          title: event.title,
+          start: event.start,
+          end: event.end,
+        },
+        eventId: event.id,
+      }))
+    ).catch(err => console.error('Failed to record habit actions:', err));
 
     return NextResponse.json(createdEvents, { status: 201 });
   } catch (error) {

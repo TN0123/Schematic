@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { Event } from "@/app/schedule/types";
+import { getHabitBasedSuggestions } from "@/lib/habit-profile";
 
 const prisma = new PrismaClient();
 
@@ -206,6 +207,35 @@ export async function suggest_events(userId: string, timezone: string) {
 
   const availableTimeSlots = getAvailableTimeSlots(existingEvents, timezone);
 
+  // Get habit-based suggestions
+  const habitSuggestions = await getHabitBasedSuggestions(
+    userId,
+    timezone,
+    availableTimeSlots.map(slot => ({
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    }))
+  );
+
+  // Format habit suggestions for the prompt
+  const formattedHabitSuggestions = habitSuggestions.length > 0
+    ? habitSuggestions
+        .map((suggestion, index) => {
+          const timeOptions: Intl.DateTimeFormatOptions = {
+            hour: "numeric",
+            minute: "numeric",
+            hour12: true,
+            timeZone: timezone,
+          };
+          const startTime = suggestion.start.toLocaleTimeString("en-US", timeOptions);
+          const endTime = suggestion.end.toLocaleTimeString("en-US", timeOptions);
+          const confidencePercent = Math.round(suggestion.confidence * 100);
+          
+          return `${index + 1}. ${suggestion.title}: ${startTime} - ${endTime} (${confidencePercent}% confidence based on your habits)`;
+        })
+        .join("\n")
+    : "No habit-based suggestions available yet.";
+
   // Format available time slots in a readable way for the LLM
   const formattedTimeSlots = availableTimeSlots
     .map((slot, index) => {
@@ -247,11 +277,15 @@ export async function suggest_events(userId: string, timezone: string) {
     3. **REMINDERS:** You must suggest 0-3 helpful reminders for today.
     4. **REMINDERS:** Reminders should be short notifications/alerts, not full events.
     5. **REMINDERS:** Reminder times can be any time today (not restricted to available slots).
-    6. Prefer suggestions related to the person's bulletin items or daily goals when possible.
-    7. Make sure to not suggest events/reminders that are already scheduled.
-    8. Output must be a **JSON object only** — no extra text.
+    6. **PRIORITIZE habit-based suggestions** - they have high confidence scores based on user's past behavior.
+    7. Prefer suggestions related to the person's bulletin items or daily goals when possible.
+    8. Make sure to not suggest events/reminders that are already scheduled.
+    9. Output must be a **JSON object only** — no extra text.
 
     ---
+
+    **HABIT-BASED SUGGESTIONS (prioritize these - based on user's patterns):**
+    ${formattedHabitSuggestions}
 
     **AVAILABLE TIME SLOTS** (events may only be scheduled within these ranges):
     ${formattedTimeSlots}
