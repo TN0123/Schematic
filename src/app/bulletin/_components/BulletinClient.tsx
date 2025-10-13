@@ -34,6 +34,7 @@ interface TodoItem {
   id: string;
   text: string;
   checked: boolean;
+  dueDate?: string; // ISO date string (YYYY-MM-DD)
 }
 
 interface QueueItem {

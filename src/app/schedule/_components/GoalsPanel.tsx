@@ -8,8 +8,17 @@ import {
   CheckCircle,
   Plus,
   Loader2,
+  Clock,
 } from "lucide-react";
 import GoalCard from "./GoalCard";
+import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
+import TodoItemMenu from "@/app/bulletin/_components/TodoItemMenu";
+import {
+  formatDueDate,
+  getDueDateStatus,
+  getDueDateColor,
+  sortTodoItemsByDueDate,
+} from "@/app/bulletin/_components/utils/dateHelpers";
 
 export enum GoalDuration {
   DAILY = "DAILY",
@@ -28,6 +37,7 @@ interface TodoItem {
   id: string;
   text: string;
   checked: boolean;
+  dueDate?: string; // ISO date string (YYYY-MM-DD)
 }
 
 interface TodoBulletin {
@@ -64,6 +74,8 @@ export default function GoalsPanel() {
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
   const [hasLoadedInitialTodos, setHasLoadedInitialTodos] = useState(false);
   const lastSavedTodoStateRef = useRef<string>("");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerItemId, setDatePickerItemId] = useState<string | null>(null);
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -462,6 +474,19 @@ export default function GoalsPanel() {
     );
   };
 
+  const handleSetDueDate = (itemId: string) => {
+    setDatePickerItemId(itemId);
+    setDatePickerOpen(true);
+  };
+
+  const handleSaveDueDate = (date: string | null) => {
+    if (datePickerItemId) {
+      updateTodoItem(datePickerItemId, { dueDate: date || undefined });
+    }
+    setDatePickerOpen(false);
+    setDatePickerItemId(null);
+  };
+
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
@@ -619,10 +644,38 @@ export default function GoalsPanel() {
 
   const renderTodoTab = () => {
     const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
-    const uncheckedItems =
-      selectedTodo?.data.items.filter((item) => !item.checked) || [];
+    const uncheckedItems = sortTodoItemsByDueDate(
+      selectedTodo?.data.items.filter((item) => !item.checked) || []
+    );
     const checkedItems =
       selectedTodo?.data.items.filter((item) => item.checked) || [];
+
+    // Group unchecked items by due date for display
+    const groupedItems = uncheckedItems.reduce((groups, item) => {
+      const key = item.dueDate || "no-date";
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+      return groups;
+    }, {} as Record<string, TodoItem[]>);
+
+    // Get ordered date keys
+    const dateKeys = Object.keys(groupedItems).sort((a, b) => {
+      if (a === "no-date") return -1;
+      if (b === "no-date") return 1;
+      return new Date(a).getTime() - new Date(b).getTime();
+    });
+
+    // Check if any items have dates
+    const hasItemsWithDates =
+      selectedTodo?.data.items.some((item) => item.dueDate) || false;
+
+    // Calculate today's progress (only for items due today)
+    const today = new Date().toISOString().split("T")[0];
+    const todayItems =
+      selectedTodo?.data.items.filter((item) => item.dueDate === today) || [];
+    const todayCheckedItems = todayItems.filter((item) => item.checked);
 
     if (todoBulletins.length === 0) {
       return (
@@ -640,7 +693,7 @@ export default function GoalsPanel() {
     if (!selectedTodo) return null;
 
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full justify-center">
         {/* Todo Selector Dropdown */}
         <div className="mb-4 relative" id="todo-selector">
           <button
@@ -681,10 +734,16 @@ export default function GoalsPanel() {
         {/* Progress Indicator */}
         {selectedTodo && selectedTodo.data.items.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
-              <span>Progress</span>
+            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-dark-textSecondary mb-1">
               <span>
-                {checkedItems.length}/{selectedTodo.data.items.length} completed
+                {hasItemsWithDates && todayItems.length > 0
+                  ? "Today's progress"
+                  : "Progress"}
+              </span>
+              <span>
+                {hasItemsWithDates && todayItems.length > 0
+                  ? `${todayCheckedItems.length}/${todayItems.length} completed`
+                  : `${checkedItems.length}/${selectedTodo.data.items.length} completed`}
               </span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-dark-secondary rounded-full h-1.5 overflow-hidden">
@@ -692,7 +751,11 @@ export default function GoalsPanel() {
                 className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-300 ease-out"
                 style={{
                   width: `${
-                    selectedTodo.data.items.length > 0
+                    hasItemsWithDates && todayItems.length > 0
+                      ? todayItems.length > 0
+                        ? (todayCheckedItems.length / todayItems.length) * 100
+                        : 0
+                      : selectedTodo.data.items.length > 0
                       ? (checkedItems.length / selectedTodo.data.items.length) *
                         100
                       : 0
@@ -720,57 +783,82 @@ export default function GoalsPanel() {
             </div>
           ) : (
             <div className="space-y-1">
-              {/* Unchecked Items */}
-              {uncheckedItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="group flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150"
-                >
-                  <button
-                    onClick={() => updateTodoItem(item.id, { checked: true })}
-                    aria-label="Check task"
-                    className="relative mt-0.5"
-                  >
-                    <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
-                  </button>
-                  <textarea
-                    ref={(el) => {
-                      if (el) textareaRefs.current[item.id] = el;
-                    }}
-                    rows={1}
-                    value={item.text}
-                    onChange={(e) => {
-                      e.target.style.height = "auto";
-                      e.target.style.height =
-                        Math.max(20, e.target.scrollHeight) + "px";
-                      updateTodoItem(item.id, { text: e.target.value });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        addTodoItem();
-                      } else if (
-                        e.key === "Backspace" &&
-                        e.currentTarget.value === "" &&
-                        selectedTodo.data.items.length > 1
-                      ) {
-                        e.preventDefault();
-                        removeTodoItem(item.id);
-                      }
-                    }}
-                    placeholder="Write a task..."
-                    className="flex-grow bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-sm leading-5"
-                    style={{ minHeight: "20px" }}
-                  />
-                  <button
-                    onClick={() => removeTodoItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
-                    aria-label="Delete item"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+              {/* Unchecked Items - Grouped by Date */}
+              {dateKeys.map((dateKey) => {
+                const itemsInGroup = groupedItems[dateKey];
+
+                return (
+                  <div key={dateKey} className="mb-3">
+                    {/* Date Header */}
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-textSecondary">
+                        {dateKey === "no-date"
+                          ? "No Date"
+                          : formatDueDate(dateKey)}
+                      </div>
+                    </div>
+
+                    {/* Items in this date group */}
+                    {itemsInGroup.map((item) => (
+                      <div
+                        key={item.id}
+                        className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150"
+                      >
+                        <button
+                          onClick={() =>
+                            updateTodoItem(item.id, { checked: true })
+                          }
+                          aria-label="Check task"
+                          className="relative"
+                        >
+                          <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
+                        </button>
+                        <div className="flex-grow flex items-center">
+                          <textarea
+                            ref={(el) => {
+                              if (el) textareaRefs.current[item.id] = el;
+                            }}
+                            rows={1}
+                            value={item.text}
+                            onChange={(e) => {
+                              e.target.style.height = "auto";
+                              e.target.style.height =
+                                Math.max(20, e.target.scrollHeight) + "px";
+                              updateTodoItem(item.id, { text: e.target.value });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                addTodoItem();
+                              } else if (
+                                e.key === "Backspace" &&
+                                e.currentTarget.value === "" &&
+                                selectedTodo.data.items.length > 1
+                              ) {
+                                e.preventDefault();
+                                removeTodoItem(item.id);
+                              }
+                            }}
+                            placeholder="Write a task..."
+                            className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-sm leading-5"
+                            style={{ minHeight: "20px" }}
+                          />
+                        </div>
+                        <TodoItemMenu
+                          onSetDueDate={() => handleSetDueDate(item.id)}
+                        />
+                        <button
+                          onClick={() => removeTodoItem(item.id)}
+                          className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                          aria-label="Delete item"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
 
               {/* Add Item Button */}
               <button
@@ -795,32 +883,40 @@ export default function GoalsPanel() {
                   {checkedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="group flex items-start gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150"
+                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150"
                     >
                       <button
                         onClick={() =>
                           updateTodoItem(item.id, { checked: false })
                         }
                         aria-label="Uncheck task"
-                        className="relative mt-0.5"
+                        className="relative"
                       >
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       </button>
-                      <textarea
-                        ref={(el) => {
-                          if (el) textareaRefs.current[item.id] = el;
-                        }}
-                        rows={1}
-                        value={item.text}
-                        onChange={(e) => {
-                          e.target.style.height = "auto";
-                          e.target.style.height =
-                            Math.max(20, e.target.scrollHeight) + "px";
-                          updateTodoItem(item.id, { text: e.target.value });
-                        }}
-                        className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-sm leading-5"
-                        style={{ minHeight: "20px" }}
-                      />
+                      <div className="flex-grow flex items-center">
+                        <textarea
+                          ref={(el) => {
+                            if (el) textareaRefs.current[item.id] = el;
+                          }}
+                          rows={1}
+                          value={item.text}
+                          onChange={(e) => {
+                            e.target.style.height = "auto";
+                            e.target.style.height =
+                              Math.max(20, e.target.scrollHeight) + "px";
+                            updateTodoItem(item.id, { text: e.target.value });
+                          }}
+                          className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-sm leading-5"
+                          style={{ minHeight: "20px" }}
+                        />
+                        {item.dueDate && (
+                          <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-gray-500">
+                            <Clock className="w-3 h-3" />
+                            <span>Due: {formatDueDate(item.dueDate)}</span>
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={() => removeTodoItem(item.id)}
                         className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
@@ -954,6 +1050,21 @@ export default function GoalsPanel() {
             : renderTodoTab()}
         </div>
       </aside>
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        isOpen={datePickerOpen}
+        onClose={() => setDatePickerOpen(false)}
+        onSave={handleSaveDueDate}
+        currentDate={
+          datePickerItemId && selectedTodoId
+            ? todoBulletins
+                .find((t) => t.id === selectedTodoId)
+                ?.data.items.find((item) => item.id === datePickerItemId)
+                ?.dueDate
+            : undefined
+        }
+      />
     </>
   );
 }

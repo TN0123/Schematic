@@ -12,14 +12,24 @@ import {
   Trash2,
   ClipboardList,
   GripVertical,
+  Clock,
 } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import { formatDistanceToNow } from "date-fns";
+import DatePickerModal from "./DatePickerModal";
+import TodoItemMenu from "./TodoItemMenu";
+import {
+  formatDueDate,
+  getDueDateStatus,
+  getDueDateColor,
+  sortTodoItemsByDueDate,
+} from "./utils/dateHelpers";
 
 interface TodoItem {
   id: string;
   text: string;
   checked: boolean;
+  dueDate?: string; // ISO date string (YYYY-MM-DD)
 }
 
 interface BulletinTodoProps {
@@ -49,6 +59,8 @@ export default function BulletinTodo({
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerItemId, setDatePickerItemId] = useState<string | null>(null);
 
   const lastSaved = useRef({ title: initialTitle, items: data?.items || [] });
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement }>({});
@@ -213,6 +225,19 @@ export default function BulletinTodo({
     setDraggedItem(null);
   };
 
+  const handleSetDueDate = (itemId: string) => {
+    setDatePickerItemId(itemId);
+    setDatePickerOpen(true);
+  };
+
+  const handleSaveDueDate = (date: string | null) => {
+    if (datePickerItemId) {
+      updateItem(datePickerItemId, { dueDate: date || undefined });
+    }
+    setDatePickerOpen(false);
+    setDatePickerItemId(null);
+  };
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && hasUnsavedChanges) {
@@ -225,8 +250,35 @@ export default function BulletinTodo({
     };
   }, [hasUnsavedChanges, handleSave]);
 
-  const uncheckedItems = items.filter((item) => !item.checked);
+  const uncheckedItems = sortTodoItemsByDueDate(
+    items.filter((item) => !item.checked)
+  );
   const checkedItems = items.filter((item) => item.checked);
+
+  // Group unchecked items by due date for display
+  const groupedItems = uncheckedItems.reduce((groups, item) => {
+    const key = item.dueDate || "no-date";
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(item);
+    return groups;
+  }, {} as Record<string, TodoItem[]>);
+
+  // Get ordered date keys
+  const dateKeys = Object.keys(groupedItems).sort((a, b) => {
+    if (a === "no-date") return -1;
+    if (b === "no-date") return 1;
+    return new Date(a).getTime() - new Date(b).getTime();
+  });
+
+  // Check if any items have dates
+  const hasItemsWithDates = items.some((item) => item.dueDate);
+
+  // Calculate today's progress (only for items due today)
+  const today = new Date().toISOString().split("T")[0];
+  const todayItems = items.filter((item) => item.dueDate === today);
+  const todayCheckedItems = todayItems.filter((item) => item.checked);
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-colors">
@@ -280,9 +332,15 @@ export default function BulletinTodo({
         {items.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
-              <span>Progress</span>
               <span>
-                {checkedItems.length}/{items.length} completed
+                {hasItemsWithDates && todayItems.length > 0
+                  ? "Today's progress"
+                  : "Progress"}
+              </span>
+              <span>
+                {hasItemsWithDates && todayItems.length > 0
+                  ? `${todayCheckedItems.length}/${todayItems.length} completed`
+                  : `${checkedItems.length}/${items.length} completed`}
               </span>
             </div>
             <div className="w-full bg-gray-100 dark:bg-dark-secondary rounded-full h-1.5 overflow-hidden">
@@ -290,7 +348,11 @@ export default function BulletinTodo({
                 className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-300 ease-out"
                 style={{
                   width: `${
-                    items.length > 0
+                    hasItemsWithDates && todayItems.length > 0
+                      ? todayItems.length > 0
+                        ? (todayCheckedItems.length / todayItems.length) * 100
+                        : 0
+                      : items.length > 0
                       ? (checkedItems.length / items.length) * 100
                       : 0
                   }%`,
@@ -327,53 +389,89 @@ export default function BulletinTodo({
             </div>
           )}
 
-          {/* Unchecked Items */}
+          {/* Unchecked Items - Grouped by Date */}
           {uncheckedItems.length > 0 && (
-            <div className="space-y-1">
-              {uncheckedItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item.id)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, item.id)}
-                  className={`group flex items-start gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 ${
-                    draggedItem === item.id ? "opacity-50" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2 pt-1">
-                    <GripVertical className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity" />
-                    <button
-                      onClick={() => updateItem(item.id, { checked: true })}
-                      aria-label="Check task"
-                      className="relative"
-                    >
-                      <Circle className="w-5 h-5 text-gray-300 group-hover:text-green-500 transition-colors" />
-                      <div className="absolute inset-0 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" />
-                    </button>
+            <div className="space-y-4">
+              {dateKeys.map((dateKey) => {
+                const itemsInGroup = groupedItems[dateKey];
+
+                return (
+                  <div key={dateKey}>
+                    {/* Date Header */}
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-dark-textSecondary">
+                        {dateKey === "no-date"
+                          ? "No Date"
+                          : formatDueDate(dateKey)}
+                      </div>
+                    </div>
+
+                    {/* Items in this date group */}
+                    <div className="space-y-1">
+                      {itemsInGroup.map((item) => {
+                        const itemIndex = uncheckedItems.findIndex(
+                          (i) => i.id === item.id
+                        );
+                        return (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, item.id)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, item.id)}
+                            className={`group flex items-start gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 ${
+                              draggedItem === item.id ? "opacity-50" : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 pt-1">
+                              <GripVertical className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity" />
+                              <button
+                                onClick={() =>
+                                  updateItem(item.id, { checked: true })
+                                }
+                                aria-label="Check task"
+                                className="relative"
+                              >
+                                <Circle className="w-5 h-5 text-gray-300 group-hover:text-green-500 transition-colors" />
+                                <div className="absolute inset-0 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" />
+                              </button>
+                            </div>
+                            <div className="flex-grow">
+                              <textarea
+                                ref={(el) => {
+                                  if (el) textareaRefs.current[item.id] = el;
+                                }}
+                                rows={1}
+                                value={item.text}
+                                onChange={(e) =>
+                                  handleTextareaChange(e, item.id)
+                                }
+                                onKeyDown={(e) =>
+                                  handleTextareaKeyDown(e, item.id, itemIndex)
+                                }
+                                placeholder="Write a task..."
+                                className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-base leading-6 pt-0.5"
+                                aria-label="Todo item text"
+                                style={{ minHeight: "24px" }}
+                              />
+                            </div>
+                            <TodoItemMenu
+                              onSetDueDate={() => handleSetDueDate(item.id)}
+                            />
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
+                              aria-label="Delete item"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <textarea
-                    ref={(el) => {
-                      if (el) textareaRefs.current[item.id] = el;
-                    }}
-                    rows={1}
-                    value={item.text}
-                    onChange={(e) => handleTextareaChange(e, item.id)}
-                    onKeyDown={(e) => handleTextareaKeyDown(e, item.id, index)}
-                    placeholder="Write a task..."
-                    className="flex-grow bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-base leading-6 pt-0.5"
-                    aria-label="Todo item text"
-                    style={{ minHeight: "24px" }}
-                  />
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
-                    aria-label="Delete item"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -418,17 +516,25 @@ export default function BulletinTodo({
                       <div className="absolute inset-0 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors" />
                     </button>
                   </div>
-                  <textarea
-                    ref={(el) => {
-                      if (el) textareaRefs.current[item.id] = el;
-                    }}
-                    rows={1}
-                    value={item.text}
-                    onChange={(e) => handleTextareaChange(e, item.id)}
-                    className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-base leading-6 pt-0.5"
-                    aria-label="Completed todo item text"
-                    style={{ minHeight: "24px" }}
-                  />
+                  <div className="flex-grow">
+                    <textarea
+                      ref={(el) => {
+                        if (el) textareaRefs.current[item.id] = el;
+                      }}
+                      rows={1}
+                      value={item.text}
+                      onChange={(e) => handleTextareaChange(e, item.id)}
+                      className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-base leading-6 pt-0.5"
+                      aria-label="Completed todo item text"
+                      style={{ minHeight: "24px" }}
+                    />
+                    {item.dueDate && (
+                      <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>Due: {formatDueDate(item.dueDate)}</span>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => removeItem(item.id)}
                     className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
@@ -442,6 +548,18 @@ export default function BulletinTodo({
           )}
         </div>
       </div>
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        isOpen={datePickerOpen}
+        onClose={() => setDatePickerOpen(false)}
+        onSave={handleSaveDueDate}
+        currentDate={
+          datePickerItemId
+            ? items.find((item) => item.id === datePickerItemId)?.dueDate
+            : undefined
+        }
+      />
     </div>
   );
 }
