@@ -183,7 +183,7 @@ export async function suggest_events(userId: string, timezone: string) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { scheduleContext: true },
+    select: { scheduleContext: true, goalText: true },
   });
 
   const bulletins = await prisma.bulletin.findMany({
@@ -204,6 +204,71 @@ export async function suggest_events(userId: string, timezone: string) {
     where: { userId },
     select: { title: true, type: true },
   });
+
+  // Fetch Goals Panel context for better reminder generation
+  const todoBulletins = await prisma.bulletin.findMany({
+    where: {
+      userId,
+      type: "todo",
+    },
+    select: {
+      id: true,
+      title: true,
+      data: true,
+      updatedAt: true,
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  // Extract and organize todo items with due dates for reminder generation
+  interface TodoItemWithContext {
+    bulletinTitle: string;
+    text: string;
+    dueDate?: string;
+    checked: boolean;
+  }
+
+  const todoItems: TodoItemWithContext[] = [];
+  for (const bulletin of todoBulletins) {
+    const data = bulletin.data as any;
+    if (data?.items && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        if (item.text && !item.checked) {
+          // Only include unchecked items
+          todoItems.push({
+            bulletinTitle: bulletin.title || "Untitled",
+            text: item.text,
+            dueDate: item.dueDate,
+            checked: item.checked || false,
+          });
+        }
+      }
+    }
+  }
+
+  // Sort todo items by due date (items with dates first)
+  todoItems.sort((a, b) => {
+    if (!a.dueDate && !b.dueDate) return 0;
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  });
+
+  // Filter todo items due today or overdue for high-priority reminders
+  const todayDate = new Date(todayInUserTz);
+  const urgentTodoItems = todoItems.filter((item) => {
+    if (!item.dueDate) return false;
+    const dueDate = new Date(item.dueDate);
+    return dueDate <= todayDate;
+  });
+
+  // Format goals panel data for the prompt
+  const goalsContext = {
+    goalText: user?.goalText || "",
+    goalsList: goals,
+    todoItems: todoItems.slice(0, 15), // Limit to most recent 15 items
+    urgentTodoItems: urgentTodoItems.slice(0, 10), // Limit to 10 most urgent
+  };
 
   const availableTimeSlots = getAvailableTimeSlots(existingEvents, timezone);
 
@@ -278,9 +343,10 @@ export async function suggest_events(userId: string, timezone: string) {
     4. **REMINDERS:** Reminders should be short notifications/alerts, not full events.
     5. **REMINDERS:** Reminder times can be any time today (not restricted to available slots).
     6. **PRIORITIZE habit-based suggestions** - they have high confidence scores based on user's past behavior.
-    7. Prefer suggestions related to the person's bulletin items or daily goals when possible.
-    8. Make sure to not suggest events/reminders that are already scheduled.
-    9. Output must be a **JSON object only** — no extra text.
+    7. **PRIORITIZE reminders for urgent/overdue todo items** - these are critical tasks the user has marked as important.
+    8. Prefer suggestions related to the person's bulletin items, daily goals, or Goals Panel tasks when possible.
+    9. Make sure to not suggest events/reminders that are already scheduled.
+    10. Output must be a **JSON object only** — no extra text.
 
     ---
 
@@ -295,6 +361,30 @@ export async function suggest_events(userId: string, timezone: string) {
 
     **DAILY GOALS (priorities for today):**
     ${JSON.stringify(goals, null, 2)}
+
+    **GOALS PANEL CONTEXT (IMPORTANT for reminder generation):**
+    
+    User's Goal Text:
+    ${goalsContext.goalText || "None"}
+
+    User's Goals List:
+    ${goalsContext.goalsList.length > 0 ? goalsContext.goalsList.map((g: any) => `- ${g.title} (${g.type})`).join('\n') : "None"}
+
+    **URGENT TODO ITEMS (DUE TODAY OR OVERDUE - HIGHEST PRIORITY FOR REMINDERS):**
+    ${goalsContext.urgentTodoItems.length > 0 
+      ? goalsContext.urgentTodoItems.map((item: TodoItemWithContext) => 
+          `- "${item.text}" from list "${item.bulletinTitle}" (Due: ${item.dueDate})`
+        ).join('\n')
+      : "No urgent todo items"}
+
+    **ALL ACTIVE TODO ITEMS (for context):**
+    ${goalsContext.todoItems.length > 0 
+      ? goalsContext.todoItems.map((item: TodoItemWithContext) => 
+          `- "${item.text}" from list "${item.bulletinTitle}"${item.dueDate ? ` (Due: ${item.dueDate})` : ''}`
+        ).join('\n')
+      : "No active todo items"}
+
+    ---
 
     **EXISTING EVENTS FOR TODAY (don't repeat!):**
     ${eventSummary}
@@ -326,12 +416,19 @@ export async function suggest_events(userId: string, timezone: string) {
       ]
     }
 
+    **REMINDER GENERATION GUIDELINES:**
+    1. **PRIORITIZE urgent/overdue todo items** - these are the user's most important tasks!
+    2. Generate reminders that help the user complete their todo items (e.g., "Start working on [task]", "Don't forget: [task]")
+    3. For todo items with due dates, suggest reminders at strategic times during the day
+    4. Consider the user's goal text and goals list when generating reminders
+    5. Include general productivity reminders (breaks, hydration, reviews) if appropriate
+    
     **REMINDER EXAMPLES:**
+    - "Don't forget: [urgent todo item text]" at appropriate time
+    - "Start working on [todo item]" at mid-morning
+    - "Check progress on [goal from goal text]" at afternoon
     - "Take a 5-minute break" at 2:30 PM
-    - "Drink water" at 10:00 AM
-    - "Prepare for tomorrow's meeting" at 4:00 PM
-    - "Review daily goals" at 9:00 AM
-    - "Check on project X progress" at 3:00 PM
+    - "Review your daily goals" at 9:00 AM
 
     ---
 
@@ -339,6 +436,7 @@ export async function suggest_events(userId: string, timezone: string) {
     - All events must fall within the **availableTimeSlots**
     - Don't suggest events/reminders that already exist
     - Reminders are brief and actionable
+    - Prioritized reminders for urgent todo items
   `;
 
   // console.log(prompt);
