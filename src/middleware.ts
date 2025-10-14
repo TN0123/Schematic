@@ -19,6 +19,6 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|sitemap.xml.gz|auth/login|about|write-image.png|bulletin-image.png|schedule-image.png|default-avatar.png|file.svg|globe.svg|next.svg|vercel.svg|window.svg).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|sitemap.xml.gz|auth/login|about|write-image.png|bulletin-image.png|schedule-image.png|default-avatar.png|file.svg|globe.svg|next.svg|vercel.svg|window.svg|api/stripe).*)",
   ],
 };
