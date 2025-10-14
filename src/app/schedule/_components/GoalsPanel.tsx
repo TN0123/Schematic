@@ -479,6 +479,18 @@ export default function GoalsPanel() {
     setDatePickerOpen(true);
   };
 
+  const handleSetDueToday = (itemId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    updateTodoItem(itemId, { dueDate: today });
+  };
+
+  const handleSetDueTomorrow = (itemId: string) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowString = tomorrow.toISOString().split("T")[0];
+    updateTodoItem(itemId, { dueDate: tomorrowString });
+  };
+
   const handleSaveDueDate = (date: string | null) => {
     if (datePickerItemId) {
       updateTodoItem(datePickerItemId, { dueDate: date || undefined });
@@ -846,6 +858,8 @@ export default function GoalsPanel() {
                         </div>
                         <TodoItemMenu
                           onSetDueDate={() => handleSetDueDate(item.id)}
+                          onSetDueToday={() => handleSetDueToday(item.id)}
+                          onSetDueTomorrow={() => handleSetDueTomorrow(item.id)}
                         />
                         <button
                           onClick={() => removeTodoItem(item.id)}

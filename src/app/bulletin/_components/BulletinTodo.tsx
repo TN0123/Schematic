@@ -230,6 +230,18 @@ export default function BulletinTodo({
     setDatePickerOpen(true);
   };
 
+  const handleSetDueToday = (itemId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    updateItem(itemId, { dueDate: today });
+  };
+
+  const handleSetDueTomorrow = (itemId: string) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowString = tomorrow.toISOString().split("T")[0];
+    updateItem(itemId, { dueDate: tomorrowString });
+  };
+
   const handleSaveDueDate = (date: string | null) => {
     if (datePickerItemId) {
       updateItem(datePickerItemId, { dueDate: date || undefined });
@@ -457,6 +469,10 @@ export default function BulletinTodo({
                             </div>
                             <TodoItemMenu
                               onSetDueDate={() => handleSetDueDate(item.id)}
+                              onSetDueToday={() => handleSetDueToday(item.id)}
+                              onSetDueTomorrow={() =>
+                                handleSetDueTomorrow(item.id)
+                              }
                             />
                             <button
                               onClick={() => removeItem(item.id)}

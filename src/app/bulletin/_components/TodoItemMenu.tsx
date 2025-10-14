@@ -3,9 +3,15 @@ import { useState, useRef, useEffect } from "react";
 
 interface TodoItemMenuProps {
   onSetDueDate: () => void;
+  onSetDueToday: () => void;
+  onSetDueTomorrow: () => void;
 }
 
-export default function TodoItemMenu({ onSetDueDate }: TodoItemMenuProps) {
+export default function TodoItemMenu({
+  onSetDueDate,
+  onSetDueToday,
+  onSetDueTomorrow,
+}: TodoItemMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +36,16 @@ export default function TodoItemMenu({ onSetDueDate }: TodoItemMenuProps) {
     onSetDueDate();
   };
 
+  const handleSetDueToday = () => {
+    setIsOpen(false);
+    onSetDueToday();
+  };
+
+  const handleSetDueTomorrow = () => {
+    setIsOpen(false);
+    onSetDueTomorrow();
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -46,8 +62,22 @@ export default function TodoItemMenu({ onSetDueDate }: TodoItemMenuProps) {
       {isOpen && (
         <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-lg shadow-lg z-50">
           <button
+            onClick={handleSetDueToday}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover rounded-t-lg transition-colors"
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Due today</span>
+          </button>
+          <button
+            onClick={handleSetDueTomorrow}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Due tomorrow</span>
+          </button>
+          <button
             onClick={handleSetDueDate}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover rounded-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover rounded-b-lg transition-colors"
           >
             <Calendar className="w-4 h-4" />
             <span>Set due date</span>
