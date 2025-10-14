@@ -35,6 +35,10 @@ interface CalendarComponentProps {
   isShiftPressed?: boolean;
   shiftSelectionActive?: boolean;
   setLastSelectWasShift?: (wasShift: boolean) => void;
+  todosByDate?: Record<
+    string,
+    Array<{ text: string; bulletinTitle: string; checked: boolean }>
+  >;
 }
 
 // Smart Tooltip Component
@@ -118,6 +122,94 @@ const SmartTooltip = ({
   );
 };
 
+// Todo Tooltip Component
+interface TodoTooltipProps {
+  isVisible: boolean;
+  targetRect: DOMRect | null;
+  todos: Array<{ text: string; bulletinTitle: string }>;
+}
+
+const TodoTooltip = ({ isVisible, targetRect, todos }: TodoTooltipProps) => {
+  const [position, setPosition] = useState({
+    top: 0,
+    left: 0,
+    placement: "top",
+  });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isVisible || !targetRect || !tooltipRef.current) return;
+
+    const tooltip = tooltipRef.current;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewport = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+
+    let top = targetRect.top - tooltipRect.height - 8;
+    let left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+    let placement = "top";
+
+    if (top < 0) {
+      top = targetRect.bottom + 8;
+      placement = "bottom";
+    }
+
+    if (left + tooltipRect.width > viewport.width - 16) {
+      left = viewport.width - tooltipRect.width - 16;
+    }
+
+    if (left < 16) {
+      left = 16;
+    }
+
+    setPosition({ top, left, placement });
+  }, [isVisible, targetRect]);
+
+  if (!isVisible || !targetRect || todos.length === 0) return null;
+
+  return createPortal(
+    <div
+      ref={tooltipRef}
+      className={`fixed z-[10000] max-w-xs rounded-lg px-3 py-2 shadow-xl transition-opacity duration-200 ${
+        isVisible ? "opacity-100" : "opacity-0"
+      } bg-white dark:bg-dark-paper border border-gray-200 dark:border-dark-divider`}
+      style={{
+        top: position.top,
+        left: position.left,
+      }}
+    >
+      <div className="relative">
+        <div className="text-xs font-semibold text-gray-700 dark:text-dark-textPrimary mb-2">
+          Tasks Due ({todos.length})
+        </div>
+        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+          {todos.map((todo, idx) => (
+            <div key={idx} className="text-xs">
+              <div className="text-gray-900 dark:text-dark-textPrimary font-medium">
+                {todo.text}
+              </div>
+              <div className="text-gray-500 dark:text-dark-textSecondary text-[10px]">
+                from: {todo.bulletinTitle}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Arrow */}
+        <div
+          className={`absolute h-0 w-0 border-4 border-transparent ${
+            position.placement === "top"
+              ? "top-full left-1/2 -translate-x-1/2 border-t-white dark:border-t-dark-paper"
+              : "bottom-full left-1/2 -translate-x-1/2 border-b-white dark:border-b-dark-paper"
+          }`}
+        />
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
   (
     {
@@ -139,6 +231,7 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       isShiftPressed = false,
       shiftSelectionActive = false,
       setLastSelectWasShift,
+      todosByDate = {},
     },
     ref
   ) => {
@@ -157,6 +250,15 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
     });
 
     const [currentView, setCurrentView] = useState<string>("timeGridDay");
+    const [todoTooltip, setTodoTooltip] = useState<{
+      isVisible: boolean;
+      targetRect: DOMRect | null;
+      todos: Array<{ text: string; bulletinTitle: string }>;
+    }>({
+      isVisible: false,
+      targetRect: null,
+      todos: [],
+    });
 
     const showTooltip = (element: HTMLElement, content: string) => {
       const rect = element.getBoundingClientRect();
@@ -169,6 +271,76 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
 
     const hideTooltip = () => {
       setTooltip((prev) => ({ ...prev, isVisible: false }));
+    };
+
+    const hideTodoTooltip = () => {
+      setTodoTooltip((prev) => ({ ...prev, isVisible: false }));
+    };
+
+    // Function to render day cell content with todo indicators (for month view)
+    const renderDayCellContent = (args: any) => {
+      const dateStr = args.date.toISOString().split("T")[0];
+      const todosForDate = todosByDate[dateStr] || [];
+
+      if (todosForDate.length === 0) {
+        return args.dayNumberText;
+      }
+
+      return (
+        <div className="flex items-center justify-between w-full">
+          <span>{args.dayNumberText}</span>
+          <div
+            className="bg-green-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center cursor-pointer hover:bg-green-600 transition-colors flex-shrink-0"
+            onMouseEnter={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setTodoTooltip({
+                isVisible: true,
+                targetRect: rect,
+                todos: todosForDate,
+              });
+            }}
+            onMouseLeave={hideTodoTooltip}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {todosForDate.length}
+          </div>
+        </div>
+      );
+    };
+
+    // Function to render day header content with todo indicators (for week/day views)
+    const renderDayHeaderContent = (args: any) => {
+      const dateStr = args.date.toISOString().split("T")[0];
+      const todosForDate = todosByDate[dateStr] || [];
+
+      if (todosForDate.length === 0) {
+        return args.text;
+      }
+
+      return (
+        <div className="flex items-center justify-center w-full h-full relative gap-1">
+          <span>{args.text}</span>
+          <div
+            className="bg-green-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center cursor-pointer hover:bg-green-600 transition-colors"
+            onMouseEnter={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setTodoTooltip({
+                isVisible: true,
+                targetRect: rect,
+                todos: todosForDate,
+              });
+            }}
+            onMouseLeave={hideTodoTooltip}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {todosForDate.length}
+          </div>
+        </div>
+      );
     };
 
     function renderEventContent(eventInfo: EventContentArg) {
@@ -362,6 +534,8 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           }}
           eventClick={onEventClick}
           eventContent={renderEventContent}
+          dayCellContent={renderDayCellContent}
+          dayHeaderContent={renderDayHeaderContent}
           height="100%"
           customButtons={{
             refresh: {
@@ -444,6 +618,11 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           isVisible={tooltip.isVisible}
           targetRect={tooltip.targetRect}
           content={tooltip.content}
+        />
+        <TodoTooltip
+          isVisible={todoTooltip.isVisible}
+          targetRect={todoTooltip.targetRect}
+          todos={todoTooltip.todos}
         />
       </>
     );

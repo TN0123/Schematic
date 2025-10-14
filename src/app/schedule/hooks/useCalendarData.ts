@@ -21,6 +21,9 @@ export const useCalendarData = (
     end: Date;
   } | null>(null);
   const [suggestionsRefreshTrigger, setSuggestionsRefreshTrigger] = useState(0);
+  const [todosByDate, setTodosByDate] = useState<
+    Record<string, Array<{ text: string; bulletinTitle: string; checked: boolean }>>
+  >({});
 
   const maybeRefreshSuggestionsForToday = useCallback((date: Date) => {
     const now = new Date();
@@ -70,6 +73,20 @@ export const useCalendarData = (
       setReminders(formattedReminders);
     } catch (error) {
       console.error("Error fetching reminders:", error);
+    }
+  }, []);
+
+  // Fetch todo deadlines
+  const fetchTodoDeadlines = useCallback(async () => {
+    try {
+      const response = await fetch("/api/bulletins/todo-deadlines");
+      if (!response.ok) {
+        throw new Error("Failed to fetch todo deadlines");
+      }
+      const data = await response.json();
+      setTodosByDate(data.todosByDate || {});
+    } catch (error) {
+      console.error("Error fetching todo deadlines:", error);
     }
   }, []);
 
@@ -614,8 +631,23 @@ export const useCalendarData = (
   useEffect(() => {
     if (userId) {
       fetchReminders();
+      fetchTodoDeadlines();
     }
-  }, [userId, fetchReminders]);
+  }, [userId, fetchReminders, fetchTodoDeadlines]);
+
+  // Refresh todo deadlines when page becomes visible (in case they were updated in bulletin)
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTodoDeadlines();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [userId, fetchTodoDeadlines]);
 
   return {
     // Data
@@ -623,6 +655,7 @@ export const useCalendarData = (
     reminders,
     calendarLoading,
     fetchedRange,
+    todosByDate,
 
     // Setters
     setEvents,
@@ -646,5 +679,8 @@ export const useCalendarData = (
     // Reminder functions
     createReminder,
     dismissReminder,
+
+    // Todo functions
+    fetchTodoDeadlines,
   };
 };

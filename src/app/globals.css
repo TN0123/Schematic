@@ -401,7 +401,18 @@ html.dark .shift-select-active .fc .fc-highlight {
 
 .fc-daygrid-day-top {
     display: flex !important;
-    justify-content: left !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 2px 4px !important;
+}
+
+.fc-daygrid-day-frame {
+    width: 100% !important;
+}
+
+.fc-daygrid-day-top > * {
+    width: 100% !important;
 }
 
 .fc-col-header-cell{

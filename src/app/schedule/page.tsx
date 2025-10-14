@@ -634,6 +634,7 @@ export default function CalendarApp() {
                 isShiftPressed={calendarState.isShiftPressed}
                 shiftSelectionActive={calendarState.shiftSelectionActive}
                 setLastSelectWasShift={calendarState.setLastSelectWasShift}
+                todosByDate={calendarData.todosByDate}
               />
             </motion.div>
           </div>
@@ -749,6 +750,7 @@ export default function CalendarApp() {
                 isShiftPressed={calendarState.isShiftPressed}
                 shiftSelectionActive={calendarState.shiftSelectionActive}
                 setLastSelectWasShift={calendarState.setLastSelectWasShift}
+                todosByDate={calendarData.todosByDate}
               />
             </motion.div>
           </div>
