@@ -188,6 +188,7 @@ export default function BulletinKanban({
     };
     dispatch({ type: "ADD_CARD", payload: newCard });
     setActiveId(newCard.id);
+    setSelectedCardId(newCard.id);
   };
 
   const updateCard = (id: string, updates: Partial<KanbanCard>) => {
@@ -359,6 +360,17 @@ export default function BulletinKanban({
   useEffect(() => {
     const handleCardNavigation = (event: KeyboardEvent) => {
       if (!selectedCardId || filteredCards.length === 0) return;
+
+      // Don't handle keyboard events when user is typing in input fields or textareas
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.contentEditable === "true"
+      ) {
+        return;
+      }
 
       const selectedCard = cards.find((card) => card.id === selectedCardId);
       if (!selectedCard) return;
