@@ -59,6 +59,24 @@ export function SortableCard({
     }
   };
 
+  const handlePriorityClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card selection when clicking priority
+    const currentPriority = card.priority;
+    let newPriority: Priority;
+
+    // Cycle through priorities: low → medium → high → medium
+    if (currentPriority === "low") {
+      newPriority = "medium";
+    } else if (currentPriority === "medium") {
+      newPriority = "high";
+    } else {
+      // high
+      newPriority = "low";
+    }
+
+    onChange({ priority: newPriority });
+  };
+
   const isCardOverdue = isOverdue(card.dueDate);
 
   const PriorityIcon = priorityIcons[card.priority];
@@ -126,21 +144,24 @@ export function SortableCard({
           <div className="flex items-center gap-2">
             {/* Priority */}
             <div className="flex items-center gap-1">
-              <span
-                className={`px-1 rounded-full text-[10px] bg-gray-100 dark:bg-neutral-700 ${
+              <button
+                onClick={handlePriorityClick}
+                className={`px-1 rounded-full text-[10px] bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors cursor-pointer ${
                   card.priority === "high"
                     ? "text-red-600 dark:text-red-400"
                     : card.priority === "medium"
                     ? "text-yellow-600 dark:text-yellow-400"
                     : "text-green-600 dark:text-green-400"
                 }`}
+                title={`Priority: ${card.priority} (click to change)`}
+                type="button"
               >
                 {card.priority === "high"
                   ? "H"
                   : card.priority === "medium"
                   ? "M"
                   : "L"}
-              </span>
+              </button>
             </div>
 
             {/* Assignee */}
@@ -192,24 +213,12 @@ export function SortableCard({
               rows={2}
             />
 
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <select
-                value={card.priority}
-                onChange={(e) =>
-                  onChange({ priority: e.target.value as Priority })
-                }
-                className="text-xs border dark:border-dark-divider rounded px-2 py-1 dark:bg-dark-background dark:text-dark-textPrimary"
-              >
-                <option value="low">Low Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="high">High Priority</option>
-              </select>
-
+            <div className="mt-2">
               <input
                 type="date"
                 value={card.dueDate || ""}
                 onChange={(e) => onChange({ dueDate: e.target.value })}
-                className="text-xs border dark:border-dark-divider rounded px-2 py-1 dark:bg-dark-background dark:text-dark-textPrimary"
+                className="w-full text-xs border dark:border-dark-divider rounded px-2 py-1 dark:bg-dark-background dark:text-dark-textPrimary"
               />
             </div>
 
