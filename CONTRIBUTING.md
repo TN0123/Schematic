@@ -48,15 +48,16 @@ Before you begin contributing, please make sure you have:
    ```
 
 3. **Install VS Code Prettier Extension**
-   
+
    Install the Prettier extension in VS Code to ensure consistent code formatting:
+
    - Open VS Code
    - Go to Extensions (Ctrl+Shift+X / Cmd+Shift+X)
    - Search for "Prettier - Code formatter"
    - Install the extension by Prettier
    - Enable "Format on Save" in VS Code settings for automatic formatting
 
-3. **Set up environment variables**
+4. **Set up environment variables**
    Create a `.env` file in the root directory:
 
    ```env
@@ -72,20 +73,20 @@ Before you begin contributing, please make sure you have:
    POSTHOG_API_KEY="your-posthog-api-key"
    ```
 
-4. **Set up the database**
+5. **Set up the database**
 
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
-5. **Start the development server**
+6. **Start the development server**
 
    ```bash
    npm run dev
    ```
 
-6. **For Electron development**
+7. **For Electron development**
    ```bash
    npm run electron-dev
    ```
@@ -286,8 +287,6 @@ When requesting features:
 4. **Consider alternatives**: Are there existing solutions?
 5. **Show examples**: Provide mockups or examples if possible
 
-
-
 ## Community
 
 ### Getting Help
@@ -317,7 +316,7 @@ When requesting features:
 
 ## Questions?
 
-If you have questions about contributing reach out to schematicnow@gmail.com
+If you have questions about contributing reach out to support@schematic.now
 
 Thank you for contributing to Schematic! Your contributions help make this project better for everyone.
 
