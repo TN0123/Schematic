@@ -408,7 +408,7 @@ export default function GoalsPanel() {
     }
   };
 
-  const addTodoItem = () => {
+  const addTodoItem = (inheritDueDate?: string) => {
     if (!selectedTodoId) return;
     const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
     if (!selectedTodo) return;
@@ -416,7 +416,7 @@ export default function GoalsPanel() {
     const newItemId = crypto.randomUUID();
     const newItems = [
       ...selectedTodo.data.items,
-      { id: newItemId, text: "", checked: false },
+      { id: newItemId, text: "", checked: false, dueDate: inheritDueDate },
     ];
 
     // Update local state immediately
@@ -786,7 +786,7 @@ export default function GoalsPanel() {
                 No tasks yet
               </div>
               <button
-                onClick={addTodoItem}
+                onClick={() => addTodoItem()}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 <Plus className="h-4 w-4" />
@@ -795,6 +795,16 @@ export default function GoalsPanel() {
             </div>
           ) : (
             <div className="space-y-1">
+              {/* Add Item Button */}
+              <button
+                onClick={() => addTodoItem()}
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm mb-3"
+                aria-label="Add new todo item"
+              >
+                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span>Add a task</span>
+              </button>
+
               {/* Unchecked Items - Grouped by Date */}
               {dateKeys.map((dateKey) => {
                 const itemsInGroup = groupedItems[dateKey];
@@ -841,7 +851,7 @@ export default function GoalsPanel() {
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault();
-                                addTodoItem();
+                                addTodoItem(item.dueDate);
                               } else if (
                                 e.key === "Backspace" &&
                                 e.currentTarget.value === "" &&
@@ -873,16 +883,6 @@ export default function GoalsPanel() {
                   </div>
                 );
               })}
-
-              {/* Add Item Button */}
-              <button
-                onClick={addTodoItem}
-                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm"
-                aria-label="Add new todo item"
-              >
-                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Add a task</span>
-              </button>
 
               {/* Completed Items */}
               {checkedItems.length > 0 && (

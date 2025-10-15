@@ -93,9 +93,12 @@ export default function BulletinTodo({
     textarea.style.height = Math.max(24, textarea.scrollHeight) + "px";
   };
 
-  const addItem = () => {
+  const addItem = (inheritDueDate?: string) => {
     const newItemId = crypto.randomUUID();
-    const newItems = [...items, { id: newItemId, text: "", checked: false }];
+    const newItems = [
+      ...items,
+      { id: newItemId, text: "", checked: false, dueDate: inheritDueDate },
+    ];
     setItems(newItems);
     setTimeout(() => {
       const textarea = textareaRefs.current[newItemId];
@@ -151,7 +154,8 @@ export default function BulletinTodo({
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      addItem();
+      const currentItem = items.find((item) => item.id === itemId);
+      addItem(currentItem?.dueDate);
     } else if (
       e.key === "Backspace" &&
       textarea.value === "" &&
@@ -391,7 +395,7 @@ export default function BulletinTodo({
                   </p>
                 </div>
                 <button
-                  onClick={addItem}
+                  onClick={() => addItem()}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
                 >
                   <Plus className="h-4 w-4" />
@@ -399,6 +403,21 @@ export default function BulletinTodo({
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Add Item Button */}
+          {items.length > 0 && (
+            <button
+              onClick={() => addItem()}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group mb-4"
+              aria-label="Add new todo item"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4" /> {/* Spacer for grip icon */}
+                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </div>
+              <span className="text-base">Add a task</span>
+            </button>
           )}
 
           {/* Unchecked Items - Grouped by Date */}
@@ -489,21 +508,6 @@ export default function BulletinTodo({
                 );
               })}
             </div>
-          )}
-
-          {/* Add Item Button */}
-          {items.length > 0 && (
-            <button
-              onClick={addItem}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group"
-              aria-label="Add new todo item"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4" /> {/* Spacer for grip icon */}
-                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              </div>
-              <span className="text-base">Add a task</span>
-            </button>
           )}
 
           {/* Completed Items */}
