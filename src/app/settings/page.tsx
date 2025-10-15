@@ -299,99 +299,96 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Habit Learning Settings */}
-        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
-          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Habit Learning
-            </h2>
-          </div>
-          <div className="p-4 space-y-4">
-            {habitLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
-                      Enable Habit Learning
-                    </span>
-                    <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
-                      Learn from your patterns to suggest better events
-                    </span>
-                  </div>
-                  <button
-                    onClick={toggleHabitLearning}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      habitSettings?.habitLearningEnabled
-                        ? "bg-blue-600"
-                        : "bg-gray-300 dark:bg-dark-divider"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        habitSettings?.habitLearningEnabled
-                          ? "translate-x-6"
-                          : "translate-x-1"
-                      }`}
-                    />
-                  </button>
+            <div className="space-y-4 mt-6 pt-4 border-t border-gray-200 dark:border-dark-divider">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Habit Learning
+              </h3>
+              {habitLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                 </div>
-
-                {habitSettings && (
-                  <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
-                        Learned Habits
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                        Enable Habit Learning
                       </span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-dark-textPrimary">
-                        {habitSettings.habitCount}
+                      <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                        Learn from your patterns to suggest better events
                       </span>
                     </div>
-
-                    {habitSettings.lastHabitRefinementAt && (
-                      <p className="text-xs text-gray-600 dark:text-dark-textSecondary mb-4">
-                        Last updated:{" "}
-                        {new Date(
-                          habitSettings.lastHabitRefinementAt
-                        ).toLocaleDateString()}
-                      </p>
-                    )}
-
                     <button
-                      onClick={clearHabitData}
-                      disabled={clearingData}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={toggleHabitLearning}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        habitSettings?.habitLearningEnabled
+                          ? "bg-blue-600"
+                          : "bg-gray-300 dark:bg-dark-divider"
+                      }`}
                     >
-                      {clearingData ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Clearing...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="w-4 h-4" />
-                          Clear All Habit Data
-                        </>
-                      )}
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          habitSettings?.habitLearningEnabled
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                        }`}
+                      />
                     </button>
-
-                    <p className="text-xs text-gray-500 dark:text-dark-textDisabled mt-2">
-                      This will permanently delete all learned habits and event
-                      tracking data.
-                    </p>
                   </div>
-                )}
-              </>
-            )}
+
+                  {habitSettings && (
+                    <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary">
+                          Learned Habits
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-dark-textPrimary">
+                          {habitSettings.habitCount}
+                        </span>
+                      </div>
+
+                      {habitSettings.lastHabitRefinementAt && (
+                        <p className="text-xs text-gray-600 dark:text-dark-textSecondary mb-4">
+                          Last updated:{" "}
+                          {new Date(
+                            habitSettings.lastHabitRefinementAt
+                          ).toLocaleDateString()}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={clearHabitData}
+                        disabled={clearingData}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {clearingData ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Clearing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4" />
+                            Clear All Habit Data
+                          </>
+                        )}
+                      </button>
+
+                      <p className="text-xs text-gray-500 dark:text-dark-textDisabled mt-2">
+                        This will permanently delete all learned habits and
+                        event tracking data.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Habit Learning moved into Schedule section above */}
 
         {/* Write Settings */}
         <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
