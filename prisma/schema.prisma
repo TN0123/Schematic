@@ -31,26 +31,26 @@ model User {
   lastSeenUpdatesAt        DateTime?
   DailySuggestionsCache    DailySuggestionsCache[]
   createdAt                DateTime                @default(now())
-  
+
   // Stripe & Subscription fields
-  stripeCustomerId         String?                 @unique
-  stripeSubscriptionId     String?                 @unique
-  stripePriceId            String?
-  stripeCurrentPeriodEnd   DateTime?
-  subscriptionStatus       String?                 @default("free") // "free", "active", "canceled", "past_due"
-  
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  subscriptionStatus     String?   @default("free") // "free", "active", "canceled", "past_due"
+
   // Usage tracking
-  weeklyPremiumUsesResetAt DateTime?
+  weeklyPremiumUsesResetAt  DateTime?
   monthlyPremiumUsesResetAt DateTime?
-  weeklyPremiumUsesCount   Int                     @default(0)
-  monthlyPremiumUsesCount  Int                     @default(0)
-  
+  weeklyPremiumUsesCount    Int       @default(0)
+  monthlyPremiumUsesCount   Int       @default(0)
+
   // Habit Learning
-  habitLearningEnabled     Boolean                 @default(true)
-  lastHabitRefinementAt    DateTime?
-  eventActions             EventAction[]
-  habitProfiles            HabitProfile[]
-  habitClusters            HabitCluster[]
+  habitLearningEnabled  Boolean        @default(true)
+  lastHabitRefinementAt DateTime?
+  eventActions          EventAction[]
+  habitProfiles         HabitProfile[]
+  habitClusters         HabitCluster[]
 }
 
 model Account {
@@ -87,6 +87,9 @@ model Event {
   userId String
   user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   links  String[] @default([])
+
+  @@index([userId, start])
+  @@index([userId, end])
 }
 
 model Bulletin {
@@ -100,6 +103,9 @@ model Bulletin {
   updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([userId, type, updatedAt])
 }
 
 model Goal {
@@ -109,6 +115,8 @@ model Goal {
   createdAt DateTime @default(now())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
 }
 
 model Document {
@@ -121,7 +129,7 @@ model Document {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, updatedAt])
 }
 
 model Reminder {
@@ -134,7 +142,7 @@ model Reminder {
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, isRead, time])
 }
 
 enum GoalType {
@@ -168,8 +176,7 @@ model ProductUpdate {
   publishedAt DateTime @default(now())
   isPublished Boolean  @default(true)
 
-  @@index([publishedAt])
-  @@index([isPublished])
+  @@index([isPublished, publishedAt])
 }
 
 /// Cache of generated daily suggestions (events + reminders) by user, timezone, and local day
@@ -201,8 +208,8 @@ model EventAction {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([recordedAt])
+  @@index([userId, recordedAt])
+  @@index([userId, actionType, recordedAt])
 }
 
 enum HabitType {
@@ -216,14 +223,14 @@ enum HabitType {
 
 /// Real-time per-user habit statistics
 model HabitProfile {
-  id                 String    @id @default(cuid())
-  userId             String
-  habitType          HabitType
-  timeSlotHistogram  Json /// JSON object for histogram data
-  centroid           Json /// JSON with avgHour, avgMinute, avgDuration
-  count              Int       @default(0)
-  confidenceScore    Float     @default(0.0)
-  lastUpdatedAt      DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  userId            String
+  habitType         HabitType
+  timeSlotHistogram Json /// JSON object for histogram data
+  centroid          Json /// JSON with avgHour, avgMinute, avgDuration
+  count             Int       @default(0)
+  confidenceScore   Float     @default(0.0)
+  lastUpdatedAt     DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
