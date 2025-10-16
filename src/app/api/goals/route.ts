@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { invalidateAllUserCaches } from "@/lib/cache-utils";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -57,6 +58,11 @@ export async function POST(request: Request) {
       userId: user.id,
     },
   });
+
+  // Invalidate cache asynchronously (don't await to avoid blocking)
+  invalidateAllUserCaches(user.id).catch(err => 
+    console.error('Failed to invalidate cache:', err)
+  );
 
   return NextResponse.json(goal);
 }

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
 import { recordEventActionsBatch } from "@/lib/habit-ingestion";
+import { invalidateAllUserCaches } from "@/lib/cache-utils";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -52,6 +53,11 @@ export async function POST(req: Request) {
         eventId: event.id,
       }))
     ).catch(err => console.error('Failed to record habit actions:', err));
+
+    // Invalidate cache asynchronously (don't await to avoid blocking)
+    invalidateAllUserCaches(session.user.id).catch(err => 
+      console.error('Failed to invalidate cache:', err)
+    );
 
     return NextResponse.json(createdEvents, { status: 201 });
   } catch (error) {

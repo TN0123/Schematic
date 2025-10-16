@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { daily_summary } from "@/scripts/schedule/daily-summary";
-import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
-import prisma from "@/lib/prisma";
-import crypto from "crypto";
+import {
+  fetchDailySummaryCacheData,
+  generateCacheHash,
+  checkDailySummaryCache,
+  writeDailySummaryCache,
+} from "@/lib/cache-utils";
 
 export async function POST(request: Request) {
   try {
@@ -10,76 +13,34 @@ export async function POST(request: Request) {
 
     const targetDate = new Date(date);
 
-    // Compute user's local day bounds (UTC instants) and dayKey
-    const { dayKey, startUtc, endUtc } = getUtcDayBoundsForTimezone(
+    // Fetch all data needed for cache hash (parallelized internally)
+    const { data: cacheData, dayKey } = await fetchDailySummaryCacheData(
+      userId,
+      timezone,
       targetDate,
-      timezone
+      goalsView
     );
 
-    // Fetch events for that local day and compute a stable hash
-    const eventsForDay = await prisma.event.findMany({
-      where: {
-        userId,
-        // Include any event that overlaps the user's local day
-        // start < endOfDay AND end > startOfDay
-        AND: [
-          { start: { lt: endUtc } },
-          { end: { gt: startUtc } },
-        ],
-      },
-      select: { id: true, title: true, start: true, end: true },
-      orderBy: { start: "asc" },
-    });
-
-    const normalized = eventsForDay.map((e) => ({
-      id: e.id,
-      title: e.title,
-      start: new Date(e.start).toISOString(),
-      end: new Date(e.end).toISOString(),
-    }));
-    const eventsHash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(normalized))
-      .digest("hex");
+    // Generate comprehensive hash including events, goals, context, and view
+    const contentHash = generateCacheHash(cacheData);
 
     // Try cache first
-    const cache = await prisma.dailySummaryCache.findUnique({
-      where: {
-        userId_timezone_dayKey: {
-          userId,
-          timezone,
-          dayKey,
-        },
-      },
-    });
+    const cachedSummary = await checkDailySummaryCache(
+      userId,
+      timezone,
+      dayKey,
+      contentHash
+    );
 
-    if (cache && cache.eventsHash === eventsHash) {
-      return NextResponse.json({ result: cache.summary }, { status: 200 });
+    if (cachedSummary) {
+      return NextResponse.json({ result: cachedSummary }, { status: 200 });
     }
 
-    // Generate new summary and upsert cache
+    // Generate new summary
     const result = await daily_summary(targetDate, timezone, userId, goalsView);
 
-    await prisma.dailySummaryCache.upsert({
-      where: {
-        userId_timezone_dayKey: {
-          userId,
-          timezone,
-          dayKey,
-        },
-      },
-      update: {
-        eventsHash,
-        summary: result,
-      },
-      create: {
-        userId,
-        timezone,
-        dayKey,
-        eventsHash,
-        summary: result,
-      },
-    });
+    // Write to cache
+    await writeDailySummaryCache(userId, timezone, dayKey, contentHash, result);
 
     return NextResponse.json({ result }, { status: 200 });
   } catch (error) {

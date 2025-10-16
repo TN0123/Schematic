@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
 import { recordEventAction } from "@/lib/habit-ingestion";
+import { invalidateAllUserCaches } from "@/lib/cache-utils";
 
 export async function DELETE(
   req: Request,
@@ -52,6 +53,11 @@ export async function DELETE(
         }, event.id).catch(err => console.error('Failed to record habit action:', err));
       });
 
+      // Invalidate cache asynchronously (don't await to avoid blocking)
+      invalidateAllUserCaches(session.user.id).catch(err => 
+        console.error('Failed to invalidate cache:', err)
+      );
+
       return NextResponse.json(deletedEvents, { status: 200 });
     } else {
       // Fetch event before deletion to record habit action
@@ -71,6 +77,11 @@ export async function DELETE(
           end: eventToDelete.end,
         }, eventToDelete.id).catch(err => console.error('Failed to record habit action:', err));
       }
+
+      // Invalidate cache asynchronously (don't await to avoid blocking)
+      invalidateAllUserCaches(session.user.id).catch(err => 
+        console.error('Failed to invalidate cache:', err)
+      );
 
       return NextResponse.json(event, { status: 200 });
     }
@@ -126,6 +137,11 @@ export async function PUT(
       start: updatedEvent.start,
       end: updatedEvent.end,
     }, updatedEvent.id).catch(err => console.error('Failed to record habit action:', err));
+
+    // Invalidate cache asynchronously (don't await to avoid blocking)
+    invalidateAllUserCaches(session.user.id).catch(err => 
+      console.error('Failed to invalidate cache:', err)
+    );
 
     return NextResponse.json(updatedEvent, { status: 200 });
   } catch (error) {
