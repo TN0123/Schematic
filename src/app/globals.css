@@ -184,11 +184,75 @@ main {
 
 /* Custom styles for FullCalendar */
 
+/* Clean grid lines - subtle and refined */
+.fc-theme-standard td,
+.fc-theme-standard th {
+    border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+html.dark .fc-theme-standard td,
+html.dark .fc-theme-standard th {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Day cell hover effects */
+.fc-daygrid-day:hover {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+html.dark .fc-daygrid-day:hover {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+
 /* Smooth toolbar transitions using position-based animation */
 .fc-toolbar {
     transition: opacity 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
                 transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
     will-change: opacity, transform !important;
+    padding: 8px 20px !important;
+}
+
+.fc-toolbar-chunk {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+/* Calendar scrollbar styling */
+.fc-scroller {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent !important;
+}
+
+html.dark .fc-scroller {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
+}
+
+.fc-scroller::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+}
+
+.fc-scroller::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15) !important;
+    border-radius: 4px !important;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+html.dark .fc-scroller::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark .fc-scroller::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.25) !important;
 }
 
 /* Hide header smoothly when reminders are shown */
@@ -255,67 +319,85 @@ html.dark .shift-select-active .fc .fc-highlight {
   transition: background-color 120ms ease-in-out, border-color 120ms ease-in-out !important;
 }
 
+/* Today cell - subtle tint */
 .fc-day-today {
     background-color: #f7fafc !important;
-    }  
+}
+
 .fc-day-today:hover {
     background-color: #edf2f7 !important;
-    }
+}
     
+/* View selector buttons - refined Apple-style */
 .fc-dayGridMonth-button, .fc-timeGridWeek-button, .fc-timeGridDay-button {
     background-color: transparent !important;
-    color: #4b5563 !important;
+    color: #6b7280 !important;
     border: none !important;
-    padding: 5px 8px !important;
+    padding: 6px 12px !important;
     font-weight: 500 !important;
+    font-size: 13px !important;
     box-shadow: none !important;
     border-radius: 6px !important;
-    margin: 0 2px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 1px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-dayGridMonth-button:hover, .fc-timeGridWeek-button:hover, .fc-timeGridDay-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: #374151 !important;
 }
 
 .fc-dayGridMonth-button:active, .fc-timeGridWeek-button:active, .fc-timeGridDay-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.98) !important;
 }
 
 .fc-button-active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    color: #111827 !important;
     font-weight: 600 !important;
 }
 
+/* Toolbar title - refined typography */
 .fc-toolbar-title {
     font-weight: 600 !important;
-    font-size: 1.5rem !important;
+    font-size: 1.375rem !important;
+    color: #111827 !important;
+    letter-spacing: -0.01em !important;
 }
 
+/* Today button - subtle styling */
 .fc-today-button {
     background-color: transparent !important;
-    color: #4b5563 !important;
-    border: none !important;
-    padding: 5px 8px !important;
+    color: #6b7280 !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 6px 12px !important;
     font-weight: 500 !important;
+    font-size: 13px !important;
     border-radius: 6px !important;
-    margin: 0 4px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 8px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-today-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    color: #374151 !important;
 }
 
 .fc-today-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.98) !important;
 }
 
+.fc-today-button:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+/* Navigation buttons - clean and minimal */
 .fc-prev-button, .fc-next-button {
-    padding: 5px !important;
+    padding: 6px !important;
     border-radius: 6px !important; 
     background-color: transparent !important;
     border: none !important;
@@ -323,18 +405,21 @@ html.dark .shift-select-active .fc .fc-highlight {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: #4b5563 !important;
-    margin: 0 4px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: #6b7280 !important;
+    margin: 0 2px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-prev-button:hover, .fc-next-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: #374151 !important;
 }
 
 .fc-prev-button:active, .fc-next-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.95) !important;
 }
 
 .fc-prev-button:focus, .fc-next-button:focus {
@@ -342,6 +427,7 @@ html.dark .shift-select-active .fc .fc-highlight {
     box-shadow: none !important;
 }
 
+/* Action buttons - refresh, reminders, statistics */
 .fc-refresh-button {
     padding: 6px !important;
     border-radius: 6px !important; 
@@ -351,18 +437,21 @@ html.dark .shift-select-active .fc .fc-highlight {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: #4b5563 !important;
-    margin: 0 6px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: #6b7280 !important;
+    margin: 0 2px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-refresh-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: #374151 !important;
 }
 
 .fc-refresh-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.95) !important;
 }
 
 .fc-refresh-button:focus {
@@ -379,19 +468,22 @@ html.dark .shift-select-active .fc .fc-highlight {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: #4b5563 !important;
-    margin: 0 6px !important;
+    color: #6b7280 !important;
+    margin: 0 2px !important;
+    min-width: 32px !important;
+    height: 32px !important;
     position: relative !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-reminders-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: #374151 !important;
 }
 
 .fc-reminders-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.95) !important;
 }
 
 .fc-reminders-button:focus {
@@ -399,80 +491,102 @@ html.dark .shift-select-active .fc .fc-highlight {
     box-shadow: none !important;
 }
 
+/* Day cells - refined styling */
 .fc-daygrid-day-top {
     display: flex !important;
     justify-content: flex-start !important;
     align-items: center !important;
     width: 100% !important;
-    padding: 2px 4px !important;
+    padding: 6px 8px !important;
+}
+
+.fc-daygrid-day-number {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #374151 !important;
+}
+
+html.dark .fc-daygrid-day-number {
+    color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .fc-daygrid-day-frame {
     width: 100% !important;
+    min-height: 100px !important;
 }
 
 .fc-daygrid-day-top > * {
     width: 100% !important;
 }
 
-.fc-col-header-cell{
+/* Column headers - refined typography */
+.fc-col-header-cell {
     border-left: none !important;
     border-right: none !important;
-    font-size: 1rem !important;
-    color: gray !important;
+    font-size: 0.813rem !important;
+    font-weight: 600 !important;
+    color: #6b7280 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.025em !important;
+    padding: 12px 8px !important;
 }
 
-.fc-timegrid-slot-minor{
+/* Time grid slots - cleaner styling */
+.fc-timegrid-slot-minor {
     border-top: none !important;
 }
 
-.fc-timegrid-slot-label-frame{
+.fc-timegrid-slot {
+    height: 2.5rem !important;
+}
+
+.fc-timegrid-slot-label {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    color: #6b7280 !important;
+    vertical-align: top !important;
+}
+
+html.dark .fc-timegrid-slot-label {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.fc-timegrid-slot-label-frame {
     text-align: left !important;
 }
 
+/* Events - refined Apple Calendar style */
 .fc-event {
-    font-size: 0.85rem !important;
-    padding: 0.25rem 0.5rem !important;
-    background: linear-gradient(135deg, #bedbff 0%, #a8d0ff 100%) !important;
-    border: 1px solid rgba(20, 71, 230, 0.2) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    font-size: 0.813rem !important;
+    padding: 4px 6px !important;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    border: none !important;
+    border-left: 3px solid #3b82f6 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #1447e6 !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: #1e40af !important;
+    font-weight: 500 !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer !important;
-    backdrop-filter: blur(10px) !important;
 }
 
 .fc-event:hover {
-    background: linear-gradient(135deg, #a3d1ff 0%, #8bc7ff 100%) !important;
-    border-color: rgba(20, 71, 230, 0.3) !important;
-    box-shadow: 0 4px 12px rgba(20, 71, 230, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
-    transform: translateY(-2px) scale(1.02) !important;
+    background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+    transform: translateY(-1px) !important;
     z-index: 10 !important;
 }
 
-
-.fc-event::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 3px;
-    height: 100%;
-    background-color: #1447e6;
-    border-top-left-radius: 4px;
-    border-bottom-left-radius: 4px;
-}
-
 .fc-event-main {
-    color: #1447e6 !important;
+    color: #1e40af !important;
 }
 
 .fc-event-title {
     font-weight: 500 !important;
+    line-height: 1.4 !important;
 }
 
 /* Ensure short timegrid events keep text visible */
@@ -521,38 +635,46 @@ html.dark .fc-timeGridDay-button {
 html.dark .fc-dayGridMonth-button:hover, 
 html.dark .fc-timeGridWeek-button:hover, 
 html.dark .fc-timeGridDay-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; 
+    background-color: rgba(255, 255, 255, 0.06) !important; 
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-dayGridMonth-button:active, 
 html.dark .fc-timeGridWeek-button:active, 
 html.dark .fc-timeGridDay-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.98) !important;
 }
 
 html.dark .fc-button-active {
-    background-color: rgba(255, 255, 255, 0.16) !important; 
+    background-color: rgba(255, 255, 255, 0.12) !important; 
     color: rgba(255, 255, 255, 0.95) !important;
     font-weight: 600 !important;
 }
 
 html.dark .fc-toolbar-title {
-    color: #ffffff !important; 
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 html.dark .fc-today-button {
     background-color: transparent !important;
-    color: rgba(255, 255, 255, 0.6) !important; 
+    color: rgba(255, 255, 255, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 html.dark .fc-today-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; 
+    background-color: rgba(255, 255, 255, 0.06) !important; 
+    border-color: rgba(255, 255, 255, 0.16) !important;
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-today-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.98) !important;
+}
+
+html.dark .fc-today-button:disabled {
+    opacity: 0.3 !important;
 }
 
 html.dark .fc-prev-button, 
@@ -564,13 +686,14 @@ html.dark .fc-next-button {
 
 html.dark .fc-prev-button:hover, 
 html.dark .fc-next-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; 
+    background-color: rgba(255, 255, 255, 0.06) !important; 
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-prev-button:active, 
 html.dark .fc-next-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.95) !important;
 }
 
 html.dark .fc-prev-button:focus, 
@@ -586,12 +709,13 @@ html.dark .fc-refresh-button {
 }
 
 html.dark .fc-refresh-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-refresh-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.95) !important;
 }
 
 html.dark .fc-refresh-button:focus {
@@ -606,12 +730,13 @@ html.dark .fc-reminders-button {
 }
 
 html.dark .fc-reminders-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-reminders-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.95) !important;
 }
 
 html.dark .fc-reminders-button:focus {
@@ -628,18 +753,21 @@ html.dark .fc-reminders-button:focus {
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    color: #4b5563 !important;
-    margin: 0 6px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: #6b7280 !important;
+    margin: 0 2px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .fc-statistics-button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: #1f2937 !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: #374151 !important;
 }
 
 .fc-statistics-button:active {
-    background-color: rgba(0, 0, 0, 0.1) !important;
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    transform: scale(0.95) !important;
 }
 
 .fc-statistics-button:focus {
@@ -654,12 +782,13 @@ html.dark .fc-statistics-button {
 }
 
 html.dark .fc-statistics-button:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
     color: rgba(255, 255, 255, 0.9) !important;
 }
 
 html.dark .fc-statistics-button:active {
-    background-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: scale(0.95) !important;
 }
 
 html.dark .fc-statistics-button:focus {
@@ -672,7 +801,7 @@ html.dark .fc-daygrid-day-top {
 }
 
 html.dark .fc-col-header-cell {
-    color: rgba(255, 255, 255, 0.7) !important; /* dark.textSecondary */
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 html.dark .fc-popover {
@@ -681,33 +810,28 @@ html.dark .fc-popover {
 }
 
 html.dark .fc-popover:hover {
-    background-color: rgba(255, 255, 255, 0.08) !important; 
+    background-color: rgba(255, 255, 255, 0.06) !important; 
 }
 
+/* Dark mode events - refined blue theme */
 html.dark .fc-event {
-    background: linear-gradient(135deg, #23395d 0%, #1e3251 100%) !important;
-    border: 1px solid rgba(168, 196, 255, 0.2) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
-    color: #a8c4ff !important;
-    backdrop-filter: blur(10px) !important;
+    background: linear-gradient(135deg, #1e3a5f 0%, #1a2f4d 100%) !important;
+    border: none !important;
+    border-left: 3px solid #60a5fa !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    color: #93c5fd !important;
 }
 
 html.dark .fc-event:hover {
-    background: linear-gradient(135deg, #2d4a75 0%, #26426b 100%) !important;
-    border-color: rgba(168, 196, 255, 0.3) !important;
-    box-shadow: 0 4px 12px rgba(168, 196, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
-    transform: translateY(-2px) scale(1.02) !important;
+    background: linear-gradient(135deg, #2d4a75 0%, #244063 100%) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(-1px) !important;
     z-index: 10 !important;
-    color: #c7e0ff !important;
-}
-
-html.dark .fc-event::before {
-    background-color: #6699ff; /* softer, light blue bar */
+    color: #bfdbfe !important;
 }
 
 html.dark .fc-event-main {
-    color: #a8c4ff !important;
+    color: #93c5fd !important;
 }
 
 html.dark .fc-event-title {
@@ -769,7 +893,7 @@ html.dark .fc-event-title {
   
   /* Mobile timegrid improvements */
   .fc-timegrid-slot {
-    height: 30px !important;
+    height: 2.5rem !important;
   }
   
   .fc-timegrid-slot-label {
