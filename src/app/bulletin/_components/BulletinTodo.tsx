@@ -266,6 +266,18 @@ export default function BulletinTodo({
     };
   }, [hasUnsavedChanges, handleSave]);
 
+  // Adjust textarea heights when items change or component mounts
+  useEffect(() => {
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      Object.values(textareaRefs.current).forEach((textarea) => {
+        if (textarea) {
+          adjustTextareaHeight(textarea);
+        }
+      });
+    }, 100);
+  }, [items]);
+
   const uncheckedItems = sortTodoItemsByDueDate(
     items.filter((item) => !item.checked)
   );

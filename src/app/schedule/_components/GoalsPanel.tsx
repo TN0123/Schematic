@@ -267,6 +267,21 @@ export default function GoalsPanel({
     }
   }, [selectedTodoId]);
 
+  // Adjust textarea heights when todo items change or component mounts
+  useEffect(() => {
+    if (!selectedTodoId || !hasLoadedInitialTodos) return;
+
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      Object.values(textareaRefs.current).forEach((textarea) => {
+        if (textarea) {
+          textarea.style.height = "auto";
+          textarea.style.height = Math.max(20, textarea.scrollHeight) + "px";
+        }
+      });
+    }, 100);
+  }, [todoBulletins, selectedTodoId, hasLoadedInitialTodos]);
+
   const handleFilterChange = (duration: GoalDuration) => {
     setFilters((prevFilters) =>
       prevFilters.includes(duration)
