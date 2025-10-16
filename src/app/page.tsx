@@ -1,4 +1,4 @@
-import { ClipboardList, PlusCircle } from "lucide-react";
+import { ClipboardList, ArrowRight } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -90,10 +90,9 @@ export default async function Home() {
                 ))}
                 <TransitionLink
                   href="/bulletin"
-                  className="flex items-center p-3 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors duration-300"
+                  className="flex items-center text-green-600 dark:text-green-400 text-sm pt-1 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
                 >
-                  <PlusCircle className="h-5 w-5 mr-2" />
-                  Add a note
+                  Go to Bulletin →
                 </TransitionLink>
               </div>
             </section>

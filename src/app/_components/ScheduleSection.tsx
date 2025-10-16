@@ -311,14 +311,14 @@ export default function ScheduleSection({
                   <p
                     className={`${
                       item.checked
-                        ? "line-through text-gray-400 dark:text-gray-500"
+                        ? "line-through text-gray-400 dark:text-dark-textSecondary"
                         : "text-gray-700 dark:text-dark-textSecondary"
                     } break-words`}
                   >
                     {item.text || "Untitled task"}
                   </p>
                   {item.dueDate && item.dueDate !== today && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary mt-0.5">
                       <Clock className="w-3 h-3" />
                       <span>{formatDueDate(item.dueDate)}</span>
                     </div>
