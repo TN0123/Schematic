@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -56,6 +56,87 @@ async function getCalendarEvents(
   }
 }
 
+async function searchBulletinNotes(
+  userId: string,
+  query: string,
+  limit: number = 5
+) {
+  try {
+    if (!query || query.trim().length === 0) {
+      return { error: "Search query cannot be empty." };
+    }
+
+    const searchQuery = query.trim();
+    const searchWords = searchQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
+
+    const bulletins = await prisma.bulletin.findMany({
+      where: {
+        userId,
+        OR: [
+          {
+            title: {
+              contains: searchQuery,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          ...searchWords.map((word) => ({
+            title: {
+              contains: word,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          })),
+          {
+            content: {
+              contains: searchQuery,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          ...searchWords.map((word) => ({
+            content: {
+              contains: word,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          })),
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        type: true,
+        updatedAt: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      take: Math.min(limit, 10), // Max 10 results
+    });
+
+    // Format the results with content snippets
+    const results = bulletins.map((bulletin) => {
+      const contentPreview = bulletin.content
+        ? bulletin.content.substring(0, 300) +
+          (bulletin.content.length > 300 ? "..." : "")
+        : "";
+
+      return {
+        title: bulletin.title,
+        content: contentPreview,
+        type: bulletin.type,
+        updatedAt: bulletin.updatedAt.toISOString(),
+      };
+    });
+
+    return results;
+  } catch (error) {
+    console.error("Error searching bulletin notes:", error);
+    return { error: "Failed to search bulletin notes." };
+  }
+}
+
 export async function scheduleChat(
   instructions: string,
   history: any[],
@@ -71,7 +152,6 @@ export async function scheduleChat(
   let goals: { title: string; type: string }[] = [];
   let goalsContext = "";
   let events: { title: string; start: Date; end: Date }[] = [];
-  let recentNotes: { title: string; content: string }[] = [];
 
   // Calculate dates in user's timezone
   const now = new Date();
@@ -151,14 +231,6 @@ export async function scheduleChat(
         },
         select: { title: true, start: true, end: true },
       });
-
-      // Get user's 5 most recent notes from bulletin
-      recentNotes = await prisma.bulletin.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        take: 5,
-        select: { title: true, content: true },
-      });
     } catch (e) {
       console.error("Could not find user to get schedule context");
     }
@@ -196,18 +268,21 @@ ${events
   })
   .join("\n")}
 
-Recent notes from the user's bulletin:
-${recentNotes
-  .map((note) => `- ${note.title}: ${note.content.substring(0, 200)}${note.content.length > 200 ? "..." : ""}`)
-  .join("\n")}
-
 FUNCTION CALLING RULES:
 - If user mentions "yesterday" → call get_calendar_events with startDate and endDate both set to ${
     yesterdayInUserTz.toISOString().split("T")[0]
   }
 - If user mentions "tomorrow" → call get_calendar_events with tomorrow's date  
 - If user mentions any specific date → call get_calendar_events with that date
+- If you need more context from the user's notes, ideas, or written content → call search_bulletin_notes with a relevant search query
 - DO NOT say "I need to retrieve" - just call the function immediately
+
+BULLETIN NOTES SEARCH:
+- The user has a bulletin where they keep notes, ideas, and various content
+- You can search through these notes by title or content using the search_bulletin_notes function
+- Use this when the user asks about something that might be documented in their notes
+- Use this when you need additional context about the user's life, projects, or ideas
+- Examples: user asks "what did I write about project X?", "do I have notes about Y?", "remind me what I said about Z"
 
 Today: ${userNow.toISOString().split("T")[0]}
 Yesterday: ${yesterdayInUserTz.toISOString().split("T")[0]}
@@ -293,6 +368,27 @@ IMPORTANT:
             required: ["startDate", "endDate"],
           },
         },
+        {
+          name: "search_bulletin_notes",
+          description:
+            "Search through the user's bulletin notes by title or content. Use this when you need to find specific information from the user's notes, ideas, or written content. The search will look through all their bulletin items and return relevant matches.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description:
+                  "The search query to find relevant notes. Can be keywords, phrases, or topics to search for in note titles and content.",
+              },
+              limit: {
+                type: "number",
+                description:
+                  "Maximum number of results to return (default: 5, max: 10)",
+              },
+            },
+            required: ["query"],
+          },
+        },
       ],
     },
   ];
@@ -336,6 +432,7 @@ IMPORTANT:
     if (toolCalls && toolCalls.length > 0) {
       const toolCall = toolCalls[0];
       const { name, args } = toolCall;
+      
       if (name === "get_calendar_events" && userId) {
         const { startDate, endDate } = args;
         const toolResult = await getCalendarEvents(
@@ -379,6 +476,34 @@ IMPORTANT:
           "error" in toolResult
         ) {
           console.error("Error in get_calendar_events:", toolResult.error);
+        }
+
+        // Send the function response back to the model
+        const functionResponseMessage = `Function ${name} returned: ${JSON.stringify(
+          toolResult
+        )}`;
+        result = await chatSession.sendMessage(functionResponseMessage);
+      } else if (name === "search_bulletin_notes" && userId) {
+        const { query, limit } = args;
+        const toolResult = await searchBulletinNotes(
+          userId,
+          query,
+          limit || 5
+        );
+
+        // Track this tool call for UI display
+        toolCallsExecuted.push({
+          name: "search_bulletin_notes",
+          description: `Searched notes for "${query}"`,
+        });
+
+        // Check if result has an error property
+        if (
+          toolResult &&
+          typeof toolResult === "object" &&
+          "error" in toolResult
+        ) {
+          console.error("Error in search_bulletin_notes:", toolResult.error);
         }
 
         // Send the function response back to the model
