@@ -27,6 +27,7 @@ import { useDailySummary } from "./hooks/useDailySummary";
 import { GenerationResult } from "./types";
 import { normalizeUrls } from "@/lib/url";
 import { useScheduleSettings } from "@/components/ScheduleSettingsProvider";
+import ResizablePanel from "./_components/ResizablePanel";
 
 export default function CalendarApp() {
   const { data: session, status } = useSession({
@@ -69,6 +70,22 @@ export default function CalendarApp() {
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Panel width state
+  const [goalsPanelWidth, setGoalsPanelWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("schedule-goals-panel-width");
+      return saved ? parseInt(saved, 10) : 320;
+    }
+    return 320;
+  });
+  const [eventPanelWidth, setEventPanelWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("schedule-event-panel-width");
+      return saved ? parseInt(saved, 10) : 384;
+    }
+    return 384;
+  });
+
   const { startNextStep } = useNextStep();
   const desktopCalendarRef = useRef<FullCalendar>(null);
   const mobileCalendarRef = useRef<FullCalendar>(null);
@@ -79,6 +96,34 @@ export default function CalendarApp() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Persist panel widths to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "schedule-goals-panel-width",
+        goalsPanelWidth.toString()
+      );
+    }
+  }, [goalsPanelWidth]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "schedule-event-panel-width",
+        eventPanelWidth.toString()
+      );
+    }
+  }, [eventPanelWidth]);
+
+  // Update calendar size when panel widths change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      desktopCalendarRef.current?.getApi().updateSize();
+      mobileCalendarRef.current?.getApi().updateSize();
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, [goalsPanelWidth, eventPanelWidth]);
 
   useEffect(() => {
     if (isMobilePanelOpen) {
@@ -563,7 +608,15 @@ export default function CalendarApp() {
         {/* Desktop Layout */}
         <div className="hidden md:flex md:flex-row h-full">
           {/* Goals Panel */}
-          <GoalsPanel />
+          <ResizablePanel
+            side="left"
+            minWidth={280}
+            maxWidth={600}
+            width={goalsPanelWidth}
+            onWidthChange={setGoalsPanelWidth}
+          >
+            <GoalsPanel width={goalsPanelWidth} />
+          </ResizablePanel>
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
@@ -640,41 +693,52 @@ export default function CalendarApp() {
           </div>
 
           {/* Side Panel */}
-          <EventGenerationPanel
-            inputText={inputText}
-            setInputText={setInputText}
-            loading={calendarState.loading}
-            handleSubmit={handleSubmit}
-            onCancelGeneration={handleCancelGeneration}
-            setShowModal={(show) => {
-              if (show) {
-                calendarState.setModalInitialTab("event");
+          <ResizablePanel
+            side="right"
+            minWidth={280}
+            maxWidth={600}
+            width={eventPanelWidth}
+            onWidthChange={setEventPanelWidth}
+          >
+            <EventGenerationPanel
+              inputText={inputText}
+              setInputText={setInputText}
+              loading={calendarState.loading}
+              handleSubmit={handleSubmit}
+              onCancelGeneration={handleCancelGeneration}
+              setShowModal={(show) => {
+                if (show) {
+                  calendarState.setModalInitialTab("event");
+                }
+                calendarState.setShowCreationModal(show);
+              }}
+              setIsIcsUploaderModalOpen={
+                calendarState.setIsIcsUploaderModalOpen
               }
-              calendarState.setShowCreationModal(show);
-            }}
-            setIsIcsUploaderModalOpen={calendarState.setIsIcsUploaderModalOpen}
-            dailySummary={dailySummary.dailySummary}
-            dailySummaryDate={dailySummary.dailySummaryDate}
-            dailySummaryLoading={dailySummary.dailySummaryLoading}
-            userId={userId || ""}
-            generationResult={generationResult}
-            onClearGenerationResult={handleClearGenerationResult}
-            onEditGeneratedEvent={async (id, data) => {
-              try {
-                await calendarData.editEvent(id, data);
-              } catch (e) {
-                console.error("Failed to persist generated event edit", e);
-              }
-            }}
-            onDeleteGeneratedEvent={async (id) => {
-              try {
-                await calendarData.deleteEvent(id);
-              } catch (e) {
-                console.error("Failed to delete generated event", e);
-              }
-            }}
-            setEvents={calendarState.setExtractedEvents}
-          />
+              dailySummary={dailySummary.dailySummary}
+              dailySummaryDate={dailySummary.dailySummaryDate}
+              dailySummaryLoading={dailySummary.dailySummaryLoading}
+              userId={userId || ""}
+              generationResult={generationResult}
+              onClearGenerationResult={handleClearGenerationResult}
+              onEditGeneratedEvent={async (id, data) => {
+                try {
+                  await calendarData.editEvent(id, data);
+                } catch (e) {
+                  console.error("Failed to persist generated event edit", e);
+                }
+              }}
+              onDeleteGeneratedEvent={async (id) => {
+                try {
+                  await calendarData.deleteEvent(id);
+                } catch (e) {
+                  console.error("Failed to delete generated event", e);
+                }
+              }}
+              setEvents={calendarState.setExtractedEvents}
+              width={eventPanelWidth}
+            />
+          </ResizablePanel>
         </div>
 
         {/* Mobile Layout */}

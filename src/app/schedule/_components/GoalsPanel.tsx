@@ -49,7 +49,15 @@ interface TodoBulletin {
 
 type ActiveTab = "list" | "text" | "todo";
 
-export default function GoalsPanel() {
+interface GoalsPanelProps {
+  width?: number;
+  className?: string;
+}
+
+export default function GoalsPanel({
+  width,
+  className = "",
+}: GoalsPanelProps = {}) {
   const [goalToAdd, setGoalToAdd] = useState<string>("");
   const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
     GoalDuration.DAILY
@@ -969,8 +977,11 @@ export default function GoalsPanel() {
       <aside
         className={`${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0 fixed md:relative z-50 md:z-30 h-full w-80 bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 px-4 flex-col transition-all duration-300 items-center flex`}
+        } md:translate-x-0 fixed md:relative z-50 md:z-30 h-full ${
+          width ? "" : "w-80"
+        } bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 px-4 flex-col transition-all duration-300 items-center flex ${className}`}
         id="goals-panel"
+        style={width ? { width: `${width}px` } : undefined}
       >
         <div className="w-full flex flex-col items-center justify-between">
           <div className="flex w-full justify-between items-center mb-4">

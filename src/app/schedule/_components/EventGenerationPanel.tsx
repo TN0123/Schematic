@@ -86,6 +86,8 @@ interface EventGenerationPanelProps {
   ) => Promise<void> | void;
   onDeleteGeneratedEvent?: (id: string) => Promise<void> | void;
   setEvents?: (events: CalendarEvent[]) => void;
+  width?: number;
+  className?: string;
 }
 
 export default function EventGenerationPanel({
@@ -105,6 +107,8 @@ export default function EventGenerationPanel({
   onEditGeneratedEvent,
   onDeleteGeneratedEvent,
   setEvents,
+  width,
+  className = "",
 }: EventGenerationPanelProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
@@ -501,7 +505,10 @@ export default function EventGenerationPanel({
   return (
     <>
       <aside
-        className={`hidden md:flex fixed md:relative z-30 h-full w-80 md:w-96 bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300`}
+        className={`hidden md:flex fixed md:relative z-30 h-full ${
+          width ? "" : "w-80 md:w-96"
+        } bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300 ${className}`}
+        style={width ? { width: `${width}px` } : undefined}
       >
         {/* Tab Navigation */}
         <div className="flex border-b dark:border-dark-divider">
