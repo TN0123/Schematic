@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText, generateObject, convertToModelMessages } from "ai";
-import { z } from "zod";
+import { streamText, convertToModelMessages } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
@@ -10,17 +9,66 @@ import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
 
 const prisma = new PrismaClient();
 
-// Schema for change map generation
-const changeMapSchema = z.object({
-  changes: z
-    .array(
-      z.object({
-        original: z.string().describe("The original text to replace, or '!ADD_TO_END!' to append new content"),
-        replacement: z.string().describe("The new text to replace the original with"),
-      })
-    )
-    .describe("An array of text replacements to apply to the document"),
-});
+// Diff-based function to generate change map from original and new text
+function generateChangeMapFromDiff(
+  originalText: string,
+  newText: string
+): Record<string, string> {
+  // If texts are identical, no changes
+  if (originalText === newText) {
+    return {};
+  }
+
+  // Special case: if original is empty, use !ADD_TO_END! marker
+  if (originalText.trim() === "") {
+    return { "!ADD_TO_END!": newText };
+  }
+
+  // Strategy: find common prefix and suffix, then create a single replacement
+  let prefixEnd = 0;
+  const minLength = Math.min(originalText.length, newText.length);
+
+  // Find common prefix
+  while (
+    prefixEnd < minLength &&
+    originalText[prefixEnd] === newText[prefixEnd]
+  ) {
+    prefixEnd++;
+  }
+
+  // Find common suffix
+  let suffixStart = 0;
+  while (
+    suffixStart < minLength - prefixEnd &&
+    originalText[originalText.length - 1 - suffixStart] ===
+      newText[newText.length - 1 - suffixStart]
+  ) {
+    suffixStart++;
+  }
+
+  // Extract the changed portion
+  const originalChanged = originalText.slice(
+    prefixEnd,
+    originalText.length - suffixStart
+  );
+  const newChanged = newText.slice(
+    prefixEnd,
+    newText.length - suffixStart
+  );
+
+  // If no change detected (shouldn't happen given earlier check), return empty
+  if (originalChanged === newChanged) {
+    return {};
+  }
+
+  // Special case: if we're only appending to the end
+  if (originalChanged === "" && prefixEnd === originalText.length) {
+    return { "!ADD_TO_END!": newChanged };
+  }
+
+  // Create a replacement mapping
+  return { [originalChanged]: newChanged };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -227,53 +275,31 @@ export async function POST(req: NextRequest) {
         },
       });
     } else {
-      // EDIT MODE: Stream assistant text + generate change map JSON
-      const assistantTextPrompt = `
-        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
+      // EDIT MODE: Stream new document text + generate diff-based change map
+      const documentEditPrompt = `
+        You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested changes.
 
         Here is the context for what the user is writing (will be empty if the user has not written anything yet):
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT
 
-        Your job is to provide a brief, friendly response to the user explaining what changes you're making to their text.
+        Your job is to understand the user's request and generate the complete new version of their document that incorporates the requested changes.
         
-        Your response should be conversational and helpful, explaining your approach or reasoning.
+        Rules:
+        1. If the document is currently empty and the user wants you to create new content, generate the new content from scratch.
+        2. If the document has existing text and the user wants edits, generate the full document with the edits applied.
+        3. If the user wants to add content, include both the existing text and the new content in the appropriate location.
+        4. If the user wants to delete something, generate the document without that content.
+        5. Preserve the parts of the document that should remain unchanged.
+        6. Do NOT include explanations, comments, or meta-text. ONLY return the document text itself.
         
-        Your response MUST be written in natural, plain, human-like text — STRICTLY AVOID using Markdown formatting such 
-        as **bold**, _italics_, or any other markup. DO NOT format text using asterisks, underscores, 
-        or similar characters. AVOID artificial section headers (e.g., "Feature Review:" or 
+        Your output MUST be written in natural, plain, human-like text — STRICTLY AVOID using Markdown formatting such 
+        as **bold**, _italics_, or any other markup UNLESS the original document uses them. DO NOT format text using asterisks, underscores, 
+        or similar characters unless they were already in the original document. AVOID artificial section headers (e.g., "Feature Review:" or 
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
         
-        Keep your response concise (2-3 sentences maximum).
-      `;
-
-      const changeMapPrompt = `
-        You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
-
-        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
-        BEGINNING OF CONTEXT
-        ${context}
-        END OF CONTEXT
-
-        Your job is to analyze the current text and the user's request, then generate an array of changes.
-        
-        Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
-        
-        Rules for generating changes:
-        1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
-        2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
-        3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
-        4. Choose text snippets that are unique enough to be found in the document (include enough context)
-        5. If replacing multiple separate sections, create multiple change objects in the array
-        6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
-        7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
-        
-        Example changes array:
-        - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
-        - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
-        - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
-        - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
+        Return ONLY the complete new version of the document, nothing else.
       `;
 
       const userPrompt = `
@@ -289,6 +315,10 @@ export async function POST(req: NextRequest) {
       `;
 
       const uiMessages = [
+        {
+          role: "system" as const,
+          parts: [{ type: "text", text: documentEditPrompt }],
+        },
         ...history.map((entry: any) => {
           const role = (entry.role === "model" ? "assistant" : entry.role) as
             | "user"
@@ -310,6 +340,7 @@ export async function POST(req: NextRequest) {
         { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
       ];
 
+      const messages = convertToModelMessages(uiMessages);
       const encoder = new TextEncoder();
 
       const stream = new ReadableStream({
@@ -324,83 +355,44 @@ export async function POST(req: NextRequest) {
           try {
             sendEvent("status", { message: "Starting AI processing..." });
 
-            // Start both tasks in parallel
-            // 1. Stream assistant text (for user to see)
-            const assistantMessagesUI = [
-              {
-                role: "system" as const,
-                parts: [{ type: "text", text: assistantTextPrompt }],
-              },
-              ...uiMessages,
-            ];
-            const assistantMessages = convertToModelMessages(assistantMessagesUI);
-
-            // 2. Generate change map JSON (not streamed)
-            const changeMapMessagesUI = [
-              {
-                role: "system" as const,
-                parts: [{ type: "text", text: changeMapPrompt }],
-              },
-              ...uiMessages,
-            ];
-            const changeMapMessages = convertToModelMessages(changeMapMessagesUI);
-
-            const changeMapPromise = generateObject({
+            // Generate the new document text (not streamed to avoid confusion)
+            const result = await streamText({
               model: selectedModelProvider,
-              messages: changeMapMessages,
-              schema: changeMapSchema,
+              messages,
             });
 
-            let assistantFullText = "";
+            let newDocumentText = "";
+            for await (const delta of result.textStream) {
+              newDocumentText += delta;
+            }
 
-            // Start streaming assistant text immediately (don't create promise wrapper)
+            // Generate change map using diff-based approach
+            sendEvent("status", { message: "Generating changes..." });
+            const changeMap = generateChangeMapFromDiff(currentText, newDocumentText);
+
+            sendEvent("changes-final", { changes: changeMap });
+
+            // Generate a brief summary for the chat UI
+            const summaryPrompt = `Based on the user's request: "${instructions}", provide a brief 1-2 sentence summary of what changes were made to the document. Be concise and friendly. Your response MUST be written in natural, plain text without any Markdown formatting.`;
             
-            let deltaCount = 0;
-            
-            const assistantStreamPromise = (async () => {
-              try {
-                const result = await streamText({
-                  model: selectedModelProvider,
-                  messages: assistantMessages,
-                });
+            const summaryResult = await streamText({
+              model: selectedModelProvider,
+              prompt: summaryPrompt,
+            });
 
-                for await (const delta of result.textStream) {
-                  assistantFullText += delta;
-                  deltaCount++;
-                  
-                  sendEvent("assistant-delta", { delta });
-                }
-                
-                
-                sendEvent("assistant-complete", { text: assistantFullText });
-              } catch (error) {
-                
-                throw error;
-              }
-            })();
+            let assistantSummary = "";
+            for await (const delta of summaryResult.textStream) {
+              assistantSummary += delta;
+              sendEvent("assistant-delta", { delta });
+            }
 
-            // Wait for change map to be ready
-            const changeMapGenPromise = (async () => {
-              const changeMapResult = await changeMapPromise;
-              const changesArray = changeMapResult.object.changes;
-              
-              // Convert array format to Record<string, string> format expected by frontend
-              const changeMap: Record<string, string> = {};
-              for (const change of changesArray) {
-                changeMap[change.original] = change.replacement;
-              }
-              
-              sendEvent("changes-final", { changes: changeMap });
-            })();
+            sendEvent("assistant-complete", { text: assistantSummary });
 
-            // Wait for both to complete
-            await Promise.all([assistantStreamPromise, changeMapGenPromise]);
-
-            // Update conversation history with the assistant's response
+            // Update conversation history with the summary
             const updatedHistory = [
               ...history,
               { role: "user", parts: userPrompt },
-              { role: "model", parts: assistantFullText },
+              { role: "model", parts: assistantSummary },
             ];
 
             // Update context
@@ -412,7 +404,6 @@ export async function POST(req: NextRequest) {
                 documentId
               );
             } catch (error) {
-              
               contextUpdateResult = {
                 contextUpdated: false,
                 contextChange: null,
@@ -420,7 +411,7 @@ export async function POST(req: NextRequest) {
             }
 
             sendEvent("result", {
-              result: [assistantFullText, {}],
+              result: [assistantSummary, {}],
               history: updatedHistory,
               remainingUses,
               contextUpdated: contextUpdateResult.contextUpdated,
@@ -429,9 +420,7 @@ export async function POST(req: NextRequest) {
             });
 
             sendEvent("complete", { message: "Processing complete" });
-            
           } catch (error) {
-            
             sendEvent("error", {
               error: "Failed to generate content",
               message: error instanceof Error ? error.message : "Unknown error",
