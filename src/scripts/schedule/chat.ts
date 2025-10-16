@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from "@prisma/client";
+import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 
 const prisma = new PrismaClient();
 
@@ -28,22 +29,23 @@ async function getCalendarEvents(
       return { error: "Invalid date format. Please use ISO 8601 format." };
     }
 
-    // Convert user's local date to proper UTC boundaries
-    // If timezone is provided, use it to set proper day boundaries
-    let startUTC: Date;
-    let endUTC: Date;
-
-    startUTC = new Date(`${startDate}T00:00:00.000Z`);
-    endUTC = new Date(`${endDate}T23:59:59.999Z`);
+    // Use the timezone utility to get proper UTC boundaries for the user's timezone
+    const userTimezone = timezone || "UTC";
+    
+    // Get UTC boundaries for start date in user's timezone
+    const startBounds = getUtcDayBoundsForTimezone(start, userTimezone);
+    
+    // Get UTC boundaries for end date in user's timezone
+    const endBounds = getUtcDayBoundsForTimezone(end, userTimezone);
 
     const events = await prisma.event.findMany({
       where: {
         userId,
         start: {
-          lte: endUTC,
+          lte: endBounds.endUtc,
         },
         end: {
-          gte: startUTC,
+          gte: startBounds.startUtc,
         },
       },
       select: { title: true, start: true, end: true },
