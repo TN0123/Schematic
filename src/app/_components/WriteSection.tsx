@@ -74,7 +74,7 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
             href={`/write/${doc.id}`}
             className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 flex flex-col justify-between hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out"
           >
-            <FileText className="h-6 w-6 text-gray-400 dark:text-gray-500 mb-2" />
+            <FileText className="h-6 w-6 text-gray-400 dark:text-dark-textSecondary mb-2" />
             <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary flex-grow">
               {doc.title}
             </h3>

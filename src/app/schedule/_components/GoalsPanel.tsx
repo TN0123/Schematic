@@ -806,7 +806,7 @@ export default function GoalsPanel({
               {/* Add Item Button */}
               <button
                 onClick={() => addTodoItem()}
-                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm mb-3"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm mb-3"
                 aria-label="Add new todo item"
               >
                 <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -929,11 +929,11 @@ export default function GoalsPanel({
                               Math.max(20, e.target.scrollHeight) + "px";
                             updateTodoItem(item.id, { text: e.target.value });
                           }}
-                          className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-sm leading-5"
+                          className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5"
                           style={{ minHeight: "20px" }}
                         />
                         {item.dueDate && (
-                          <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-gray-500">
+                          <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-dark-textSecondary">
                             <Clock className="w-3 h-3" />
                             <span>Due: {formatDueDate(item.dueDate)}</span>
                           </div>
