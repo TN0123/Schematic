@@ -20,7 +20,7 @@ const WriteSettingsContext = createContext<
 >(undefined);
 
 const STORAGE_KEY = "writeViewMode";
-const DEFAULT_MODE: WriteViewMode = "diff";
+const DEFAULT_MODE: WriteViewMode = "changeHandler";
 
 export function WriteSettingsProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewModeState] = useState<WriteViewMode>(DEFAULT_MODE);
