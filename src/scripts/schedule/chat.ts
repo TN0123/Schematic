@@ -221,14 +221,17 @@ export async function scheduleChat(
         goalsContext = `User's Goals:\n${goals.map((goal) => `- ${goal.title} (${goal.type} goal)`).join("\n")}`;
       }
 
-      const startOfDay = new Date(userNow);
-      startOfDay.setHours(0, 0, 0, 0);
+      // Use the timezone utility to get proper UTC boundaries for today in user's timezone
+      const todayBounds = getUtcDayBoundsForTimezone(now, timezone);
 
       events = await prisma.event.findMany({
         where: {
           userId,
           start: {
-            gte: startOfDay,
+            gte: now, // Get events from now onwards (remaining events)
+          },
+          end: {
+            lte: todayBounds.endUtc, // But only within today
           },
         },
         select: { title: true, start: true, end: true },
@@ -343,7 +346,6 @@ IMPORTANT:
 - Never include markdown code blocks or additional text outside the JSON
 - Always speak to the user in a friendly, engaging, and conversational tone
 `;
-
   const userPrompt = instructions;
 
   const genAI = new GoogleGenerativeAI(geminiKey);
