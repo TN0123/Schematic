@@ -264,7 +264,7 @@ export default function GlobalSearch() {
     saveRecentSearch(query);
 
     if (result.type === "document") {
-      router.push(`/write/${result.id}`);
+      router.push(`/notebook/${result.id}`);
     } else if (result.type === "bulletin") {
       router.push(`/bulletin?noteId=${result.id}`);
     }

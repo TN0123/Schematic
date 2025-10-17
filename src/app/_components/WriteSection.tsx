@@ -29,7 +29,7 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
       });
       if (response.ok) {
         const newDoc = await response.json();
-        router.push(`/write/${newDoc.id}`);
+        router.push(`/notebook/${newDoc.id}`);
       } else {
         console.error("Failed to create document");
         setIsCreating(false);
@@ -44,11 +44,11 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
     <section>
       <div className="mb-4">
         <TransitionLink
-          href="/write"
+          href="/notebook"
           className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-300"
         >
           <PenLine className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
-          Write
+          Notebook
         </TransitionLink>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -71,7 +71,7 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
         {recentDocuments.map((doc) => (
           <TransitionLink
             key={doc.id}
-            href={`/write/${doc.id}`}
+            href={`/notebook/${doc.id}`}
             className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 flex flex-col justify-between hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out"
           >
             <FileText className="h-6 w-6 text-gray-400 dark:text-dark-textSecondary mb-2" />

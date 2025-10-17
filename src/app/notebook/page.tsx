@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import DocumentList from "@/app/write/_components/DocumentList";
+import DocumentList from "@/app/notebook/_components/DocumentList";
 import { redirect } from "next/navigation";
 
 export default async function DocumentsPage() {

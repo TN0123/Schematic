@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generate } from "@/scripts/write/generate";
+import { generate } from "@/scripts/notebook/generate";
 
 export async function POST(req: Request) {
   try {

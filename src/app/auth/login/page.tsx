@@ -42,7 +42,7 @@ export default function Login() {
     }
   };
 
-  const handleScrollTo = (section: "write" | "bulletin" | "schedule") => {
+  const handleScrollTo = (section: "notebook" | "bulletin" | "schedule") => {
     // Set the corresponding slide
     const slideIndex = features.findIndex(
       (feature) => feature.title.toLowerCase() === section
@@ -101,7 +101,7 @@ export default function Login() {
   const features = [
     {
       icon: PenLine,
-      title: "Write",
+      title: "Notebook",
       description: "Cursor for everyday writing.",
       color: "purple",
       image: "/write-image.png",
@@ -148,7 +148,7 @@ export default function Login() {
   };
 
   const navItems = [
-    "Write",
+    "Notebook",
     "Bulletin",
     "Schedule",
     "Pricing",
@@ -228,7 +228,7 @@ export default function Login() {
                     );
                   }
                   if (
-                    item === "Write" ||
+                    item === "Notebook" ||
                     item === "Bulletin" ||
                     item === "Schedule"
                   ) {
@@ -242,7 +242,7 @@ export default function Login() {
                           onClick={() =>
                             handleScrollTo(
                               item.toLowerCase() as
-                                | "write"
+                                | "notebook"
                                 | "bulletin"
                                 | "schedule"
                             )

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { autocomplete } from "@/scripts/write/autocomplete";
+import { autocomplete } from "@/scripts/notebook/autocomplete";
 
 export async function POST(req: Request) {
   try {

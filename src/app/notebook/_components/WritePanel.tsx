@@ -466,7 +466,7 @@ export default function WritePanel({
         chatAbortControllerRef.current = controller;
 
         // Make the POST request to the chat endpoint
-        const response = await fetch("/api/write/chat", {
+        const response = await fetch("/api/notebook/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -709,7 +709,7 @@ export default function WritePanel({
 
       const { before, after } = getSurroundingWords(inputText, selected, 25);
 
-      const response = await fetch("/api/write/chat/improve", {
+      const response = await fetch("/api/notebook/chat/improve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -833,7 +833,7 @@ export default function WritePanel({
     try {
       const controller = new AbortController();
       chatAbortControllerRef.current = controller;
-      const response = await fetch("/api/write/chat", {
+      const response = await fetch("/api/notebook/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -934,7 +934,7 @@ export default function WritePanel({
             <>
               <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
                 <Link
-                  href="/write"
+                  href="/notebook"
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700/50 shadow-sm hover:shadow-md hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-800/30 dark:hover:to-indigo-800/30 text-sm font-medium text-purple-700 dark:text-purple-200 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
                   title="Back to Documents"
                 >
@@ -1313,7 +1313,7 @@ export default function WritePanel({
               <button
                 onClick={async () => {
                   try {
-                    const response = await fetch("/api/write/context", {
+                    const response = await fetch("/api/notebook/context", {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",

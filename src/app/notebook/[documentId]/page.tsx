@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import WriteEditor from "@/app/write/_components/WriteEditor";
-import WritePanel from "@/app/write/_components/WritePanel";
+import WriteEditor from "@/app/notebook/_components/WriteEditor";
+import WritePanel from "@/app/notebook/_components/WritePanel";
 import { useNextStep } from "nextstepjs";
 import { ChevronUp, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,8 +12,8 @@ import { isMobileBrowser } from "@/components/utils/platform";
 import jsPDF from "jspdf";
 import { useDebouncedCallback } from "use-debounce";
 
-import { ChangeMap } from "@/app/write/_components/utils";
-import { ModelType } from "@/app/write/_components/utils";
+import { ChangeMap } from "@/app/notebook/_components/utils";
+import { ModelType } from "@/app/notebook/_components/utils";
 
 interface Document {
   id: string;
@@ -134,10 +134,10 @@ export default function DocumentEditorPage() {
           setDocument(doc);
           setInput(doc.content);
         } else {
-          router.push("/write");
+          router.push("/notebook");
         }
       } catch (error) {
-        router.push("/write");
+        router.push("/notebook");
       }
     }
     fetchDocument();

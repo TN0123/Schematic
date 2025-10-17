@@ -26,7 +26,7 @@ export default function Navigation() {
   if (pathname === "/auth/login" || pathname === "/about") return null;
 
   const navItems = [
-    { href: "/write", icon: PenLine, label: "Write" },
+    { href: "/notebook", icon: PenLine, label: "Notebook" },
     { href: "/bulletin", icon: ClipboardList, label: "Bulletin" },
     { href: "/schedule", icon: Calendar, label: "Schedule" },
     { href: "/statistics", icon: Clock, label: "Statistics" },

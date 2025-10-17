@@ -50,7 +50,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
   }, []);
 
   const handleDocumentSelect = (doc: Document) => {
-    router.push(`/write/${doc.id}`);
+    router.push(`/notebook/${doc.id}`);
   };
 
   const handleCreateDocument = async () => {
@@ -63,7 +63,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
 
       if (response.ok) {
         const newDoc = await response.json();
-        router.push(`/write/${newDoc.id}`);
+        router.push(`/notebook/${newDoc.id}`);
       } else if (response.status === 403) {
         // Document limit reached
         setShowUpgradePrompt(true);
@@ -148,7 +148,7 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                 <PenLine className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
-                Write
+                Notebook
               </h1>
             </div>
 

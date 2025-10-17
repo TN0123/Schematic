@@ -27,7 +27,7 @@ export default function MobileTabBar() {
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/write", icon: PenLine, label: "Write" },
+    { href: "/notebook", icon: PenLine, label: "Notebook" },
     { href: "/bulletin", icon: ClipboardList, label: "Bulletin" },
     { href: "/schedule", icon: Calendar, label: "Schedule" },
     { href: "/statistics", icon: Clock, label: "Statistics" },

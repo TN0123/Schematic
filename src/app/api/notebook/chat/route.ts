@@ -5,7 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
 import { PrismaClient } from "@prisma/client";
-import { contextUpdate } from "@/scripts/write/context-update";
+import { contextUpdate } from "@/scripts/notebook/context-update";
 import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
 
 const prisma = new PrismaClient();

@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
           "/schedule",
           "/statistics",
           "/settings",
-          "/write",
+          "/notebook",
         ],
       },
     ],
