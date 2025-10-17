@@ -395,7 +395,7 @@ export default function SettingsPage() {
           <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
               <PenLine className="w-5 h-5" />
-              Write
+              Notebook
             </h2>
           </div>
           <div className="p-4 space-y-4">
