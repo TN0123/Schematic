@@ -885,7 +885,7 @@ export default function GoalsPanel({
                               }
                             }}
                             placeholder="Write a task..."
-                            className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-sm leading-5"
+                            className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5"
                             style={{ minHeight: "20px" }}
                           />
                         </div>
@@ -932,27 +932,29 @@ export default function GoalsPanel({
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       </button>
                       <div className="flex-grow flex items-center">
-                        <textarea
-                          ref={(el) => {
-                            if (el) textareaRefs.current[item.id] = el;
-                          }}
-                          rows={1}
-                          value={item.text}
-                          onChange={(e) => {
-                            e.target.style.height = "auto";
-                            e.target.style.height =
-                              Math.max(20, e.target.scrollHeight) + "px";
-                            updateTodoItem(item.id, { text: e.target.value });
-                          }}
-                          className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5"
-                          style={{ minHeight: "20px" }}
-                        />
-                        {item.dueDate && (
-                          <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-dark-textSecondary">
-                            <Clock className="w-3 h-3" />
-                            <span>Due: {formatDueDate(item.dueDate)}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 w-full">
+                          <textarea
+                            ref={(el) => {
+                              if (el) textareaRefs.current[item.id] = el;
+                            }}
+                            rows={1}
+                            value={item.text}
+                            onChange={(e) => {
+                              e.target.style.height = "auto";
+                              e.target.style.height =
+                                Math.max(20, e.target.scrollHeight) + "px";
+                              updateTodoItem(item.id, { text: e.target.value });
+                            }}
+                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5"
+                            style={{ minHeight: "20px" }}
+                          />
+                          {item.dueDate && (
+                            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
+                              <Clock className="w-3 h-3" />
+                              <span>Due: {formatDueDate(item.dueDate)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <button
                         onClick={() => removeTodoItem(item.id)}

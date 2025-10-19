@@ -317,13 +317,13 @@ export default function BulletinTodo({
             <ClipboardList className="h-10 w-10 text-green-500 flex-shrink-0" />
             <div className="flex flex-col w-full">
               <input
-                className="font-semibold tracking-tight text-3xl bg-transparent focus:outline-none w-full dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 border-none resize-none"
+                className="font-semibold tracking-tight text-3xl bg-transparent focus:outline-none w-full dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary border-none resize-none"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Untitled"
                 aria-label="Todo list title"
               />
-              <div className="text-s text-gray-400 dark:text-gray-500 mt-1">
+              <div className="text-s text-gray-400 dark:text-dark-textSecondary mt-1">
                 {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
               </div>
             </div>
@@ -359,7 +359,7 @@ export default function BulletinTodo({
         {/* Progress Indicator */}
         {items.length > 0 && (
           <div className="mb-6">
-            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1">
+            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-dark-textSecondary mb-1">
               <span>
                 {hasItemsWithDates && todayItems.length > 0
                   ? "Today's progress"
@@ -493,7 +493,7 @@ export default function BulletinTodo({
                                   handleTextareaKeyDown(e, item.id, itemIndex)
                                 }
                                 placeholder="Write a task..."
-                                className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-gray-500 resize-none border-none text-base leading-6 pt-0.5"
+                                className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-base leading-6 pt-0.5"
                                 aria-label="Todo item text"
                                 style={{ minHeight: "24px" }}
                               />
@@ -549,23 +549,25 @@ export default function BulletinTodo({
                     </button>
                   </div>
                   <div className="flex-grow">
-                    <textarea
-                      ref={(el) => {
-                        if (el) textareaRefs.current[item.id] = el;
-                      }}
-                      rows={1}
-                      value={item.text}
-                      onChange={(e) => handleTextareaChange(e, item.id)}
-                      className="w-full bg-transparent focus:outline-none line-through text-gray-500 dark:text-gray-400 resize-none border-none text-base leading-6 pt-0.5"
-                      aria-label="Completed todo item text"
-                      style={{ minHeight: "24px" }}
-                    />
-                    {item.dueDate && (
-                      <div className="flex items-center gap-1 text-xs mt-1 text-gray-400 dark:text-gray-500">
-                        <Clock className="w-3 h-3" />
-                        <span>Due: {formatDueDate(item.dueDate)}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <textarea
+                        ref={(el) => {
+                          if (el) textareaRefs.current[item.id] = el;
+                        }}
+                        rows={1}
+                        value={item.text}
+                        onChange={(e) => handleTextareaChange(e, item.id)}
+                        className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-base leading-6 pt-0.5"
+                        aria-label="Completed todo item text"
+                        style={{ minHeight: "24px" }}
+                      />
+                      {item.dueDate && (
+                        <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
+                          <Clock className="w-3 h-3" />
+                          <span>Due: {formatDueDate(item.dueDate)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => removeItem(item.id)}
