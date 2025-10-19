@@ -997,38 +997,6 @@ html.dark {
   }
 }
 
-/* Custom scrollbar for link collection */
-.link-collection-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.link-collection-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-}
-
-.link-collection-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.3);
-  border-radius: 10px;
-  transition: background 0.2s ease;
-}
-
-.link-collection-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.5);
-}
-
-/* Dark mode scrollbar */
-.dark .link-collection-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.dark .link-collection-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.4);
-}
-
-.dark .link-collection-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.6);
-}
 
 /* Enhanced backdrop blur effects */
 .backdrop-enhanced {

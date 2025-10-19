@@ -3,7 +3,6 @@ import { useEffect, useState, JSX } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import BulletinNote from "./BulletinNote";
 import BulletinTodo from "./BulletinTodo";
-import BulletinLinkCollection, { LinkPreview } from "./BulletinLinkCollection";
 import BulletinKanban from "./BulletinKanban";
 import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
 import DynamicNoteCreator from "./DynamicNoteCreator";
@@ -53,7 +52,6 @@ type BulletinItem = {
   | { type: "text"; data?: undefined }
   | { type: "todo"; data: { items: TodoItem[] } }
   | { type: "priority-queue"; data: { items: QueueItem[] } }
-  | { type: "link-collection"; data: { links: LinkPreview[] } }
   | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
   | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
 );
@@ -199,9 +197,6 @@ export default function BulletinClient() {
     "priority-queue": (
       <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
-    "link-collection": (
-      <Link className="w-4 h-4 text-light-icon dark:text-dark-icon" />
-    ),
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
     dynamic: (
       <Sparkles className="w-4 h-4 text-light-icon dark:text-dark-icon" />
@@ -267,7 +262,7 @@ export default function BulletinClient() {
     updates: {
       title?: string;
       content?: string;
-      data?: { links?: LinkPreview[] } | Record<string, any>;
+      data?: Record<string, any>;
       schema?: DynamicSchema;
     }
   ) => {
@@ -375,8 +370,6 @@ export default function BulletinClient() {
         data:
           type === "todo"
             ? { items: [] as TodoItem[] }
-            : type === "link-collection"
-            ? { links: [] as LinkPreview[] }
             : type === "kanban"
             ? {
                 columns: [
@@ -508,17 +501,6 @@ export default function BulletinClient() {
                       onSave={saveItem}
                       onDelete={() => handleDeleteRequest(item.id)}
                       isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "link-collection":
-                  return (
-                    <BulletinLinkCollection
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialLinks={item.data?.links}
-                      onSave={saveItem}
-                      onDelete={() => handleDeleteRequest(item.id)}
                     />
                   );
                 case "dynamic":
@@ -659,16 +641,6 @@ export default function BulletinClient() {
                         </button>
                         <button
                           onClick={() => {
-                            addItem("link-collection");
-                            setShowDropdown(false);
-                          }}
-                          className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
-                          title="Link Collection"
-                        >
-                          <Link />
-                        </button>
-                        <button
-                          onClick={() => {
                             setShowDynamicCreator(true);
                             setShowDropdown(false);
                           }}
@@ -711,16 +683,6 @@ export default function BulletinClient() {
                         >
                           <Columns />
                           Kanban Board
-                        </button>
-                        <button
-                          onClick={() => {
-                            addItem("link-collection");
-                            setShowDropdown(false);
-                          }}
-                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
-                        >
-                          <Link />
-                          Link Collection
                         </button>
                         <button
                           onClick={() => {
@@ -945,16 +907,6 @@ export default function BulletinClient() {
                       </button>
                       <button
                         onClick={() => {
-                          addItem("link-collection");
-                          setShowDropdown(false);
-                        }}
-                        className="flex gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 dark:text-dark-textPrimary dark:hover:bg-dark-hover transition-colors active:bg-gray-100 dark:active:bg-dark-actionHover"
-                      >
-                        <Link className="w-5 h-5" />
-                        <span className="font-medium">Link Collection</span>
-                      </button>
-                      <button
-                        onClick={() => {
                           setShowDynamicCreator(true);
                           setShowDropdown(false);
                         }}
@@ -1024,8 +976,6 @@ export default function BulletinClient() {
                                 return <ClipboardList className={iconClass} />;
                               case "priority-queue":
                                 return <Logs className={iconClass} />;
-                              case "link-collection":
-                                return <Link className={iconClass} />;
                               case "kanban":
                                 return <Columns className={iconClass} />;
                               case "dynamic":
