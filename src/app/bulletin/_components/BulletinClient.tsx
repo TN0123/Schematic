@@ -7,6 +7,7 @@ import BulletinLinkCollection, { LinkPreview } from "./BulletinLinkCollection";
 import BulletinKanban from "./BulletinKanban";
 import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
 import DynamicNoteCreator from "./DynamicNoteCreator";
+import AggregatedTodosView from "./AggregatedTodosView";
 import { KanbanCard, KanbanColumn } from "./kanban";
 import { useSession } from "next-auth/react";
 import {
@@ -229,11 +230,13 @@ export default function BulletinClient() {
     }
 
     const noteId = searchParams.get("noteId");
-    const noteExists = noteId && items.some((item) => item.id === noteId);
 
-    if (!noteExists) {
-      router.replace(`${pathname}?noteId=${items[0].id}`);
+    // If a noteId is specified but doesn't exist, clear it
+    if (noteId && !items.some((item) => item.id === noteId)) {
+      router.replace(pathname);
     }
+
+    // Don't auto-select a note - let the user see the aggregated view by default
   }, [items, loading, searchParams, pathname, router]);
 
   useEffect(() => {
@@ -550,14 +553,13 @@ export default function BulletinClient() {
             })}
 
             {expandedItemId === null && (
-              <div className="flex flex-col items-center justify-center w-full h-full bg-light-primary border border-light-border shadow-inner dark:bg-dark-secondary dark:border-dark-divider">
-                <p className="text-light-heading text-lg font-medium dark:text-dark-textPrimary">
-                  No note selected
-                </p>
-                <p className="text-light-subtle text-sm mt-2 dark:text-dark-textSecondary">
-                  Tap on a note from the sidebar or create a new note
-                </p>
-              </div>
+              <AggregatedTodosView
+                items={items as any}
+                onNavigateToNote={(noteId) => {
+                  setExpandedItemId(noteId);
+                  router.push(`${pathname}?noteId=${noteId}`);
+                }}
+              />
             )}
           </>
         )}
@@ -774,8 +776,15 @@ export default function BulletinClient() {
                         : "hover:bg-gray-100 dark:hover:bg-dark-hover text-light-heading dark:text-dark-textPrimary"
                     }`}
                     onClick={() => {
-                      setExpandedItemId(item.id);
-                      router.push(`${pathname}?noteId=${item.id}`);
+                      if (item.id === expandedItemId) {
+                        // Toggle off - unselect the note
+                        setExpandedItemId(null);
+                        router.push(pathname);
+                      } else {
+                        // Select the note
+                        setExpandedItemId(item.id);
+                        router.push(`${pathname}?noteId=${item.id}`);
+                      }
                       setSearchQuery("");
                     }}
                   >
@@ -985,8 +994,15 @@ export default function BulletinClient() {
                             : "bg-gray-50 hover:bg-gray-100 dark:bg-dark-hover dark:hover:bg-dark-actionHover border-2 border-transparent"
                         }`}
                         onClick={() => {
-                          setExpandedItemId(item.id);
-                          router.push(`${pathname}?noteId=${item.id}`);
+                          if (item.id === expandedItemId) {
+                            // Toggle off - unselect the note
+                            setExpandedItemId(null);
+                            router.push(pathname);
+                          } else {
+                            // Select the note
+                            setExpandedItemId(item.id);
+                            router.push(`${pathname}?noteId=${item.id}`);
+                          }
                           setSearchQuery("");
                           setIsSidebarOpen(false);
                         }}
