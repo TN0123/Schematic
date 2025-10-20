@@ -58,6 +58,61 @@ async function getCalendarEvents(
   }
 }
 
+// Helper function to extract searchable text from data field based on bulletin type
+function extractSearchableTextFromData(data: any, type: string): string {
+  if (!data) return "";
+
+  const searchableTexts: string[] = [];
+
+  try {
+    switch (type) {
+      case "todo":
+        if (data.items && Array.isArray(data.items)) {
+          data.items.forEach((item: any) => {
+            if (item.text) searchableTexts.push(item.text);
+          });
+        }
+        break;
+
+      case "kanban":
+        if (data.cards && Array.isArray(data.cards)) {
+          data.cards.forEach((card: any) => {
+            if (card.text) searchableTexts.push(card.text);
+            if (card.description) searchableTexts.push(card.description);
+            if (card.tags && Array.isArray(card.tags)) {
+              searchableTexts.push(...card.tags);
+            }
+          });
+        }
+        break;
+
+      case "dynamic":
+        // Extract all string values from the dynamic data object
+        const extractStrings = (obj: any): string[] => {
+          const strings: string[] = [];
+          if (typeof obj === "string") {
+            strings.push(obj);
+          } else if (Array.isArray(obj)) {
+            obj.forEach(item => strings.push(...extractStrings(item)));
+          } else if (obj && typeof obj === "object") {
+            Object.values(obj).forEach(value => strings.push(...extractStrings(value)));
+          }
+          return strings;
+        };
+        searchableTexts.push(...extractStrings(data));
+        break;
+
+      default:
+        // For other types, don't extract anything from data
+        break;
+    }
+  } catch (error) {
+    console.error("Error extracting searchable text from data:", error);
+  }
+
+  return searchableTexts.join(" ");
+}
+
 async function searchBulletinNotes(
   userId: string,
   query: string,
@@ -74,55 +129,60 @@ async function searchBulletinNotes(
       .split(/\s+/)
       .filter((word) => word.length > 0);
 
+    // First, get all bulletins for the user
     const bulletins = await prisma.bulletin.findMany({
       where: {
         userId,
-        OR: [
-          {
-            title: {
-              contains: searchQuery,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          ...searchWords.map((word) => ({
-            title: {
-              contains: word,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          })),
-          {
-            content: {
-              contains: searchQuery,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          ...searchWords.map((word) => ({
-            content: {
-              contains: word,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          })),
-        ],
       },
       select: {
         id: true,
         title: true,
         content: true,
         type: true,
+        data: true,
         updatedAt: true,
       },
       orderBy: {
         updatedAt: "desc",
       },
-      take: Math.min(limit, 10), // Max 10 results
     });
 
+    // Filter bulletins based on search query
+    const matchingBulletins = bulletins.filter((bulletin) => {
+      const titleMatch = bulletin.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        searchWords.some(word => bulletin.title.toLowerCase().includes(word));
+      
+      const contentMatch = bulletin.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        searchWords.some(word => bulletin.content.toLowerCase().includes(word));
+      
+      // Extract searchable text from data field
+      const dataSearchableText = extractSearchableTextFromData(bulletin.data, bulletin.type);
+      const dataMatch = dataSearchableText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        searchWords.some(word => dataSearchableText.toLowerCase().includes(word));
+
+      return titleMatch || contentMatch || dataMatch;
+    });
+
+    // Limit results
+    const limitedResults = matchingBulletins.slice(0, Math.min(limit, 10));
+
     // Format the results with content snippets
-    const results = bulletins.map((bulletin) => {
-      const contentPreview = bulletin.content
-        ? bulletin.content.substring(0, 300) +
-          (bulletin.content.length > 300 ? "..." : "")
+    const results = limitedResults.map((bulletin) => {
+      let contentPreview = bulletin.content
+        ? bulletin.content.substring(0, 200) +
+          (bulletin.content.length > 200 ? "..." : "")
         : "";
+
+      // Add data content preview for non-text types
+      if (bulletin.type !== "text" && bulletin.data) {
+        const dataText = extractSearchableTextFromData(bulletin.data, bulletin.type);
+        if (dataText) {
+          const dataPreview = dataText.substring(0, 100) + (dataText.length > 100 ? "..." : "");
+          contentPreview = contentPreview 
+            ? `${contentPreview} | Data: ${dataPreview}`
+            : `Data: ${dataPreview}`;
+        }
+      }
 
       return {
         title: bulletin.title,
