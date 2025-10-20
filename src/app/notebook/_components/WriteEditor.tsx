@@ -995,23 +995,28 @@ export default function WriteEditor({
             <div className="relative flex-1 min-h-0" ref={editorContainerRef}>
               {tooltipState.visible && (
                 <div
-                  className="absolute z-20 flex items-center gap-1 px-2 py-1 bg-neutral-800 text-neutral-200 text-xs rounded-md shadow-lg dark:bg-dark-secondary dark:text-dark-textPrimary whitespace-nowrap pointer-events-none"
+                  className="absolute z-20 pointer-events-none"
                   style={{
                     top: tooltipState.top,
                     left: tooltipState.left,
                     transform: "translateX(-50%)",
                   }}
                 >
-                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
-                    {modKeyLabel}
-                  </kbd>
-                  <span>+</span>
-                  <kbd className="font-sans px-1.5 py-0.5 rounded-md bg-neutral-700 text-neutral-200 dark:bg-dark-background dark:text-dark-textPrimary">
-                    I
-                  </kbd>
-                  <span className="text-neutral-400 dark:text-dark-textSecondary">
-                    to improve
-                  </span>
+                  <div className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] leading-none bg-neutral-900/90 text-neutral-100 shadow-xl ring-1 ring-black/10 backdrop-blur-md dark:bg-dark-secondary/90 dark:text-dark-textPrimary dark:ring-dark-divider">
+                    <kbd className="px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-inner uppercase tracking-wide text-[10px] dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
+                      {modKeyLabel}
+                    </kbd>
+                    <span className="text-neutral-300 dark:text-dark-textSecondary">
+                      +
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-inner uppercase tracking-wide text-[10px] dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
+                      I
+                    </kbd>
+                    <span className="ml-0.5 text-neutral-300 dark:text-dark-textSecondary">
+                      to improve
+                    </span>
+                    <span className="absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-neutral-900/90 ring-1 ring-black/10 dark:bg-dark-secondary/90 dark:ring-dark-divider" />
+                  </div>
                 </div>
               )}
               <div className="w-full h-full relative">
