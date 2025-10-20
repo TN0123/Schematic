@@ -277,8 +277,13 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       setTodoTooltip((prev) => ({ ...prev, isVisible: false }));
     };
 
-    // Function to render day cell content with todo indicators (for month view)
+    // Function to render day cell content with todo indicators (for month view only)
     const renderDayCellContent = (args: any) => {
+      // Only show indicators in month view
+      if (currentView !== "dayGridMonth") {
+        return args.dayNumberText;
+      }
+
       const dateStr = args.date.toISOString().split("T")[0];
       const todosForDate = todosByDate[dateStr] || [];
 
@@ -310,8 +315,13 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
       );
     };
 
-    // Function to render day header content with todo indicators (for week/day views)
+    // Function to render day header content with todo indicators (for week/day views only)
     const renderDayHeaderContent = (args: any) => {
+      // Only show indicators in week and day views, not month view
+      if (currentView === "dayGridMonth") {
+        return args.text;
+      }
+
       const dateStr = args.date.toISOString().split("T")[0];
       const todosForDate = todosByDate[dateStr] || [];
 
