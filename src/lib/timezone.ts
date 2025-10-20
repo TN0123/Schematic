@@ -25,4 +25,22 @@ export function getUtcDayBoundsForTimezone(date: Date, timezone: string): {
   return { dayKey, startUtc, endUtc };
 }
 
+/**
+ * Get today's date in the user's timezone as YYYY-MM-DD format
+ */
+export function getTodayInTimezone(timezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
+  const today = new Date();
+  return today.toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
+/**
+ * Get tomorrow's date in the user's timezone as YYYY-MM-DD format
+ */
+export function getTomorrowInTimezone(timezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone): string {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  return tomorrow.toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
 

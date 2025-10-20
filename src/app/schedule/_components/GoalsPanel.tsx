@@ -15,10 +15,9 @@ import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
 import TodoItemMenu from "@/app/bulletin/_components/TodoItemMenu";
 import {
   formatDueDate,
-  getDueDateStatus,
-  getDueDateColor,
   sortTodoItemsByDueDate,
 } from "@/app/bulletin/_components/utils/dateHelpers";
+import { getTodayInTimezone, getTomorrowInTimezone } from "@/lib/timezone";
 
 export enum GoalDuration {
   DAILY = "DAILY",
@@ -503,15 +502,13 @@ export default function GoalsPanel({
   };
 
   const handleSetDueToday = (itemId: string) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayInTimezone();
     updateTodoItem(itemId, { dueDate: today });
   };
 
   const handleSetDueTomorrow = (itemId: string) => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split("T")[0];
-    updateTodoItem(itemId, { dueDate: tomorrowString });
+    const tomorrow = getTomorrowInTimezone();
+    updateTodoItem(itemId, { dueDate: tomorrow });
   };
 
   const handleSaveDueDate = (date: string | null) => {
@@ -707,7 +704,7 @@ export default function GoalsPanel({
       selectedTodo?.data.items.some((item) => item.dueDate) || false;
 
     // Calculate today's progress (only for items due today)
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayInTimezone();
     const todayItems =
       selectedTodo?.data.items.filter((item) => item.dueDate === today) || [];
     const todayCheckedItems = todayItems.filter((item) => item.checked);

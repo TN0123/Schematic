@@ -14,6 +14,7 @@ import {
   getDueDateStatus,
   sortTodoItemsByDueDate,
 } from "./utils/dateHelpers";
+import { getTodayInTimezone, getTomorrowInTimezone } from "@/lib/timezone";
 
 interface TodoItem {
   id: string;
@@ -74,7 +75,7 @@ export default function AggregatedTodosView({
   }, [items]);
 
   // Filter and categorize todos
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayInTimezone();
 
   const filteredTodos = useMemo(() => {
     let filtered = allTodos;
@@ -143,10 +144,8 @@ export default function AggregatedTodosView({
     if (dateKey === "no-date") return "No Due Date";
 
     const date = new Date(dateKey);
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split("T")[0];
+    const today = getTodayInTimezone();
+    const tomorrowString = getTomorrowInTimezone();
 
     if (dateKey === today) return "Today";
     if (dateKey === tomorrowString) return "Tomorrow";
@@ -158,10 +157,8 @@ export default function AggregatedTodosView({
   const getDueDateGroupColor = (dateKey: string) => {
     if (dateKey === "no-date") return "text-gray-500 dark:text-gray-400";
 
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split("T")[0];
+    const today = getTodayInTimezone();
+    const tomorrowString = getTomorrowInTimezone();
 
     if (dateKey < today) return "text-red-600 dark:text-red-400";
     if (dateKey === today) return "text-green-600 dark:text-green-400";

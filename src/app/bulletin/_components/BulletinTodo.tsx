@@ -18,12 +18,8 @@ import { useDebouncedCallback } from "use-debounce";
 import { formatDistanceToNow } from "date-fns";
 import DatePickerModal from "./DatePickerModal";
 import TodoItemMenu from "./TodoItemMenu";
-import {
-  formatDueDate,
-  getDueDateStatus,
-  getDueDateColor,
-  sortTodoItemsByDueDate,
-} from "./utils/dateHelpers";
+import { formatDueDate, sortTodoItemsByDueDate } from "./utils/dateHelpers";
+import { getTodayInTimezone, getTomorrowInTimezone } from "@/lib/timezone";
 
 interface TodoItem {
   id: string;
@@ -235,15 +231,13 @@ export default function BulletinTodo({
   };
 
   const handleSetDueToday = (itemId: string) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayInTimezone();
     updateItem(itemId, { dueDate: today });
   };
 
   const handleSetDueTomorrow = (itemId: string) => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowString = tomorrow.toISOString().split("T")[0];
-    updateItem(itemId, { dueDate: tomorrowString });
+    const tomorrow = getTomorrowInTimezone();
+    updateItem(itemId, { dueDate: tomorrow });
   };
 
   const handleSaveDueDate = (date: string | null) => {
@@ -304,7 +298,7 @@ export default function BulletinTodo({
   const hasItemsWithDates = items.some((item) => item.dueDate);
 
   // Calculate today's progress (only for items due today)
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayInTimezone();
   const todayItems = items.filter((item) => item.dueDate === today);
   const todayCheckedItems = todayItems.filter((item) => item.checked);
 
