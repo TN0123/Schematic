@@ -14,7 +14,6 @@ import {
   Loader2,
   ClipboardList,
   NotepadText,
-  Logs,
   PanelRightClose,
   PanelRightOpen,
   Link,
@@ -37,12 +36,6 @@ interface TodoItem {
   dueDate?: string; // ISO date string (YYYY-MM-DD)
 }
 
-interface QueueItem {
-  id: string;
-  text: string;
-  priority: number;
-}
-
 type BulletinItem = {
   id: string;
   title: string;
@@ -51,7 +44,6 @@ type BulletinItem = {
 } & (
   | { type: "text"; data?: undefined }
   | { type: "todo"; data: { items: TodoItem[] } }
-  | { type: "priority-queue"; data: { items: QueueItem[] } }
   | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
   | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
 );
@@ -193,9 +185,6 @@ export default function BulletinClient() {
     ),
     todo: (
       <ClipboardList className="w-4 h-4 text-light-icon dark:text-dark-icon" />
-    ),
-    "priority-queue": (
-      <Logs className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
     dynamic: (
@@ -974,8 +963,6 @@ export default function BulletinClient() {
                                 return <NotepadText className={iconClass} />;
                               case "todo":
                                 return <ClipboardList className={iconClass} />;
-                              case "priority-queue":
-                                return <Logs className={iconClass} />;
                               case "kanban":
                                 return <Columns className={iconClass} />;
                               case "dynamic":
