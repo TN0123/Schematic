@@ -992,6 +992,41 @@ export default function WriteEditor({
           id="write-editor"
         >
           <div className="w-full h-full flex flex-col px-2">
+            {/* Top indicators bar */}
+            <div className="flex justify-between items-start gap-2 mb-2">
+              <div className="flex flex-col items-start gap-2">
+                {selectedModel !== "basic" &&
+                  premiumUsesRemaining !== null &&
+                  premiumUsesRemaining > 0 && (
+                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
+                      <Info className="w-3 h-3 cursor-help" />
+                      Premium model uses remaining: {premiumUsesRemaining}
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                        The premium model is used for both {modKeyLabel}+Enter
+                        generation and AI sidebar suggestions. If you have 0
+                        premium uses left, the system will automatically switch
+                        to the default model.
+                      </div>
+                    </div>
+                  )}
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
+                  {
+                    inputText
+                      .trim()
+                      .split(/\s+/)
+                      .filter((word) => word.length > 0).length
+                  }{" "}
+                  words
+                </div>
+                {(isImproving || loading) && (
+                  <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="relative flex-1 min-h-0" ref={editorContainerRef}>
               {tooltipState.visible && (
                 <div
@@ -1038,38 +1073,6 @@ export default function WriteEditor({
                       __html: displayHtml,
                     }}
                   />
-                </div>
-                <div className="absolute top-0 left-4 flex flex-col items-start gap-2 z-10">
-                  {selectedModel !== "basic" &&
-                    premiumUsesRemaining !== null &&
-                    premiumUsesRemaining > 0 && (
-                      <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1 group relative">
-                        <Info className="w-3 h-3 cursor-help" />
-                        Premium model uses remaining: {premiumUsesRemaining}
-                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-white dark:bg-dark-secondary rounded shadow-lg text-xs text-gray-600 dark:text-dark-textSecondary opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                          The premium model is used for both {modKeyLabel}+Enter
-                          generation and AI sidebar suggestions. If you have 0
-                          premium uses left, the system will automatically
-                          switch to the default model.
-                        </div>
-                      </div>
-                    )}
-                </div>
-                <div className="absolute top-0 right-4 flex flex-col items-end gap-2 z-10">
-                  <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
-                    {
-                      inputText
-                        .trim()
-                        .split(/\s+/)
-                        .filter((word) => word.length > 0).length
-                    }{" "}
-                    words
-                  </div>
-                  {(isImproving || loading) && (
-                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary flex items-center gap-1.5">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    </div>
-                  )}
                 </div>
                 <textarea
                   ref={textareaRef}
