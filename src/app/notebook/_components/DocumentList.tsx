@@ -11,11 +11,13 @@ import {
   Search,
   PenLine,
   Edit2,
+  FileUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Document } from "@prisma/client";
 import UsageIndicator from "@/components/UsageIndicator";
 import UpgradePrompt from "@/components/UpgradePrompt";
+import jsPDF from "jspdf";
 
 interface DocumentListProps {
   initialDocuments: Document[];
@@ -129,6 +131,66 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
       console.error("Failed to rename document:", error);
     } finally {
       setRenaming(null);
+    }
+  };
+
+  const handleExportDocument = async (documentId: string) => {
+    try {
+      // Fetch the full document content
+      const response = await fetch(`/api/documents/${documentId}`);
+      if (!response.ok) {
+        console.error("Failed to fetch document");
+        return;
+      }
+
+      const document = await response.json();
+
+      if (!document.content?.trim()) {
+        console.error("Document is empty");
+        return;
+      }
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 25.4;
+      const lineHeight = 6;
+      const fontSize = 11;
+
+      pdf.setFont("times", "normal");
+      pdf.setFontSize(fontSize);
+
+      const maxWidth = pageWidth - margin * 2;
+      const lines = pdf.splitTextToSize(document.content, maxWidth);
+
+      let yPosition = margin;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (yPosition + lineHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(lines[i], margin, yPosition);
+        yPosition += lineHeight;
+      }
+
+      // Generate filename with document title and timestamp
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, "");
+      const safeTitle = document.title
+        .replace(/[^a-zA-Z0-9\s]/g, "")
+        .replace(/\s+/g, "_");
+      const filename = `${safeTitle || "document"}_${timestamp}.pdf`;
+
+      pdf.save(filename);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
     }
   };
 
@@ -251,6 +313,18 @@ export default function DocumentList({ initialDocuments }: DocumentListProps) {
                             >
                               <Edit2 className="w-4 h-4" />
                               Rename
+                            </button>
+                            <button
+                              className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-secondary flex items-center gap-2"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleExportDocument(doc.id);
+                                setOpenDropdown(null);
+                              }}
+                            >
+                              <FileUp className="w-4 h-4" />
+                              Export
                             </button>
                             <button
                               className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
