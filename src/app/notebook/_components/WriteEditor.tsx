@@ -265,7 +265,10 @@ export default function WriteEditor({
 
     const updateOverlayWidth = () => {
       if (textareaRef.current && overlayRef.current) {
-        overlayRef.current.style.width = `${textareaRef.current.clientWidth}px`;
+        // Use clientWidth to match the exact content area (excludes scrollbar)
+        const contentWidth = textareaRef.current.clientWidth;
+        overlayRef.current.style.width = `${contentWidth}px`;
+        overlayRef.current.style.boxSizing = "border-box";
       }
     };
 
@@ -276,8 +279,17 @@ export default function WriteEditor({
     const resizeObserver = new ResizeObserver(updateOverlayWidth);
     resizeObserver.observe(textareaRef.current);
 
+    // Also watch for scroll changes (when scrollbar appears/disappears)
+    const handleScrollbarChange = () => {
+      updateOverlayWidth();
+    };
+
+    const textarea = textareaRef.current;
+    textarea.addEventListener("overflow", handleScrollbarChange);
+
     return () => {
       resizeObserver.disconnect();
+      textarea?.removeEventListener("overflow", handleScrollbarChange);
     };
   }, []);
 
@@ -797,6 +809,14 @@ export default function WriteEditor({
     ) {
       debouncedFetchAutocomplete(newValue);
     }
+
+    // Update overlay width in case scrollbar appears/disappears
+    requestAnimationFrame(() => {
+      if (textareaRef.current && overlayRef.current) {
+        const contentWidth = textareaRef.current.clientWidth;
+        overlayRef.current.style.width = `${contentWidth}px`;
+      }
+    });
   };
 
   useEffect(() => {
