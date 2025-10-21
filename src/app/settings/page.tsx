@@ -12,6 +12,9 @@ import {
   Loader2,
   TrendingUp,
   Trash2,
+  Bot,
+  Check,
+  X,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -43,6 +46,10 @@ export default function SettingsPage() {
   );
   const [habitLoading, setHabitLoading] = useState(true);
   const [clearingData, setClearingData] = useState(false);
+  const [assistantName, setAssistantName] = useState("AI Life Assistant");
+  const [isEditingAssistantName, setIsEditingAssistantName] = useState(false);
+  const [tempAssistantName, setTempAssistantName] = useState("");
+  const [assistantNameLoading, setAssistantNameLoading] = useState(false);
 
   useEffect(() => {
     // Check if we just came back from a successful checkout
@@ -72,7 +79,22 @@ export default function SettingsPage() {
 
     // Fetch habit settings
     fetchHabitSettings();
+
+    // Fetch assistant name
+    fetchAssistantName();
   }, []);
+
+  const fetchAssistantName = async () => {
+    try {
+      const response = await fetch("/api/user/assistant-name");
+      if (response.ok) {
+        const data = await response.json();
+        setAssistantName(data.assistantName);
+      }
+    } catch (error) {
+      console.error("Error fetching assistant name:", error);
+    }
+  };
 
   const syncSubscription = async (sessionId: string) => {
     try {
@@ -233,6 +255,59 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEditAssistantName = () => {
+    setTempAssistantName(assistantName);
+    setIsEditingAssistantName(true);
+  };
+
+  const handleSaveAssistantName = async () => {
+    if (tempAssistantName.trim() === assistantName) {
+      setIsEditingAssistantName(false);
+      return;
+    }
+
+    // Client-side sanitization
+    const sanitizedName = tempAssistantName
+      .trim()
+      .replace(/["'`\\]/g, "") // Remove quotes and backslashes
+      .replace(/[\r\n\t]/g, " ") // Replace newlines and tabs with spaces
+      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .substring(0, 50); // Ensure max length
+
+    if (sanitizedName.length === 0) {
+      alert("Assistant name contains only invalid characters");
+      return;
+    }
+
+    setAssistantNameLoading(true);
+    try {
+      const response = await fetch("/api/user/assistant-name", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assistantName: sanitizedName }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAssistantName(data.assistantName);
+        setIsEditingAssistantName(false);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to update assistant name");
+      }
+    } catch (error) {
+      console.error("Error updating assistant name:", error);
+      alert("Failed to update assistant name");
+    } finally {
+      setAssistantNameLoading(false);
+    }
+  };
+
+  const handleCancelEditAssistantName = () => {
+    setIsEditingAssistantName(false);
+    setTempAssistantName("");
+  };
+
   return (
     <div className="flex flex-col items-center justify-start h-screen pt-24 bg-gray-50 dark:bg-dark-background transition-all overflow-y-auto">
       <div className="py-6">
@@ -262,6 +337,95 @@ export default function SettingsPage() {
                 <ThemeToggle />
                 <Sun className="text-yellow-600 dark:text-yellow-400 w-4 h-4" />
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Assistant Settings */}
+        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
+          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+              <Bot className="w-5 h-5" />
+              AI Assistant
+            </h2>
+          </div>
+          <div className="p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                  Assistant Name
+                </span>
+                <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                  Customize your AI assistant's name
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditingAssistantName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tempAssistantName}
+                      onChange={(e) => setTempAssistantName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleSaveAssistantName();
+                        } else if (e.key === "Escape") {
+                          handleCancelEditAssistantName();
+                        }
+                      }}
+                      className="px-3 py-2 text-sm border border-gray-300 dark:border-dark-divider rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-dark-background dark:text-dark-textPrimary"
+                      autoFocus
+                      maxLength={50}
+                      disabled={assistantNameLoading}
+                    />
+                    <button
+                      onClick={handleSaveAssistantName}
+                      disabled={assistantNameLoading}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Save name"
+                    >
+                      {assistantNameLoading ? (
+                        <Loader2
+                          size={16}
+                          className="animate-spin text-gray-500"
+                        />
+                      ) : (
+                        <Check
+                          size={16}
+                          className="text-green-600 dark:text-green-400"
+                        />
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancelEditAssistantName}
+                      disabled={assistantNameLoading}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Cancel"
+                    >
+                      <X
+                        size={16}
+                        className="text-gray-500 dark:text-dark-textSecondary"
+                      />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-dark-textPrimary">
+                      {assistantName}
+                    </span>
+                    <button
+                      onClick={handleEditAssistantName}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200"
+                      title="Edit assistant name"
+                    >
+                      <PenLine
+                        size={16}
+                        className="text-gray-500 dark:text-dark-textSecondary"
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

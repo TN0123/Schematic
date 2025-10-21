@@ -14,6 +14,7 @@ import {
   CircleStop,
   Pen,
   X,
+  Check,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -138,6 +139,9 @@ export default function EventGenerationPanel({
     null
   );
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [assistantName, setAssistantName] = useState("AI Life Assistant");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState("");
 
   // File upload state
   const [extractedEvents, setExtractedEvents] = useState<
@@ -290,6 +294,22 @@ export default function EventGenerationPanel({
     }
   }, [chatMessages]);
 
+  // Fetch assistant name on component mount
+  useEffect(() => {
+    const fetchAssistantName = async () => {
+      try {
+        const response = await fetch("/api/user/assistant-name");
+        if (response.ok) {
+          const data = await response.json();
+          setAssistantName(data.assistantName);
+        }
+      } catch (error) {
+        console.error("Error fetching assistant name:", error);
+      }
+    };
+    fetchAssistantName();
+  }, []);
+
   // Keep the textarea height in sync with its content and reset when cleared
   useEffect(() => {
     const textarea = inputTextareaRef.current;
@@ -413,6 +433,56 @@ export default function EventGenerationPanel({
     setChatInput(originalInput);
     // Remove the error message and retry
     setChatMessages((prev) => prev.slice(0, -1));
+  };
+
+  const handleEditName = () => {
+    setTempName(assistantName);
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    if (tempName.trim() === assistantName) {
+      setIsEditingName(false);
+      return;
+    }
+
+    // Client-side sanitization
+    const sanitizedName = tempName
+      .trim()
+      .replace(/["'`\\]/g, "") // Remove quotes and backslashes
+      .replace(/[\r\n\t]/g, " ") // Replace newlines and tabs with spaces
+      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .substring(0, 50); // Ensure max length
+
+    if (sanitizedName.length === 0) {
+      alert("Assistant name contains only invalid characters");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/user/assistant-name", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assistantName: sanitizedName }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAssistantName(data.assistantName);
+        setIsEditingName(false);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to update assistant name");
+      }
+    } catch (error) {
+      console.error("Error updating assistant name:", error);
+      alert("Failed to update assistant name");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingName(false);
+    setTempName("");
   };
 
   // File upload handlers
@@ -1145,9 +1215,63 @@ export default function EventGenerationPanel({
                     size={48}
                     className="text-gray-400 dark:text-dark-textDisabled mb-4"
                   />
-                  <h3 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary mb-2">
-                    AI Life Assistant
-                  </h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    {isEditingName ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={tempName}
+                          onChange={(e) => setTempName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveName();
+                            } else if (e.key === "Escape") {
+                              handleCancelEdit();
+                            }
+                          }}
+                          className="px-2 py-1 text-lg font-medium bg-transparent border border-gray-300 dark:border-dark-divider rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-dark-textPrimary"
+                          autoFocus
+                          maxLength={50}
+                        />
+                        <button
+                          onClick={handleSaveName}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                          title="Save name"
+                        >
+                          <Check
+                            size={16}
+                            className="text-green-600 dark:text-green-400"
+                          />
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                          title="Cancel"
+                        >
+                          <X
+                            size={16}
+                            className="text-gray-500 dark:text-dark-textSecondary"
+                          />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary">
+                          {assistantName}
+                        </h3>
+                        <button
+                          onClick={handleEditName}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                          title="Edit assistant name"
+                        >
+                          <Pen
+                            size={16}
+                            className="text-gray-500 dark:text-dark-textSecondary"
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
                     Chat with your AI assistant to manage your schedule, get
                     recommendations, and more.

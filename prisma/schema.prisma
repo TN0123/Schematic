@@ -24,6 +24,7 @@ model User {
   reminders                Reminder[]
   scheduleContext          String                  @default("")
   goalText                 String                  @default("")
+  assistantName            String                  @default("AI Life Assistant")
   dailySummaryCaches       DailySummaryCache[]
   /// Timestamp of the user's last successful login
   lastLoginAt              DateTime?

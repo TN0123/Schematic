@@ -8,6 +8,8 @@ import {
   RefreshCw,
   UserPen,
   Eye,
+  Pen,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -50,6 +52,9 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
     before: string;
     after: string;
   }>({ isOpen: false, before: "", after: "" });
+  const [assistantName, setAssistantName] = useState("AI Life Assistant");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempName, setTempName] = useState("");
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -57,6 +62,22 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
         chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
+
+  // Fetch assistant name on component mount
+  useEffect(() => {
+    const fetchAssistantName = async () => {
+      try {
+        const response = await fetch("/api/user/assistant-name");
+        if (response.ok) {
+          const data = await response.json();
+          setAssistantName(data.assistantName);
+        }
+      } catch (error) {
+        console.error("Error fetching assistant name:", error);
+      }
+    };
+    fetchAssistantName();
+  }, []);
 
   // Handle body scroll when chat is open
   useEffect(() => {
@@ -176,6 +197,56 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
     setChatMessages((prev) => prev.slice(0, -1));
   };
 
+  const handleEditName = () => {
+    setTempName(assistantName);
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = async () => {
+    if (tempName.trim() === assistantName) {
+      setIsEditingName(false);
+      return;
+    }
+
+    // Client-side sanitization
+    const sanitizedName = tempName
+      .trim()
+      .replace(/["'`\\]/g, "") // Remove quotes and backslashes
+      .replace(/[\r\n\t]/g, " ") // Replace newlines and tabs with spaces
+      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .substring(0, 50); // Ensure max length
+
+    if (sanitizedName.length === 0) {
+      alert("Assistant name contains only invalid characters");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/user/assistant-name", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assistantName: sanitizedName }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAssistantName(data.assistantName);
+        setIsEditingName(false);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to update assistant name");
+      }
+    } catch (error) {
+      console.error("Error updating assistant name:", error);
+      alert("Failed to update assistant name");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingName(false);
+    setTempName("");
+  };
+
   return (
     <>
       {/* Floating Chat Button */}
@@ -230,9 +301,61 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
               <div className="flex items-center justify-between p-4 border-b dark:border-dark-divider">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
-                    AI Life Assistant
-                  </h3>
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleSaveName();
+                          } else if (e.key === "Escape") {
+                            handleCancelEdit();
+                          }
+                        }}
+                        className="px-2 py-1 text-sm font-semibold bg-transparent border border-gray-300 dark:border-dark-divider rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-dark-textPrimary"
+                        autoFocus
+                        maxLength={50}
+                      />
+                      <button
+                        onClick={handleSaveName}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                        title="Save name"
+                      >
+                        <Check
+                          size={14}
+                          className="text-green-600 dark:text-green-400"
+                        />
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                        title="Cancel"
+                      >
+                        <X
+                          size={14}
+                          className="text-gray-500 dark:text-dark-textSecondary"
+                        />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
+                        {assistantName}
+                      </h3>
+                      <button
+                        onClick={handleEditName}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                        title="Edit assistant name"
+                      >
+                        <Pen
+                          size={14}
+                          className="text-gray-500 dark:text-dark-textSecondary"
+                        />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button

@@ -215,6 +215,7 @@ export async function scheduleChat(
   let goals: { title: string; type: string }[] = [];
   let goalsContext = "";
   let events: { title: string; start: Date; end: Date }[] = [];
+  let assistantName = "AI Life Assistant";
 
   // Calculate dates in user's timezone
   const now = new Date();
@@ -233,11 +234,16 @@ export async function scheduleChat(
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { scheduleContext: true, goalText: true },
+        select: { scheduleContext: true, goalText: true, assistantName: true },
       });
-      if (user && user.scheduleContext) {
-        context = user.scheduleContext;
-        originalContext = user.scheduleContext;
+      if (user) {
+        if (user.scheduleContext) {
+          context = user.scheduleContext;
+          originalContext = user.scheduleContext;
+        }
+        if (user.assistantName) {
+          assistantName = user.assistantName;
+        }
       }
       
       // Fetch goals context based on the selected view
@@ -302,8 +308,15 @@ export async function scheduleChat(
     }
   }
 
+  // Sanitize assistant name for prompt injection prevention
+  const sanitizedAssistantName = assistantName
+    .replace(/["'`\\]/g, '') // Remove quotes and backslashes
+    .replace(/[\r\n\t]/g, ' ') // Replace newlines and tabs with spaces
+    .replace(/\s+/g, ' ') // Collapse multiple spaces
+    .trim();
+
   const systemPrompt = `
-You are an AI life assistant helping a user manage their schedule and providing helpful advice to the user.
+You are ${sanitizedAssistantName}, ${userId ? "the user's" : "a"} personal life assistant helping ${userId ? "them" : "users"} manage their schedule and providing helpful advice.
 Current date: ${userNow.toLocaleString("en-US", {
   timeZone: timezone || "UTC",
   weekday: "long",
