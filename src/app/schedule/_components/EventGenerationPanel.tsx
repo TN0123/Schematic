@@ -39,6 +39,11 @@ interface ChatMessage {
   toolCalls?: Array<{
     name: string;
     description: string;
+    notes?: Array<{
+      id: string;
+      title: string;
+      type?: string;
+    }>;
   }>;
   contextChange?: {
     before: string;
@@ -1056,11 +1061,41 @@ export default function EventGenerationPanel({
                             {message.toolCalls.map((toolCall, toolIndex) => (
                               <div
                                 key={toolIndex}
-                                className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
-                                title={`Tool used: ${toolCall.name}`}
+                                className="flex flex-col gap-1"
                               >
-                                <Eye size={10} className="mr-1" />
-                                <span>{toolCall.description}</span>
+                                <div
+                                  className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
+                                  title={`Tool used: ${toolCall.name}`}
+                                >
+                                  <Eye size={10} className="mr-1" />
+                                  <span>{toolCall.description}</span>
+                                </div>
+                                {/* Display note bubbles for bulletin notes */}
+                                {toolCall.name === "search_bulletin_notes" &&
+                                  toolCall.notes &&
+                                  toolCall.notes.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {toolCall.notes.map((note, noteIndex) => (
+                                        <div
+                                          key={noteIndex}
+                                          className="inline-flex items-center text-xs bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-full border border-gray-300 dark:border-dark-divider"
+                                        >
+                                          <span className="text-gray-600 dark:text-dark-textSecondary mr-1">
+                                            Read
+                                          </span>
+                                          <a
+                                            href={`/bulletin?noteId=${note.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
+                                            title={`Read ${note.title}`}
+                                          >
+                                            {note.title}
+                                          </a>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                               </div>
                             ))}
                           </div>

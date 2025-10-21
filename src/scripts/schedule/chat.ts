@@ -185,6 +185,7 @@ async function searchBulletinNotes(
       }
 
       return {
+        id: bulletin.id,
         title: bulletin.title,
         content: contentPreview,
         type: bulletin.type,
@@ -487,6 +488,11 @@ IMPORTANT:
   const toolCallsExecuted: Array<{
     name: string;
     description: string;
+    notes?: Array<{
+      id: string;
+      title: string;
+      type?: string;
+    }>;
   }> = [];
 
   let _continue = true;
@@ -559,6 +565,13 @@ IMPORTANT:
         toolCallsExecuted.push({
           name: "search_bulletin_notes",
           description: `Searched notes for "${query}"`,
+          notes: Array.isArray(toolResult) 
+            ? toolResult.map(note => ({
+                id: note.id || note.title, // Use title as fallback ID
+                title: note.title,
+                type: note.type
+              }))
+            : []
         });
 
         // Check if result has an error property
