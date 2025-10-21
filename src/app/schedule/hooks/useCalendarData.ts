@@ -7,6 +7,7 @@ import {
   formatTimeForDisplay,
   isSameDay,
 } from "../utils/calendarHelpers";
+import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 
 export const useCalendarData = (
   userId: string | undefined,
@@ -24,6 +25,22 @@ export const useCalendarData = (
   const [todosByDate, setTodosByDate] = useState<
     Record<string, Array<{ text: string; bulletinTitle: string; checked: boolean }>>
   >({});
+
+  // Helper function to check if an event affects a specific day in user's timezone
+  const eventAffectsDay = useCallback((eventStart: Date, eventEnd: Date, targetDay: Date, timezone: string): boolean => {
+    const { startUtc, endUtc } = getUtcDayBoundsForTimezone(targetDay, timezone);
+    
+    // Check if event overlaps with the target day
+    return eventStart < endUtc && eventEnd > startUtc;
+  }, []);
+
+  // Helper function to check if we should refresh daily summary for today
+  const shouldRefreshDailySummary = useCallback((eventStart: Date, eventEnd: Date): boolean => {
+    const userTimezone = getUserTimezone();
+    const today = new Date();
+    
+    return eventAffectsDay(eventStart, eventEnd, today, userTimezone);
+  }, [eventAffectsDay]);
 
   const maybeRefreshSuggestionsForToday = useCallback((date: Date) => {
     const now = new Date();
@@ -119,8 +136,8 @@ export const useCalendarData = (
 
       setEvents((prev) => [...prev, newEvent]);
 
-      // Refresh daily summary when event is added
-      if (refreshDailySummary) {
+      // Refresh daily summary only if the event affects today
+      if (refreshDailySummary && shouldRefreshDailySummary(newEvent.start, newEvent.end)) {
         refreshDailySummary();
       }
 
@@ -129,7 +146,7 @@ export const useCalendarData = (
 
       return newEvent;
     },
-    [refreshDailySummary, maybeRefreshSuggestionsForToday]
+    [refreshDailySummary, maybeRefreshSuggestionsForToday, shouldRefreshDailySummary]
   );
 
   // Edit event
@@ -161,15 +178,15 @@ export const useCalendarData = (
         )
       );
 
-      // Refresh daily summary when event is edited
-      if (refreshDailySummary) {
+      // Refresh daily summary only if the event affects today
+      if (refreshDailySummary && shouldRefreshDailySummary(eventData.start, eventData.end)) {
         refreshDailySummary();
       }
 
       // Refresh suggestions if event is for today
       maybeRefreshSuggestionsForToday(eventData.start);
     },
-    [refreshDailySummary, maybeRefreshSuggestionsForToday]
+    [refreshDailySummary, maybeRefreshSuggestionsForToday, shouldRefreshDailySummary]
   );
 
   // Delete event
@@ -185,8 +202,8 @@ export const useCalendarData = (
       }
       setEvents((prev) => prev.filter((event) => event.id !== eventId));
 
-      // Refresh daily summary when event is deleted
-      if (refreshDailySummary) {
+      // Refresh daily summary only if the deleted event affected today
+      if (refreshDailySummary && toDelete && shouldRefreshDailySummary(toDelete.start, toDelete.end)) {
         refreshDailySummary();
       }
 
@@ -195,7 +212,7 @@ export const useCalendarData = (
         maybeRefreshSuggestionsForToday(new Date(toDelete.start));
       }
     },
-    [events, refreshDailySummary, maybeRefreshSuggestionsForToday]
+    [events, refreshDailySummary, maybeRefreshSuggestionsForToday, shouldRefreshDailySummary]
   );
 
   // Delete multiple events
@@ -211,8 +228,8 @@ export const useCalendarData = (
       });
       setEvents((prev) => prev.filter((e) => !eventIds.includes(e.id)));
 
-      // Refresh daily summary when events are deleted
-      if (refreshDailySummary && eventIds.length > 0) {
+      // Refresh daily summary only if any deleted events affected today
+      if (refreshDailySummary && eventIds.length > 0 && toDeleteToday) {
         refreshDailySummary();
       }
 
@@ -220,7 +237,7 @@ export const useCalendarData = (
         setSuggestionsRefreshTrigger((n) => n + 1);
       }
     },
-    [events, refreshDailySummary]
+    [events, refreshDailySummary, shouldRefreshDailySummary]
   );
 
   // Bulk add events
@@ -286,9 +303,14 @@ export const useCalendarData = (
 
       setEvents((prevEvents) => [...prevEvents, ...formattedEvents]);
 
-      // Refresh daily summary when events are bulk added
+      // Refresh daily summary only if any of the added events affect today
       if (refreshDailySummary && formattedEvents.length > 0) {
-        refreshDailySummary();
+        const affectsToday = formattedEvents.some((event) => 
+          shouldRefreshDailySummary(event.start, event.end)
+        );
+        if (affectsToday) {
+          refreshDailySummary();
+        }
       }
 
       // Refresh suggestions if any of the added events are for today
@@ -300,7 +322,7 @@ export const useCalendarData = (
 
       return formattedEvents;
     },
-    [fetchEvents, fetchedRange, refreshDailySummary]
+    [fetchEvents, fetchedRange, refreshDailySummary, shouldRefreshDailySummary]
   );
 
   // Generate events and reminders
