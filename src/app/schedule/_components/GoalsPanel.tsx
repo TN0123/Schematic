@@ -4,6 +4,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   CheckCircle,
   Plus,
@@ -519,6 +521,25 @@ export default function GoalsPanel({
     setDatePickerItemId(null);
   };
 
+  const handlePreviousTodo = () => {
+    if (todoBulletins.length === 0 || !selectedTodoId) return;
+    const currentIndex = todoBulletins.findIndex(
+      (t) => t.id === selectedTodoId
+    );
+    const previousIndex =
+      (currentIndex - 1 + todoBulletins.length) % todoBulletins.length;
+    setSelectedTodoId(todoBulletins[previousIndex].id);
+  };
+
+  const handleNextTodo = () => {
+    if (todoBulletins.length === 0 || !selectedTodoId) return;
+    const currentIndex = todoBulletins.findIndex(
+      (t) => t.id === selectedTodoId
+    );
+    const nextIndex = (currentIndex + 1) % todoBulletins.length;
+    setSelectedTodoId(todoBulletins[nextIndex].id);
+  };
+
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
@@ -726,23 +747,49 @@ export default function GoalsPanel({
 
     return (
       <div className="flex flex-col h-full justify-center">
-        {/* Todo Selector Dropdown */}
+        {/* Todo Selector with Navigation */}
         <div className="mb-4 relative" id="todo-selector">
-          <button
-            onClick={() => setIsTodoSelectorOpen(!isTodoSelectorOpen)}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-900 dark:text-dark-textPrimary bg-gray-100 dark:bg-dark-actionHover rounded-md hover:bg-gray-200 dark:hover:bg-dark-divider transition-all duration-200 border border-gray-300 dark:border-dark-divider"
-          >
-            <span className="truncate">{selectedTodo.title || "Untitled"}</span>
-            <ChevronDown
-              size={16}
-              className={`ml-2 flex-shrink-0 transition-transform duration-200 ${
-                isTodoSelectorOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+          <div className="flex items-center justify-between w-full">
+            {/* Previous Button */}
+            <button
+              onClick={handlePreviousTodo}
+              disabled={todoBulletins.length <= 1}
+              className="flex-shrink-0 p-2 text-gray-500 dark:text-dark-textSecondary rounded-md hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              aria-label="Previous todo"
+            >
+              <ChevronLeft size={18} />
+            </button>
 
+            {/* Dropdown */}
+            <button
+              onClick={() => setIsTodoSelectorOpen(!isTodoSelectorOpen)}
+              className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-900 dark:text-dark-textPrimary rounded-md hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 min-w-[140px] max-w-[180px]"
+            >
+              <span className="truncate">
+                {selectedTodo.title || "Untitled"}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`ml-2 flex-shrink-0 transition-transform duration-200 text-gray-500 dark:text-dark-textSecondary ${
+                  isTodoSelectorOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {/* Next Button */}
+            <button
+              onClick={handleNextTodo}
+              disabled={todoBulletins.length <= 1}
+              className="flex-shrink-0 p-2 text-gray-500 dark:text-dark-textSecondary rounded-md hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              aria-label="Next todo"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Dropdown Menu */}
           {isTodoSelectorOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50 max-h-60 overflow-y-auto min-w-[140px] max-w-[180px] w-max">
               {todoBulletins.map((todo) => (
                 <button
                   key={todo.id}
