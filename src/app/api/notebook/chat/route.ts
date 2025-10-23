@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText, generateObject, convertToModelMessages } from "ai";
+import { streamText, generateObject } from "ai";
 import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
       documentId,
       model = "basic",
       actionMode = "edit",
+      images = [],
     } = await req.json();
 
-    
 
     // Get document context
     const document = await prisma.document.findUnique({
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
         END OF CONTEXT
 
         Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
+        ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to help answer their question or provide better guidance." : ""}
         
         You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
         
@@ -114,15 +115,40 @@ export async function POST(req: NextRequest) {
         """
       `;
 
-      const uiMessages = [
+      // Build user message content parts
+      const userContent: any[] = [{ type: "text", text: userPrompt }];
+      if (images && images.length > 0) {
+        images.forEach((img: any) => {
+          let imageData: string;
+          if (typeof img === "string") {
+            imageData = img;
+          } else if (img && typeof img === "object") {
+            // Prefer using the url if available (it's already a complete data URL)
+            if (img.url) {
+              imageData = img.url;
+            } else if (img.base64 && img.mimeType) {
+              // Construct proper data URL format
+              const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
+              imageData = dataUrl;
+            } else {
+              return;
+            }
+          } else {
+            return;
+          }
+          // Use the standard AI SDK format for images
+          userContent.push({ type: "image", image: imageData });
+        });
+      }
+
+      // Build messages array using standard Vercel AI SDK format
+      const messages: any[] = [
         {
-          role: "system" as const,
-          parts: [{ type: "text", text: systemPrompt }],
+          role: "system",
+          content: systemPrompt,
         },
         ...history.map((entry: any) => {
-          const role = (entry.role === "model" ? "assistant" : entry.role) as
-            | "user"
-            | "assistant";
+          const role = (entry.role === "model" ? "assistant" : entry.role);
 
           let textContent = "";
           if (typeof entry.parts === "string") {
@@ -135,12 +161,10 @@ export async function POST(req: NextRequest) {
             textContent = entry.parts.text ?? String(entry.parts);
           }
 
-          return { role, parts: [{ type: "text", text: textContent }] };
+          return { role, content: textContent };
         }),
-        { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
+        { role: "user", content: userContent },
       ];
-
-      const messages = convertToModelMessages(uiMessages);
 
       const result = await streamText({
         model: selectedModelProvider,
@@ -236,6 +260,8 @@ export async function POST(req: NextRequest) {
         ${context}
         END OF CONTEXT
 
+        ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to better understand their request and provide more relevant changes." : ""}
+
         Your job is to provide a brief, friendly response to the user explaining what changes you're making to their text.
         
         Your response should be conversational and helpful, explaining your approach or reasoning.
@@ -255,6 +281,8 @@ export async function POST(req: NextRequest) {
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT
+
+        ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
 
         Your job is to analyze the current text and the user's request, then generate an array of changes.
         
@@ -288,11 +316,36 @@ export async function POST(req: NextRequest) {
         """
       `;
 
+      // Build user message content parts
+      const userContent: any[] = [{ type: "text", text: userPrompt }];
+      if (images && images.length > 0) {
+        images.forEach((img: any) => {
+          let imageData: string;
+          if (typeof img === "string") {
+            imageData = img;
+          } else if (img && typeof img === "object") {
+            // Prefer using the url if available (it's already a complete data URL)
+            if (img.url) {
+              imageData = img.url;
+            } else if (img.base64 && img.mimeType) {
+              // Construct proper data URL format
+              const dataUrl = `data:${img.mimeType};base64,${img.base64}`;
+              imageData = dataUrl;
+            } else {
+              return;
+            }
+          } else {
+            return;
+          }
+          // Use the standard AI SDK format for images
+          userContent.push({ type: "image", image: imageData });
+        });
+      }
+
+      // Build messages array using standard Vercel AI SDK format
       const uiMessages = [
         ...history.map((entry: any) => {
-          const role = (entry.role === "model" ? "assistant" : entry.role) as
-            | "user"
-            | "assistant";
+          const role = (entry.role === "model" ? "assistant" : entry.role);
 
           let textContent = "";
           if (typeof entry.parts === "string") {
@@ -305,9 +358,9 @@ export async function POST(req: NextRequest) {
             textContent = entry.parts.text ?? String(entry.parts);
           }
 
-          return { role, parts: [{ type: "text", text: textContent }] };
+          return { role, content: textContent };
         }),
-        { role: "user" as const, parts: [{ type: "text", text: userPrompt }] },
+        { role: "user", content: userContent },
       ];
 
       const encoder = new TextEncoder();
@@ -326,24 +379,22 @@ export async function POST(req: NextRequest) {
 
             // Start both tasks in parallel
             // 1. Stream assistant text (for user to see)
-            const assistantMessagesUI = [
+            const assistantMessages = [
               {
-                role: "system" as const,
-                parts: [{ type: "text", text: assistantTextPrompt }],
+                role: "system",
+                content: assistantTextPrompt,
               },
               ...uiMessages,
             ];
-            const assistantMessages = convertToModelMessages(assistantMessagesUI);
 
             // 2. Generate change map JSON (not streamed)
-            const changeMapMessagesUI = [
+            const changeMapMessages = [
               {
-                role: "system" as const,
-                parts: [{ type: "text", text: changeMapPrompt }],
+                role: "system",
+                content: changeMapPrompt,
               },
               ...uiMessages,
             ];
-            const changeMapMessages = convertToModelMessages(changeMapMessagesUI);
 
             const changeMapPromise = generateObject({
               model: selectedModelProvider,

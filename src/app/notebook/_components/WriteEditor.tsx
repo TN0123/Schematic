@@ -1083,11 +1083,35 @@ export default function WriteEditor({
                   <div
                     ref={overlayRef}
                     id="highlight-overlay"
-                    className="w-full whitespace-pre-wrap p-6 text-base leading-relaxed text-transparent break-words font-sans box-border"
                     style={{
+                      width: "100%",
+                      whiteSpace: "pre-wrap",
+                      color: "transparent",
                       wordBreak: "break-word",
                       overflowWrap: "break-word",
                       willChange: "transform, width",
+                      fontSize: "16px",
+                      lineHeight: "28px",
+                      fontFamily:
+                        "ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
+                      letterSpacing: "0px",
+                      WebkitTextFillColor: "transparent",
+                      padding: "24px",
+                      margin: "0",
+                      border: "0",
+                      boxSizing: "border-box",
+                      tabSize: 8,
+                      fontWeight: "400",
+                      fontStyle: "normal",
+                      fontVariant: "normal",
+                      textRendering: "auto",
+                      WebkitFontSmoothing: "antialiased",
+                      MozOsxFontSmoothing: "grayscale",
+                      textAlign: "left",
+                      verticalAlign: "top",
+                      textIndent: "0",
+                      textTransform: "none",
+                      textDecoration: "none",
                     }}
                     dangerouslySetInnerHTML={{
                       __html: displayHtml,
@@ -1097,12 +1121,43 @@ export default function WriteEditor({
                 <textarea
                   ref={textareaRef}
                   id="write-editor"
-                  className={`w-full h-full absolute top-0 left-0 overflow-auto p-6 text-gray-800 dark:text-dark-textPrimary text-base leading-relaxed resize-none outline-none focus:ring-0 bg-transparent whitespace-pre-wrap break-words font-sans box-border ${
+                  className={`text-gray-800 dark:text-dark-textPrimary ${
                     useDiffView ? "cursor-not-allowed" : ""
                   }`}
                   style={{
+                    width: "100%",
+                    height: "100%",
+                    position: "absolute",
+                    top: "0",
+                    left: "0",
+                    overflow: "auto",
+                    resize: "none",
+                    outline: "none",
+                    background: "transparent",
+                    whiteSpace: "pre-wrap",
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
+                    fontSize: "16px",
+                    lineHeight: "28px",
+                    fontFamily:
+                      "ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'",
+                    letterSpacing: "0px",
+                    padding: "24px",
+                    margin: "0",
+                    border: "0",
+                    boxSizing: "border-box",
+                    tabSize: 8,
+                    fontWeight: "400",
+                    fontStyle: "normal",
+                    fontVariant: "normal",
+                    textRendering: "auto",
+                    WebkitFontSmoothing: "antialiased",
+                    MozOsxFontSmoothing: "grayscale",
+                    textAlign: "left",
+                    verticalAlign: "top",
+                    textIndent: "0",
+                    textTransform: "none",
+                    textDecoration: "none",
                   }}
                   value={useDiffView ? diffText : inputText}
                   onChange={handleTextChange}

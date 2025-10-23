@@ -14,6 +14,7 @@ import {
   FileUp,
   Settings,
   Loader2,
+  ImagePlus,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap, ModelType } from "./utils";
@@ -297,6 +298,20 @@ export default function WritePanel({
   const [actionMode, setActionMode] = useState<"ask" | "edit">("edit");
   const chatAbortControllerRef = useRef<AbortController | null>(null);
 
+  // File upload state
+  const [uploadedImages, setUploadedImages] = useState<
+    Array<{
+      url: string;
+      name: string;
+      base64?: string;
+      mimeType?: string;
+    }>
+  >([]);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Helper function to parse API errors
   const parseApiError = async (response: Response): Promise<ErrorState> => {
     let message = "An unexpected error occurred";
@@ -479,6 +494,7 @@ export default function WritePanel({
             documentId,
             model: selectedModel,
             actionMode,
+            images: requestPayload.images || [],
           }),
           signal: controller.signal,
         });
@@ -650,6 +666,12 @@ export default function WritePanel({
       instructions,
       history,
       actionMode,
+      // Send full image objects so backend can include base64+mediaType for multimodal providers
+      images: uploadedImages.map((img) => ({
+        url: img.url,
+        base64: img.base64,
+        mimeType: img.mimeType,
+      })),
     };
 
     const userMessage = {
@@ -664,6 +686,8 @@ export default function WritePanel({
     try {
       // Use streaming endpoint (now unified in main chat route)
       await handleStreamingResponse(requestPayload);
+      // Clear uploaded images after successful submission
+      setUploadedImages([]);
     } catch (error) {
       const errorState = handleNetworkError(error as Error);
     } finally {
@@ -906,6 +930,88 @@ export default function WritePanel({
     };
   }, [handleKeyPress]);
 
+  // File upload handlers
+  const handleImageUpload = async (file: File) => {
+    setIsImageUploading(true);
+    setImageUploadError(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/notebook/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok && data.url) {
+        // Add the uploaded image to the list
+        setUploadedImages((prev) => [
+          ...prev,
+          {
+            url: data.url,
+            name: file.name,
+            base64: data.base64,
+            mimeType: data.mimeType,
+          },
+        ]);
+        setImageUploadError(null);
+      } else {
+        setImageUploadError(
+          data.error || "Failed to upload image. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      setImageUploadError("An error occurred while uploading the image.");
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      if (validTypes.includes(file.type)) {
+        handleImageUpload(file);
+      } else {
+        setImageUploadError(
+          "Please upload a valid image file (JPEG, PNG, GIF, or WebP)."
+        );
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleImageUpload(files[0]);
+    }
+  };
+
+  const removeUploadedImage = (index: number) => {
+    setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const wrapperClass =
     variant === "mobile"
       ? "w-full h-full bg-white dark:bg-dark-background flex flex-col"
@@ -1011,7 +1117,13 @@ export default function WritePanel({
 
       {!isCollapsed && (
         <div className={innerScrollClass}>
-          <div className="flex flex-col bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider mx-4 shadow-sm transition-colors duration-200 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20">
+          <div
+            className={`flex flex-col bg-white dark:bg-dark-paper rounded-xl border shadow-sm transition-all duration-200 mx-4 ${
+              isDragging
+                ? "border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/10 ring-2 ring-blue-400/20"
+                : "border-gray-200 dark:border-dark-divider focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-400/20"
+            }`}
+          >
             <textarea
               className={`w-full p-4 bg-transparent resize-none focus:outline-none dark:text-dark-textPrimary placeholder-gray-500 dark:placeholder-dark-textDisabled ${
                 isChatLoading ? "cursor-not-allowed" : ""
@@ -1032,7 +1144,12 @@ export default function WritePanel({
                   handleSubmit();
                 }
               }}
-              placeholder="Ask anything"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleFileDrop}
+              placeholder={
+                isDragging ? "Drop your image here..." : "Ask anything"
+              }
               rows={3}
               disabled={isChatLoading}
             />
@@ -1086,6 +1203,14 @@ export default function WritePanel({
                     <RefreshCw size={20} />
                   </button>
                 )}
+                <button
+                  className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload image"
+                  disabled={isImageUploading || isChatLoading}
+                >
+                  <ImagePlus size={20} />
+                </button>
                 {isChatLoading ? (
                   <button
                     className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
@@ -1105,6 +1230,81 @@ export default function WritePanel({
               </div>
             </div>
           </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg, image/png, image/gif, image/webp"
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
+
+          {/* Image Upload Error Message */}
+          {imageUploadError && (
+            <div className="mx-4 px-3 py-2 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm text-red-800 dark:text-red-200 flex-1">
+                  {imageUploadError}
+                </p>
+                <button
+                  onClick={() => setImageUploadError(null)}
+                  className="text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload Loading */}
+          {isImageUploading && (
+            <div className="mx-4 px-3 py-3 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
+              <RefreshCw
+                size={20}
+                className="animate-spin text-blue-500 dark:text-blue-400"
+              />
+              <span className="ml-2 text-sm text-blue-800 dark:text-blue-200">
+                Uploading image...
+              </span>
+            </div>
+          )}
+
+          {/* Uploaded Images Display */}
+          {uploadedImages.length > 0 && (
+            <div className="mx-4 px-3 py-2 bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary">
+                  Attached Images ({uploadedImages.length})
+                </p>
+                <button
+                  onClick={() => setUploadedImages([])}
+                  className="text-xs text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      className="w-16 h-16 object-cover rounded border border-gray-300 dark:border-dark-divider"
+                    />
+                    <button
+                      onClick={() => removeUploadedImage(index)}
+                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove image"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex w-full items-center justify-between p-2 border-y dark:border-dark-divider">
             <div className="flex items-center gap-1">
               <button
