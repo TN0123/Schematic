@@ -2,7 +2,7 @@ export async function generate(
   startText: string,
   endText: string,
   userId?: string,
-  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4" = "gpt-4.1",
+  selectedModel: "basic" | "gpt-4.1" | "claude-sonnet-4-5" = "gpt-4.1",
   documentId?: string
 ) {
   // Get document context if documentId is provided
@@ -53,7 +53,7 @@ export async function generate(
   const geminiKey = process.env.GEMINI_API_KEY;
 
   // Premium models: GPT-4.1 and Claude Sonnet 4
-  if (userId && (selectedModel === "gpt-4.1" || selectedModel === "claude-sonnet-4")) {
+  if (userId && (selectedModel === "gpt-4.1" || selectedModel === "claude-sonnet-4-5")) {
     try {
 
       // Import subscription utilities
@@ -91,7 +91,7 @@ export async function generate(
         } else {
           const { anthropic } = require("@ai-sdk/anthropic");
           const anthropicKey = process.env.ANTHROPIC_API_KEY;
-          const claudeModel = "claude-4-sonnet-20250514";
+          const claudeModel = "claude-sonnet-4-5-20250929";
           const client = anthropic({ apiKey: anthropicKey });
           const response = await client.messages.create({
             model: claudeModel,

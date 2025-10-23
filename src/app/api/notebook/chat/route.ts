@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
     let selectedModelProvider = google("gemini-2.5-flash");
     let remainingUses: number | null = null;
 
-    // Support explicit model selection: "basic" | "gpt-4.1" | "claude-sonnet-4"
-    if ((model === "gpt-4.1" || model === "claude-sonnet-4") && userId) {
+    // Support explicit model selection: "basic" | "gpt-4.1" | "claude-sonnet-4-5"
+    if ((model === "gpt-4.1" || model === "claude-sonnet-4-5") && userId) {
       try {
         // Check if user can use premium models
         const usageCheck = await canUsePremiumModel(userId);
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
         if (usageCheck.allowed) {
           if (model === "gpt-4.1") {
             selectedModelProvider = openai("gpt-4.1");
-          } else if (model === "claude-sonnet-4") {
-            const anthropicModelId = "claude-4-sonnet-20250514";
+          } else if (model === "claude-sonnet-4-5") {
+            const anthropicModelId = "claude-sonnet-4-5-20250929";
             selectedModelProvider = anthropic(anthropicModelId);
           }
 

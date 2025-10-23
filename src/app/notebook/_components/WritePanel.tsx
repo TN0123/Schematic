@@ -1385,7 +1385,7 @@ export default function WritePanel({
                   GPT-4.1 (Premium)
                 </option>
                 <option
-                  value="claude-sonnet-4"
+                  value="claude-sonnet-4-5"
                   disabled={
                     premiumUsesRemaining !== null && premiumUsesRemaining === 0
                   }
@@ -1395,7 +1395,7 @@ export default function WritePanel({
                       : ""
                   }
                 >
-                  Claude Sonnet 4 (Premium)
+                  Claude Sonnet 4.5 (Premium)
                 </option>
               </select>
               <div className="relative group">

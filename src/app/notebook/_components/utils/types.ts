@@ -17,7 +17,7 @@ export interface MobileChangeAPI {
   setActiveHighlight: (text: string | null) => void;
 }
 
-export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4";
+export type ModelType = "basic" | "gpt-4.1" | "claude-sonnet-4-5";
 
 export interface DiffRange {
   oldStart: number;
