@@ -1,14 +1,16 @@
-import { MoreVertical, Calendar } from "lucide-react";
+import { MoreVertical, Calendar, Clock } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 interface TodoItemMenuProps {
   onSetDueDate: () => void;
+  onSetDueDateTime: () => void;
   onSetDueToday: () => void;
   onSetDueTomorrow: () => void;
 }
 
 export default function TodoItemMenu({
   onSetDueDate,
+  onSetDueDateTime,
   onSetDueToday,
   onSetDueTomorrow,
 }: TodoItemMenuProps) {
@@ -34,6 +36,11 @@ export default function TodoItemMenu({
   const handleSetDueDate = () => {
     setIsOpen(false);
     onSetDueDate();
+  };
+
+  const handleSetDueDateTime = () => {
+    setIsOpen(false);
+    onSetDueDateTime();
   };
 
   const handleSetDueToday = () => {
@@ -77,10 +84,17 @@ export default function TodoItemMenu({
           </button>
           <button
             onClick={handleSetDueDate}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover rounded-b-lg transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors"
           >
             <Calendar className="w-4 h-4" />
             <span>Set due date</span>
+          </button>
+          <button
+            onClick={handleSetDueDateTime}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-dark-textPrimary hover:bg-gray-50 dark:hover:bg-dark-hover rounded-b-lg transition-colors"
+          >
+            <Clock className="w-4 h-4" />
+            <span>Set date & time</span>
           </button>
         </div>
       )}

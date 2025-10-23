@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import { format } from "date-fns";
 import {
   Menu,
   X,
@@ -14,9 +15,11 @@ import {
 } from "lucide-react";
 import GoalCard from "./GoalCard";
 import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
+import DateTimePickerModal from "@/app/bulletin/_components/DateTimePickerModal";
 import TodoItemMenu from "@/app/bulletin/_components/TodoItemMenu";
 import {
   formatDueDate,
+  formatDueDateWithTime,
   sortTodoItemsByDueDate,
 } from "@/app/bulletin/_components/utils/dateHelpers";
 import { getTodayInTimezone, getTomorrowInTimezone } from "@/lib/timezone";
@@ -39,6 +42,8 @@ interface TodoItem {
   text: string;
   checked: boolean;
   dueDate?: string; // ISO date string (YYYY-MM-DD)
+  dueTime?: string; // Time string (HH:MM)
+  linkedEventId?: string; // ID of the linked calendar event
 }
 
 interface TodoBulletin {
@@ -85,6 +90,10 @@ export default function GoalsPanel({
   const lastSavedTodoStateRef = useRef<string>("");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [datePickerItemId, setDatePickerItemId] = useState<string | null>(null);
+  const [dateTimePickerOpen, setDateTimePickerOpen] = useState(false);
+  const [dateTimePickerItemId, setDateTimePickerItemId] = useState<
+    string | null
+  >(null);
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -465,9 +474,29 @@ export default function GoalsPanel({
     const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
     if (!selectedTodo) return;
 
-    const newItems = selectedTodo.data.items.map((item) =>
-      item.id === itemId ? { ...item, ...updates } : item
-    );
+    const newItems = selectedTodo.data.items.map((item) => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, ...updates };
+
+        // If text is being updated and item has a linked event, update the event title
+        if (
+          updates.text !== undefined &&
+          item.linkedEventId &&
+          item.dueDate &&
+          item.dueTime
+        ) {
+          updateEvent(
+            item.linkedEventId,
+            updates.text,
+            item.dueDate,
+            item.dueTime
+          );
+        }
+
+        return updatedItem;
+      }
+      return item;
+    });
 
     // Update local state immediately
     setTodoBulletins((prev) =>
@@ -484,6 +513,13 @@ export default function GoalsPanel({
     const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
     if (!selectedTodo) return;
 
+    const item = selectedTodo.data.items.find((item) => item.id === itemId);
+
+    // If item has a linked event, delete it
+    if (item?.linkedEventId) {
+      deleteEvent(item.linkedEventId);
+    }
+
     const newItems = selectedTodo.data.items.filter(
       (item) => item.id !== itemId
     );
@@ -498,27 +534,206 @@ export default function GoalsPanel({
     );
   };
 
+  const createEvent = async (
+    itemId: string,
+    title: string,
+    date: string,
+    time: string
+  ) => {
+    try {
+      const [hours, minutes] = time.split(":").map(Number);
+      const [year, month, day] = date.split("-").map(Number);
+
+      // Construct date in local timezone
+      const startDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + 30); // 30-minute duration
+
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create event");
+
+      const event = await response.json();
+      return event.id;
+    } catch (error) {
+      console.error("Error creating event:", error);
+      return null;
+    }
+  };
+
+  const deleteEvent = async (eventId: string) => {
+    try {
+      await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      console.error("Error deleting event:", error);
+    }
+  };
+
+  const updateEvent = async (
+    eventId: string,
+    title: string,
+    date: string,
+    time: string
+  ) => {
+    try {
+      const [hours, minutes] = time.split(":").map(Number);
+      const [year, month, day] = date.split("-").map(Number);
+
+      // Construct date in local timezone
+      const startDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + 30); // 30-minute duration
+
+      await fetch(`/api/events/${eventId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+        }),
+      });
+    } catch (error) {
+      console.error("Error updating event:", error);
+    }
+  };
+
   const handleSetDueDate = (itemId: string) => {
     setDatePickerItemId(itemId);
     setDatePickerOpen(true);
   };
 
+  const handleSetDueDateTime = (itemId: string) => {
+    setDateTimePickerItemId(itemId);
+    setDateTimePickerOpen(true);
+  };
+
   const handleSetDueToday = (itemId: string) => {
     const today = getTodayInTimezone();
-    updateTodoItem(itemId, { dueDate: today });
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    const item = selectedTodo?.data.items.find((i) => i.id === itemId);
+
+    // If item has a linked event, delete it
+    if (item?.linkedEventId) {
+      deleteEvent(item.linkedEventId);
+    }
+
+    updateTodoItem(itemId, {
+      dueDate: today,
+      dueTime: undefined,
+      linkedEventId: undefined,
+    });
   };
 
   const handleSetDueTomorrow = (itemId: string) => {
     const tomorrow = getTomorrowInTimezone();
-    updateTodoItem(itemId, { dueDate: tomorrow });
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    const item = selectedTodo?.data.items.find((i) => i.id === itemId);
+
+    // If item has a linked event, delete it
+    if (item?.linkedEventId) {
+      deleteEvent(item.linkedEventId);
+    }
+
+    updateTodoItem(itemId, {
+      dueDate: tomorrow,
+      dueTime: undefined,
+      linkedEventId: undefined,
+    });
   };
 
   const handleSaveDueDate = (date: string | null) => {
     if (datePickerItemId) {
-      updateTodoItem(datePickerItemId, { dueDate: date || undefined });
+      const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+      const item = selectedTodo?.data.items.find(
+        (i) => i.id === datePickerItemId
+      );
+
+      // If item has a linked event, delete it since we're removing the time
+      if (item?.linkedEventId) {
+        deleteEvent(item.linkedEventId);
+      }
+
+      updateTodoItem(datePickerItemId, {
+        dueDate: date || undefined,
+        dueTime: undefined,
+        linkedEventId: undefined,
+      });
     }
     setDatePickerOpen(false);
     setDatePickerItemId(null);
+  };
+
+  const handleSaveDueDateTime = async (
+    date: string | null,
+    time: string | null
+  ) => {
+    if (dateTimePickerItemId) {
+      const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+      const item = selectedTodo?.data.items.find(
+        (i) => i.id === dateTimePickerItemId
+      );
+
+      if (!date) {
+        // Clear everything
+        if (item?.linkedEventId) {
+          await deleteEvent(item.linkedEventId);
+        }
+        updateTodoItem(dateTimePickerItemId, {
+          dueDate: undefined,
+          dueTime: undefined,
+          linkedEventId: undefined,
+        });
+      } else if (!time) {
+        // Date only, no time - remove event if exists
+        if (item?.linkedEventId) {
+          await deleteEvent(item.linkedEventId);
+        }
+        updateTodoItem(dateTimePickerItemId, {
+          dueDate: date,
+          dueTime: undefined,
+          linkedEventId: undefined,
+        });
+      } else {
+        // Date and time - create or update event
+        if (!item) return;
+
+        let eventId = item.linkedEventId;
+
+        if (eventId) {
+          // Update existing event
+          await updateEvent(eventId, item.text, date, time);
+        } else {
+          // Create new event
+          eventId = await createEvent(
+            dateTimePickerItemId,
+            item.text || "Untitled task",
+            date,
+            time
+          );
+        }
+
+        updateTodoItem(dateTimePickerItemId, {
+          dueDate: date,
+          dueTime: time,
+          linkedEventId: eventId || undefined,
+        });
+      }
+    }
+    setDateTimePickerOpen(false);
+    setDateTimePickerItemId(null);
   };
 
   const handlePreviousTodo = () => {
@@ -902,7 +1117,7 @@ export default function GoalsPanel({
                         >
                           <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
                         </button>
-                        <div className="flex-grow flex items-center">
+                        <div className="flex-grow flex items-center gap-2">
                           <textarea
                             ref={(el) => {
                               if (el) textareaRefs.current[item.id] = el;
@@ -929,12 +1144,24 @@ export default function GoalsPanel({
                               }
                             }}
                             placeholder="Write a task..."
-                            className="w-full bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5"
+                            className="flex-1 bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5"
                             style={{ minHeight: "20px" }}
                           />
+                          {item.dueTime && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded text-xs font-medium flex-shrink-0">
+                              <Clock className="w-3 h-3" />
+                              <span>
+                                {format(
+                                  new Date(`2000-01-01T${item.dueTime}`),
+                                  "h:mm a"
+                                )}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <TodoItemMenu
                           onSetDueDate={() => handleSetDueDate(item.id)}
+                          onSetDueDateTime={() => handleSetDueDateTime(item.id)}
                           onSetDueToday={() => handleSetDueToday(item.id)}
                           onSetDueTomorrow={() => handleSetDueTomorrow(item.id)}
                         />
@@ -995,7 +1222,15 @@ export default function GoalsPanel({
                           {item.dueDate && (
                             <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
                               <Clock className="w-3 h-3" />
-                              <span>Due: {formatDueDate(item.dueDate)}</span>
+                              <span>
+                                Due:{" "}
+                                {item.dueTime
+                                  ? formatDueDateWithTime(
+                                      item.dueDate,
+                                      item.dueTime
+                                    )
+                                  : formatDueDate(item.dueDate)}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1148,6 +1383,29 @@ export default function GoalsPanel({
                 .find((t) => t.id === selectedTodoId)
                 ?.data.items.find((item) => item.id === datePickerItemId)
                 ?.dueDate
+            : undefined
+        }
+      />
+
+      {/* Date & Time Picker Modal */}
+      <DateTimePickerModal
+        isOpen={dateTimePickerOpen}
+        onClose={() => setDateTimePickerOpen(false)}
+        onSave={handleSaveDueDateTime}
+        currentDate={
+          dateTimePickerItemId && selectedTodoId
+            ? todoBulletins
+                .find((t) => t.id === selectedTodoId)
+                ?.data.items.find((item) => item.id === dateTimePickerItemId)
+                ?.dueDate
+            : undefined
+        }
+        currentTime={
+          dateTimePickerItemId && selectedTodoId
+            ? todoBulletins
+                .find((t) => t.id === selectedTodoId)
+                ?.data.items.find((item) => item.id === dateTimePickerItemId)
+                ?.dueTime
             : undefined
         }
       />

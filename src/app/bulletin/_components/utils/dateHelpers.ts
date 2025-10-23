@@ -123,3 +123,23 @@ export function sortTodoItemsByDueDate<T extends { dueDate?: string }>(items: T[
   });
 }
 
+/**
+ * Formats a due date and time string into a readable format
+ * @param dueDate - ISO date string (YYYY-MM-DD)
+ * @param dueTime - Time string (HH:MM)
+ * @param timezone - User's timezone (optional, defaults to browser timezone)
+ * @returns Formatted string like "Today at 2:30 PM", "Tomorrow at 10:00 AM", "Oct 15 at 3:00 PM"
+ */
+export function formatDueDateWithTime(dueDate: string, dueTime: string, timezone?: string): string {
+  if (!dueDate || !dueTime) return formatDueDate(dueDate, timezone);
+  
+  const [hours, minutes] = dueTime.split(':').map(Number);
+  const date = parseISO(dueDate);
+  date.setHours(hours, minutes, 0, 0);
+  
+  const dateStr = formatDueDate(dueDate, timezone);
+  const timeStr = format(date, 'h:mm a');
+  
+  return `${dateStr} at ${timeStr}`;
+}
+
