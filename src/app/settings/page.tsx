@@ -15,6 +15,8 @@ import {
   Bot,
   Check,
   X,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -51,6 +53,16 @@ export default function SettingsPage() {
   const [tempAssistantName, setTempAssistantName] = useState("");
   const [assistantNameLoading, setAssistantNameLoading] = useState(false);
 
+  // Google Calendar Sync state
+  const [googleSyncEnabled, setGoogleSyncEnabled] = useState(false);
+  const [googleCalendars, setGoogleCalendars] = useState<any[]>([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>("");
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [calendarsLoading, setCalendarsLoading] = useState(false);
+  const [syncToggleOn, setSyncToggleOn] = useState(false); // Tracks if toggle is on (even if sync not fully enabled)
+
   useEffect(() => {
     // Check if we just came back from a successful checkout
     const urlParams = new URLSearchParams(window.location.search);
@@ -82,6 +94,9 @@ export default function SettingsPage() {
 
     // Fetch assistant name
     fetchAssistantName();
+
+    // Fetch Google Calendar sync settings
+    fetchGoogleSyncSettings();
   }, []);
 
   const fetchAssistantName = async () => {
@@ -308,6 +323,140 @@ export default function SettingsPage() {
     setTempAssistantName("");
   };
 
+  // Google Calendar Sync functions
+  const fetchGoogleSyncSettings = async () => {
+    try {
+      const response = await fetch("/api/google-calendar/sync-settings");
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleSyncEnabled(data.enabled);
+        setSyncToggleOn(data.enabled);
+        setSelectedCalendarId(data.calendarId || "");
+        setLastSyncAt(data.lastSyncAt);
+      }
+    } catch (error) {
+      console.error("Error fetching Google sync settings:", error);
+    }
+  };
+
+  const fetchGoogleCalendars = async () => {
+    setCalendarsLoading(true);
+    setSyncError(null);
+    try {
+      const response = await fetch("/api/google-calendar/calendars");
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleCalendars(data.calendars);
+      } else {
+        setSyncError(
+          "Failed to fetch calendars. Please ensure you have granted calendar permissions."
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching calendars:", error);
+      setSyncError("Failed to fetch calendars. Please try again.");
+    } finally {
+      setCalendarsLoading(false);
+    }
+  };
+
+  const handleSyncToggle = async (enabled: boolean) => {
+    setSyncLoading(true);
+    setSyncError(null);
+    setSyncToggleOn(enabled);
+
+    try {
+      // If enabling sync, first fetch calendars and let user select one
+      if (enabled) {
+        await fetchGoogleCalendars();
+        // Don't enable sync yet - wait for user to select a calendar
+        return;
+      }
+
+      // If disabling sync, proceed with the API call
+      const response = await fetch("/api/google-calendar/sync-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          calendarId: undefined,
+        }),
+      });
+
+      if (response.ok) {
+        setGoogleSyncEnabled(enabled);
+        setSelectedCalendarId("");
+      } else {
+        setSyncError("Failed to update sync settings. Please try again.");
+        setSyncToggleOn(false); // Revert toggle on error
+      }
+    } catch (error) {
+      console.error("Error updating sync settings:", error);
+      setSyncError("Failed to update sync settings. Please try again.");
+      setSyncToggleOn(false); // Revert toggle on error
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleCalendarChange = async (calendarId: string) => {
+    setSelectedCalendarId(calendarId);
+    setSyncLoading(true);
+    setSyncError(null);
+
+    try {
+      const response = await fetch("/api/google-calendar/sync-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: true,
+          calendarId,
+        }),
+      });
+
+      if (response.ok) {
+        setGoogleSyncEnabled(true);
+      } else {
+        setSyncError(
+          "Failed to enable sync with selected calendar. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error enabling sync:", error);
+      setSyncError("Failed to enable sync. Please try again.");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setSyncLoading(true);
+    setSyncError(null);
+    try {
+      const response = await fetch("/api/google-calendar/manual-sync", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setLastSyncAt(new Date().toISOString());
+        } else {
+          setSyncError(
+            data.errors?.join(", ") || "Sync failed. Please try again."
+          );
+        }
+      } else {
+        setSyncError("Failed to sync. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error performing manual sync:", error);
+      setSyncError("Failed to sync. Please try again.");
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start h-screen pt-24 bg-gray-50 dark:bg-dark-background transition-all overflow-y-auto">
       <div className="py-6">
@@ -427,6 +576,118 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Google Calendar Sync Settings */}
+        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
+          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Google Calendar Sync
+            </h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                  Enable Calendar Sync
+                </span>
+                <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                  Sync your events with Google Calendar
+                </span>
+              </div>
+              <button
+                onClick={() => handleSyncToggle(!syncToggleOn)}
+                disabled={syncLoading}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  syncToggleOn
+                    ? "bg-blue-600"
+                    : "bg-gray-300 dark:bg-dark-divider"
+                } ${syncLoading ? "opacity-50" : ""}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    syncToggleOn ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {syncToggleOn && (
+              <>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary mb-2 block">
+                      Select Calendar
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedCalendarId}
+                        onChange={(e) => handleCalendarChange(e.target.value)}
+                        disabled={syncLoading || calendarsLoading}
+                        className="flex-1 border border-gray-300 dark:border-dark-divider rounded-lg px-3 py-2 bg-white dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Select a calendar...</option>
+                        {googleCalendars.map((calendar) => (
+                          <option key={calendar.id} value={calendar.id}>
+                            {calendar.summary}{" "}
+                            {calendar.primary ? "(Primary)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={fetchGoogleCalendars}
+                        disabled={calendarsLoading || syncLoading}
+                        className="px-3 py-2 bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {calendarsLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
+                        Manual Sync
+                      </span>
+                      <p className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                        {lastSyncAt
+                          ? `Last synced: ${new Date(
+                              lastSyncAt
+                            ).toLocaleString()}`
+                          : "Never synced"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleManualSync}
+                      disabled={syncLoading || !selectedCalendarId}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {syncLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      Sync Now
+                    </button>
+                  </div>
+                </div>
+
+                {syncError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <span className="text-sm text-red-800 dark:text-red-200">
+                      {syncError}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

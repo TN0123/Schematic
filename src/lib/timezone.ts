@@ -43,4 +43,29 @@ export function getTomorrowInTimezone(timezone: string = Intl.DateTimeFormat().r
   return tomorrow.toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
+// Google Calendar timezone conversion utilities
+export function convertToGoogleDateTime(date: Date, timezone: string): { dateTime: string; timeZone: string } {
+  return {
+    dateTime: date.toISOString(),
+    timeZone: timezone,
+  };
+}
+
+export function convertFromGoogleDateTime(gDateTime: { dateTime?: string; date?: string; timeZone?: string }, userTimezone: string): Date {
+  if (gDateTime.dateTime) {
+    // Has specific time
+    return new Date(gDateTime.dateTime);
+  } else if (gDateTime.date) {
+    // All-day event
+    const date = new Date(gDateTime.date + 'T00:00:00');
+    return date;
+  } else {
+    throw new Error('Invalid Google DateTime format');
+  }
+}
+
+export function isAllDayEvent(gDateTime: { dateTime?: string; date?: string }): boolean {
+  return !!gDateTime.date && !gDateTime.dateTime;
+}
+
 
