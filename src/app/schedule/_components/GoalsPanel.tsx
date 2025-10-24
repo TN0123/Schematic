@@ -1061,7 +1061,7 @@ export default function GoalsPanel({
         )}
 
         {/* Todo Items Container (scrollable) */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           {selectedTodo.data.items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <div className="text-gray-400 dark:text-dark-textSecondary mb-4">
@@ -1106,7 +1106,7 @@ export default function GoalsPanel({
                     {itemsInGroup.map((item) => (
                       <div
                         key={item.id}
-                        className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150"
+                        className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 min-w-0"
                       >
                         <button
                           onClick={() =>
@@ -1117,7 +1117,7 @@ export default function GoalsPanel({
                         >
                           <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
                         </button>
-                        <div className="flex-grow flex items-center gap-2">
+                        <div className="flex-grow flex items-center gap-2 min-w-0">
                           <textarea
                             ref={(el) => {
                               if (el) textareaRefs.current[item.id] = el;
@@ -1144,7 +1144,7 @@ export default function GoalsPanel({
                               }
                             }}
                             placeholder="Write a task..."
-                            className="flex-1 bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5"
+                            className="flex-1 bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
                             style={{ minHeight: "20px" }}
                           />
                           {item.dueTime && (
@@ -1191,7 +1191,7 @@ export default function GoalsPanel({
                   {checkedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150"
+                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150 min-w-0"
                     >
                       <button
                         onClick={() =>
@@ -1202,8 +1202,8 @@ export default function GoalsPanel({
                       >
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       </button>
-                      <div className="flex-grow flex items-center">
-                        <div className="flex items-center gap-2 w-full">
+                      <div className="flex-grow flex items-center min-w-0">
+                        <div className="flex items-center gap-2 w-full min-w-0">
                           <textarea
                             ref={(el) => {
                               if (el) textareaRefs.current[item.id] = el;
@@ -1216,7 +1216,7 @@ export default function GoalsPanel({
                                 Math.max(20, e.target.scrollHeight) + "px";
                               updateTodoItem(item.id, { text: e.target.value });
                             }}
-                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5"
+                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
                             style={{ minHeight: "20px" }}
                           />
                           {item.dueDate && (
