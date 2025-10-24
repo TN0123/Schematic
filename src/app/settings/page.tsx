@@ -63,6 +63,15 @@ export default function SettingsPage() {
   const [calendarsLoading, setCalendarsLoading] = useState(false);
   const [syncToggleOn, setSyncToggleOn] = useState(false); // Tracks if toggle is on (even if sync not fully enabled)
 
+  // Debug state for Google Calendar scope
+  const [debugInfo, setDebugInfo] = useState<{
+    hasRefreshToken: boolean;
+    hasCalendarScope: boolean;
+    tokenExpiry: string | null;
+    scopes: string[];
+  } | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+
   useEffect(() => {
     // Check if we just came back from a successful checkout
     const urlParams = new URLSearchParams(window.location.search);
@@ -97,6 +106,9 @@ export default function SettingsPage() {
 
     // Fetch Google Calendar sync settings
     fetchGoogleSyncSettings();
+
+    // Fetch debug information
+    fetchDebugInfo();
   }, []);
 
   const fetchAssistantName = async () => {
@@ -457,6 +469,23 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchDebugInfo = async () => {
+    setDebugLoading(true);
+    try {
+      const response = await fetch("/api/google-calendar/debug-token");
+      if (response.ok) {
+        const data = await response.json();
+        setDebugInfo(data);
+      } else {
+        console.error("Failed to fetch debug info");
+      }
+    } catch (error) {
+      console.error("Error fetching debug info:", error);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-start h-screen pt-24 bg-gray-50 dark:bg-dark-background transition-all overflow-y-auto">
       <div className="py-6">
@@ -686,6 +715,91 @@ export default function SettingsPage() {
                     </span>
                   </div>
                 )}
+
+                {/* Debug Information */}
+                <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
+                      Debug Information
+                    </h4>
+                    <button
+                      onClick={fetchDebugInfo}
+                      disabled={debugLoading}
+                      className="px-3 py-1 text-xs bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {debugLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        "Refresh"
+                      )}
+                    </button>
+                  </div>
+
+                  {debugLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  ) : debugInfo ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-dark-textSecondary">
+                          Refresh Token:
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            debugInfo.hasRefreshToken
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {debugInfo.hasRefreshToken
+                            ? "✓ Available"
+                            : "✗ Missing"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-dark-textSecondary">
+                          Calendar Scope:
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            debugInfo.hasCalendarScope
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {debugInfo.hasCalendarScope
+                            ? "✓ Granted"
+                            : "✗ Not Granted"}
+                        </span>
+                      </div>
+                      {debugInfo.tokenExpiry && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-dark-textSecondary">
+                            Token Expiry:
+                          </span>
+                          <span className="text-gray-800 dark:text-dark-textPrimary">
+                            {new Date(debugInfo.tokenExpiry).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="pt-2">
+                        <span className="text-gray-600 dark:text-dark-textSecondary block mb-1">
+                          Granted Scopes:
+                        </span>
+                        <div className="bg-gray-50 dark:bg-dark-secondary p-2 rounded text-xs font-mono">
+                          {debugInfo.scopes.length > 0
+                            ? debugInfo.scopes.join(", ")
+                            : "No scopes found"}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
+                      Click "Refresh" to load debug information
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

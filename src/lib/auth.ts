@@ -12,6 +12,8 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: {
           scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
+          prompt: "consent",
+          access_type: "offline",
         },
       },
     }),
@@ -20,6 +22,41 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    jwt: async ({ token, account, user }) => {
+      // Store refresh token in database when account is first created or updated
+      if (account && account.refresh_token) {
+        try {
+          await prisma.account.upsert({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            },
+            update: {
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              scope: account.scope,
+            },
+            create: {
+              userId: token.sub!,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              scope: account.scope,
+            },
+          });
+        } catch (error) {
+          console.error("Failed to store refresh token:", error);
+        }
+      }
+      
+      return token;
+    },
     session: async ({ session, token }) => {
       if (session?.user) {
         session.user.id = token.sub!;
