@@ -1,13 +1,7 @@
-import { ArrowRight } from "lucide-react";
-import { TransitionLink } from "@/components/utils/TransitionLink";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import WriteSection from "./_components/WriteSection";
-import DateTimeDisplay from "./_components/DateTimeDisplay";
-import ScheduleSection from "./_components/ScheduleSection";
-import DashboardChat from "./_components/DashboardChat";
-import BulletinSection from "./_components/BulletinSection";
+import DashboardClient from "./_components/DashboardClient";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -49,38 +43,12 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background pb-20 md:pb-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Centered Date/Time Display */}
-        <div className="mb-16 flex justify-center">
-          <DateTimeDisplay />
-        </div>
-
-        {/* Three Equal Height Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-96">
-          {/* Notebook Column */}
-          <div className="flex flex-col h-auto md:h-full">
-            <WriteSection recentDocuments={recentDocuments} />
-          </div>
-
-          {/* Schedule Column */}
-          <div className="flex flex-col h-auto md:h-full">
-            <ScheduleSection
-              userId={userId || ""}
-              initialGoals={goals}
-              initialTotalGoalsCount={totalGoalsCount}
-            />
-          </div>
-
-          {/* Bulletin Column */}
-          <div className="flex flex-col h-auto md:h-full">
-            <BulletinSection bulletinNotes={bulletinNotes} />
-          </div>
-        </div>
-      </div>
-
-      {/* AI Chat Assistant */}
-      {userId && <DashboardChat userId={userId} />}
-    </main>
+    <DashboardClient
+      userId={userId}
+      recentDocuments={recentDocuments}
+      bulletinNotes={bulletinNotes}
+      goals={goals}
+      totalGoalsCount={totalGoalsCount}
+    />
   );
 }
