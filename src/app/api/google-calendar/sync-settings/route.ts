@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import authOptions from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { setupGoogleCalendarWatch, stopGoogleCalendarWatch } from "@/lib/google-calendar-sync";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -55,8 +56,25 @@ export async function POST(req: NextRequest) {
 
     if (enabled) {
       updateData.googleCalendarId = calendarId;
+      
+      // Set up watch channel for real-time sync
+      try {
+        const watchResponse = await setupGoogleCalendarWatch(session.user.id, calendarId);
+        console.log(`Watch channel set up for user ${session.user.id}:`, watchResponse);
+      } catch (error) {
+        console.error(`Failed to set up watch channel for user ${session.user.id}:`, error);
+        // Continue with sync setup even if watch channel fails
+        // The user can still use manual sync
+      }
     } else {
-      // Clear sync data when disabling
+      // Stop watch channel and clear sync data when disabling
+      try {
+        await stopGoogleCalendarWatch(session.user.id);
+      } catch (error) {
+        console.error(`Failed to stop watch channel for user ${session.user.id}:`, error);
+        // Continue with cleanup even if stopping watch channel fails
+      }
+      
       updateData.googleCalendarId = null;
       updateData.googleCalendarSyncToken = null;
       updateData.googleCalendarLastSyncAt = null;

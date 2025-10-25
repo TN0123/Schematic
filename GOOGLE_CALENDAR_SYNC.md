@@ -53,9 +53,19 @@ A new `SyncedEvent` model tracks the relationship between local and Google Calen
    - Provides resolution strategies
 
 4. **Timezone Handling** (`src/lib/timezone.ts`)
-   - Converts between app and Google Calendar time formats
-   - Handles all-day events and timezone conversions
-   - Ensures accurate time representation
+
+5. **Webhook Management** (`src/lib/google-calendar-sync.ts`)
+
+   - Watch channel setup and management
+   - Automatic channel renewal before expiration
+   - Webhook endpoint for receiving Google notifications
+   - Real-time sync processing
+
+6. **Webhook Endpoint** (`src/app/api/google-calendar/webhook/route.ts`)
+
+   - Receives Google Calendar change notifications
+   - Processes sync, update, and delete events
+   - Triggers incremental sync for affected users
 
 ### API Routes
 
@@ -131,12 +141,14 @@ For production, add to `vercel.json`:
 {
   "crons": [
     {
-      "path": "/api/cron/sync-google-calendar",
-      "schedule": "*/5 * * * *"
+      "path": "/api/cron/renew-watch-channels",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
 ```
+
+**Note**: The new webhook-based approach eliminates the need for frequent polling. The cron job now only runs every 6 hours to renew expiring watch channels, making it much more efficient and cost-effective.
 
 ## Usage
 
@@ -145,9 +157,10 @@ For production, add to `vercel.json`:
 1. User goes to Settings page
 2. Toggles "Enable Calendar Sync"
 3. Selects a Google Calendar from dropdown
-4. Initial sync runs automatically
-5. Conflicts are presented for resolution
-6. Periodic sync begins (every 5 minutes)
+4. Watch channel is automatically set up for real-time notifications
+5. Initial sync runs automatically
+6. Conflicts are presented for resolution
+7. Real-time sync begins via webhooks (no polling needed)
 
 ### Todo Item Sync
 

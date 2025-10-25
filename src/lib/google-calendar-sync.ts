@@ -418,3 +418,138 @@ export async function syncTodoEvent(todoItem: any, userId: string): Promise<stri
   }
 }
 
+export async function setupGoogleCalendarWatch(userId: string, calendarId: string): Promise<{ id: string; resourceId: string; expiration: string }> {
+  try {
+    const client = await getGoogleCalendarClient(userId);
+    
+    // Generate unique channel ID
+    const channelId = `channel-${userId}-${Date.now()}`;
+    
+    // Set expiration to 7 days from now (Google's maximum)
+    const expiration = Date.now() + (7 * 24 * 60 * 60 * 1000);
+    
+    const watchRequest = {
+      id: channelId,
+      type: 'web_hook',
+      address: `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/webhook`,
+      token: userId, // Pass user ID in the token for webhook processing
+      expiration: expiration,
+    };
+    
+    const watchResponse = await client.watchCalendar(calendarId, watchRequest);
+    
+    // Store the channel info in the database
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        googleCalendarWatchChannelId: watchResponse.id,
+        googleCalendarWatchExpiration: new Date(parseInt(watchResponse.expiration)),
+      },
+    });
+    
+    console.log(`Watch channel created for user ${userId}:`, watchResponse);
+    return watchResponse;
+  } catch (error) {
+    console.error('Error setting up Google Calendar watch:', error);
+    throw error;
+  }
+}
+
+export async function stopGoogleCalendarWatch(userId: string): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        googleCalendarWatchChannelId: true,
+        googleCalendarId: true,
+      },
+    });
+    
+    if (!user?.googleCalendarWatchChannelId || !user.googleCalendarId) {
+      return; // No watch channel to stop
+    }
+    
+    const client = await getGoogleCalendarClient(userId);
+    
+    // Stop the watch channel
+    await client.stopWatchChannel(user.googleCalendarWatchChannelId, user.googleCalendarId);
+    
+    // Clear the channel info from the database
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        googleCalendarWatchChannelId: null,
+        googleCalendarWatchExpiration: null,
+      },
+    });
+    
+    console.log(`Watch channel stopped for user ${userId}`);
+  } catch (error) {
+    console.error('Error stopping Google Calendar watch:', error);
+    throw error;
+  }
+}
+
+export async function renewGoogleCalendarWatch(userId: string): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        googleCalendarSyncEnabled: true,
+        googleCalendarId: true,
+        googleCalendarWatchChannelId: true,
+        googleCalendarWatchExpiration: true,
+      },
+    });
+    
+    if (!user?.googleCalendarSyncEnabled || !user.googleCalendarId) {
+      return; // Sync not enabled
+    }
+    
+    // Check if watch channel is close to expiration (within 24 hours)
+    const now = new Date();
+    const expirationDate = user.googleCalendarWatchExpiration;
+    
+    if (!expirationDate || (expirationDate.getTime() - now.getTime()) > 24 * 60 * 60 * 1000) {
+      return; // Not close to expiration
+    }
+    
+    // Stop the old watch channel
+    if (user.googleCalendarWatchChannelId) {
+      await stopGoogleCalendarWatch(userId);
+    }
+    
+    // Create a new watch channel
+    await setupGoogleCalendarWatch(userId, user.googleCalendarId);
+    
+    console.log(`Watch channel renewed for user ${userId}`);
+  } catch (error) {
+    console.error('Error renewing Google Calendar watch:', error);
+    throw error;
+  }
+}
+
+export async function getUsersWithExpiringWatchChannels(): Promise<string[]> {
+  try {
+    const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    
+    const users = await prisma.user.findMany({
+      where: {
+        googleCalendarSyncEnabled: true,
+        googleCalendarWatchChannelId: { not: null },
+        googleCalendarWatchExpiration: {
+          lte: oneDayFromNow,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+    
+    return users.map(user => user.id);
+  } catch (error) {
+    console.error('Error getting users with expiring watch channels:', error);
+    return [];
+  }
+}
+

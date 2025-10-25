@@ -264,6 +264,42 @@ export class GoogleCalendarClient {
       };
     }, 'getEvent');
   }
+
+  async watchCalendar(calendarId: string, watchRequest: {
+    id: string;
+    type: string;
+    address: string;
+    token: string;
+    expiration: number;
+  }): Promise<{ id: string; resourceId: string; expiration: string }> {
+    await this.refreshTokenIfNeeded();
+
+    return this.withRetry(async () => {
+      const response = await this.calendar.events.watch({
+        calendarId,
+        resource: watchRequest,
+      });
+
+      return {
+        id: response.data.id,
+        resourceId: response.data.resourceId,
+        expiration: response.data.expiration,
+      };
+    }, 'watchCalendar');
+  }
+
+  async stopWatchChannel(channelId: string, resourceId: string): Promise<void> {
+    await this.refreshTokenIfNeeded();
+
+    return this.withRetry(async () => {
+      await this.calendar.channels.stop({
+        resource: {
+          id: channelId,
+          resourceId: resourceId,
+        },
+      });
+    }, 'stopWatchChannel');
+  }
 }
 
 // Utility function to create a client for a user
