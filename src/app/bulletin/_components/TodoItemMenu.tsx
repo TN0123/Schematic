@@ -60,7 +60,7 @@ export default function TodoItemMenu({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
+        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary mt-0.5"
         aria-label="More options"
       >
         <MoreVertical className="w-4 h-4" />

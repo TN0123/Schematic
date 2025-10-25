@@ -951,7 +951,7 @@ export default function SettingsPage() {
                   className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
                     viewMode === "diff"
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
-                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-gray-600"
+                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-dark-divider"
                   }`}
                 >
                   <div className="text-left">
@@ -968,7 +968,7 @@ export default function SettingsPage() {
                   className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
                     viewMode === "changeHandler"
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400"
-                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-gray-600"
+                      : "border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper hover:border-gray-300 dark:hover:border-dark-divider"
                   }`}
                 >
                   <div className="text-left">

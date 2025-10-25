@@ -280,12 +280,15 @@ export default function ScheduleSection({
     const todayChecked = todayItems.filter((item) => item.checked);
 
     // If no today items, show upcoming tasks
-    const displayItems =
+    const allItems =
       todayUnchecked.length > 0
         ? todayUnchecked
         : sortTodoItemsByDueDate(
             recentTodo.data.items.filter((item) => !item.checked)
-          ).slice(0, 3);
+          );
+
+    const displayItems = allItems.slice(0, 3);
+    const remainingCount = allItems.length - 3;
 
     return (
       <div>
@@ -307,6 +310,9 @@ export default function ScheduleSection({
                 key={item.id}
                 className="flex items-start gap-2 py-1 text-sm"
               >
+                <div className="flex-shrink-0 mt-1.5">
+                  <div className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p
                     className={`${
@@ -326,6 +332,15 @@ export default function ScheduleSection({
                 </div>
               </div>
             ))}
+            {remainingCount > 0 && (
+              <TransitionLink
+                href="/schedule"
+                className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                {remainingCount} more
+              </TransitionLink>
+            )}
             <TransitionLink
               href="/schedule"
               className="flex items-center text-blue-600 dark:text-blue-400 text-sm pt-1 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
@@ -343,7 +358,7 @@ export default function ScheduleSection({
   };
 
   return (
-    <section>
+    <section className="h-auto md:h-full flex flex-col">
       <div className="mb-4">
         <TransitionLink
           href="/schedule"
@@ -354,22 +369,26 @@ export default function ScheduleSection({
         </TransitionLink>
       </div>
 
-      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-6 space-y-8">
+      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 flex-1 flex flex-col min-h-0 md:min-h-0">
         {/* Today's Schedule Subsection */}
-        <DashboardEvents userId={userId} />
+        <div className="flex-1">
+          <DashboardEvents userId={userId} />
+        </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200 dark:border-dark-divider" />
+        <div className="border-t border-gray-200 dark:border-dark-divider my-4" />
 
         {/* Dynamic Goals/Todo Section based on selected view */}
-        {!isMounted
-          ? // Render initial view while mounting to prevent hydration issues
-            renderListView()
-          : activeTab === "list"
-          ? renderListView()
-          : activeTab === "text"
-          ? renderTextView()
-          : renderTodoView()}
+        <div className="flex-1">
+          {!isMounted
+            ? // Render initial view while mounting to prevent hydration issues
+              renderListView()
+            : activeTab === "list"
+            ? renderListView()
+            : activeTab === "text"
+            ? renderTextView()
+            : renderTodoView()}
+        </div>
       </div>
     </section>
   );

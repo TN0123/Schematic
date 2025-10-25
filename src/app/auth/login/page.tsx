@@ -370,6 +370,22 @@ export default function Login() {
               )}
             </button>
           </motion.div>
+
+          {/* Privacy Policy Link */}
+          <motion.div
+            className="flex w-full items-center justify-center pt-4"
+            variants={fadeUpVariants}
+          >
+            <p className="text-sm text-gray-500 dark:text-dark-textSecondary text-center">
+              By continuing, you agree to our{" "}
+              <Link
+                href="/privacy"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline transition-colors"
+              >
+                Privacy Policy
+              </Link>
+            </p>
+          </motion.div>
         </motion.div>
 
         {/* Feature Carousel */}

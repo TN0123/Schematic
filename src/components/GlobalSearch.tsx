@@ -370,7 +370,7 @@ export default function GlobalSearch() {
                   </h3>
                   <button
                     onClick={clearRecentSearches}
-                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-dark-textPrimary transition-colors"
                   >
                     Clear
                   </button>

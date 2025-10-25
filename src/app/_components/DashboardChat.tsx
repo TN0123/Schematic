@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
+import { useSession } from "next-auth/react";
 import {
   MessageCircle,
   X,
@@ -10,6 +12,7 @@ import {
   Eye,
   Pen,
   Check,
+  User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -39,22 +42,30 @@ interface ChatMessage {
 
 interface DashboardChatProps {
   userId: string;
+  onChatActiveChange?: (isActive: boolean) => void;
 }
 
-export default function DashboardChat({ userId }: DashboardChatProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function DashboardChat({
+  userId,
+  onChatActiveChange,
+}: DashboardChatProps) {
+  const { data: session } = useSession();
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [contextDiffModal, setContextDiffModal] = useState<{
     isOpen: boolean;
     before: string;
     after: string;
   }>({ isOpen: false, before: "", after: "" });
-  const [assistantName, setAssistantName] = useState("AI Life Assistant");
+  const [assistantName, setAssistantName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+  const [isLoadingName, setIsLoadingName] = useState(true);
+
+  const isChatActive = chatMessages.length > 0;
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -71,32 +82,32 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
         if (response.ok) {
           const data = await response.json();
           setAssistantName(data.assistantName);
+        } else {
+          // Fallback to default name if API fails
+          setAssistantName("AI Life Assistant");
         }
       } catch (error) {
         console.error("Error fetching assistant name:", error);
+        // Fallback to default name if API fails
+        setAssistantName("AI Life Assistant");
+      } finally {
+        setIsLoadingName(false);
       }
     };
     fetchAssistantName();
   }, []);
 
-  // Handle body scroll when chat is open
-  useEffect(() => {
-    if (isOpen) {
-      // Prevent body scroll and add class for mobile
-      document.body.style.overflow = "hidden";
-      document.body.classList.add("chat-open");
-    } else {
-      // Restore body scroll and remove class
-      document.body.style.overflow = "unset";
-      document.body.classList.remove("chat-open");
-    }
+  // Notify parent when chat becomes active/inactive
+  const handleChatActiveChange = useCallback(
+    (active: boolean) => {
+      onChatActiveChange?.(active);
+    },
+    [onChatActiveChange]
+  );
 
-    // Cleanup on unmount
-    return () => {
-      document.body.style.overflow = "unset";
-      document.body.classList.remove("chat-open");
-    };
-  }, [isOpen]);
+  useEffect(() => {
+    handleChatActiveChange(isChatActive);
+  }, [isChatActive, handleChatActiveChange]);
 
   const handleChatSubmit = async () => {
     if (!chatInput.trim() || isChatLoading) return;
@@ -249,365 +260,344 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
 
   return (
     <>
-      {/* Floating Chat Button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 md:bottom-6 bottom-20 right-6 z-40 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-4 shadow-lg transition-colors duration-200 flex items-center gap-2"
-            title="Chat with AI Assistant"
-          >
-            <MessageCircle size={24} />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Chat Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
-            />
-
-            {/* Chat Window */}
-            <motion.div
-              initial={{ x: "100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "100%", opacity: 0 }}
-              transition={{
-                type: "spring",
-                damping: 30,
-                stiffness: 300,
-                opacity: { duration: 0.15 },
-              }}
-              className="fixed bottom-6 md:bottom-6 bottom-20 right-6 z-50 w-[90vw] md:w-96 h-[80vh] md:h-[600px] bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-2xl shadow-2xl flex flex-col overflow-hidden chat-panel-container"
-              style={{
-                maxHeight: "calc(100vh - 3rem)",
-                maxWidth: "calc(100vw - 3rem)",
-              }}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b dark:border-dark-divider">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  {isEditingName ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={tempName}
-                        onChange={(e) => setTempName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleSaveName();
-                          } else if (e.key === "Escape") {
-                            handleCancelEdit();
-                          }
-                        }}
-                        className="px-2 py-1 text-sm font-semibold bg-transparent border border-gray-300 dark:border-dark-divider rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-dark-textPrimary"
-                        autoFocus
-                        maxLength={50}
-                      />
-                      <button
-                        onClick={handleSaveName}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
-                        title="Save name"
-                      >
-                        <Check
-                          size={14}
-                          className="text-green-600 dark:text-green-400"
-                        />
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
-                        title="Cancel"
-                      >
-                        <X
-                          size={14}
-                          className="text-gray-500 dark:text-dark-textSecondary"
-                        />
-                      </button>
-                    </div>
+      {/* Chat Bar - Always visible at top */}
+      <div className="w-full max-w-4xl mx-auto mb-4 sm:mb-8">
+        {/* Assistant Profile Header */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 flex items-center justify-center">
+            <User size={16} className="text-white sm:hidden" />
+            <User size={20} className="text-white hidden sm:block" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2">
+              {isEditingName ? (
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSaveName();
+                      } else if (e.key === "Escape") {
+                        handleCancelEdit();
+                      }
+                    }}
+                    className="px-2 py-1 text-base sm:text-lg font-semibold bg-transparent border border-gray-300 dark:border-dark-divider rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-dark-textPrimary w-full max-w-[200px] sm:max-w-none"
+                    autoFocus
+                    maxLength={50}
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                    title="Save name"
+                  >
+                    <Check
+                      size={14}
+                      className="text-green-600 dark:text-green-400 sm:hidden"
+                    />
+                    <Check
+                      size={16}
+                      className="text-green-600 dark:text-green-400 hidden sm:block"
+                    />
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                    title="Cancel"
+                  >
+                    <X
+                      size={14}
+                      className="text-gray-500 dark:text-dark-textSecondary sm:hidden"
+                    />
+                    <X
+                      size={16}
+                      className="text-gray-500 dark:text-dark-textSecondary hidden sm:block"
+                    />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 sm:gap-2">
+                  {isLoadingName ? (
+                    <div className="h-5 sm:h-6 w-32 sm:w-40 bg-gray-200 dark:bg-dark-secondary rounded animate-pulse"></div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
+                    <>
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-dark-textPrimary truncate">
                         {assistantName}
                       </h3>
                       <button
                         onClick={handleEditName}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200 flex-shrink-0"
                         title="Edit assistant name"
                       >
                         <Pen
+                          size={12}
+                          className="text-gray-500 dark:text-dark-textSecondary sm:hidden"
+                        />
+                        <Pen
                           size={14}
-                          className="text-gray-500 dark:text-dark-textSecondary"
+                          className="text-gray-500 dark:text-dark-textSecondary hidden sm:block"
                         />
                       </button>
-                    </div>
+                    </>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setChatMessages([])}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200"
-                    title="Clear chat"
-                  >
-                    <RefreshCw size={18} />
-                  </button>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200"
-                    title="Close chat"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
+              )}
+            </div>
+          </div>
+          {chatMessages.length > 0 && (
+            <button
+              onClick={() => setChatMessages([])}
+              className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 text-gray-500 dark:text-dark-textSecondary flex-shrink-0"
+              title="Clear chat"
+            >
+              <RefreshCw size={16} className="sm:hidden" />
+              <RefreshCw size={18} className="hidden sm:block" />
+            </button>
+          )}
+        </div>
 
-              {/* Messages */}
-              <div
-                ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
-              >
-                {chatMessages.length === 0 && !isChatLoading && (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                    <MessageCircle
-                      size={48}
-                      className="text-gray-400 dark:text-dark-textDisabled mb-4"
-                    />
-                    <h4 className="text-lg font-medium text-gray-700 dark:text-dark-textPrimary mb-2">
-                      Welcome!
-                    </h4>
-                    <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
-                      Ask me about your schedule, goals, notes, or anything else
-                      you need help with.
-                    </p>
-                  </div>
-                )}
+        {/* Chat Input */}
+        <div className="relative">
+          <textarea
+            ref={inputRef}
+            className="w-full p-3 sm:p-4 pr-12 sm:pr-32 resize-none border-2 dark:border-dark-divider rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-dark-secondary dark:text-dark-textPrimary text-sm sm:text-base placeholder-gray-400 dark:placeholder-dark-textDisabled shadow-lg transition-all duration-200"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleChatSubmit();
+              }
+            }}
+            placeholder="Ask anything..."
+            rows={1}
+            disabled={isChatLoading}
+            style={{
+              minHeight: "48px",
+              maxHeight: "200px",
+            }}
+          />
+          <div className="absolute right-1.5 sm:right-2 top-2 sm:top-3 flex items-center gap-1 sm:gap-2">
+            <button
+              className="p-1.5 sm:p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 flex items-center justify-center"
+              onClick={handleChatSubmit}
+              disabled={isChatLoading || !chatInput.trim()}
+              title="Send message"
+            >
+              <CircleArrowUp size={16} className="sm:hidden" />
+              <CircleArrowUp size={20} className="hidden sm:block" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-                <AnimatePresence>
-                  {chatMessages.map((message, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`flex ${
+      {/* Chat Messages Area */}
+      <AnimatePresence>
+        {chatMessages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-4xl mx-auto"
+          >
+            <div ref={chatContainerRef} className="space-y-4 pb-6 sm:pb-8">
+              <AnimatePresence>
+                {chatMessages.map((message, index) => (
+                  <motion.div
+                    key={index}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                    transition={{
+                      opacity: { duration: 0.2 },
+                      layout: {
+                        type: "spring",
+                        bounce: 0.4,
+                        duration: 0.3,
+                      },
+                    }}
+                    style={{
+                      originX: message.role === "user" ? 1 : 0,
+                    }}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
                         message.role === "user"
-                          ? "justify-end"
-                          : "justify-start"
+                          ? "bg-blue-500 text-white"
+                          : message.isError
+                          ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700"
+                          : "bg-gray-200 dark:bg-dark-secondary"
                       }`}
                     >
-                      <div
-                        className={`max-w-[80%] p-3 rounded-2xl ${
-                          message.role === "user"
-                            ? "bg-blue-500 text-white rounded-br-sm"
-                            : message.isError
-                            ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-bl-sm"
-                            : "bg-gray-100 dark:bg-dark-secondary rounded-bl-sm"
-                        }`}
-                      >
-                        <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              p: (props) => (
-                                <p
-                                  {...props}
-                                  className={`mb-2 last:mb-0 ${
-                                    message.isError
-                                      ? "text-red-800 dark:text-red-200"
-                                      : message.role === "user"
-                                      ? "text-white"
-                                      : "text-gray-800 dark:text-dark-textPrimary"
-                                  }`}
-                                />
-                              ),
-                              ul: (props) => (
-                                <ul
-                                  {...props}
-                                  className="mb-2 last:mb-0 pl-4"
-                                />
-                              ),
-                              ol: (props) => (
-                                <ol
-                                  {...props}
-                                  className="mb-2 last:mb-0 pl-4"
-                                />
-                              ),
-                              li: (props) => <li {...props} className="mb-1" />,
-                              code: (props) => (
-                                <code
-                                  {...props}
-                                  className={`px-1 py-0.5 rounded text-xs ${
-                                    message.role === "user"
-                                      ? "bg-blue-600 text-blue-100"
-                                      : "bg-gray-300 dark:bg-dark-background text-gray-800 dark:text-dark-textPrimary"
-                                  }`}
-                                />
-                              ),
-                            }}
+                      <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: (props) => (
+                              <p
+                                {...props}
+                                className={`mb-2 last:mb-0 ${
+                                  message.isError
+                                    ? "text-red-800 dark:text-red-200"
+                                    : ""
+                                }`}
+                              />
+                            ),
+                            ul: (props) => (
+                              <ul {...props} className="mb-2 last:mb-0 pl-4" />
+                            ),
+                            ol: (props) => (
+                              <ol {...props} className="mb-2 last:mb-0 pl-4" />
+                            ),
+                            li: (props) => <li {...props} className="mb-1" />,
+                            code: (props) => (
+                              <code
+                                {...props}
+                                className={`px-1 py-0.5 rounded text-xs ${
+                                  message.role === "user"
+                                    ? "bg-blue-600 text-blue-100"
+                                    : "bg-gray-300 dark:bg-dark-background text-gray-800 dark:text-dark-textPrimary"
+                                }`}
+                              />
+                            ),
+                            pre: (props) => (
+                              <pre
+                                {...props}
+                                className={`p-2 rounded text-xs overflow-x-auto ${
+                                  message.role === "user"
+                                    ? "bg-blue-600"
+                                    : "bg-gray-300 dark:bg-dark-background"
+                                }`}
+                              />
+                            ),
+                            blockquote: (props) => (
+                              <blockquote
+                                {...props}
+                                className={`border-l-2 pl-2 italic ${
+                                  message.role === "user"
+                                    ? "border-blue-300"
+                                    : "border-gray-400 dark:border-dark-divider"
+                                }`}
+                              />
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      {message.isError &&
+                        message.isRetryable &&
+                        message.originalInput && (
+                          <button
+                            onClick={() =>
+                              handleRetryMessage(message.originalInput!)
+                            }
+                            className="mt-2 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-md transition-colors duration-200 flex items-center gap-1"
                           >
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-
-                        {message.isError &&
-                          message.isRetryable &&
-                          message.originalInput && (
-                            <button
-                              onClick={() =>
-                                handleRetryMessage(message.originalInput!)
-                              }
-                              className="mt-2 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-md transition-colors duration-200 flex items-center gap-1"
-                            >
-                              <RefreshCw size={12} />
-                              Retry
-                            </button>
-                          )}
-
-                        {/* Tool calls and context updates */}
-                        {(message.toolCalls?.length ||
-                          message.contextUpdated) && (
-                          <div className="flex flex-col gap-1 mt-2">
-                            {message.toolCalls &&
-                              message.toolCalls.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {message.toolCalls.map(
-                                    (toolCall, toolIndex) => (
-                                      <div
-                                        key={toolIndex}
-                                        className="flex flex-col gap-1"
-                                      >
-                                        <div
-                                          className="flex items-center text-xs text-gray-600 dark:text-dark-textDisabled bg-white dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
-                                          title={`Tool used: ${toolCall.name}`}
-                                        >
-                                          <Eye size={10} className="mr-1" />
-                                          <span>{toolCall.description}</span>
-                                        </div>
-                                        {/* Display note bubbles for bulletin notes */}
-                                        {toolCall.name ===
-                                          "search_bulletin_notes" &&
-                                          toolCall.notes &&
-                                          toolCall.notes.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                              {toolCall.notes.map(
-                                                (note, noteIndex) => (
-                                                  <div
-                                                    key={noteIndex}
-                                                    className="inline-flex items-center text-xs bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-full border border-gray-300 dark:border-dark-divider"
-                                                  >
-                                                    <span className="text-gray-600 dark:text-dark-textSecondary mr-1">
-                                                      Read
-                                                    </span>
-                                                    <a
-                                                      href={`/bulletin?noteId=${note.id}`}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
-                                                      title={`Read ${note.title}`}
-                                                    >
-                                                      {note.title}
-                                                    </a>
-                                                  </div>
-                                                )
-                                              )}
-                                            </div>
-                                          )}
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              )}
-                            {message.contextUpdated && (
-                              <button
-                                className="flex items-center text-xs text-gray-600 dark:text-dark-textDisabled hover:text-gray-800 dark:hover:text-dark-textPrimary transition-colors duration-200"
-                                title="Click to see context changes"
-                                onClick={() => {
-                                  if (message.contextChange) {
-                                    setContextDiffModal({
-                                      isOpen: true,
-                                      before: message.contextChange.before,
-                                      after: message.contextChange.after,
-                                    });
-                                  }
-                                }}
+                            <RefreshCw size={12} />
+                            Retry
+                          </button>
+                        )}
+                      <div className="flex flex-col gap-1 mt-2">
+                        {message.toolCalls && message.toolCalls.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {message.toolCalls.map((toolCall, toolIndex) => (
+                              <div
+                                key={toolIndex}
+                                className="flex flex-col gap-1"
                               >
-                                <UserPen size={10} className="mr-1" />
-                                <span>Context Updated</span>
-                              </button>
-                            )}
+                                <div
+                                  className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
+                                  title={`Tool used: ${toolCall.name}`}
+                                >
+                                  <Eye size={10} className="mr-1" />
+                                  <span>{toolCall.description}</span>
+                                </div>
+                                {/* Display note bubbles for bulletin notes */}
+                                {toolCall.name === "search_bulletin_notes" &&
+                                  toolCall.notes &&
+                                  toolCall.notes.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {toolCall.notes.map((note, noteIndex) => (
+                                        <div
+                                          key={noteIndex}
+                                          className="inline-flex items-center text-xs bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-full border border-gray-300 dark:border-dark-divider"
+                                        >
+                                          <span className="text-gray-600 dark:text-dark-textSecondary mr-1">
+                                            Read
+                                          </span>
+                                          <a
+                                            href={`/bulletin?noteId=${note.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
+                                            title={`Read ${note.title}`}
+                                          >
+                                            {note.title}
+                                          </a>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                              </div>
+                            ))}
                           </div>
                         )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {isChatLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-start"
-                  >
-                    <div className="p-3 rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-dark-secondary">
-                      <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        {message.contextUpdated && (
+                          <button
+                            className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+                            title="Click to see context changes"
+                            onClick={() => {
+                              if (message.contextChange) {
+                                setContextDiffModal({
+                                  isOpen: true,
+                                  before: message.contextChange.before,
+                                  after: message.contextChange.after,
+                                });
+                              }
+                            }}
+                          >
+                            <UserPen size={12} className="mr-1" />
+                            <span>Context Updated</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
-                )}
-              </div>
+                ))}
+              </AnimatePresence>
 
-              {/* Input */}
-              <div className="p-4 border-t dark:border-dark-divider">
-                <div className="relative">
-                  <textarea
-                    className="w-full p-3 pr-12 resize-none border dark:border-dark-divider rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent dark:text-dark-textPrimary text-sm placeholder-gray-400 dark:placeholder-dark-textDisabled"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleChatSubmit();
-                      }
-                    }}
-                    placeholder="Ask me anything..."
-                    rows={2}
-                    disabled={isChatLoading}
-                  />
-                  <button
-                    className="absolute bottom-2 right-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover text-blue-500 dark:text-blue-400 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleChatSubmit}
-                    disabled={isChatLoading || !chatInput.trim()}
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
                   >
-                    <CircleArrowUp size={20} />
-                  </button>
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </motion.div>
                 </div>
-              </div>
-            </motion.div>
-          </>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Context Diff Modal */}
       {contextDiffModal.isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setContextDiffModal({ isOpen: false, before: "", after: "" });
@@ -615,50 +605,51 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
           }}
         >
           <div
-            className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center p-6 border-b dark:border-dark-divider">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b dark:border-dark-divider">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-dark-textPrimary">
                 Context Changes
               </h2>
               <button
                 onClick={() =>
                   setContextDiffModal({ isOpen: false, before: "", after: "" })
                 }
-                className="text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary"
+                className="text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary p-1"
               >
-                <X size={24} />
+                <X size={20} className="sm:hidden" />
+                <X size={24} className="hidden sm:block" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-180px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-3 sm:p-6 overflow-y-auto max-h-[calc(90vh-140px)] sm:max-h-[calc(80vh-180px)]">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
-                    <span className="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
+                    <span className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full mr-2"></span>
                     Before
                   </h3>
-                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[200px] max-h-[calc(80vh-260px)] overflow-y-auto border">
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[150px] sm:min-h-[200px] max-h-[calc(90vh-200px)] sm:max-h-[calc(80vh-260px)] overflow-y-auto border">
                     {contextDiffModal.before || "No previous context"}
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-3 flex items-center">
-                    <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                  <h3 className="font-medium text-gray-900 dark:text-dark-textPrimary mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
+                    <span className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full mr-2"></span>
                     After
                   </h3>
-                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-4 text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[200px] max-h-[calc(80vh-260px)] overflow-y-auto border">
+                  <div className="bg-gray-50 dark:bg-dark-secondary rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-gray-700 dark:text-dark-textSecondary whitespace-pre-wrap min-h-[150px] sm:min-h-[200px] max-h-[calc(90vh-200px)] sm:max-h-[calc(80vh-260px)] overflow-y-auto border">
                     {contextDiffModal.after}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex justify-end items-center p-6 border-t dark:border-dark-divider gap-3">
+            <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center p-4 sm:p-6 border-t dark:border-dark-divider gap-2 sm:gap-3">
               <button
                 onClick={() =>
                   setContextDiffModal({ isOpen: false, before: "", after: "" })
                 }
-                className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:text-dark-textPrimary dark:hover:bg-dark-hover transition"
+                className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:text-dark-textPrimary dark:hover:bg-dark-hover transition text-sm sm:text-base"
               >
                 Close
               </button>
@@ -689,7 +680,7 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
                     console.error("Failed to revert schedule context", error);
                   }
                 }}
-                className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition"
+                className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 transition text-sm sm:text-base"
               >
                 Reject Change
               </button>
@@ -698,7 +689,7 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
         </div>
       )}
 
-      {/* Add typing indicator styles and prevent scrollbar flicker */}
+      {/* Typing indicator styles */}
       <style jsx global>{`
         .typing-indicator {
           display: flex;
@@ -727,33 +718,6 @@ export default function DashboardChat({ userId }: DashboardChatProps) {
           30% {
             transform: translateY(-10px);
           }
-        }
-
-        /* Prevent scrollbar flicker during animations */
-        body {
-          scrollbar-gutter: stable;
-          overflow-x: hidden;
-        }
-
-        /* Ensure smooth transitions without scrollbar jumps */
-        @media (max-width: 768px) {
-          body.chat-open {
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-          }
-        }
-
-        /* Prevent horizontal scroll during chat animations */
-        html,
-        body {
-          overflow-x: hidden;
-        }
-
-        /* Ensure chat panel doesn't cause horizontal overflow */
-        .chat-panel-container {
-          overflow-x: hidden;
-          max-width: 100vw;
         }
       `}</style>
     </>

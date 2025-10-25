@@ -501,30 +501,40 @@ export default function BulletinDynamic({
           // Typed columns branch
           if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
             const columns = cfg.columns as TableColumnSpec[];
-            const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
+            const tableRows: any[] = Array.isArray(currentValue)
+              ? currentValue
+              : [];
 
             let newRow: Record<string, any> = {};
-            if (action.value && typeof action.value === "object" && !Array.isArray(action.value)) {
+            if (
+              action.value &&
+              typeof action.value === "object" &&
+              !Array.isArray(action.value)
+            ) {
               // Partial row object provided
               for (const col of columns) {
-                newRow[col.key] = (action.value as any)[col.key] ?? defaultValueForColumn(col);
+                newRow[col.key] =
+                  (action.value as any)[col.key] ?? defaultValueForColumn(col);
               }
             } else if (action.value && Array.isArray(action.value)) {
               // Array of cell values provided; map by index
               newRow = {};
               columns.forEach((col, idx) => {
-                newRow[col.key] = action.value[idx] ?? defaultValueForColumn(col);
+                newRow[col.key] =
+                  action.value[idx] ?? defaultValueForColumn(col);
               });
             } else if (typeof action.value === "string") {
               // Put provided string into first column, rest defaults
               newRow = {} as Record<string, any>;
               columns.forEach((col, idx) => {
-                newRow[col.key] = idx === 0 ? action.value : defaultValueForColumn(col);
+                newRow[col.key] =
+                  idx === 0 ? action.value : defaultValueForColumn(col);
               });
             } else {
               // All defaults
               newRow = {};
-              for (const col of columns) newRow[col.key] = defaultValueForColumn(col);
+              for (const col of columns)
+                newRow[col.key] = defaultValueForColumn(col);
             }
 
             newValue = [...tableRows, newRow];
@@ -534,12 +544,19 @@ export default function BulletinDynamic({
             const tableData = Array.isArray(currentValue) ? currentValue : [];
             let newRow;
             if (action.value && Array.isArray(action.value)) {
-              newRow = Array.from({ length: cols }, (_, i) => action.value[i] || "");
+              newRow = Array.from(
+                { length: cols },
+                (_, i) => action.value[i] || ""
+              );
             } else if (action.value && typeof action.value === "string") {
-              newRow = Array.from({ length: cols }, (_, i) => (i === 0 ? action.value : ""));
+              newRow = Array.from({ length: cols }, (_, i) =>
+                i === 0 ? action.value : ""
+              );
             } else {
               const today = new Date().toISOString().split("T")[0];
-              newRow = Array.from({ length: cols }, (_, i) => (i === 0 ? today : ""));
+              newRow = Array.from({ length: cols }, (_, i) =>
+                i === 0 ? today : ""
+              );
             }
             newValue = [...tableData, newRow];
           }
@@ -560,8 +577,15 @@ export default function BulletinDynamic({
           if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
             const columns = cfg.columns as TableColumnSpec[];
             const newKeyBase = "col" + (columns.length + 1);
-            const newKey = uniqueColumnKey(newKeyBase, new Set(columns.map((c) => c.key)));
-            const newCol: TableColumnSpec = { key: newKey, header: `Column ${columns.length + 1}`, type: "text" };
+            const newKey = uniqueColumnKey(
+              newKeyBase,
+              new Set(columns.map((c) => c.key))
+            );
+            const newCol: TableColumnSpec = {
+              key: newKey,
+              header: `Column ${columns.length + 1}`,
+              type: "text",
+            };
 
             const newColumns = [...columns, newCol];
             // Update schema columns
@@ -569,15 +593,23 @@ export default function BulletinDynamic({
               ...schema,
               components: schema.components.map((comp) =>
                 comp.id === action.targetComponentId
-                  ? { ...comp, config: { ...(comp.config || {}), columns: newColumns } }
+                  ? {
+                      ...comp,
+                      config: { ...(comp.config || {}), columns: newColumns },
+                    }
                   : comp
               ),
             };
             setSchema(newSchema);
 
             // Add default value for new column to each row
-            const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
-            newValue = tableRows.map((row) => ({ ...(row || {}), [newKey]: "" }));
+            const tableRows: any[] = Array.isArray(currentValue)
+              ? currentValue
+              : [];
+            newValue = tableRows.map((row) => ({
+              ...(row || {}),
+              [newKey]: "",
+            }));
           } else {
             // Legacy
             const tableData = Array.isArray(currentValue) ? currentValue : [[]];
@@ -608,12 +640,17 @@ export default function BulletinDynamic({
                 ...schema,
                 components: schema.components.map((comp) =>
                   comp.id === action.targetComponentId
-                    ? { ...comp, config: { ...(comp.config || {}), columns: newColumns } }
+                    ? {
+                        ...comp,
+                        config: { ...(comp.config || {}), columns: newColumns },
+                      }
                     : comp
                 ),
               };
               setSchema(newSchema);
-              const tableRows: any[] = Array.isArray(currentValue) ? currentValue : [];
+              const tableRows: any[] = Array.isArray(currentValue)
+                ? currentValue
+                : [];
               newValue = tableRows.map((row) => {
                 const { [removedKey]: _omit, ...rest } = row || {};
                 return rest;
@@ -682,7 +719,8 @@ export default function BulletinDynamic({
           if (Array.isArray(cfg.columns) && cfg.columns.length > 0) {
             const columns = cfg.columns as TableColumnSpec[];
             const blankRow: Record<string, any> = {};
-            for (const col of columns) blankRow[col.key] = defaultValueForColumn(col);
+            for (const col of columns)
+              blankRow[col.key] = defaultValueForColumn(col);
             newValue = [blankRow];
           } else {
             const { cols } = cfg || { cols: 4 };
@@ -1005,7 +1043,7 @@ export default function BulletinDynamic({
                 value={value}
                 onChange={(e) => handleDataChange(component.id, e.target.value)}
                 placeholder={component.placeholder}
-                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
+                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
               />
             </div>
           </div>
@@ -1024,7 +1062,7 @@ export default function BulletinDynamic({
                 onChange={(e) => handleDataChange(component.id, e.target.value)}
                 placeholder={component.placeholder}
                 rows={4}
-                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md resize-y min-h-[100px]"
+                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md resize-y min-h-[100px]"
               />
             </div>
           </div>
@@ -1051,7 +1089,7 @@ export default function BulletinDynamic({
                   )
                 }
                 placeholder={component.placeholder}
-                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
+                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
               />
             </div>
           </div>
@@ -1069,7 +1107,7 @@ export default function BulletinDynamic({
                 type="date"
                 value={value}
                 onChange={(e) => handleDataChange(component.id, e.target.value)}
-                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
+                className="w-full px-4 py-3 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
               />
             </div>
           </div>
@@ -1167,21 +1205,32 @@ export default function BulletinDynamic({
         const columns: TableColumnSpec[] =
           existingColumns && existingColumns.length > 0
             ? existingColumns
-            : Array.from({ length: Math.max(1, tableConfig.cols || 3) }, (
-                _,
-                i
-              ): TableColumnSpec => ({
-                key: `col${i + 1}`,
-                header: `Column ${i + 1}`,
-                type: "text" as TableCellType,
-              }));
+            : Array.from(
+                { length: Math.max(1, tableConfig.cols || 3) },
+                (_, i): TableColumnSpec => ({
+                  key: `col${i + 1}`,
+                  header: `Column ${i + 1}`,
+                  type: "text" as TableCellType,
+                })
+              );
         const columnKeys = columns.map((c) => c.key);
 
         // Ensure data is an array of row objects keyed by column key
         let rowObjects: Record<string, any>[];
         if (!Array.isArray(value)) {
-          rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
-        } else if (value.length > 0 && typeof value[0] === "object" && !Array.isArray(value[0])) {
+          rowObjects = [
+            Object.fromEntries(
+              columnKeys.map((k) => [
+                k,
+                defaultValueForColumn(columns.find((c) => c.key === k)!),
+              ])
+            ),
+          ];
+        } else if (
+          value.length > 0 &&
+          typeof value[0] === "object" &&
+          !Array.isArray(value[0])
+        ) {
           // Normalize rows to include all keys
           rowObjects = (value as any[]).map((rowObj: any) => {
             const norm: Record<string, any> = {};
@@ -1192,7 +1241,14 @@ export default function BulletinDynamic({
             return norm;
           });
           if (rowObjects.length === 0) {
-            rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
+            rowObjects = [
+              Object.fromEntries(
+                columnKeys.map((k) => [
+                  k,
+                  defaultValueForColumn(columns.find((c) => c.key === k)!),
+                ])
+              ),
+            ];
           }
         } else {
           // Legacy array-of-arrays present but we now have typed columns: convert
@@ -1207,7 +1263,14 @@ export default function BulletinDynamic({
             return obj;
           });
           if (rowObjects.length === 0) {
-            rowObjects = [Object.fromEntries(columnKeys.map((k) => [k, defaultValueForColumn(columns.find((c) => c.key === k)!)]))];
+            rowObjects = [
+              Object.fromEntries(
+                columnKeys.map((k) => [
+                  k,
+                  defaultValueForColumn(columns.find((c) => c.key === k)!),
+                ])
+              ),
+            ];
           }
         }
 
@@ -1226,7 +1289,8 @@ export default function BulletinDynamic({
 
         const addRow = () => {
           const newRow: Record<string, any> = {};
-          for (const col of columns) newRow[col.key] = defaultValueForColumn(col);
+          for (const col of columns)
+            newRow[col.key] = defaultValueForColumn(col);
           handleDataChange(component.id, [...rowObjects, newRow]);
         };
 
@@ -1248,12 +1312,21 @@ export default function BulletinDynamic({
             ...schema,
             components: schema.components.map((comp) =>
               comp.id === component.id
-                ? { ...comp, config: { ...(component.config || {}), columns: newColumns } }
+                ? {
+                    ...comp,
+                    config: {
+                      ...(component.config || {}),
+                      columns: newColumns,
+                    },
+                  }
                 : comp
             ),
           };
           setSchema(newSchema);
-          const updatedRows = rowObjects.map((row) => ({ ...row, [newKey]: "" }));
+          const updatedRows = rowObjects.map((row) => ({
+            ...row,
+            [newKey]: "",
+          }));
           handleDataChange(component.id, updatedRows);
         };
 
@@ -1265,7 +1338,13 @@ export default function BulletinDynamic({
             ...schema,
             components: schema.components.map((comp) =>
               comp.id === component.id
-                ? { ...comp, config: { ...(component.config || {}), columns: newColumns } }
+                ? {
+                    ...comp,
+                    config: {
+                      ...(component.config || {}),
+                      columns: newColumns,
+                    },
+                  }
                 : comp
             ),
           };
@@ -1317,7 +1396,11 @@ export default function BulletinDynamic({
                               value: row[col.key],
                               currentRows,
                               onChange: (newVal: any) =>
-                                handleTypedCellChange(rowIndex, col.key, newVal),
+                                handleTypedCellChange(
+                                  rowIndex,
+                                  col.key,
+                                  newVal
+                                ),
                             })}
                           </td>
                         ))}
@@ -1497,7 +1580,7 @@ export default function BulletinDynamic({
                       handleComponentLabelChange(component.id, e.target.value)
                     }
                     placeholder="Button text..."
-                    className="w-full px-4 py-3 bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
+                    className="w-full px-4 py-3 bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
                   />
                 </div>
                 <div>
@@ -1514,7 +1597,7 @@ export default function BulletinDynamic({
                       )
                     }
                     placeholder="Describe what this button does..."
-                    className="w-full px-4 py-3 bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
+                    className="w-full px-4 py-3 bg-white dark:bg-dark-background border border-gray-200 dark:border-dark-divider rounded-lg text-gray-900 dark:text-dark-textPrimary placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary transition-all duration-200 hover:border-gray-300 dark:hover:border-dark-divider focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/20 focus:border-green-500 dark:focus:border-green-400 shadow-sm hover:shadow-md focus:shadow-md"
                   />
                 </div>
               </div>
@@ -1522,7 +1605,7 @@ export default function BulletinDynamic({
               <div className="h-full flex flex-col justify-center items-start">
                 <button
                   onClick={() => handleButtonAction(action)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:hover:bg-dark-actionHover text-gray-700 dark:text-dark-textPrimary rounded-lg transition-all duration-200 font-medium border border-gray-200 dark:border-dark-divider hover:border-gray-300 dark:hover:border-gray-600 shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:hover:bg-dark-actionHover text-gray-700 dark:text-dark-textPrimary rounded-lg transition-all duration-200 font-medium border border-gray-200 dark:border-dark-divider hover:border-gray-300 dark:hover:border-dark-divider shadow-sm hover:shadow-md"
                 >
                   <MousePointer className="w-3.5 h-3.5 text-gray-500 dark:text-dark-textSecondary" />
                   {component.label}
@@ -1573,7 +1656,15 @@ export default function BulletinDynamic({
     currentRows: number;
     onChange: (newVal: any) => void;
   }) {
-    const { componentId, rowIndex, colIndex, column, value, currentRows, onChange } = args;
+    const {
+      componentId,
+      rowIndex,
+      colIndex,
+      column,
+      value,
+      currentRows,
+      onChange,
+    } = args;
     const commonClasses =
       "w-full h-14 px-6 py-4 bg-transparent text-gray-800 dark:text-dark-textPrimary border-none outline-none transition-all duration-200 placeholder:text-gray-400 dark:placeholder:text-dark-textSecondary font-medium hover:bg-blue-50 dark:hover:bg-dark-actionHover focus:bg-green-50 dark:focus:bg-dark-actionSelected focus:ring-2 focus:ring-green-500/20 dark:focus:ring-green-400/30 focus:ring-inset group-hover/cell:shadow-inner";
 
@@ -1603,11 +1694,19 @@ export default function BulletinDynamic({
           className={`${commonClasses} pr-8`}
           data-table-cell={dataAttr}
         >
-          <option value="" disabled className="text-gray-500 dark:text-dark-textDisabled bg-white dark:bg-dark-secondary">
+          <option
+            value=""
+            disabled
+            className="text-gray-500 dark:text-dark-textDisabled bg-white dark:bg-dark-secondary"
+          >
             {placeholder}
           </option>
           {options.map((opt) => (
-            <option key={opt} value={opt} className="text-gray-900 dark:text-dark-textPrimary bg-white dark:bg-dark-secondary">
+            <option
+              key={opt}
+              value={opt}
+              className="text-gray-900 dark:text-dark-textPrimary bg-white dark:bg-dark-secondary"
+            >
               {opt}
             </option>
           ))}
@@ -1632,11 +1731,15 @@ export default function BulletinDynamic({
         <input
           type="number"
           value={value ?? ""}
-          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? "" : Number(e.target.value))
+          }
           placeholder={placeholder}
           className={commonClasses}
           data-table-cell={dataAttr}
-          onKeyDown={(e) => handleCellNav(e, colIndex, rowIndex, currentRows, componentId)}
+          onKeyDown={(e) =>
+            handleCellNav(e, colIndex, rowIndex, currentRows, componentId)
+          }
         />
       );
     }
@@ -1650,13 +1753,17 @@ export default function BulletinDynamic({
         placeholder={placeholder}
         className={commonClasses}
         data-table-cell={dataAttr}
-        onKeyDown={(e) => handleCellNav(e, colIndex, rowIndex, currentRows, componentId)}
+        onKeyDown={(e) =>
+          handleCellNav(e, colIndex, rowIndex, currentRows, componentId)
+        }
       />
     );
   }
 
   function handleCellNav(
-    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    e: React.KeyboardEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
     colIndex: number,
     rowIndex: number,
     currentRows: number,

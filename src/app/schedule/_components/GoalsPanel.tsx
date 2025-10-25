@@ -12,6 +12,7 @@ import {
   Plus,
   Loader2,
   Clock,
+  GripVertical,
 } from "lucide-react";
 import GoalCard from "./GoalCard";
 import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
@@ -94,6 +95,7 @@ export default function GoalsPanel({
   const [dateTimePickerItemId, setDateTimePickerItemId] = useState<
     string | null
   >(null);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -755,6 +757,69 @@ export default function GoalsPanel({
     setSelectedTodoId(todoBulletins[nextIndex].id);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItem(itemId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedItem || draggedItem === targetId || !selectedTodoId) return;
+
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const draggedIndex = selectedTodo.data.items.findIndex(
+      (item) => item.id === draggedItem
+    );
+    const targetIndex = selectedTodo.data.items.findIndex(
+      (item) => item.id === targetId
+    );
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newItems = [...selectedTodo.data.items];
+    const [draggedItemData] = newItems.splice(draggedIndex, 1);
+
+    // Get the target item's date
+    const targetItem = selectedTodo.data.items[targetIndex];
+
+    // Update the dragged item's date to match the target's date section
+    const updatedDraggedItem = {
+      ...draggedItemData,
+      dueDate: targetItem.dueDate,
+    };
+
+    // If the dragged item had a linked event and the date changed, delete the old event
+    if (
+      draggedItemData.linkedEventId &&
+      draggedItemData.dueDate !== targetItem.dueDate
+    ) {
+      deleteEvent(draggedItemData.linkedEventId);
+      updatedDraggedItem.linkedEventId = undefined;
+      updatedDraggedItem.dueTime = undefined;
+    }
+
+    newItems.splice(targetIndex, 0, updatedDraggedItem);
+
+    // Update local state immediately
+    setTodoBulletins((prev) =>
+      prev.map((todo) =>
+        todo.id === selectedTodoId
+          ? { ...todo, data: { items: newItems }, updatedAt: new Date() }
+          : todo
+      )
+    );
+
+    setDraggedItem(null);
+  };
+
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
@@ -1061,7 +1126,7 @@ export default function GoalsPanel({
         )}
 
         {/* Todo Items Container (scrollable) */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           {selectedTodo.data.items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <div className="text-gray-400 dark:text-dark-textSecondary mb-4">
@@ -1080,7 +1145,7 @@ export default function GoalsPanel({
               {/* Add Item Button */}
               <button
                 onClick={() => addTodoItem()}
-                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm mb-3"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary transition-all duration-150 group w-full text-left text-sm mb-3"
                 aria-label="Add new todo item"
               >
                 <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -1106,8 +1171,15 @@ export default function GoalsPanel({
                     {itemsInGroup.map((item) => (
                       <div
                         key={item.id}
-                        className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item.id)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, item.id)}
+                        className={`group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 min-w-0 ${
+                          draggedItem === item.id ? "opacity-50" : ""
+                        }`}
                       >
+                        <GripVertical className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0" />
                         <button
                           onClick={() =>
                             updateTodoItem(item.id, { checked: true })
@@ -1117,7 +1189,7 @@ export default function GoalsPanel({
                         >
                           <Circle className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
                         </button>
-                        <div className="flex-grow flex items-center gap-2">
+                        <div className="flex-grow flex items-center gap-2 min-w-0">
                           <textarea
                             ref={(el) => {
                               if (el) textareaRefs.current[item.id] = el;
@@ -1144,7 +1216,7 @@ export default function GoalsPanel({
                               }
                             }}
                             placeholder="Write a task..."
-                            className="flex-1 bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5"
+                            className="flex-1 bg-transparent focus:outline-none dark:text-dark-textPrimary placeholder-gray-400 dark:placeholder-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
                             style={{ minHeight: "20px" }}
                           />
                           {item.dueTime && (
@@ -1167,7 +1239,7 @@ export default function GoalsPanel({
                         />
                         <button
                           onClick={() => removeTodoItem(item.id)}
-                          className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                          className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
                           aria-label="Delete item"
                         >
                           <X className="w-3 h-3" />
@@ -1191,7 +1263,7 @@ export default function GoalsPanel({
                   {checkedItems.map((item) => (
                     <div
                       key={item.id}
-                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150"
+                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150 min-w-0"
                     >
                       <button
                         onClick={() =>
@@ -1202,8 +1274,8 @@ export default function GoalsPanel({
                       >
                         <CheckCircle className="w-4 h-4 text-green-500" />
                       </button>
-                      <div className="flex-grow flex items-center">
-                        <div className="flex items-center gap-2 w-full">
+                      <div className="flex-grow flex items-center min-w-0">
+                        <div className="flex items-center gap-2 w-full min-w-0">
                           <textarea
                             ref={(el) => {
                               if (el) textareaRefs.current[item.id] = el;
@@ -1216,7 +1288,7 @@ export default function GoalsPanel({
                                 Math.max(20, e.target.scrollHeight) + "px";
                               updateTodoItem(item.id, { text: e.target.value });
                             }}
-                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5"
+                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
                             style={{ minHeight: "20px" }}
                           />
                           {item.dueDate && (
@@ -1237,7 +1309,7 @@ export default function GoalsPanel({
                       </div>
                       <button
                         onClick={() => removeTodoItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
                         aria-label="Delete item"
                       >
                         <X className="w-3 h-3" />
