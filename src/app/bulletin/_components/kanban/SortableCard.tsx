@@ -235,7 +235,7 @@ export function SortableCard({
         {/* Expand/Collapse Button */}
         <button
           onClick={onToggleExpanded}
-          className="w-full text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2"
+          className="w-full text-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-dark-textPrimary mt-2"
         >
           {isExpanded ? "Less" : "More"}
         </button>

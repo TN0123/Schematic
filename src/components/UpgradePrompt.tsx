@@ -73,7 +73,7 @@ export default function UpgradePrompt({
       <div className="relative w-full max-w-md rounded-lg bg-white dark:bg-dark-secondary p-6 shadow-xl">
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-dark-textPrimary"
         >
           <X size={20} />
         </button>

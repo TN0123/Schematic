@@ -192,7 +192,7 @@ export function DiffChangeHandler({
           <button
             onClick={handleAcceptAll}
             disabled={isStreaming}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 dark:bg-dark-secondary text-gray-700 dark:text-dark-textPrimary text-xs font-medium rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors border border-gray-200 dark:border-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 dark:bg-dark-secondary text-gray-700 dark:text-dark-textPrimary text-xs font-medium rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors border border-gray-200 dark:border-dark-divider disabled:opacity-50 disabled:cursor-not-allowed"
             title="Accept all changes"
           >
             <CheckCheck className="w-3.5 h-3.5" />
@@ -201,7 +201,7 @@ export function DiffChangeHandler({
           <button
             onClick={handleRejectAll}
             disabled={isStreaming}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 dark:bg-dark-secondary text-gray-700 dark:text-dark-textPrimary text-xs font-medium rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors border border-gray-200 dark:border-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 dark:bg-dark-secondary text-gray-700 dark:text-dark-textPrimary text-xs font-medium rounded-full hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors border border-gray-200 dark:border-dark-divider disabled:opacity-50 disabled:cursor-not-allowed"
             title="Reject all changes"
           >
             <XCircle className="w-3.5 h-3.5" />

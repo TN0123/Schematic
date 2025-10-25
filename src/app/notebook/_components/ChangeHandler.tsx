@@ -231,14 +231,14 @@ export function ChangeHandler({
           <button
             onClick={handleAcceptAll}
             disabled={isStreaming}
-            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-dark-divider shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Accept All
           </button>
           <button
             onClick={handleRejectAll}
             disabled={isStreaming}
-            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-gray-700/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-1 py-2 bg-white/80 dark:bg-dark-secondary backdrop-blur-sm text-gray-600 rounded-sm dark:text-dark-textSecondary text-xs hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors duration-200 border border-gray-200 dark:border-dark-divider shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reject All
           </button>

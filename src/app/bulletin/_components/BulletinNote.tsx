@@ -143,7 +143,11 @@ export default function BulletinNote({
         HTMLAttributes: {
           class: "event-mention-suggestion",
         },
-        onEventHover: (eventText: string, range: { from: number; to: number }, element: HTMLElement) => {
+        onEventHover: (
+          eventText: string,
+          range: { from: number; to: number },
+          element: HTMLElement
+        ) => {
           const rect = element.getBoundingClientRect();
           setEventPopupData({
             text: eventText,
@@ -201,7 +205,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("bold")
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <Bold className="h-4 w-4" />
@@ -215,7 +219,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("italic")
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <Italic className="h-4 w-4" />
@@ -229,7 +233,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("underline")
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <UnderlineIcon className="h-4 w-4" />
@@ -244,7 +248,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "left" })
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <AlignLeft className="h-4 w-4" />
@@ -258,7 +262,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "center" })
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <AlignCenter className="h-4 w-4" />
@@ -272,7 +276,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive({ textAlign: "right" })
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <AlignRight className="h-4 w-4" />
@@ -287,7 +291,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("bulletList")
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <List className="h-4 w-4" />
@@ -301,7 +305,7 @@ export default function BulletinNote({
           className={`p-1.5 rounded-md transition-colors ${
             editor.isActive("orderedList")
               ? "bg-gray-200 dark:bg-dark-actionSelected text-gray-800 dark:text-dark-textPrimary"
-              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-neutral-800 hover:text-gray-700 dark:hover:text-dark-accent"
+              : "text-gray-500 dark:text-dark-textPrimary hover:bg-gray-100 dark:hover:bg-dark-actionHover hover:text-gray-700 dark:hover:text-dark-textPrimary"
           }`}
         >
           <ListOrdered className="h-4 w-4" />
@@ -374,27 +378,30 @@ export default function BulletinNote({
   }, [hasUnsavedChanges, handleSave]);
 
   // Handle event creation from popup
-  const handleCreateEvent = useCallback(async (eventData: { title: string; start: Date; end: Date }) => {
-    try {
-      const response = await fetch("/api/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventData),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to create event");
+  const handleCreateEvent = useCallback(
+    async (eventData: { title: string; start: Date; end: Date }) => {
+      try {
+        const response = await fetch("/api/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(eventData),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create event");
+        }
+
+        // Event created successfully - the popup will handle showing success message
+        // and closing itself
+      } catch (error) {
+        console.error("Error creating event:", error);
+        throw error;
       }
-      
-      // Event created successfully - the popup will handle showing success message
-      // and closing itself
-    } catch (error) {
-      console.error("Error creating event:", error);
-      throw error;
-    }
-  }, []);
+    },
+    []
+  );
 
   return (
     <div className="w-full h-full dark:bg-dark-background transition-all flex flex-col">
@@ -429,7 +436,7 @@ export default function BulletinNote({
             <button
               onClick={handleSave}
               disabled={isSaving || externalIsSaving}
-              className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-accent dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded-lg transition-colors text-gray-500 hover:text-gray-800 dark:hover:text-dark-textPrimary dark:hover:bg-dark-hover disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Save changes"
             >
               {isSaving || externalIsSaving ? (
@@ -460,7 +467,7 @@ export default function BulletinNote({
           }
         />
       </div>
-      
+
       {/* Event Mention Popup */}
       {showEventPopup && eventPopupData && session?.user?.id && (
         <EventMentionPopup
@@ -475,8 +482,6 @@ export default function BulletinNote({
           visible={showEventPopup}
         />
       )}
-      
-
     </div>
   );
 }

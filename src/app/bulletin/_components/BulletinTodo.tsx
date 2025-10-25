@@ -624,7 +624,7 @@ export default function BulletinTodo({
           {items.length > 0 && (
             <button
               onClick={() => addItem()}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group mb-4"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary transition-all duration-150 group mb-4"
               aria-label="Add new todo item"
             >
               <div className="flex items-center gap-2">
@@ -724,7 +724,7 @@ export default function BulletinTodo({
                             />
                             <button
                               onClick={() => removeItem(item.id)}
-                              className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
+                              className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary mt-0.5"
                               aria-label="Delete item"
                             >
                               <X className="w-4 h-4" />
@@ -796,7 +796,7 @@ export default function BulletinTodo({
                   </div>
                   <button
                     onClick={() => removeItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300 mt-0.5"
+                    className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary mt-0.5"
                     aria-label="Delete item"
                   >
                     <X className="w-4 h-4" />

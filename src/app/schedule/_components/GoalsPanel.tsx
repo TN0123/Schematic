@@ -1080,7 +1080,7 @@ export default function GoalsPanel({
               {/* Add Item Button */}
               <button
                 onClick={() => addTodoItem()}
-                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-gray-300 transition-all duration-150 group w-full text-left text-sm mb-3"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary transition-all duration-150 group w-full text-left text-sm mb-3"
                 aria-label="Add new todo item"
               >
                 <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -1167,7 +1167,7 @@ export default function GoalsPanel({
                         />
                         <button
                           onClick={() => removeTodoItem(item.id)}
-                          className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                          className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
                           aria-label="Delete item"
                         >
                           <X className="w-3 h-3" />
@@ -1237,7 +1237,7 @@ export default function GoalsPanel({
                       </div>
                       <button
                         onClick={() => removeTodoItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-gray-300"
+                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
                         aria-label="Delete item"
                       >
                         <X className="w-3 h-3" />
