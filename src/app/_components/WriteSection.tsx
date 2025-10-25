@@ -41,7 +41,7 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
   };
 
   return (
-    <section>
+    <section className="h-auto md:h-full flex flex-col">
       <div className="mb-4">
         <TransitionLink
           href="/notebook"
@@ -51,35 +51,47 @@ export default function WriteSection({ recentDocuments }: WriteSectionProps) {
           Notebook
         </TransitionLink>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <button
-          onClick={handleCreateDocument}
-          disabled={isCreating}
-          className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 flex flex-col items-center justify-center text-center hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out group disabled:opacity-75 disabled:cursor-not-allowed"
-        >
-          <div className="bg-purple-100 dark:bg-purple-900/40 rounded-full p-3 mb-3">
-            {isCreating ? (
-              <Loader2 className="h-8 w-8 text-purple-600 dark:text-purple-400 animate-spin" />
-            ) : (
-              <PlusCircle className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-            )}
-          </div>
-          <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary">
-            {isCreating ? "Creating..." : "New Document"}
-          </h3>
-        </button>
-        {recentDocuments.map((doc) => (
-          <TransitionLink
-            key={doc.id}
-            href={`/notebook/${doc.id}`}
-            className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 flex flex-col justify-between hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out"
+      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 space-y-3 flex-1 flex flex-col min-h-0 md:min-h-0">
+        <div className="flex-1 space-y-3">
+          <button
+            onClick={handleCreateDocument}
+            disabled={isCreating}
+            className="block p-3 rounded-md bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all duration-300 ease-in-out group disabled:opacity-75 disabled:cursor-not-allowed w-full"
           >
-            <FileText className="h-6 w-6 text-gray-400 dark:text-dark-textSecondary mb-2" />
-            <h3 className="font-semibold text-gray-900 dark:text-dark-textPrimary flex-grow">
-              {doc.title}
-            </h3>
-          </TransitionLink>
-        ))}
+            <div className="flex items-center space-x-3">
+              <div className="bg-purple-100 dark:bg-purple-900/40 rounded-full p-1">
+                {isCreating ? (
+                  <Loader2 className="h-4 w-4 text-purple-600 dark:text-purple-400 animate-spin" />
+                ) : (
+                  <PlusCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                )}
+              </div>
+              <span className="font-medium text-gray-900 dark:text-dark-textPrimary">
+                {isCreating ? "Creating..." : "New Document"}
+              </span>
+            </div>
+          </button>
+          {recentDocuments.map((doc) => (
+            <TransitionLink
+              key={doc.id}
+              href={`/notebook/${doc.id}`}
+              className="block p-3 rounded-md bg-gray-50 dark:bg-dark-background hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-300 ease-in-out"
+            >
+              <div className="flex items-center space-x-3">
+                <FileText className="h-5 w-5 text-gray-400 dark:text-dark-textSecondary flex-shrink-0" />
+                <p className="text-gray-800 dark:text-dark-textSecondary truncate">
+                  {doc.title}
+                </p>
+              </div>
+            </TransitionLink>
+          ))}
+        </div>
+        <TransitionLink
+          href="/notebook"
+          className="flex items-center text-purple-600 dark:text-purple-400 text-sm pt-1 hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200"
+        >
+          Go to Notebook →
+        </TransitionLink>
       </div>
     </section>
   );

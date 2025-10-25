@@ -21,10 +21,9 @@ export default function DateTimeDisplay() {
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
+      weekday: "long",
+      month: "long",
       day: "numeric",
-      year: "numeric",
     });
   };
 
@@ -39,23 +38,23 @@ export default function DateTimeDisplay() {
   // Show placeholder during SSR and initial hydration
   if (!isClient || !currentTime) {
     return (
-      <div className="text-right">
-        <div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+      <div className="text-center">
+        <div className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-gray-900 dark:text-dark-textPrimary">
           --:-- --
         </div>
-        <div className="text-base sm:text-lg font-medium text-gray-600 dark:text-dark-textSecondary">
-          --- --- --, ----
+        <div className="text-lg sm:text-xl lg:text-2xl font-medium text-gray-600 dark:text-dark-textSecondary mt-2">
+          --- --- --
         </div>
       </div>
     );
   }
 
   return (
-    <div className="text-right">
-      <div className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-dark-textPrimary">
+    <div className="text-center">
+      <div className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-gray-900 dark:text-dark-textPrimary">
         {formatTime(currentTime)}
       </div>
-      <div className="text-base sm:text-lg font-medium text-gray-600 dark:text-dark-textSecondary">
+      <div className="text-lg sm:text-xl lg:text-2xl font-medium text-gray-600 dark:text-dark-textSecondary mt-2">
         {formatDate(currentTime)}
       </div>
     </div>

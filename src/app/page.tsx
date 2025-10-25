@@ -1,4 +1,4 @@
-import { ClipboardList, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { TransitionLink } from "@/components/utils/TransitionLink";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -7,6 +7,7 @@ import WriteSection from "./_components/WriteSection";
 import DateTimeDisplay from "./_components/DateTimeDisplay";
 import ScheduleSection from "./_components/ScheduleSection";
 import DashboardChat from "./_components/DashboardChat";
+import BulletinSection from "./_components/BulletinSection";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -23,14 +24,14 @@ export default async function Home() {
         prisma.document.findMany({
           where: { userId },
           orderBy: { updatedAt: "desc" },
-          take: 3,
+          take: 5,
           select: { title: true, id: true },
         }),
         prisma.bulletin.findMany({
           where: { userId },
           orderBy: { updatedAt: "desc" },
-          take: 3,
-          select: { title: true, id: true },
+          take: 5,
+          select: { title: true, id: true, type: true },
         }),
         prisma.goal.findMany({
           where: { userId },
@@ -50,62 +51,30 @@ export default async function Home() {
   return (
     <main className="min-h-screen w-full py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background pb-20 md:pb-8">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-10 flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-dark-textPrimary">
-              Dashboard
-            </h1>
-            <p className="text-base sm:text-lg text-gray-600 dark:text-dark-textSecondary mt-1">
-              Welcome back!
-            </p>
-          </div>
+        {/* Centered Date/Time Display */}
+        <div className="mb-16 flex justify-center">
           <DateTimeDisplay />
-        </header>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
+        {/* Three Equal Height Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-96">
+          {/* Notebook Column */}
+          <div className="flex flex-col h-auto md:h-full">
             <WriteSection recentDocuments={recentDocuments} />
-
-            {/* Bulletin Section */}
-            <section>
-              <div className="mb-4">
-                <TransitionLink
-                  href="/bulletin"
-                  className="text-2xl font-semibold flex items-center text-gray-900 dark:text-dark-textPrimary hover:text-green-600 dark:hover:text-green-400 transition-colors duration-300"
-                >
-                  <ClipboardList className="h-6 w-6 mr-3 text-green-500 dark:text-green-400" />
-                  Bulletin
-                </TransitionLink>
-              </div>
-              <div className="bg-white dark:bg-dark-secondary rounded-lg shadow p-4 space-y-3">
-                {bulletinNotes.map((note) => (
-                  <TransitionLink
-                    key={note.id}
-                    href={`/bulletin?noteId=${note.id}`}
-                    className="block p-3 rounded-md bg-gray-50 dark:bg-dark-background hover:bg-gray-100 dark:hover:bg-neutral-800"
-                  >
-                    <p className="text-gray-800 dark:text-dark-textSecondary">
-                      {note.title}
-                    </p>
-                  </TransitionLink>
-                ))}
-                <TransitionLink
-                  href="/bulletin"
-                  className="flex items-center text-green-600 dark:text-green-400 text-sm pt-1 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
-                >
-                  Go to Bulletin →
-                </TransitionLink>
-              </div>
-            </section>
           </div>
 
-          {/* Schedule Section */}
-          <div className="lg:col-span-1">
+          {/* Schedule Column */}
+          <div className="flex flex-col h-auto md:h-full">
             <ScheduleSection
               userId={userId || ""}
               initialGoals={goals}
               initialTotalGoalsCount={totalGoalsCount}
             />
+          </div>
+
+          {/* Bulletin Column */}
+          <div className="flex flex-col h-auto md:h-full">
+            <BulletinSection bulletinNotes={bulletinNotes} />
           </div>
         </div>
       </div>
