@@ -257,7 +257,27 @@ export default function BulletinTodo({
 
     const newItems = [...items];
     const [draggedItemData] = newItems.splice(draggedIndex, 1);
-    newItems.splice(targetIndex, 0, draggedItemData);
+
+    // Get the target item's date
+    const targetItem = items[targetIndex];
+
+    // Update the dragged item's date to match the target's date section
+    const updatedDraggedItem = {
+      ...draggedItemData,
+      dueDate: targetItem.dueDate,
+    };
+
+    // If the dragged item had a linked event and the date changed, delete the old event
+    if (
+      draggedItemData.linkedEventId &&
+      draggedItemData.dueDate !== targetItem.dueDate
+    ) {
+      deleteEvent(draggedItemData.linkedEventId);
+      updatedDraggedItem.linkedEventId = undefined;
+      updatedDraggedItem.dueTime = undefined;
+    }
+
+    newItems.splice(targetIndex, 0, updatedDraggedItem);
 
     setItems(newItems);
     setDraggedItem(null);

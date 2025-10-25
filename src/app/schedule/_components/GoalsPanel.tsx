@@ -12,6 +12,7 @@ import {
   Plus,
   Loader2,
   Clock,
+  GripVertical,
 } from "lucide-react";
 import GoalCard from "./GoalCard";
 import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
@@ -94,6 +95,7 @@ export default function GoalsPanel({
   const [dateTimePickerItemId, setDateTimePickerItemId] = useState<
     string | null
   >(null);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -755,6 +757,69 @@ export default function GoalsPanel({
     setSelectedTodoId(todoBulletins[nextIndex].id);
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItem(itemId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedItem || draggedItem === targetId || !selectedTodoId) return;
+
+    const selectedTodo = todoBulletins.find((t) => t.id === selectedTodoId);
+    if (!selectedTodo) return;
+
+    const draggedIndex = selectedTodo.data.items.findIndex(
+      (item) => item.id === draggedItem
+    );
+    const targetIndex = selectedTodo.data.items.findIndex(
+      (item) => item.id === targetId
+    );
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newItems = [...selectedTodo.data.items];
+    const [draggedItemData] = newItems.splice(draggedIndex, 1);
+
+    // Get the target item's date
+    const targetItem = selectedTodo.data.items[targetIndex];
+
+    // Update the dragged item's date to match the target's date section
+    const updatedDraggedItem = {
+      ...draggedItemData,
+      dueDate: targetItem.dueDate,
+    };
+
+    // If the dragged item had a linked event and the date changed, delete the old event
+    if (
+      draggedItemData.linkedEventId &&
+      draggedItemData.dueDate !== targetItem.dueDate
+    ) {
+      deleteEvent(draggedItemData.linkedEventId);
+      updatedDraggedItem.linkedEventId = undefined;
+      updatedDraggedItem.dueTime = undefined;
+    }
+
+    newItems.splice(targetIndex, 0, updatedDraggedItem);
+
+    // Update local state immediately
+    setTodoBulletins((prev) =>
+      prev.map((todo) =>
+        todo.id === selectedTodoId
+          ? { ...todo, data: { items: newItems }, updatedAt: new Date() }
+          : todo
+      )
+    );
+
+    setDraggedItem(null);
+  };
+
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
@@ -1106,8 +1171,15 @@ export default function GoalsPanel({
                     {itemsInGroup.map((item) => (
                       <div
                         key={item.id}
-                        className="group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 min-w-0"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item.id)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, item.id)}
+                        className={`group flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50 dark:hover:bg-dark-hover transition-all duration-150 min-w-0 ${
+                          draggedItem === item.id ? "opacity-50" : ""
+                        }`}
                       >
+                        <GripVertical className="h-4 w-4 text-gray-300 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity flex-shrink-0" />
                         <button
                           onClick={() =>
                             updateTodoItem(item.id, { checked: true })
