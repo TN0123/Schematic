@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/refine-habits",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}
