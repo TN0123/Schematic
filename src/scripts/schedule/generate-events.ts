@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
 
 const prisma = new PrismaClient();
 
@@ -39,33 +40,9 @@ export async function generate_events(
   if (goalsView === "text" && user?.goalText) {
     goalsContext = `User's Goals (Free-form Text):\n${user.goalText}`;
   } else if (goalsView === "todo") {
-    // Fetch the most recent todo bulletin
-    const todoBulletins = await prisma.bulletin.findMany({
-      where: {
-        userId,
-        type: "todo",
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 1,
-      select: { title: true, data: true },
-    });
-    
-    if (todoBulletins.length > 0) {
-      const todo = todoBulletins[0];
-      const items = (todo.data as any)?.items || [];
-      const uncheckedItems = items.filter((item: any) => !item.checked);
-      const checkedItems = items.filter((item: any) => item.checked);
-      
-      goalsContext = `User's To-Do List (${todo.title}):\n`;
-      if (uncheckedItems.length > 0) {
-        goalsContext += `Pending Tasks:\n${uncheckedItems.map((item: any) => `- [ ] ${item.text}`).join("\n")}\n`;
-      }
-      if (checkedItems.length > 0) {
-        goalsContext += `Completed Tasks:\n${checkedItems.map((item: any) => `- [x] ${item.text}`).join("\n")}`;
-      }
-    } else {
-      goalsContext = "User has no to-do lists created yet.";
-    }
+    // Fetch and aggregate all todos from all todo bulletins
+    const allTodos = await aggregateAllTodos(userId, 50); // Limit to 50 todos
+    goalsContext = formatTodosForPrompt(allTodos);
   } else {
     // Default to list view (structured goals)
     const goals = await prisma.goal.findMany({

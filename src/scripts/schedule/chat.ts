@@ -1,5 +1,7 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
+import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
+import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
 
 const prisma = new PrismaClient();
 
@@ -69,7 +71,38 @@ function extractSearchableTextFromData(data: any, type: string): string {
       case "todo":
         if (data.items && Array.isArray(data.items)) {
           data.items.forEach((item: any) => {
-            if (item.text) searchableTexts.push(item.text);
+            if (item.text) {
+              let itemText = item.text;
+              
+              // Add deadline information if available
+              if (item.dueDate) {
+                const dueDate = item.dueDate;
+                const dueTime = item.dueTime;
+                
+                if (dueTime) {
+                  // Format date and time together
+                  const [hours, minutes] = dueTime.split(':').map(Number);
+                  const date = new Date(dueDate);
+                  date.setHours(hours, minutes, 0, 0);
+                  
+                  // Create a readable deadline format
+                  const dateStr = formatDueDate(dueDate);
+                  const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                  });
+                  
+                  itemText += ` (due: ${dateStr} at ${timeStr})`;
+                } else {
+                  // Date only
+                  const dateStr = formatDueDate(dueDate);
+                  itemText += ` (due: ${dateStr})`;
+                }
+              }
+              
+              searchableTexts.push(itemText);
+            }
           });
         }
         break;
@@ -250,33 +283,9 @@ export async function scheduleChat(
       if (goalsView === "text" && user?.goalText) {
         goalsContext = `User's Goals (Free-form Text):\n${user.goalText}`;
       } else if (goalsView === "todo") {
-        // Fetch the most recent todo bulletin
-        const todoBulletins = await prisma.bulletin.findMany({
-          where: {
-            userId,
-            type: "todo",
-          },
-          orderBy: { updatedAt: "desc" },
-          take: 1,
-          select: { title: true, data: true },
-        });
-        
-        if (todoBulletins.length > 0) {
-          const todo = todoBulletins[0];
-          const items = (todo.data as any)?.items || [];
-          const uncheckedItems = items.filter((item: any) => !item.checked);
-          const checkedItems = items.filter((item: any) => item.checked);
-          
-          goalsContext = `User's To-Do List (${todo.title}):\n`;
-          if (uncheckedItems.length > 0) {
-            goalsContext += `Pending Tasks:\n${uncheckedItems.map((item: any) => `- [ ] ${item.text}`).join("\n")}\n`;
-          }
-          if (checkedItems.length > 0) {
-            goalsContext += `Completed Tasks:\n${checkedItems.map((item: any) => `- [x] ${item.text}`).join("\n")}`;
-          }
-        } else {
-          goalsContext = "User has no to-do lists created yet.";
-        }
+        // Fetch and aggregate all todos from all todo bulletins
+        const allTodos = await aggregateAllTodos(userId, 50); // Limit to 50 todos
+        goalsContext = formatTodosForPrompt(allTodos);
       } else {
         // Default to list view (structured goals)
         goals = await prisma.goal.findMany({

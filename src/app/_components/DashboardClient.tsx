@@ -66,6 +66,11 @@ function DashboardClient({
                 <MemoizedWriteSection recentDocuments={recentDocuments} />
               </div>
 
+              {/* Bulletin Column */}
+              <div className="flex flex-col h-auto md:h-full">
+                <MemoizedBulletinSection bulletinNotes={bulletinNotes} />
+              </div>
+
               {/* Schedule Column */}
               <div className="flex flex-col h-auto md:h-full">
                 <MemoizedScheduleSection
@@ -73,11 +78,6 @@ function DashboardClient({
                   initialGoals={goals}
                   initialTotalGoalsCount={totalGoalsCount}
                 />
-              </div>
-
-              {/* Bulletin Column */}
-              <div className="flex flex-col h-auto md:h-full">
-                <MemoizedBulletinSection bulletinNotes={bulletinNotes} />
               </div>
             </motion.div>
           )}

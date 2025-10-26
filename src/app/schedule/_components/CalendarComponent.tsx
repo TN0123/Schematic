@@ -579,10 +579,10 @@ const CalendarComponent = forwardRef<FullCalendar, CalendarComponentProps>(
           headerToolbar={isMobile ? mobileToolbar.header : desktopToolbar}
           footerToolbar={isMobile ? mobileToolbar.footer : undefined}
           buttonText={{
-            today: isMobile ? "Today" : "Today",
-            month: isMobile ? "Month" : "Month",
-            week: isMobile ? "Week" : "Week",
-            day: isMobile ? "Day" : "Day",
+            today: "Today",
+            month: "M",
+            week: "W",
+            day: "D",
           }}
           dayMaxEventRows={isMobile ? 3 : 3}
           views={{
