@@ -78,6 +78,13 @@ export default function CalendarApp() {
     }
     return 320;
   });
+  const [isGoalsPanelCollapsed, setIsGoalsPanelCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("goals-panel-collapsed");
+      return saved === "true";
+    }
+    return false;
+  });
   const [eventPanelWidth, setEventPanelWidth] = useState<number>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("schedule-event-panel-width");
@@ -610,17 +617,25 @@ export default function CalendarApp() {
           {/* Goals Panel */}
           <ResizablePanel
             side="left"
-            minWidth={280}
+            minWidth={isGoalsPanelCollapsed ? 56 : 280}
             maxWidth={600}
-            width={goalsPanelWidth}
+            width={isGoalsPanelCollapsed ? 56 : goalsPanelWidth}
             onWidthChange={setGoalsPanelWidth}
+            disabled={isGoalsPanelCollapsed}
           >
-            <GoalsPanel width={goalsPanelWidth} />
+            <GoalsPanel
+              width={isGoalsPanelCollapsed ? 56 : goalsPanelWidth}
+              onCollapsedChange={setIsGoalsPanelCollapsed}
+            />
           </ResizablePanel>
           {/* Calendar */}
           <div
             ref={calendarContainerRef}
-            className={`flex-1 flex flex-col p-2 md:p-4 h-full transition-all duration-200 relative dark:bg-dark-background dark:text-dark-textPrimary ${
+            className={`flex-1 flex flex-col h-full relative dark:bg-dark-background dark:text-dark-textPrimary ${
+              isGoalsPanelCollapsed
+                ? "p-2 md:pl-2 md:pr-4 md:py-4"
+                : "p-2 md:p-4"
+            } ${
               calendarState.showCalendarHeader
                 ? "calendar-header-visible"
                 : "calendar-header-hidden"

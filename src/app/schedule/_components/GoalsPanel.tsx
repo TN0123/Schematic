@@ -13,6 +13,8 @@ import {
   Loader2,
   Clock,
   GripVertical,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import GoalCard from "./GoalCard";
 import DatePickerModal from "@/app/bulletin/_components/DatePickerModal";
@@ -59,11 +61,13 @@ type ActiveTab = "list" | "text" | "todo";
 interface GoalsPanelProps {
   width?: number;
   className?: string;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export default function GoalsPanel({
   width,
   className = "",
+  onCollapsedChange,
 }: GoalsPanelProps = {}) {
   const [goalToAdd, setGoalToAdd] = useState<string>("");
   const [currentDuration, setCurrentDuration] = useState<GoalDuration>(
@@ -82,6 +86,20 @@ export default function GoalsPanel({
   const { data: session } = useSession();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("goals-panel-collapsed");
+      return saved === "true";
+    }
+    return false;
+  });
+  const [showBorder, setShowBorder] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("goals-panel-collapsed");
+      return saved !== "true";
+    }
+    return true;
+  });
   const [todoBulletins, setTodoBulletins] = useState<TodoBulletin[]>([]);
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const [isTodoSelectorOpen, setIsTodoSelectorOpen] = useState(false);
@@ -143,6 +161,23 @@ export default function GoalsPanel({
     fetchGoals();
     setIsMounted(true);
   }, []);
+
+  // Save collapsed state to localStorage and notify parent
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem("goals-panel-collapsed", isCollapsed.toString());
+      onCollapsedChange?.(isCollapsed);
+    }
+  }, [isCollapsed, isMounted, onCollapsedChange]);
+
+  // Show border when expanding
+  useEffect(() => {
+    if (isCollapsed) {
+      setShowBorder(false);
+    } else {
+      setShowBorder(true);
+    }
+  }, [isCollapsed]);
 
   // Load saved active tab from localStorage after mount (client-side only)
   useEffect(() => {
@@ -823,7 +858,9 @@ export default function GoalsPanel({
   const MobileToggle = () => (
     <button
       onClick={() => setIsMobileOpen(true)}
-      className="md:hidden fixed top-[9rem] left-20 z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider"
+      className={`md:hidden fixed top-[9rem] z-20 bg-white dark:bg-dark-background p-2 rounded-lg shadow-md dark:shadow-dark-divider border dark:border-dark-divider transition-all duration-200 ${
+        isCollapsed ? "left-4" : "left-20"
+      }`}
       aria-label="Open goals panel"
     >
       <Menu size={20} className="text-gray-700 dark:text-dark-textSecondary" />
@@ -1346,102 +1383,142 @@ export default function GoalsPanel({
         className={`${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 fixed md:relative z-50 md:z-30 h-full ${
-          width ? "" : "w-80"
-        } bg-white dark:bg-dark-background border-r dark:border-dark-divider py-6 px-4 flex-col transition-all duration-300 items-center flex ${className}`}
+          isCollapsed ? "lg:w-14" : width ? "" : "w-80"
+        } bg-white dark:bg-dark-background ${
+          showBorder ? "border-r dark:border-dark-divider" : ""
+        } py-6 ${
+          isCollapsed ? "pl-4 pr-2" : "px-4"
+        } flex-col items-center flex ${
+          isCollapsed ? "shadow-none" : "shadow-lg dark:shadow-dark-divider"
+        } ${className}`}
         id="goals-panel"
-        style={width ? { width: `${width}px` } : undefined}
+        style={width && !isCollapsed ? { width: `${width}px` } : undefined}
       >
         <div className="w-full flex flex-col items-center justify-between">
           <div className="flex w-full justify-between items-center mb-4">
-            <h1 className="font-bold text-2xl text-gray-900 dark:text-dark-textPrimary tracking-wide transition-all duration-300">
-              Goals
-            </h1>
-
-            {/* View Dropdown */}
-            <div className="relative" id="view-dropdown">
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-dark-textPrimary bg-gray-100 dark:bg-dark-actionHover rounded-md hover:bg-gray-200 dark:hover:bg-dark-divider transition-all duration-200 border border-gray-300 dark:border-dark-divider"
+                onClick={() => {
+                  if (!isCollapsed) {
+                    setShowBorder(false);
+                  }
+                  setIsCollapsed(!isCollapsed);
+                }}
+                className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover ${
+                  isCollapsed ? "" : "p-2"
+                }`}
+                title={isCollapsed ? "Expand panel" : "Collapse panel"}
               >
-                {activeTab === "list"
-                  ? "List"
-                  : activeTab === "text"
-                  ? "Text"
-                  : "To-do"}
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform duration-200 ${
-                    isDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
+                {isCollapsed ? (
+                  <PanelLeftOpen
+                    size={24}
+                    className="text-gray-700 dark:text-dark-textSecondary"
+                  />
+                ) : (
+                  <PanelLeftClose
+                    size={24}
+                    className="text-gray-700 dark:text-dark-textSecondary"
+                  />
+                )}
               </button>
-
-              {/* Dropdown Menu */}
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50">
-                  <button
-                    onClick={() => {
-                      setActiveTab("list");
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
-                      activeTab === "list"
-                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
-                        : "text-gray-700 dark:text-dark-textSecondary"
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("text");
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
-                      activeTab === "text"
-                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
-                        : "text-gray-700 dark:text-dark-textSecondary"
-                    }`}
-                  >
-                    Text
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("todo");
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 rounded-b-md ${
-                      activeTab === "todo"
-                        ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
-                        : "text-gray-700 dark:text-dark-textSecondary"
-                    }`}
-                  >
-                    To-do
-                  </button>
-                </div>
+              {!isCollapsed && (
+                <h1 className="font-bold text-2xl text-gray-900 dark:text-dark-textPrimary tracking-wide">
+                  Goals
+                </h1>
               )}
             </div>
 
-            <button
-              onClick={() => setIsMobileOpen(false)}
-              className="md:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
-            >
-              <X
-                size={24}
-                className="text-gray-700 dark:text-dark-textSecondary"
-              />
-            </button>
+            {!isCollapsed && (
+              <div>
+                {/* View Dropdown */}
+                <div className="relative" id="view-dropdown">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-dark-textPrimary bg-gray-100 dark:bg-dark-actionHover rounded-md hover:bg-gray-200 dark:hover:bg-dark-divider transition-all duration-200 border border-gray-300 dark:border-dark-divider"
+                  >
+                    {activeTab === "list"
+                      ? "List"
+                      : activeTab === "text"
+                      ? "Text"
+                      : "To-do"}
+                    <ChevronDown
+                      size={16}
+                      className={`transition-transform duration-200 ${
+                        isDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-dark-background border border-gray-300 dark:border-dark-divider rounded-md shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          setActiveTab("list");
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
+                          activeTab === "list"
+                            ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                            : "text-gray-700 dark:text-dark-textSecondary"
+                        }`}
+                      >
+                        List
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("text");
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 ${
+                          activeTab === "text"
+                            ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                            : "text-gray-700 dark:text-dark-textSecondary"
+                        }`}
+                      >
+                        Text
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("todo");
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-all duration-200 rounded-b-md ${
+                          activeTab === "todo"
+                            ? "text-gray-900 dark:text-dark-textPrimary font-medium bg-gray-50 dark:bg-dark-actionHover"
+                            : "text-gray-700 dark:text-dark-textSecondary"
+                        }`}
+                      >
+                        To-do
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setIsMobileOpen(false)}
+                  className="md:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
+                >
+                  <X
+                    size={24}
+                    className="text-gray-700 dark:text-dark-textSecondary"
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 w-full overflow-hidden">
-          {activeTab === "list"
-            ? renderListTab()
-            : activeTab === "text"
-            ? renderTextTab()
-            : renderTodoTab()}
-        </div>
+        {!isCollapsed && (
+          <div className="flex-1 w-full overflow-hidden">
+            {activeTab === "list"
+              ? renderListTab()
+              : activeTab === "text"
+              ? renderTextTab()
+              : renderTodoTab()}
+          </div>
+        )}
       </aside>
 
       {/* Date Picker Modal */}

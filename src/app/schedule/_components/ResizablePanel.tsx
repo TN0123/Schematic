@@ -11,6 +11,7 @@ interface ResizablePanelProps {
   onWidthChange?: (width: number) => void;
   width?: number;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function ResizablePanel({
@@ -22,6 +23,7 @@ export default function ResizablePanel({
   onWidthChange,
   width: controlledWidth,
   className = "",
+  disabled = false,
 }: ResizablePanelProps) {
   const [internalWidth, setInternalWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
@@ -86,31 +88,33 @@ export default function ResizablePanel({
       {children}
 
       {/* Resize Handle */}
-      <div
-        className={`absolute top-0 ${
-          side === "left" ? "right-0" : "left-0"
-        } bottom-0 w-1 cursor-col-resize group hover:bg-blue-500 transition-colors z-50`}
-        onMouseDown={handleMouseDown}
-      >
-        {/* Wider hover area for easier grabbing */}
-        <div className="absolute top-0 bottom-0 -left-1 -right-1" />
-
-        {/* Visual indicator on hover */}
+      {!disabled && (
         <div
-          className={`absolute top-1/2 -translate-y-1/2 ${
-            side === "left"
-              ? "right-0 translate-x-1/2"
-              : "left-0 -translate-x-1/2"
-          } w-1 h-12 bg-gray-300 dark:bg-dark-divider rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`}
+          className={`absolute top-0 ${
+            side === "left" ? "right-0" : "left-0"
+          } bottom-0 w-1 cursor-col-resize group hover:bg-blue-500 transition-colors z-50`}
+          onMouseDown={handleMouseDown}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-3 bg-white dark:bg-dark-background rounded-full"></div>
-              <div className="w-0.5 h-3 bg-white dark:bg-dark-background rounded-full"></div>
+          {/* Wider hover area for easier grabbing */}
+          <div className="absolute top-0 bottom-0 -left-1 -right-1" />
+
+          {/* Visual indicator on hover */}
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 ${
+              side === "left"
+                ? "right-0 translate-x-1/2"
+                : "left-0 -translate-x-1/2"
+            } w-1 h-12 bg-gray-300 dark:bg-dark-divider rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-3 bg-white dark:bg-dark-background rounded-full"></div>
+                <div className="w-0.5 h-3 bg-white dark:bg-dark-background rounded-full"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Overlay during resize to prevent interference */}
       {isResizing && (
