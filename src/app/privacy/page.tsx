@@ -2,7 +2,15 @@
 
 import { motion } from "framer-motion";
 import { TransitionLink } from "@/components/utils/TransitionLink";
-import { Shield, Lock, Eye, Database, User, Mail } from "lucide-react";
+import {
+  Shield,
+  Lock,
+  Eye,
+  Database,
+  User,
+  Mail,
+  Calendar,
+} from "lucide-react";
 
 export default function PrivacyPolicy() {
   const navItems = ["Features", "Pricing", "Login", "About"];
@@ -49,6 +57,7 @@ export default function PrivacyPolicy() {
       content: [
         "Account Information: When you sign up, we collect your email address and basic profile information from your Google account.",
         "Usage Data: We collect information about how you use Schematic, including documents created, notes written, and number of calendar events.",
+        "Calendar Data: If you enable Google Calendar sync, we collect and sync your calendar events, including event titles, descriptions, dates, times, and attendees.",
         "Device Information: We may collect information about your device, browser type, and operating system to improve our service.",
       ],
     },
@@ -57,6 +66,7 @@ export default function PrivacyPolicy() {
       title: "How We Use Your Information",
       content: [
         "Service Provision: To provide and maintain our app's features and functionality.",
+        "Calendar Sync: To synchronize your events between Schematic and Google Calendar when you enable this feature.",
         "Improvement: To analyze usage patterns and improve our algorithms and user experience.",
         "Communication: To send you important updates about the app and respond to your inquiries.",
       ],
@@ -74,10 +84,12 @@ export default function PrivacyPolicy() {
       icon: User,
       title: "Your Rights",
       content: [
-        "Access: You can request a copy of all personal data we have about you.",
-        "Correction: You can update or correct your personal information at any time.",
-        "Deletion: You can request deletion of your account and associated data.",
-        "Portability: You can export your data in a standard format.",
+        "Access: You can request a copy of all personal data we have about you, including synced calendar events.",
+        "Correction: You can update or correct your personal information at any time, including calendar events.",
+        "Deletion: You can request deletion of your account and associated data, including all synced calendar information.",
+        "Portability: You can export your data in a standard format, including calendar events.",
+        "Calendar Control: You can disable Google Calendar sync at any time, which will stop data sharing with Google.",
+        "Google Account: You can revoke Schematic's access to your Google Calendar through your Google Account settings.",
       ],
     },
     {
@@ -85,9 +97,22 @@ export default function PrivacyPolicy() {
       title: "Data Sharing",
       content: [
         "No Sale: We never sell your personal information to third parties.",
+        "Google Calendar Integration: When you enable calendar sync, we share your calendar events with Google Calendar API to maintain synchronization between platforms.",
         "Limited Sharing: We only share data with trusted service providers who help us operate our app.",
         "Legal Requirements: We may disclose information if required by law or to protect our rights.",
         "Consent: We will always ask for your explicit consent before sharing data for any other purpose.",
+      ],
+    },
+    {
+      icon: Calendar,
+      title: "Google Calendar Integration",
+      content: [
+        "Optional Feature: Google Calendar sync is completely optional and can be enabled or disabled at any time in your settings.",
+        "Data Access: When enabled, we access your Google Calendar events through Google's secure API to provide synchronization services.",
+        "Event Sync: We sync event titles, descriptions, dates, times, and attendee information between Schematic and your Google Calendar.",
+        "Real-time Updates: Changes made in either platform are automatically synchronized using Google's webhook notifications.",
+        "Data Control: You maintain full control over your calendar data and can revoke access or disable sync at any time.",
+        "Google's Privacy Policy: Your calendar data is also subject to Google's Privacy Policy when using Google Calendar services.",
       ],
     },
   ];
