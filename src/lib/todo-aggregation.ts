@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,7 @@ export interface AggregatedTodoItem {
   text: string;
   checked: boolean;
   dueDate?: string;
+  dueTime?: string;
   noteTitle: string;
   noteId: string;
 }
@@ -57,6 +59,7 @@ export async function aggregateAllTodos(
             text: todoItem.text,
             checked: todoItem.checked,
             dueDate: todoItem.dueDate,
+            dueTime: todoItem.dueTime,
             noteTitle: bulletin.title || "Untitled",
             noteId: bulletin.id,
           });
@@ -96,7 +99,28 @@ export function formatTodosForPrompt(todos: AggregatedTodoItem[]): string {
   if (uncheckedTodos.length > 0) {
     context += `\nPending Tasks (${uncheckedTodos.length}):\n`;
     uncheckedTodos.forEach(todo => {
-      const dueDateText = todo.dueDate ? ` (due: ${todo.dueDate})` : "";
+      let dueDateText = "";
+      if (todo.dueDate) {
+        if (todo.dueTime) {
+          // Format date and time together
+          const [hours, minutes] = todo.dueTime.split(':').map(Number);
+          const date = new Date(todo.dueDate);
+          date.setHours(hours, minutes, 0, 0);
+          
+          const dateStr = formatDueDate(todo.dueDate);
+          const timeStr = date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+          });
+          
+          dueDateText = ` (due: ${dateStr} at ${timeStr})`;
+        } else {
+          // Date only
+          const dateStr = formatDueDate(todo.dueDate);
+          dueDateText = ` (due: ${dateStr})`;
+        }
+      }
       context += `- [ ] ${todo.text}${dueDateText} [from: ${todo.noteTitle}]\n`;
     });
   }
@@ -104,7 +128,28 @@ export function formatTodosForPrompt(todos: AggregatedTodoItem[]): string {
   if (checkedTodos.length > 0) {
     context += `\nCompleted Tasks (${checkedTodos.length}):\n`;
     checkedTodos.forEach(todo => {
-      const dueDateText = todo.dueDate ? ` (due: ${todo.dueDate})` : "";
+      let dueDateText = "";
+      if (todo.dueDate) {
+        if (todo.dueTime) {
+          // Format date and time together
+          const [hours, minutes] = todo.dueTime.split(':').map(Number);
+          const date = new Date(todo.dueDate);
+          date.setHours(hours, minutes, 0, 0);
+          
+          const dateStr = formatDueDate(todo.dueDate);
+          const timeStr = date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+          });
+          
+          dueDateText = ` (due: ${dateStr} at ${timeStr})`;
+        } else {
+          // Date only
+          const dateStr = formatDueDate(todo.dueDate);
+          dueDateText = ` (due: ${dateStr})`;
+        }
+      }
       context += `- [x] ${todo.text}${dueDateText} [from: ${todo.noteTitle}]\n`;
     });
   }

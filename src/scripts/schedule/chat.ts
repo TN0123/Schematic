@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
+import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
 
 const prisma = new PrismaClient();
 
@@ -70,7 +71,38 @@ function extractSearchableTextFromData(data: any, type: string): string {
       case "todo":
         if (data.items && Array.isArray(data.items)) {
           data.items.forEach((item: any) => {
-            if (item.text) searchableTexts.push(item.text);
+            if (item.text) {
+              let itemText = item.text;
+              
+              // Add deadline information if available
+              if (item.dueDate) {
+                const dueDate = item.dueDate;
+                const dueTime = item.dueTime;
+                
+                if (dueTime) {
+                  // Format date and time together
+                  const [hours, minutes] = dueTime.split(':').map(Number);
+                  const date = new Date(dueDate);
+                  date.setHours(hours, minutes, 0, 0);
+                  
+                  // Create a readable deadline format
+                  const dateStr = formatDueDate(dueDate);
+                  const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                  });
+                  
+                  itemText += ` (due: ${dateStr} at ${timeStr})`;
+                } else {
+                  // Date only
+                  const dateStr = formatDueDate(dueDate);
+                  itemText += ` (due: ${dateStr})`;
+                }
+              }
+              
+              searchableTexts.push(itemText);
+            }
           });
         }
         break;
