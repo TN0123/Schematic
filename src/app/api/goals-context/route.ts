@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
 import { PrismaClient } from "@prisma/client";
+import { aggregateAllTodos } from "@/lib/todo-aggregation";
 
 const prisma = new PrismaClient();
 
@@ -39,53 +40,16 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Fetch todo bulletins with items
-    const todoBulletins = await prisma.bulletin.findMany({
-      where: {
-        userId,
-        type: "todo",
-      },
-      select: {
-        id: true,
-        title: true,
-        data: true,
-        updatedAt: true,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    // Fetch and aggregate all todos from all todo bulletins
+    const aggregatedTodos = await aggregateAllTodos(userId, 50);
 
-    // Extract and organize todo items with due dates
-    const todoItems: Array<{
-      bulletinTitle: string;
-      text: string;
-      dueDate?: string;
-      checked: boolean;
-    }> = [];
-
-    for (const bulletin of todoBulletins) {
-      const data = bulletin.data as any;
-      if (data?.items && Array.isArray(data.items)) {
-        for (const item of data.items) {
-          if (item.text && !item.checked) {
-            // Only include unchecked items
-            todoItems.push({
-              bulletinTitle: bulletin.title || "Untitled",
-              text: item.text,
-              dueDate: item.dueDate,
-              checked: item.checked || false,
-            });
-          }
-        }
-      }
-    }
-
-    // Sort todo items by due date (items with dates first, then no-date items)
-    todoItems.sort((a, b) => {
-      if (!a.dueDate && !b.dueDate) return 0;
-      if (!a.dueDate) return 1;
-      if (!b.dueDate) return -1;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-    });
+    // Convert to the expected format for this API
+    const todoItems = aggregatedTodos.map(todo => ({
+      bulletinTitle: todo.noteTitle,
+      text: todo.text,
+      dueDate: todo.dueDate,
+      checked: todo.checked,
+    }));
 
     return NextResponse.json({
       goalText: user?.goalText || "",

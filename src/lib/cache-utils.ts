@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
+import { aggregateAllTodos } from "@/lib/todo-aggregation";
 
 /**
  * Comprehensive data structure for cache hash generation
@@ -29,6 +30,14 @@ interface CacheHashData {
     title: string;
     updatedAt: Date;
     itemsHash: string; // Hash of unchecked todo items
+  }>;
+  aggregatedTodos?: Array<{
+    id: string;
+    text: string;
+    checked: boolean;
+    dueDate?: string;
+    noteTitle: string;
+    noteId: string;
   }>;
   reminders?: Array<{
     id: string;
@@ -71,6 +80,9 @@ export function generateCacheHash(data: CacheHashData): string {
           itemsHash: t.itemsHash,
         }))
       : [],
+    aggregatedTodos: data.aggregatedTodos
+      ? [...data.aggregatedTodos].sort((a, b) => a.id.localeCompare(b.id))
+      : [],
     reminders: data.reminders
       ? [...data.reminders].sort((a, b) => a.time.getTime() - b.time.getTime())
       : [],
@@ -99,7 +111,7 @@ export async function fetchDailySummaryCacheData(
   );
 
   // Parallelize all database queries
-  const [eventsForDay, user, goals, todoBulletins] = await Promise.all([
+  const [eventsForDay, user, goals, todoBulletins, aggregatedTodos] = await Promise.all([
     // 1. Fetch events for the day
     prisma.event.findMany({
       where: {
@@ -132,6 +144,11 @@ export async function fetchDailySummaryCacheData(
           take: 5, // Top 5 most recent todo lists
           select: { id: true, title: true, data: true, updatedAt: true },
         })
+      : Promise.resolve([]),
+
+    // 5. Fetch aggregated todos (only if needed for this view)
+    goalsView === "todo"
+      ? aggregateAllTodos(userId, 50)
       : Promise.resolve([]),
   ]);
 
@@ -173,6 +190,7 @@ export async function fetchDailySummaryCacheData(
     goals: goals.length > 0 ? goals.map(g => ({ id: g.id, title: g.title, type: g.type })) : undefined,
     todoBulletins:
       processedTodoBulletins.length > 0 ? processedTodoBulletins : undefined,
+    aggregatedTodos: aggregatedTodos.length > 0 ? aggregatedTodos : undefined,
     additionalContext: {
       goalsView: goalsView || "list",
     },
@@ -196,7 +214,7 @@ export async function fetchDailySuggestionsCacheData(
   );
 
   // Parallelize ALL database queries for maximum performance
-  const [eventsForDay, remindersForDay, user, bulletins, goals, todoBulletins] =
+  const [eventsForDay, remindersForDay, user, bulletins, goals, todoBulletins, aggregatedTodos] =
     await Promise.all([
       // 1. Fetch events for the day
       prisma.event.findMany({
@@ -245,6 +263,9 @@ export async function fetchDailySuggestionsCacheData(
         take: 5,
         select: { id: true, title: true, data: true, updatedAt: true },
       }),
+
+      // 7. Fetch aggregated todos
+      aggregateAllTodos(userId, 50),
     ]);
 
   // Normalize events
@@ -292,6 +313,7 @@ export async function fetchDailySuggestionsCacheData(
     goals: goals.map(g => ({ id: g.id, title: g.title, type: g.type })),
     bulletins,
     todoBulletins: processedTodoBulletins,
+    aggregatedTodos: aggregatedTodos,
     reminders: remindersForDay.map((r) => ({
       id: r.id,
       text: r.text,

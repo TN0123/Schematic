@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Event } from "@/app/schedule/types";
 import { getHabitBasedSuggestions } from "@/lib/habit-profile";
+import { aggregateAllTodos } from "@/lib/todo-aggregation";
 
 const prisma = new PrismaClient();
 
@@ -206,19 +207,7 @@ export async function suggest_events(userId: string, timezone: string) {
   });
 
   // Fetch Goals Panel context for better reminder generation
-  const todoBulletins = await prisma.bulletin.findMany({
-    where: {
-      userId,
-      type: "todo",
-    },
-    select: {
-      id: true,
-      title: true,
-      data: true,
-      updatedAt: true,
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const aggregatedTodos = await aggregateAllTodos(userId, 50);
 
   // Extract and organize todo items with due dates for reminder generation
   interface TodoItemWithContext {
@@ -228,31 +217,12 @@ export async function suggest_events(userId: string, timezone: string) {
     checked: boolean;
   }
 
-  const todoItems: TodoItemWithContext[] = [];
-  for (const bulletin of todoBulletins) {
-    const data = bulletin.data as any;
-    if (data?.items && Array.isArray(data.items)) {
-      for (const item of data.items) {
-        if (item.text && !item.checked) {
-          // Only include unchecked items
-          todoItems.push({
-            bulletinTitle: bulletin.title || "Untitled",
-            text: item.text,
-            dueDate: item.dueDate,
-            checked: item.checked || false,
-          });
-        }
-      }
-    }
-  }
-
-  // Sort todo items by due date (items with dates first)
-  todoItems.sort((a, b) => {
-    if (!a.dueDate && !b.dueDate) return 0;
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-  });
+  const todoItems: TodoItemWithContext[] = aggregatedTodos.map(todo => ({
+    bulletinTitle: todo.noteTitle,
+    text: todo.text,
+    dueDate: todo.dueDate,
+    checked: todo.checked,
+  }));
 
   // Filter todo items due today or overdue for high-priority reminders
   const todayDate = new Date(todayInUserTz);
