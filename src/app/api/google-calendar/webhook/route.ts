@@ -46,6 +46,11 @@ export async function POST(req: NextRequest) {
         console.log(`Update notification for user ${userId}`);
         break;
         
+      case 'exists':
+        // Calendar exists notification - perform incremental sync
+        console.log(`Exists notification for user ${userId}`);
+        break;
+        
       case 'delete':
         // Calendar was deleted - stop watching
         console.log(`Delete notification for user ${userId}`);
@@ -64,12 +69,14 @@ export async function POST(req: NextRequest) {
       console.log(`Webhook sync completed for user ${userId}:`, {
         success: result.success,
         synced: result.synced,
+        deleted: result.deleted,
         errors: result.errors,
       });
       
       return NextResponse.json({ 
         success: true, 
         synced: result.synced,
+        deleted: result.deleted,
         errors: result.errors 
       });
     } catch (error) {

@@ -9,6 +9,7 @@ import { invalidateAllUserCaches } from './cache-utils';
 export interface SyncResult {
   success: boolean;
   synced: number;
+  deleted: number;
   conflicts: SyncConflict[];
   errors: string[];
 }
@@ -116,9 +117,21 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
     );
     
     let synced = 0;
+    let deleted = 0;
     const errors: string[] = [];
     
-    // Process each Google event
+    // Get all currently synced events for this user
+    const syncedEvents = await prisma.syncedEvent.findMany({
+      where: {
+        userId,
+        googleCalendarId: user.googleCalendarId,
+      },
+    });
+    
+    // Create a set of Google event IDs that still exist
+    const existingGoogleEventIds = new Set(googleEvents.map(e => e.id));
+    
+    // Process each Google event (create/update)
     for (const googleEvent of googleEvents) {
       try {
         await processGoogleEvent(googleEvent, userId, user.googleCalendarId, userTimezone);
@@ -126,6 +139,41 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
       } catch (error) {
         console.error(`Error processing Google event ${googleEvent.id}:`, error);
         errors.push(`Failed to sync event: ${googleEvent.summary}`);
+      }
+    }
+    
+    // Remove local events that no longer exist in Google Calendar
+    for (const syncedEvent of syncedEvents) {
+      if (!existingGoogleEventIds.has(syncedEvent.googleEventId)) {
+        try {
+          // Get the local event details before deleting
+          const localEvent = await prisma.event.findUnique({
+            where: { id: syncedEvent.localEventId },
+          });
+          
+          // Delete the local event
+          await prisma.event.delete({
+            where: { id: syncedEvent.localEventId },
+          });
+          
+          // Delete the sync mapping
+          await prisma.syncedEvent.delete({
+            where: { id: syncedEvent.id },
+          });
+          
+          console.log(`Deleted local event ${syncedEvent.localEventId} (Google event ${syncedEvent.googleEventId} was deleted)`);
+          deleted++;
+          
+          // Invalidate cache for the deleted event
+          if (localEvent) {
+            invalidateAllUserCaches(userId).catch(err => 
+              console.error('Failed to invalidate cache after deletion:', err)
+            );
+          }
+        } catch (error) {
+          console.error(`Error deleting local event ${syncedEvent.localEventId}:`, error);
+          errors.push(`Failed to delete event: ${syncedEvent.googleEventId}`);
+        }
       }
     }
     
@@ -140,12 +188,13 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
       });
     }
     
-    return { success: true, synced, conflicts: [], errors };
+    return { success: true, synced, deleted, conflicts: [], errors };
   } catch (error) {
     console.error('Error performing incremental sync:', error);
     return {
       success: false,
       synced: 0,
+      deleted: 0,
       conflicts: [],
       errors: [error instanceof Error ? error.message : 'Unknown error'],
     };
