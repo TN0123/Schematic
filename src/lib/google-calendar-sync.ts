@@ -102,7 +102,7 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
     });
     
     if (!user?.googleCalendarSyncEnabled || !user.googleCalendarId) {
-      return { success: true, synced: 0, conflicts: [], errors: [] };
+      return { success: true, synced: 0, deleted: 0, conflicts: [], errors: [] };
     }
     
     const client = await getGoogleCalendarClient(userId);
