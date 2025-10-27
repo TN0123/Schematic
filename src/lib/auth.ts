@@ -5,6 +5,10 @@ import prisma from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  pages: {
+    signIn: '/auth/login',
+    error: '/auth/login', // Redirect errors back to login page
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -22,7 +26,53 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    jwt: async ({ token, account, user }) => {
+    async signIn({ user, account, profile, email, credentials }) {
+      // Handle OAuth account linking for Google provider
+      if (account?.provider === "google" && profile?.email) {
+        try {
+          // Check if there's an existing user with this email
+          const existingUser = await prisma.user.findUnique({
+            where: { email: profile.email },
+            include: { accounts: true }
+          });
+
+          if (existingUser) {
+            // Check if this Google account is already linked
+            const existingAccount = existingUser.accounts.find(
+              acc => acc.provider === "google" && acc.providerAccountId === account.providerAccountId
+            );
+
+            if (existingAccount) {
+              return true;
+            } else {
+              // Link the Google account to the existing user
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  refresh_token: account.refresh_token,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  scope: account.scope,
+                }
+              });
+              return true;
+            }
+          } else {
+            return true;
+          }
+        } catch (error) {
+          console.error("Error in signIn callback:", error);
+          return false;
+        }
+      }
+
+      // Allow all other sign-ins
+      return true;
+    },
+    jwt: async ({ token, account, user, profile }) => {
       // Store refresh token in database when account is first created or updated
       if (account && account.refresh_token) {
         try {
@@ -65,9 +115,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile, isNewUser }) {
       try {
         if (!user?.id) return;
+        
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
