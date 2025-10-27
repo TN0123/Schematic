@@ -7,6 +7,104 @@ import { recordEventAction } from './habit-ingestion';
 import { invalidateAllUserCaches } from './cache-utils';
 
 /**
+ * Calculate string similarity using Levenshtein distance
+ */
+function calculateStringSimilarity(str1: string, str2: string): number {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+  
+  if (longer.length === 0) {
+    return 1.0;
+  }
+  
+  const distance = levenshteinDistance(longer, shorter);
+  return (longer.length - distance) / longer.length;
+}
+
+/**
+ * Calculate Levenshtein distance between two strings
+ */
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+  
+  for (let i = 0; i <= str1.length; i++) {
+    matrix[0][i] = i;
+  }
+  
+  for (let j = 0; j <= str2.length; j++) {
+    matrix[j][0] = j;
+  }
+  
+  for (let j = 1; j <= str2.length; j++) {
+    for (let i = 1; i <= str1.length; i++) {
+      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,
+        matrix[j - 1][i] + 1,
+        matrix[j - 1][i - 1] + indicator
+      );
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+}
+
+/**
+ * Find existing local event that matches a Google Calendar event
+ * This helps prevent duplicates when users unsync and resync
+ */
+async function findExistingEvent(
+  googleEvent: GoogleCalendarEvent,
+  userId: string,
+  userTimezone: string
+): Promise<{ event: any; similarity: number } | null> {
+  const googleStart = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+  const googleEnd = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+  
+  // Look for events within a reasonable time window (±30 minutes)
+  const timeWindow = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const startWindow = new Date(googleStart.getTime() - timeWindow);
+  const endWindow = new Date(googleEnd.getTime() + timeWindow);
+  
+  const existingEvents = await prisma.event.findMany({
+    where: {
+      userId,
+      start: {
+        gte: startWindow,
+        lte: endWindow,
+      },
+    },
+  });
+  
+  let bestMatch: { event: any; similarity: number } | null = null;
+  let bestSimilarity = 0;
+  
+  for (const event of existingEvents) {
+    // Calculate title similarity
+    const titleSimilarity = calculateStringSimilarity(
+      event.title.toLowerCase(),
+      googleEvent.summary.toLowerCase()
+    );
+    
+    // Calculate time similarity (closer times = higher similarity)
+    const timeDiff = Math.abs(event.start.getTime() - googleStart.getTime()) + 
+                    Math.abs(event.end.getTime() - googleEnd.getTime());
+    const timeSimilarity = Math.max(0, 1 - (timeDiff / (timeWindow * 2)));
+    
+    // Combined similarity score (weighted: 70% title, 30% time)
+    const combinedSimilarity = (titleSimilarity * 0.7) + (timeSimilarity * 0.3);
+    
+    // Only consider events with at least 60% similarity
+    if (combinedSimilarity >= 0.6 && combinedSimilarity > bestSimilarity) {
+      bestMatch = { event, similarity: combinedSimilarity };
+      bestSimilarity = combinedSimilarity;
+    }
+  }
+  
+  return bestMatch;
+}
+
+/**
  * Get the correct webhook URL for the current deployment environment
  * Handles preview deployments, production, and local development
  */
@@ -278,44 +376,106 @@ async function processGoogleEvent(
       });
     }
   } else {
-    // Create new local event
-    const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
-    const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+    // Check for existing local event that might be a duplicate
+    const existingEventMatch = await findExistingEvent(googleEvent, userId, userTimezone);
     
-    const newEvent = await prisma.event.create({
-      data: {
-        title: googleEvent.summary,
-        start: startDate,
-        end: endDate,
-        userId,
-      },
-    });
-    
-    // Create sync mapping
-    const syncHash = generateSyncHash({
-      id: newEvent.id,
-      title: newEvent.title,
-      start: newEvent.start,
-      end: newEvent.end,
-      links: [],
-    });
-    
-    await prisma.syncedEvent.create({
-      data: {
-        userId,
-        localEventId: newEvent.id,
-        googleEventId: googleEvent.id,
-        googleCalendarId: calendarId,
-        syncHash,
-      },
-    });
-    
-    // Record habit action
-    recordEventAction(userId, 'created', {
-      title: newEvent.title,
-      start: newEvent.start,
-      end: newEvent.end,
-    }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
+    if (existingEventMatch) {
+      // Found a potential duplicate - create sync mapping for existing event instead of creating new one
+      console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
+      
+      const syncHash = generateSyncHash({
+        id: existingEventMatch.event.id,
+        title: existingEventMatch.event.title,
+        start: existingEventMatch.event.start,
+        end: existingEventMatch.event.end,
+        links: existingEventMatch.event.links || [],
+      });
+      
+      await prisma.syncedEvent.create({
+        data: {
+          userId,
+          localEventId: existingEventMatch.event.id,
+          googleEventId: googleEvent.id,
+          googleCalendarId: calendarId,
+          syncHash,
+        },
+      });
+      
+      // Update the existing event with Google Calendar data if similarity is high enough
+      if (existingEventMatch.similarity >= 0.8) {
+        const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+        const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+        
+        await prisma.event.update({
+          where: { id: existingEventMatch.event.id },
+          data: {
+            title: googleEvent.summary,
+            start: startDate,
+            end: endDate,
+          },
+        });
+        
+        // Update sync hash with new data
+        const updatedHash = generateSyncHash({
+          id: existingEventMatch.event.id,
+          title: googleEvent.summary,
+          start: startDate,
+          end: endDate,
+          links: existingEventMatch.event.links || [],
+        });
+        
+        await prisma.syncedEvent.updateMany({
+          where: {
+            userId,
+            googleEventId: googleEvent.id,
+            googleCalendarId: calendarId,
+          },
+          data: {
+            syncHash: updatedHash,
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+    } else {
+      // No existing event found - create new local event
+      const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+      const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+      
+      const newEvent = await prisma.event.create({
+        data: {
+          title: googleEvent.summary,
+          start: startDate,
+          end: endDate,
+          userId,
+        },
+      });
+      
+      // Create sync mapping
+      const syncHash = generateSyncHash({
+        id: newEvent.id,
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+        links: [],
+      });
+      
+      await prisma.syncedEvent.create({
+        data: {
+          userId,
+          localEventId: newEvent.id,
+          googleEventId: googleEvent.id,
+          googleCalendarId: calendarId,
+          syncHash,
+        },
+      });
+      
+      // Record habit action
+      recordEventAction(userId, 'created', {
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+      }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
+    }
   }
 }
 
@@ -390,43 +550,106 @@ export async function pullEventFromGoogle(
     
     const googleEvent = await client.getEvent(calendarId, googleEventId);
     
-    const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
-    const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+    // Check for existing local event that might be a duplicate
+    const existingEventMatch = await findExistingEvent(googleEvent, userId, userTimezone);
     
-    const newEvent = await prisma.event.create({
-      data: {
-        title: googleEvent.summary,
-        start: startDate,
-        end: endDate,
-        userId,
-      },
-    });
-    
-    // Create sync mapping
-    const syncHash = generateSyncHash({
-      id: newEvent.id,
-      title: newEvent.title,
-      start: newEvent.start,
-      end: newEvent.end,
-      links: [],
-    });
-    
-    await prisma.syncedEvent.create({
-      data: {
-        userId,
-        localEventId: newEvent.id,
-        googleEventId: googleEvent.id,
-        googleCalendarId: calendarId,
-        syncHash,
-      },
-    });
-    
-    // Record habit action
-    recordEventAction(userId, 'created', {
-      title: newEvent.title,
-      start: newEvent.start,
-      end: newEvent.end,
-    }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
+    if (existingEventMatch) {
+      // Found a potential duplicate - create sync mapping for existing event instead of creating new one
+      console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
+      
+      const syncHash = generateSyncHash({
+        id: existingEventMatch.event.id,
+        title: existingEventMatch.event.title,
+        start: existingEventMatch.event.start,
+        end: existingEventMatch.event.end,
+        links: existingEventMatch.event.links || [],
+      });
+      
+      await prisma.syncedEvent.create({
+        data: {
+          userId,
+          localEventId: existingEventMatch.event.id,
+          googleEventId: googleEvent.id,
+          googleCalendarId: calendarId,
+          syncHash,
+        },
+      });
+      
+      // Update the existing event with Google Calendar data if similarity is high enough
+      if (existingEventMatch.similarity >= 0.8) {
+        const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+        const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+        
+        await prisma.event.update({
+          where: { id: existingEventMatch.event.id },
+          data: {
+            title: googleEvent.summary,
+            start: startDate,
+            end: endDate,
+          },
+        });
+        
+        // Update sync hash with new data
+        const updatedHash = generateSyncHash({
+          id: existingEventMatch.event.id,
+          title: googleEvent.summary,
+          start: startDate,
+          end: endDate,
+          links: existingEventMatch.event.links || [],
+        });
+        
+        await prisma.syncedEvent.updateMany({
+          where: {
+            userId,
+            googleEventId: googleEvent.id,
+            googleCalendarId: calendarId,
+          },
+          data: {
+            syncHash: updatedHash,
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+    } else {
+      // No existing event found - create new local event
+      const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+      const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+      
+      const newEvent = await prisma.event.create({
+        data: {
+          title: googleEvent.summary,
+          start: startDate,
+          end: endDate,
+          userId,
+        },
+      });
+      
+      // Create sync mapping
+      const syncHash = generateSyncHash({
+        id: newEvent.id,
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+        links: [],
+      });
+      
+      await prisma.syncedEvent.create({
+        data: {
+          userId,
+          localEventId: newEvent.id,
+          googleEventId: googleEvent.id,
+          googleCalendarId: calendarId,
+          syncHash,
+        },
+      });
+      
+      // Record habit action
+      recordEventAction(userId, 'created', {
+        title: newEvent.title,
+        start: newEvent.start,
+        end: newEvent.end,
+      }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
+    }
     
     // Invalidate cache
     invalidateAllUserCaches(userId).catch(err => 
