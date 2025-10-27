@@ -507,6 +507,14 @@ export const useCalendarData = (
   // Refresh suggestions when triggered by event changes affecting today
   useEffect(() => {
     if (userId && suggestionsRefreshTrigger > 0) {
+      // Clear old suggestions immediately to avoid visual overlap
+      setEvents((currentEvents) =>
+        currentEvents.filter((e) => !e.isSuggestion)
+      );
+      setReminders((currentReminders) =>
+        currentReminders.filter((r) => !r.isAISuggested)
+      );
+      
       // Fire and forget
       (async () => {
         try {
