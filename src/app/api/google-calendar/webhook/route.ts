@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { performIncrementalSync } from "@/lib/google-calendar-sync";
+import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +16,10 @@ export async function POST(req: NextRequest) {
       resourceId,
       resourceState,
       channelToken,
+      timestamp: new Date().toISOString(),
+      userAgent: req.headers.get('user-agent'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer'),
     });
     
     // Verify required headers are present
@@ -32,6 +37,45 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       console.error('No user ID in webhook token');
       return NextResponse.json({ error: 'No user ID in webhook token' }, { status: 400 });
+    }
+    
+    // Verify the user exists and has sync enabled
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          googleCalendarSyncEnabled: true,
+          googleCalendarId: true,
+          googleCalendarWatchChannelId: true,
+        },
+      });
+      
+      if (!user) {
+        console.error(`User ${userId} not found`);
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      
+      if (!user.googleCalendarSyncEnabled) {
+        console.log(`Sync disabled for user ${userId}, ignoring webhook`);
+        return NextResponse.json({ success: true, message: 'Sync disabled' });
+      }
+      
+      if (!user.googleCalendarId) {
+        console.error(`No calendar ID for user ${userId}`);
+        return NextResponse.json({ error: 'No calendar configured' }, { status: 400 });
+      }
+      
+      // Verify the channel ID matches what we expect
+      if (user.googleCalendarWatchChannelId !== channelId) {
+        console.warn(`Channel ID mismatch for user ${userId}. Expected: ${user.googleCalendarWatchChannelId}, Got: ${channelId}`);
+        // Don't fail the request, but log the mismatch
+      }
+      
+      console.log(`Processing webhook for user ${userId} with calendar ${user.googleCalendarId}`);
+    } catch (error) {
+      console.error(`Error validating user ${userId}:`, error);
+      return NextResponse.json({ error: 'User validation failed' }, { status: 500 });
     }
     
     // Handle different resource states

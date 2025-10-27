@@ -6,6 +6,31 @@ import { Event } from '@/app/schedule/types';
 import { recordEventAction } from './habit-ingestion';
 import { invalidateAllUserCaches } from './cache-utils';
 
+/**
+ * Get the correct webhook URL for the current deployment environment
+ * Handles preview deployments, production, and local development
+ */
+function getWebhookUrl(): string {
+  // Check if we're in a Vercel environment
+  if (process.env.VERCEL_URL) {
+    // Vercel preview deployments
+    return `https://${process.env.VERCEL_URL}/api/google-calendar/webhook`;
+  }
+  
+  // Check for explicit NEXT_PUBLIC_APP_URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/webhook`;
+  }
+  
+  // Fallback for local development
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000/api/google-calendar/webhook';
+  }
+  
+  // Last resort - this should not happen in production
+  throw new Error('Unable to determine webhook URL. Please set NEXT_PUBLIC_APP_URL environment variable.');
+}
+
 export interface SyncResult {
   success: boolean;
   synced: number;
@@ -477,10 +502,13 @@ export async function setupGoogleCalendarWatch(userId: string, calendarId: strin
     // Set expiration to 7 days from now (Google's maximum)
     const expiration = Date.now() + (7 * 24 * 60 * 60 * 1000);
     
+    // Get the webhook URL - handle different deployment environments
+    const webhookUrl = getWebhookUrl();
+    
     const watchRequest = {
       id: channelId,
       type: 'web_hook',
-      address: `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/webhook`,
+      address: webhookUrl,
       token: userId, // Pass user ID in the token for webhook processing
       expiration: expiration,
     };
