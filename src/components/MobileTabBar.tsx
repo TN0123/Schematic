@@ -26,11 +26,11 @@ export default function MobileTabBar() {
   if (pathname === "/auth/login") return null;
 
   const navItems = [
-    { href: "/", icon: Home, label: "Home" },
-    { href: "/notebook", icon: PenLine, label: "Notebook" },
-    { href: "/bulletin", icon: ClipboardList, label: "Bulletin" },
-    { href: "/schedule", icon: Calendar, label: "Schedule" },
-    { href: "/statistics", icon: Clock, label: "Statistics" },
+    { href: "/", icon: Home },
+    { href: "/notebook", icon: PenLine },
+    { href: "/bulletin", icon: ClipboardList },
+    { href: "/schedule", icon: Calendar },
+    { href: "/statistics", icon: Clock },
   ];
 
   return (
@@ -50,7 +50,6 @@ export default function MobileTabBar() {
             }`}
           >
             <Icon className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">{item.label}</span>
           </TransitionLink>
         );
       })}
@@ -62,7 +61,6 @@ export default function MobileTabBar() {
         title={`Search (${modKeyLabel}+P)`}
       >
         <Search className="w-5 h-5 mb-1" />
-        <span className="text-xs font-medium">Search</span>
       </button>
 
       {/* Settings and profile */}
@@ -77,7 +75,6 @@ export default function MobileTabBar() {
             }`}
           >
             <Settings className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Settings</span>
           </TransitionLink>
         </div>
       )}
