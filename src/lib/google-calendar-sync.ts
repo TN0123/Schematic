@@ -121,12 +121,11 @@ function getWebhookUrl(): string {
     const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
     if (bypassToken) {
       const u = new URL(baseUrl);
+      // Only include the token parameter; avoid set-bypass-cookie to prevent 307 redirect
       u.searchParams.set('x-vercel-protection-bypass', bypassToken);
-      // Instruct Vercel to set the bypass cookie for subsequent requests from Google (if they reuse connection)
-      u.searchParams.set('x-vercel-set-bypass-cookie', 'true');
       const finalUrl = u.toString();
       console.log('[GCAL Watch] Using webhook URL from VERCEL_URL with automation bypass', {
-        url: `${u.origin}${u.pathname}`,
+        url: finalUrl,
         hasBypassToken: true,
       });
       return finalUrl;
