@@ -110,9 +110,30 @@ async function findExistingEvent(
  */
 function getWebhookUrl(): string {
   if (process.env.VERCEL_URL) {
-    const url = `https://${process.env.VERCEL_URL}/api/google-calendar/webhook`;
-    console.log('[GCAL Watch] Using webhook URL from VERCEL_URL', { url });
-    return url;
+    let base = process.env.VERCEL_URL.trim();
+    const hasProtocol = base.startsWith('http://') || base.startsWith('https://');
+    if (base.endsWith('/')) {
+      base = base.slice(0, -1);
+    }
+    const baseUrl = hasProtocol ? `${base}/api/google-calendar/webhook` : `https://${base}/api/google-calendar/webhook`;
+
+    // Append Vercel preview protection bypass token if provided, so external services (Google) can reach the route
+    const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    if (bypassToken) {
+      const u = new URL(baseUrl);
+      u.searchParams.set('x-vercel-protection-bypass', bypassToken);
+      // Instruct Vercel to set the bypass cookie for subsequent requests from Google (if they reuse connection)
+      u.searchParams.set('x-vercel-set-bypass-cookie', 'true');
+      const finalUrl = u.toString();
+      console.log('[GCAL Watch] Using webhook URL from VERCEL_URL with automation bypass', {
+        url: `${u.origin}${u.pathname}`,
+        hasBypassToken: true,
+      });
+      return finalUrl;
+    }
+
+    console.log('[GCAL Watch] Using webhook URL from VERCEL_URL', { url: baseUrl, hasBypassToken: false });
+    return baseUrl;
   }
   throw new Error('Unable to determine webhook URL. Please set VERCEL_URL environment variable.');
 }
