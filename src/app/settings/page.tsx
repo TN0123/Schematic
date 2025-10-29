@@ -345,6 +345,10 @@ export default function SettingsPage() {
         setSyncToggleOn(data.enabled);
         setSelectedCalendarId(data.calendarId || "");
         setLastSyncAt(data.lastSyncAt);
+        // Ensure calendar name appears on reload by loading calendars when sync is enabled
+        if (data.enabled && data.calendarId) {
+          fetchGoogleCalendars();
+        }
       }
     } catch (error) {
       console.error("Error fetching Google sync settings:", error);
@@ -608,203 +612,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Google Calendar Sync Settings */}
-        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
-          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Google Calendar Sync
-            </h2>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
-                  Enable Calendar Sync
-                </span>
-                <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
-                  Sync your events with Google Calendar
-                </span>
-              </div>
-              <button
-                onClick={() => handleSyncToggle(!syncToggleOn)}
-                disabled={syncLoading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  syncToggleOn
-                    ? "bg-blue-600"
-                    : "bg-gray-300 dark:bg-dark-divider"
-                } ${syncLoading ? "opacity-50" : ""}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    syncToggleOn ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {syncToggleOn && (
-              <>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary mb-2 block">
-                      Select Calendar
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        value={selectedCalendarId}
-                        onChange={(e) => handleCalendarChange(e.target.value)}
-                        disabled={syncLoading || calendarsLoading}
-                        className="flex-1 border border-gray-300 dark:border-dark-divider rounded-lg px-3 py-2 bg-white dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select a calendar...</option>
-                        {googleCalendars.map((calendar) => (
-                          <option key={calendar.id} value={calendar.id}>
-                            {calendar.summary}{" "}
-                            {calendar.primary ? "(Primary)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={fetchGoogleCalendars}
-                        disabled={calendarsLoading || syncLoading}
-                        className="px-3 py-2 bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {calendarsLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
-                        Manual Sync
-                      </span>
-                      <p className="text-xs text-gray-600 dark:text-dark-textSecondary">
-                        {lastSyncAt
-                          ? `Last synced: ${new Date(
-                              lastSyncAt
-                            ).toLocaleString()}`
-                          : "Never synced"}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleManualSync}
-                      disabled={syncLoading || !selectedCalendarId}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {syncLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      Sync Now
-                    </button>
-                  </div>
-                </div>
-
-                {syncError && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    <span className="text-sm text-red-800 dark:text-red-200">
-                      {syncError}
-                    </span>
-                  </div>
-                )}
-
-                {/* Debug Information */}
-                <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
-                      Debug Information
-                    </h4>
-                    <button
-                      onClick={fetchDebugInfo}
-                      disabled={debugLoading}
-                      className="px-3 py-1 text-xs bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      {debugLoading ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        "Refresh"
-                      )}
-                    </button>
-                  </div>
-
-                  {debugLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                    </div>
-                  ) : debugInfo ? (
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-dark-textSecondary">
-                          Refresh Token:
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            debugInfo.hasRefreshToken
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {debugInfo.hasRefreshToken
-                            ? "✓ Available"
-                            : "✗ Missing"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-dark-textSecondary">
-                          Calendar Scope:
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            debugInfo.hasCalendarScope
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {debugInfo.hasCalendarScope
-                            ? "✓ Granted"
-                            : "✗ Not Granted"}
-                        </span>
-                      </div>
-                      {debugInfo.tokenExpiry && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-dark-textSecondary">
-                            Token Expiry:
-                          </span>
-                          <span className="text-gray-800 dark:text-dark-textPrimary">
-                            {new Date(debugInfo.tokenExpiry).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                      <div className="pt-2">
-                        <span className="text-gray-600 dark:text-dark-textSecondary block mb-1">
-                          Granted Scopes:
-                        </span>
-                        <div className="bg-gray-50 dark:bg-dark-secondary p-2 rounded text-xs font-mono">
-                          {debugInfo.scopes.length > 0
-                            ? debugInfo.scopes.join(", ")
-                            : "No scopes found"}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-500 dark:text-dark-textSecondary">
-                      Click "Refresh" to load debug information
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
         {/* Schedule Settings */}
         <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
           <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
@@ -924,10 +731,214 @@ export default function SettingsPage() {
                 </>
               )}
             </div>
+
+            {/* Google Calendar Sync */}
+            <div className="space-y-4 mt-6 pt-4 border-t border-gray-200 dark:border-dark-divider">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Google Calendar Sync
+              </h3>
+
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-gray-800 dark:text-dark-textPrimary font-medium block mb-1">
+                    Enable Calendar Sync
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-dark-textSecondary">
+                    Sync your events with Google Calendar
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleSyncToggle(!syncToggleOn)}
+                  disabled={syncLoading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    syncToggleOn
+                      ? "bg-blue-600"
+                      : "bg-gray-300 dark:bg-dark-divider"
+                  } ${syncLoading ? "opacity-50" : ""}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      syncToggleOn ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {syncToggleOn && (
+                <>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary mb-2 block">
+                        Select Calendar
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={selectedCalendarId}
+                          onChange={(e) => handleCalendarChange(e.target.value)}
+                          disabled={syncLoading || calendarsLoading}
+                          className="flex-1 border border-gray-300 dark:border-dark-divider rounded-lg px-3 py-2 bg-white dark:bg-dark-background dark:text-dark-textPrimary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select a calendar...</option>
+                          {googleCalendars.map((calendar) => (
+                            <option key={calendar.id} value={calendar.id}>
+                              {calendar.summary}{" "}
+                              {calendar.primary ? "(Primary)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={fetchGoogleCalendars}
+                          disabled={calendarsLoading || syncLoading}
+                          className="px-3 py-2 bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {calendarsLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
+                          Manual Sync
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleManualSync}
+                        disabled={syncLoading || !selectedCalendarId}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {syncLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        Sync Now
+                      </button>
+                    </div>
+                  </div>
+
+                  {syncError && (
+                    <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      <span className="text-sm text-red-800 dark:text-red-200">
+                        {syncError}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="pt-4 border-t border-gray-200 dark:border-dark-divider">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-800 dark:text-dark-textPrimary">
+                    Connection Status
+                  </h4>
+                  <button
+                    onClick={fetchDebugInfo}
+                    disabled={debugLoading}
+                    className="px-3 py-1 text-xs bg-gray-100 dark:bg-dark-secondary hover:bg-gray-200 dark:hover:bg-dark-hover rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {debugLoading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      "Refresh"
+                    )}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-dark-secondary">
+                    <span className="text-gray-600 dark:text-dark-textSecondary">
+                      Google account connected
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 font-medium ${
+                        debugInfo?.hasRefreshToken
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {debugInfo?.hasRefreshToken ? (
+                        <Check size={14} />
+                      ) : (
+                        <X size={14} />
+                      )}
+                      {debugInfo?.hasRefreshToken
+                        ? "Connected"
+                        : "Not connected"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-dark-secondary">
+                    <span className="text-gray-600 dark:text-dark-textSecondary">
+                      Calendar access granted
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 font-medium ${
+                        debugInfo?.hasCalendarScope
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {debugInfo?.hasCalendarScope ? (
+                        <Check size={14} />
+                      ) : (
+                        <X size={14} />
+                      )}
+                      {debugInfo?.hasCalendarScope ? "Granted" : "Not granted"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-dark-secondary">
+                    <span className="text-gray-600 dark:text-dark-textSecondary">
+                      Sync enabled
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 font-medium ${
+                        googleSyncEnabled
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {googleSyncEnabled ? (
+                        <Check size={14} />
+                      ) : (
+                        <X size={14} />
+                      )}
+                      {googleSyncEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-dark-secondary">
+                    <span className="text-gray-600 dark:text-dark-textSecondary">
+                      Calendar selected
+                    </span>
+                    <span
+                      className={`flex items-center gap-1 font-medium ${
+                        selectedCalendarId
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      {selectedCalendarId ? (
+                        <Check size={14} />
+                      ) : (
+                        <X size={14} />
+                      )}
+                      {selectedCalendarId ? "Selected" : "Not selected"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Habit Learning moved into Schedule section above */}
+
+        {/* Google Calendar Sync moved inside Schedule section below */}
 
         {/* Write Settings */}
         <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
