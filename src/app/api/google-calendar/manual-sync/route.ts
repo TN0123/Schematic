@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       env: {
         VERCEL_URL: process.env.VERCEL_URL || null,
-        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || null,
         NODE_ENV: process.env.NODE_ENV,
       },
     });
