@@ -112,17 +112,23 @@ function getWebhookUrl(): string {
   // Check if we're in a Vercel environment
   if (process.env.VERCEL_URL) {
     // Vercel preview deployments
-    return `https://${process.env.VERCEL_URL}/api/google-calendar/webhook`;
+    const url = `https://${process.env.VERCEL_URL}/api/google-calendar/webhook`;
+    console.log('[GCAL Watch] Using webhook URL from VERCEL_URL', { url });
+    return url;
   }
   
   // Check for explicit NEXT_PUBLIC_APP_URL
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    return `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/webhook`;
+    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/google-calendar/webhook`;
+    console.log('[GCAL Watch] Using webhook URL from NEXT_PUBLIC_APP_URL', { url });
+    return url;
   }
   
   // Fallback for local development
   if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3000/api/google-calendar/webhook';
+    const url = 'http://localhost:3000/api/google-calendar/webhook';
+    console.log('[GCAL Watch] Using local webhook URL (development)', { url });
+    return url;
   }
   
   // Last resort - this should not happen in production
@@ -735,8 +741,10 @@ export async function setupGoogleCalendarWatch(userId: string, calendarId: strin
       token: userId, // Pass user ID in the token for webhook processing
       expiration: expiration,
     };
+    console.log('[GCAL Watch] Creating watch channel', { userId, calendarId, webhookUrl, channelId, expiration });
     
     const watchResponse = await client.watchCalendar(calendarId, watchRequest);
+    console.log('[GCAL Watch] Watch channel created', { userId, calendarId, response: watchResponse });
     
     // Store the channel info in the database
     await prisma.user.update({
@@ -766,12 +774,14 @@ export async function stopGoogleCalendarWatch(userId: string): Promise<void> {
     });
     
     if (!user?.googleCalendarWatchChannelId || !user.googleCalendarId) {
+      console.log('[GCAL Watch] No existing watch channel to stop', { userId });
       return; // No watch channel to stop
     }
     
     const client = await getGoogleCalendarClient(userId);
     
     // Stop the watch channel
+    console.log('[GCAL Watch] Stopping watch channel', { userId, channelId: user.googleCalendarWatchChannelId, calendarId: user.googleCalendarId });
     await client.stopWatchChannel(user.googleCalendarWatchChannelId, user.googleCalendarId);
     
     // Clear the channel info from the database
@@ -803,6 +813,7 @@ export async function renewGoogleCalendarWatch(userId: string): Promise<void> {
     });
     
     if (!user?.googleCalendarSyncEnabled || !user.googleCalendarId) {
+      console.log('[GCAL Watch] Renewal skipped, sync disabled or no calendar', { userId });
       return; // Sync not enabled
     }
     
@@ -811,15 +822,18 @@ export async function renewGoogleCalendarWatch(userId: string): Promise<void> {
     const expirationDate = user.googleCalendarWatchExpiration;
     
     if (!expirationDate || (expirationDate.getTime() - now.getTime()) > 24 * 60 * 60 * 1000) {
+      console.log('[GCAL Watch] Renewal not needed yet', { userId, expirationDate });
       return; // Not close to expiration
     }
     
     // Stop the old watch channel
     if (user.googleCalendarWatchChannelId) {
+      console.log('[GCAL Watch] Renewing watch channel: stopping old channel first', { userId, oldChannelId: user.googleCalendarWatchChannelId });
       await stopGoogleCalendarWatch(userId);
     }
     
     // Create a new watch channel
+    console.log('[GCAL Watch] Creating new watch channel after renewal', { userId });
     await setupGoogleCalendarWatch(userId, user.googleCalendarId);
     
     console.log(`Watch channel renewed for user ${userId}`);
