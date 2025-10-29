@@ -1330,9 +1330,7 @@ export default function GoalsPanel({
                           />
                           {item.dueDate && (
                             <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
-                              <Clock className="w-3 h-3" />
                               <span>
-                                Due:{" "}
                                 {item.dueTime
                                   ? formatDueDateWithTime(
                                       item.dueDate,
@@ -1388,9 +1386,7 @@ export default function GoalsPanel({
           showBorder ? "border-r dark:border-dark-divider" : ""
         } py-6 ${
           isCollapsed ? "pl-4 pr-2" : "px-4"
-        } flex-col items-center flex ${
-          isCollapsed ? "shadow-none" : "shadow-lg dark:shadow-dark-divider"
-        } ${className}`}
+        } flex-col items-center flex ${className}`}
         id="goals-panel"
         style={width && !isCollapsed ? { width: `${width}px` } : undefined}
       >
