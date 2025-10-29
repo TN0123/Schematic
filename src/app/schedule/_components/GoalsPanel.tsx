@@ -1330,9 +1330,7 @@ export default function GoalsPanel({
                           />
                           {item.dueDate && (
                             <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
-                              <Clock className="w-3 h-3" />
                               <span>
-                                Due:{" "}
                                 {item.dueTime
                                   ? formatDueDateWithTime(
                                       item.dueDate,
