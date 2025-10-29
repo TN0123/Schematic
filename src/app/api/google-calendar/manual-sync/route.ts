@@ -10,8 +10,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    console.log('[GCAL Manual Sync] Triggered', {
+      userId: session.user.id,
+      env: {
+        VERCEL_URL: process.env.VERCEL_URL || null,
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || null,
+        NODE_ENV: process.env.NODE_ENV,
+      },
+    });
     const result = await performIncrementalSync(session.user.id);
-
+    console.log('[GCAL Manual Sync] Completed', {
+      userId: session.user.id,
+      synced: result.synced,
+      deleted: result.deleted,
+      errors: result.errors,
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error performing manual sync:", error);

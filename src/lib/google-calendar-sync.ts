@@ -236,14 +236,37 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
     
     const client = await getGoogleCalendarClient(userId);
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('[GCAL Sync] performIncrementalSync start', {
+      userId,
+      calendarId: user.googleCalendarId,
+      hasSyncToken: !!user.googleCalendarSyncToken,
+      env: {
+        VERCEL_URL: process.env.VERCEL_URL || null,
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || null,
+        NODE_ENV: process.env.NODE_ENV,
+      },
+    });
     
     // Fetch changes from Google Calendar
-    const { events: googleEvents, nextSyncToken } = await client.listEvents(
-      user.googleCalendarId,
-      undefined,
-      undefined,
-      user.googleCalendarSyncToken || undefined
-    );
+    const { events: googleEvents, nextSyncToken } = await client
+      .listEvents(
+        user.googleCalendarId,
+        undefined,
+        undefined,
+        user.googleCalendarSyncToken || undefined
+      )
+      .catch((err: any) => {
+        console.error('[GCAL Sync] listEvents error', {
+          message: err?.message,
+          code: err?.code,
+          errors: err?.errors,
+        });
+        throw err;
+      });
+    console.log('[GCAL Sync] listEvents result', {
+      fetchedCount: googleEvents?.length || 0,
+      nextSyncTokenPresent: !!nextSyncToken,
+    });
     
     let synced = 0;
     let deleted = 0;
