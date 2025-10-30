@@ -15,6 +15,7 @@ import {
   Settings,
   Loader2,
   ImagePlus,
+  Globe,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap, ModelType } from "./utils";
@@ -39,6 +40,9 @@ interface MessageProps {
   isStreaming?: boolean;
   isTyping?: boolean;
   id?: string;
+  searchUsed?: boolean;
+  sources?: string[];
+  searchQuery?: string | null;
 }
 
 interface ErrorState {
@@ -108,6 +112,9 @@ export function Message({
   isTyping,
   isGeneratingChanges,
   isCurrentAssistantMessage,
+  searchUsed,
+  sources,
+  searchQuery,
 }: MessageProps & {
   onShowContextDiff?: (before: string, after: string) => void;
   isGeneratingChanges?: boolean;
@@ -141,10 +148,38 @@ export function Message({
             : ""
         }`}
       >
-        <div className="flex items-start gap-2">
-          <p className="text-gray-900 dark:text-dark-textPrimary text-xs flex-1">
+        <div className="flex flex-col gap-1">
+          {searchUsed && searchQuery && (
+            <div className="text-[10px] text-gray-500 dark:text-dark-textSecondary flex items-center gap-1">
+              <Globe size={10} />
+              <span>searched the web for </span>
+              <span className="italic truncate">"{searchQuery}"</span>
+            </div>
+          )}
+          <p className="text-gray-900 dark:text-dark-textPrimary text-xs">
             {message}
           </p>
+          {searchUsed && sources && sources.length > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[10px] text-gray-500 dark:text-dark-textSecondary">
+                Sources:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {sources.map((u, idx) => (
+                  <a
+                    key={`${u}-${idx}`}
+                    href={u}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 dark:bg-dark-secondary text-[10px] text-gray-700 dark:text-dark-textPrimary hover:bg-gray-300 dark:hover:bg-dark-hover transition"
+                    title={u}
+                  >
+                    {idx + 1}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           {isGeneratingChanges &&
             role === "assistant" &&
             isCurrentAssistantMessage &&
@@ -264,6 +299,7 @@ export default function WritePanel({
   const [instructions, setInstructions] = useState<string>("");
   const modKeyLabel = useModifierKeyLabel();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [history, setHistory] = useState<
     { role: "user" | "model"; parts: string }[]
@@ -494,6 +530,7 @@ export default function WritePanel({
             documentId,
             model: selectedModel,
             actionMode,
+            webSearchEnabled: requestPayload.webSearchEnabled,
             images: requestPayload.images || [],
           }),
           signal: controller.signal,
@@ -535,6 +572,17 @@ export default function WritePanel({
               try {
                 const jsonData = line.substring(5).trim();
                 const data = JSON.parse(jsonData);
+                if (process.env.NODE_ENV !== "production") {
+                  try {
+                    console.log("[WritePanel] SSE event", {
+                      hasDelta: typeof data.delta !== "undefined",
+                      hasText: typeof data.text !== "undefined",
+                      hasChanges: typeof data.changes !== "undefined",
+                      hasResult: typeof data.result !== "undefined",
+                      actionMode,
+                    });
+                  } catch {}
+                }
 
                 // Handle new event types from dual-stream architecture
                 if (data.delta !== undefined) {
@@ -578,6 +626,16 @@ export default function WritePanel({
 
                   let finalMessage: string;
                   let finalChanges: any = {};
+                  const wasSearchUsed = data.searchUsed || false;
+                  const searchQuery: string | null =
+                    typeof data.searchQuery === "string"
+                      ? data.searchQuery
+                      : null;
+                  const searchSources: string[] = Array.isArray(
+                    data.searchSources
+                  )
+                    ? data.searchSources
+                    : [];
 
                   if (actionMode === "ask") {
                     finalMessage = data.result;
@@ -595,6 +653,9 @@ export default function WritePanel({
                     contextChange: data.contextChange,
                     id: assistantMessageId,
                     isTyping: false,
+                    searchUsed: wasSearchUsed,
+                    sources: searchSources,
+                    searchQuery,
                   };
 
                   setMessages((prev) =>
@@ -666,6 +727,7 @@ export default function WritePanel({
       instructions,
       history,
       actionMode,
+      webSearchEnabled,
       // Send full image objects so backend can include base64+mediaType for multimodal providers
       images: uploadedImages.map((img) => ({
         url: img.url,
@@ -888,6 +950,10 @@ export default function WritePanel({
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
         id: assistantMessageId,
+        searchUsed: data.searchUsed || false,
+        sources: Array.isArray(data.searchSources) ? data.searchSources : [],
+        searchQuery:
+          typeof data.searchQuery === "string" ? data.searchQuery : null,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -1204,6 +1270,23 @@ export default function WritePanel({
                   </button>
                 )}
                 <button
+                  className={`rounded-full ${
+                    webSearchEnabled
+                      ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                      : "hover:bg-gray-300 dark:hover:bg-dark-hover text-gray-600 dark:text-gray-400"
+                  } transition-colors duration-200 p-2 ml-2`}
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  title="Web Search (1 premium use)"
+                  disabled={
+                    isImageUploading ||
+                    isChatLoading ||
+                    (premiumUsesRemaining !== null &&
+                      premiumUsesRemaining === 0)
+                  }
+                >
+                  <Globe size={20} />
+                </button>
+                <button
                   className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                   onClick={() => fileInputRef.current?.click()}
                   title="Upload image"
@@ -1426,6 +1509,9 @@ export default function WritePanel({
                   contextChange={msg.contextChange}
                   isStreaming={msg.isStreaming}
                   isTyping={msg.isTyping}
+                  searchUsed={msg.searchUsed}
+                  sources={msg.sources}
+                  searchQuery={msg.searchQuery}
                   isGeneratingChanges={isGeneratingChanges}
                   isCurrentAssistantMessage={
                     msg.id === currentAssistantMessageId ||

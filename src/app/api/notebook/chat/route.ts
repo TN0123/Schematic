@@ -7,6 +7,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { PrismaClient } from "@prisma/client";
 import { contextUpdate } from "@/scripts/notebook/context-update";
 import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
+import { createWebSearchTool } from "@/scripts/notebook/web-search";
 
 const prisma = new PrismaClient();
 
@@ -33,8 +34,20 @@ export async function POST(req: NextRequest) {
       model = "basic",
       actionMode = "edit",
       images = [],
+      webSearchEnabled = false,
     } = await req.json();
 
+    console.log('[Notebook/Chat] POST start', {
+      hasCurrentText: typeof currentText === 'string' && currentText.length > 0,
+      hasInstructions: typeof instructions === 'string' && instructions.length > 0,
+      historyCount: Array.isArray(history) ? history.length : 0,
+      userId: !!userId,
+      documentId: !!documentId,
+      requestedModel: model,
+      actionMode,
+      imagesCount: Array.isArray(images) ? images.length : 0,
+      webSearchEnabled,
+    });
 
     // Get document context
     const document = await prisma.document.findUnique({
@@ -65,6 +78,7 @@ export async function POST(req: NextRequest) {
           // Track the usage
           const usageResult = await trackPremiumUsage(userId);
           remainingUses = usageResult.remainingUses;
+          console.log('[Notebook/Chat] Premium model selected', { model, remainingUses });
         } else {
           // Fall back to Gemini if limit reached
           selectedModelProvider = google("gemini-2.5-flash");
@@ -78,6 +92,47 @@ export async function POST(req: NextRequest) {
     } else {
       // Use Gemini for basic model
       selectedModelProvider = google("gemini-2.5-flash");
+      console.log('[Notebook/Chat] Using basic model');
+    }
+
+    // Configure web search tool if enabled
+    let webSearchTool: any = undefined;
+    let searchWasUsed = false;
+    const collectedSources: string[] = [];
+    let collectedQuery: string | null = null;
+    let collectedSearchText: string | null = null;
+
+    if (webSearchEnabled && userId) {
+      // Check if user has premium uses available
+      const usageCheck = await canUsePremiumModel(userId);
+      if (usageCheck.allowed) {
+        webSearchTool = createWebSearchTool((data) => {
+          try {
+            console.log('[Notebook/Chat] web_search onResult callback', {
+              textSize: typeof data?.text === 'string' ? data.text.length : 0,
+              sourcesCount: Array.isArray(data?.sources) ? data.sources.length : 0,
+              query: data?.query,
+            });
+            if (typeof data?.text === 'string') {
+              collectedSearchText = data.text;
+            }
+            if (Array.isArray(data?.sources)) {
+              for (const url of data.sources) {
+                if (typeof url === 'string' && !collectedSources.includes(url)) {
+                  collectedSources.push(url);
+                }
+              }
+            }
+            if (typeof data?.query === 'string') {
+              collectedQuery = data.query;
+            }
+          } catch {}
+        });
+        console.log('[Notebook/Chat] web_search tool configured');
+      } else {
+        // Silently disable if no uses available
+        console.log('Web search requested but no premium uses available');
+      }
     }
 
     if (actionMode === "ask") {
@@ -92,6 +147,7 @@ export async function POST(req: NextRequest) {
 
         Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to help answer their question or provide better guidance." : ""}
+        ${webSearchTool ? "If the question requires current or changing information, call the web_search tool with a concise query to fetch up-to-date information before answering." : ""}
         
         You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
         
@@ -101,6 +157,8 @@ export async function POST(req: NextRequest) {
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
         
         DO NOT include any other text in your response, only your answer to the user's question.
+
+        Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
       `;
 
       const userPrompt = `
@@ -166,9 +224,28 @@ export async function POST(req: NextRequest) {
         { role: "user", content: userContent },
       ];
 
+      console.log('[Notebook/Chat] ASK mode start');
       const result = await streamText({
         model: selectedModelProvider,
         messages,
+        ...(webSearchTool ? { 
+          tools: { web_search: webSearchTool },
+          toolChoice: 'required',
+          maxSteps: 2,
+          onStepFinish: async (step) => {
+            if (step.toolCalls && step.toolCalls.length > 0) {
+              searchWasUsed = true;
+              try {
+                // Server-side visibility: log tool call details
+                const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
+                console.log('[Chat/ASK] web_search tool call', callsAny.map((c) => ({ name: c.toolName, args: c.args })));
+                const first = callsAny[0];
+                const q = first?.args?.query;
+                if (typeof q === 'string') collectedQuery = q;
+              } catch {}
+            }
+          }
+        } : {}),
       });
 
       let fullResponse = "";
@@ -189,10 +266,14 @@ export async function POST(req: NextRequest) {
             // Stream text deltas
             for await (const delta of result.textStream) {
               fullResponse += delta;
+              if (fullResponse.length === delta.length) {
+                console.log('[Notebook/Chat] ASK first delta received', { deltaSize: delta.length });
+              }
               sendEvent("assistant-delta", { delta });
             }
 
             sendEvent("assistant-complete", { text: fullResponse });
+            console.log('[Notebook/Chat] ASK text complete', { totalSize: fullResponse.length });
 
             // Update conversation history
             const updatedHistory = [
@@ -203,6 +284,7 @@ export async function POST(req: NextRequest) {
 
             // Update context
             sendEvent("status", { message: "Updating context..." });
+            console.log('[Notebook/Chat] Context update start');
             let contextUpdateResult;
             try {
               contextUpdateResult = await contextUpdate(
@@ -216,14 +298,30 @@ export async function POST(req: NextRequest) {
                 contextChange: null,
               };
             }
+            console.log('[Notebook/Chat] Context update done', contextUpdateResult);
+
+            // Track premium usage if search was used
+            if (searchWasUsed && userId) {
+              const usageResult = await trackPremiumUsage(userId);
+              remainingUses = usageResult.remainingUses;
+            }
 
             sendEvent("result", {
               result: fullResponse,
               history: updatedHistory,
               remainingUses,
+              searchUsed: searchWasUsed,
+              searchQuery: collectedQuery,
+              searchSources: collectedSources,
               contextUpdated: contextUpdateResult.contextUpdated,
               contextChange: contextUpdateResult.contextChange,
               actionMode: "ask",
+            });
+            console.log('[Notebook/Chat] ASK result sent', {
+              remainingUses,
+              searchUsed: searchWasUsed,
+              searchQuery: collectedQuery,
+              sourcesCount: collectedSources.length,
             });
 
             sendEvent("complete", { message: "Processing complete" });
@@ -261,6 +359,7 @@ export async function POST(req: NextRequest) {
         END OF CONTEXT
 
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to better understand their request and provide more relevant changes." : ""}
+        ${webSearchTool ? "If the request requires current or changing information, call the web_search tool with a focused query to gather up-to-date facts before responding." : ""}
 
         Your job is to provide a brief, friendly response to the user explaining what changes you're making to their text.
         
@@ -272,37 +371,11 @@ export async function POST(req: NextRequest) {
         "Improvement Suggestion:") — just write as a human might naturally continue or respond.
         
         Keep your response concise (2-3 sentences maximum).
+
+        Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
       `;
 
-      const changeMapPrompt = `
-        You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
-
-        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
-        BEGINNING OF CONTEXT
-        ${context}
-        END OF CONTEXT
-
-        ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
-
-        Your job is to analyze the current text and the user's request, then generate an array of changes.
-        
-        Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
-        
-        Rules for generating changes:
-        1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
-        2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
-        3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
-        4. Choose text snippets that are unique enough to be found in the document (include enough context)
-        5. If replacing multiple separate sections, create multiple change objects in the array
-        6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
-        7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
-        
-        Example changes array:
-        - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
-        - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
-        - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
-        - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
-      `;
+      // (Moved changeMapPrompt construction to after assistant stream so it can include any web findings.)
 
       const userPrompt = `
         Here is the current text:
@@ -377,8 +450,7 @@ export async function POST(req: NextRequest) {
           try {
             sendEvent("status", { message: "Starting AI processing..." });
 
-            // Start both tasks in parallel
-            // 1. Stream assistant text (for user to see)
+            // Stream assistant text first (with optional tool use)
             const assistantMessages = [
               {
                 role: "system",
@@ -386,21 +458,6 @@ export async function POST(req: NextRequest) {
               },
               ...uiMessages,
             ];
-
-            // 2. Generate change map JSON (not streamed)
-            const changeMapMessages = [
-              {
-                role: "system",
-                content: changeMapPrompt,
-              },
-              ...uiMessages,
-            ];
-
-            const changeMapPromise = generateObject({
-              model: selectedModelProvider,
-              messages: changeMapMessages,
-              schema: changeMapSchema,
-            });
 
             let assistantFullText = "";
 
@@ -410,9 +467,27 @@ export async function POST(req: NextRequest) {
             
             const assistantStreamPromise = (async () => {
               try {
-                const result = await streamText({
+            console.log('[Notebook/Chat] EDIT mode assistant stream start');
+            const result = await streamText({
                   model: selectedModelProvider,
                   messages: assistantMessages,
+                  ...(webSearchTool ? { 
+                    tools: { web_search: webSearchTool },
+                toolChoice: 'required',
+                    maxSteps: 2,
+                    onStepFinish: async (step) => {
+                      if (step.toolCalls && step.toolCalls.length > 0) {
+                        searchWasUsed = true;
+                    try {
+                      const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
+                      console.log('[Chat/EDIT] web_search tool call', callsAny.map((c) => ({ name: c.toolName, args: c.args })));
+                      const first = callsAny[0];
+                      const q = first?.args?.query;
+                      if (typeof q === 'string') collectedQuery = q;
+                    } catch {}
+                      }
+                    }
+                  } : {}),
                 });
 
                 for await (const delta of result.textStream) {
@@ -423,29 +498,77 @@ export async function POST(req: NextRequest) {
                 }
                 
                 
-                sendEvent("assistant-complete", { text: assistantFullText });
+            sendEvent("assistant-complete", { text: assistantFullText });
+                console.log('[Notebook/Chat] EDIT text complete', { totalSize: assistantFullText.length });
               } catch (error) {
                 
                 throw error;
               }
             })();
 
-            // Wait for change map to be ready
-            const changeMapGenPromise = (async () => {
-              const changeMapResult = await changeMapPromise;
-              const changesArray = changeMapResult.object.changes;
-              
-              // Convert array format to Record<string, string> format expected by frontend
-              const changeMap: Record<string, string> = {};
-              for (const change of changesArray) {
-                changeMap[change.original] = change.replacement;
-              }
-              
-              sendEvent("changes-final", { changes: changeMap });
-            })();
+            // Wait for assistant stream to complete
+            await assistantStreamPromise;
 
-            // Wait for both to complete
-            await Promise.all([assistantStreamPromise, changeMapGenPromise]);
+            // If the model did not produce a chat message, synthesize a concise one so UI has content.
+            // Do NOT include the "searched the web for" phrase here; the UI shows that separately.
+            if (searchWasUsed && (!assistantFullText || assistantFullText.trim().length === 0)) {
+              const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+              assistantFullText = `Here is an update based on the latest information as of ${dateStr}.`;
+            }
+
+            // Now generate change map, incorporating web findings if available
+            const changeMapPrompt = `
+              You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
+
+              Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+              BEGINNING OF CONTEXT
+              ${context}
+              END OF CONTEXT
+
+              ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
+
+              ${collectedSearchText ? `The assistant has run a web search with the query "${collectedQuery ?? ''}" and obtained the following findings. Base your changes on these findings when relevant, and ensure factual accuracy:\n\nBEGIN WEB FINDINGS\n${collectedSearchText}\nEND WEB FINDINGS` : ''}
+
+              Your job is to analyze the current text and the user's request, then generate an array of changes.
+              
+              Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
+              
+              Rules for generating changes:
+              1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
+              2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
+              3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
+              4. Choose text snippets that are unique enough to be found in the document (include enough context)
+              5. If replacing multiple separate sections, create multiple change objects in the array
+              6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
+              7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
+              
+              Example changes array:
+              - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
+              - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
+              - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
+              - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
+
+              Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            `;
+
+            const changeMapMessages = [
+              {
+                role: "system",
+                content: changeMapPrompt,
+              },
+              ...uiMessages,
+            ];
+            const changeMapResult = await generateObject({
+              model: selectedModelProvider,
+              messages: changeMapMessages,
+              schema: changeMapSchema,
+            });
+            const changesArray = changeMapResult.object.changes;
+            const changeMap: Record<string, string> = {};
+            for (const change of changesArray) {
+              changeMap[change.original] = change.replacement;
+            }
+            sendEvent("changes-final", { changes: changeMap });
 
             // Update conversation history with the assistant's response
             const updatedHistory = [
@@ -456,6 +579,7 @@ export async function POST(req: NextRequest) {
 
             // Update context
             sendEvent("status", { message: "Updating context..." });
+            console.log('[Notebook/Chat] EDIT context update start');
             let contextUpdateResult;
             try {
               contextUpdateResult = await contextUpdate(
@@ -469,14 +593,30 @@ export async function POST(req: NextRequest) {
                 contextChange: null,
               };
             }
+            console.log('[Notebook/Chat] EDIT context update done', contextUpdateResult);
+
+            // Track premium usage if search was used
+            if (searchWasUsed && userId) {
+              const usageResult = await trackPremiumUsage(userId);
+              remainingUses = usageResult.remainingUses;
+            }
 
             sendEvent("result", {
               result: [assistantFullText, {}],
               history: updatedHistory,
               remainingUses,
+              searchUsed: searchWasUsed,
+              searchQuery: collectedQuery,
+              searchSources: collectedSources,
               contextUpdated: contextUpdateResult.contextUpdated,
               contextChange: contextUpdateResult.contextChange,
               actionMode: "edit",
+            });
+            console.log('[Notebook/Chat] EDIT result sent', {
+              remainingUses,
+              searchUsed: searchWasUsed,
+              searchQuery: collectedQuery,
+              sourcesCount: collectedSources.length,
             });
 
             sendEvent("complete", { message: "Processing complete" });
