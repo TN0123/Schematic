@@ -1,5 +1,4 @@
 import {
-  Sparkles,
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
@@ -1247,18 +1246,6 @@ export default function WritePanel({
                     </span>
                   </p>
                 )}
-                {selected && (
-                  <button
-                    className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2 ${
-                      isImproving ? "animate-spin" : ""
-                    }`}
-                    onClick={handleImprove}
-                    title="Improve selected text"
-                    disabled={isImproving || isChatLoading}
-                  >
-                    <Sparkles size={20} />
-                  </button>
-                )}
                 {lastRequest && (
                   <button
                     className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
@@ -1272,7 +1259,7 @@ export default function WritePanel({
                 <button
                   className={`rounded-full ${
                     webSearchEnabled
-                      ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                      ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
                       : "hover:bg-gray-300 dark:hover:bg-dark-hover text-gray-600 dark:text-gray-400"
                   } transition-colors duration-200 p-2 ml-2`}
                   onClick={() => setWebSearchEnabled(!webSearchEnabled)}
@@ -1296,7 +1283,7 @@ export default function WritePanel({
                 </button>
                 {isChatLoading ? (
                   <button
-                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                     onClick={cancelChatRequest}
                     title="Stop generating"
                   >
@@ -1304,7 +1291,7 @@ export default function WritePanel({
                   </button>
                 ) : (
                   <button
-                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                     onClick={handleSubmit}
                   >
                     <CircleArrowUp size={20} />

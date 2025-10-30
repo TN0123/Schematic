@@ -37,17 +37,7 @@ export async function POST(req: NextRequest) {
       webSearchEnabled = false,
     } = await req.json();
 
-    console.log('[Notebook/Chat] POST start', {
-      hasCurrentText: typeof currentText === 'string' && currentText.length > 0,
-      hasInstructions: typeof instructions === 'string' && instructions.length > 0,
-      historyCount: Array.isArray(history) ? history.length : 0,
-      userId: !!userId,
-      documentId: !!documentId,
-      requestedModel: model,
-      actionMode,
-      imagesCount: Array.isArray(images) ? images.length : 0,
-      webSearchEnabled,
-    });
+    
 
     // Get document context
     const document = await prisma.document.findUnique({
@@ -78,11 +68,10 @@ export async function POST(req: NextRequest) {
           // Track the usage
           const usageResult = await trackPremiumUsage(userId);
           remainingUses = usageResult.remainingUses;
-          console.log('[Notebook/Chat] Premium model selected', { model, remainingUses });
+          
         } else {
           // Fall back to Gemini if limit reached
           selectedModelProvider = google("gemini-2.5-flash");
-          console.log(`Premium model denied: ${usageCheck.reason}`);
         }
       } catch (error) {
         console.error("Error checking premium usage:", error);
@@ -92,7 +81,7 @@ export async function POST(req: NextRequest) {
     } else {
       // Use Gemini for basic model
       selectedModelProvider = google("gemini-2.5-flash");
-      console.log('[Notebook/Chat] Using basic model');
+      
     }
 
     // Configure web search tool if enabled
@@ -108,11 +97,7 @@ export async function POST(req: NextRequest) {
       if (usageCheck.allowed) {
         webSearchTool = createWebSearchTool((data) => {
           try {
-            console.log('[Notebook/Chat] web_search onResult callback', {
-              textSize: typeof data?.text === 'string' ? data.text.length : 0,
-              sourcesCount: Array.isArray(data?.sources) ? data.sources.length : 0,
-              query: data?.query,
-            });
+            
             if (typeof data?.text === 'string') {
               collectedSearchText = data.text;
             }
@@ -128,10 +113,9 @@ export async function POST(req: NextRequest) {
             }
           } catch {}
         });
-        console.log('[Notebook/Chat] web_search tool configured');
+        
       } else {
         // Silently disable if no uses available
-        console.log('Web search requested but no premium uses available');
       }
     }
 
@@ -224,7 +208,7 @@ export async function POST(req: NextRequest) {
         { role: "user", content: userContent },
       ];
 
-      console.log('[Notebook/Chat] ASK mode start');
+      
       const result = await streamText({
         model: selectedModelProvider,
         messages,
@@ -238,7 +222,6 @@ export async function POST(req: NextRequest) {
               try {
                 // Server-side visibility: log tool call details
                 const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
-                console.log('[Chat/ASK] web_search tool call', callsAny.map((c) => ({ name: c.toolName, args: c.args })));
                 const first = callsAny[0];
                 const q = first?.args?.query;
                 if (typeof q === 'string') collectedQuery = q;
@@ -266,14 +249,12 @@ export async function POST(req: NextRequest) {
             // Stream text deltas
             for await (const delta of result.textStream) {
               fullResponse += delta;
-              if (fullResponse.length === delta.length) {
-                console.log('[Notebook/Chat] ASK first delta received', { deltaSize: delta.length });
-              }
+              
               sendEvent("assistant-delta", { delta });
             }
 
             sendEvent("assistant-complete", { text: fullResponse });
-            console.log('[Notebook/Chat] ASK text complete', { totalSize: fullResponse.length });
+            
 
             // Update conversation history
             const updatedHistory = [
@@ -284,7 +265,7 @@ export async function POST(req: NextRequest) {
 
             // Update context
             sendEvent("status", { message: "Updating context..." });
-            console.log('[Notebook/Chat] Context update start');
+            
             let contextUpdateResult;
             try {
               contextUpdateResult = await contextUpdate(
@@ -298,7 +279,7 @@ export async function POST(req: NextRequest) {
                 contextChange: null,
               };
             }
-            console.log('[Notebook/Chat] Context update done', contextUpdateResult);
+            
 
             // Track premium usage if search was used
             if (searchWasUsed && userId) {
@@ -317,12 +298,7 @@ export async function POST(req: NextRequest) {
               contextChange: contextUpdateResult.contextChange,
               actionMode: "ask",
             });
-            console.log('[Notebook/Chat] ASK result sent', {
-              remainingUses,
-              searchUsed: searchWasUsed,
-              searchQuery: collectedQuery,
-              sourcesCount: collectedSources.length,
-            });
+            
 
             sendEvent("complete", { message: "Processing complete" });
             
@@ -467,7 +443,7 @@ export async function POST(req: NextRequest) {
             
             const assistantStreamPromise = (async () => {
               try {
-            console.log('[Notebook/Chat] EDIT mode assistant stream start');
+            
             const result = await streamText({
                   model: selectedModelProvider,
                   messages: assistantMessages,
@@ -480,7 +456,6 @@ export async function POST(req: NextRequest) {
                         searchWasUsed = true;
                     try {
                       const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
-                      console.log('[Chat/EDIT] web_search tool call', callsAny.map((c) => ({ name: c.toolName, args: c.args })));
                       const first = callsAny[0];
                       const q = first?.args?.query;
                       if (typeof q === 'string') collectedQuery = q;
@@ -499,7 +474,7 @@ export async function POST(req: NextRequest) {
                 
                 
             sendEvent("assistant-complete", { text: assistantFullText });
-                console.log('[Notebook/Chat] EDIT text complete', { totalSize: assistantFullText.length });
+                
               } catch (error) {
                 
                 throw error;
@@ -579,7 +554,7 @@ export async function POST(req: NextRequest) {
 
             // Update context
             sendEvent("status", { message: "Updating context..." });
-            console.log('[Notebook/Chat] EDIT context update start');
+            
             let contextUpdateResult;
             try {
               contextUpdateResult = await contextUpdate(
@@ -593,7 +568,7 @@ export async function POST(req: NextRequest) {
                 contextChange: null,
               };
             }
-            console.log('[Notebook/Chat] EDIT context update done', contextUpdateResult);
+            
 
             // Track premium usage if search was used
             if (searchWasUsed && userId) {
@@ -612,12 +587,7 @@ export async function POST(req: NextRequest) {
               contextChange: contextUpdateResult.contextChange,
               actionMode: "edit",
             });
-            console.log('[Notebook/Chat] EDIT result sent', {
-              remainingUses,
-              searchUsed: searchWasUsed,
-              searchQuery: collectedQuery,
-              sourcesCount: collectedSources.length,
-            });
+            
 
             sendEvent("complete", { message: "Processing complete" });
             

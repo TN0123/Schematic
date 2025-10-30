@@ -41,12 +41,6 @@ export async function getUserSubscriptionTier(
   const now = new Date();
   const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
   
-  console.log('[getUserSubscriptionTier] Checking:', {
-    subscriptionStatus: user.subscriptionStatus,
-    periodEnd,
-    now,
-    isAfterNow: periodEnd ? periodEnd > now : false,
-  });
 
   if (
     user.subscriptionStatus === "active" &&

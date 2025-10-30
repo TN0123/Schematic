@@ -11,35 +11,11 @@ export function createWebSearchTool(onResult?: (data: { text: string; sources: s
     }),
     execute: async (input, options) => {
       try {
-        console.log('[WebSearch] execute start', { query: input?.query });
         const result = await generateText({
           model: perplexity('sonar'),
           messages: [{ role: 'user', content: input.query }],
         });
 
-        // Debug logging to understand provider result shape (kept concise)
-        try {
-          const anyResult = result as unknown as {
-            response?: { body?: unknown };
-            content?: Array<{ type?: string; url?: string; [k: string]: unknown }>;
-            providerMetadata?: unknown;
-          };
-          const responseBodyType = typeof anyResult?.response?.body;
-          const responseBodyPreview = responseBodyType === 'string'
-            ? String(anyResult?.response?.body).slice(0, 400)
-            : null;
-          const contentTypes = Array.isArray(anyResult?.content)
-            ? anyResult!.content!.map((p) => p?.type).slice(0, 10)
-            : null;
-          // eslint-disable-next-line no-console
-          console.log('[WebSearch] Perplexity result summary', {
-            responseBodyType,
-            responseBodyPreview,
-            hasContentArray: Array.isArray(anyResult?.content),
-            contentTypes,
-            hasProviderMetadata: !!anyResult?.providerMetadata,
-          });
-        } catch {}
 
         // Attempt to extract citations/sources from provider response metadata or content
         const sources: string[] = [];
@@ -79,7 +55,6 @@ export function createWebSearchTool(onResult?: (data: { text: string; sources: s
 
         // Notify caller if provided
         try {
-          console.log('[WebSearch] parsed sources', { count: uniqueSources.length });
           onResult?.({ text: result.text, sources: uniqueSources, query: input.query });
         } catch {}
 
