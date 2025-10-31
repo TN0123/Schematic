@@ -148,7 +148,8 @@ export default function UsageIndicator({
       )}
       {type === "premium-uses" && usage.premiumUses.resetAt && (
         <p className="text-xs text-gray-500 dark:text-dark-textSecondary mt-1">
-          Resets {new Date(usage.premiumUses.resetAt).toLocaleDateString()}
+          Resets {new Date(usage.premiumUses.resetAt).toLocaleDateString()}{" "}
+          (UTC)
         </p>
       )}
     </div>
