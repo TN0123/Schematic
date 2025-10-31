@@ -11,6 +11,76 @@ import { createWebSearchTool } from "@/scripts/notebook/web-search";
 
 const prisma = new PrismaClient();
 
+/**
+ * Strips all markdown syntax from text, converting it to plain text.
+ * Handles bold, italic, headers, links, code blocks, lists, and other markdown elements.
+ */
+function stripMarkdown(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return text;
+  }
+
+  let cleaned = text;
+
+  // Remove code blocks (```code```)
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, (match) => {
+    // Extract content between ``` markers
+    const content = match.replace(/```/g, '').trim();
+    return content;
+  });
+
+  // Remove inline code (`code`)
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');
+
+  // Remove images ![alt](url) -> alt
+  cleaned = cleaned.replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1');
+
+  // Remove links [text](url) -> text
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
+
+  // Remove reference-style links [text][ref] -> text
+  cleaned = cleaned.replace(/\[([^\]]+)\]\[[^\]]+\]/g, '$1');
+
+  // Remove strikethrough ~~text~~
+  cleaned = cleaned.replace(/~~([^~]+?)~~/g, '$1');
+
+  // Remove bold **text** or __text__ (using non-greedy matching for better edge case handling)
+  // Match **text** - non-greedy match of any characters between ** markers
+  cleaned = cleaned.replace(/\*\*(.+?)\*\*/g, '$1');
+  // Handle __text__ bold with underscores (non-greedy)
+  cleaned = cleaned.replace(/__(.+?)__/g, '$1');
+
+  // Remove italic *text* or _text_ (be careful not to remove underscores in words)
+  // This regex looks for * or _ that have word boundaries
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+  // For underscores, only remove if they're standalone (not part of a word)
+  cleaned = cleaned.replace(/(^|\s)_([^_]+)_(\s|$)/g, '$1$2$3');
+  cleaned = cleaned.replace(/(^|\s)_([^_]+)_/g, '$1$2');
+
+  // Remove headers (# Header)
+  cleaned = cleaned.replace(/^#{1,6}\s+(.+)$/gm, '$1');
+
+  // Remove blockquotes (> quote)
+  cleaned = cleaned.replace(/^>\s+(.+)$/gm, '$1');
+
+  // Remove horizontal rules (---, ___, ***)
+  cleaned = cleaned.replace(/^[-*_]{3,}$/gm, '');
+
+  // Remove list markers (-, *, +) at start of lines
+  cleaned = cleaned.replace(/^[\s]*[-*+]\s+(.+)$/gm, '$1');
+
+  // Remove numbered list markers (1., 2., etc.)
+  cleaned = cleaned.replace(/^[\s]*\d+\.\s+(.+)$/gm, '$1');
+
+  // Clean up excessive whitespace (multiple newlines -> single newline)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  // Trim whitespace
+  cleaned = cleaned.trim();
+
+  return cleaned;
+}
+
 // Schema for change map generation
 const changeMapSchema = z.object({
   changes: z
@@ -250,8 +320,14 @@ export async function POST(req: NextRequest) {
             for await (const delta of result.textStream) {
               fullResponse += delta;
               
-              sendEvent("assistant-delta", { delta });
+              // Strip markdown from delta before sending to client
+              const cleanedDelta = stripMarkdown(delta);
+              
+              sendEvent("assistant-delta", { delta: cleanedDelta });
             }
+
+            // Strip markdown from final response
+            fullResponse = stripMarkdown(fullResponse);
 
             sendEvent("assistant-complete", { text: fullResponse });
             
@@ -436,6 +512,7 @@ export async function POST(req: NextRequest) {
             ];
 
             let assistantFullText = "";
+            let cleanedAssistantFullText = "";
 
             // Start streaming assistant text immediately (don't create promise wrapper)
             
@@ -469,11 +546,17 @@ export async function POST(req: NextRequest) {
                   assistantFullText += delta;
                   deltaCount++;
                   
-                  sendEvent("assistant-delta", { delta });
+                  // Strip markdown from delta before sending to client
+                  const cleanedDelta = stripMarkdown(delta);
+                  cleanedAssistantFullText += cleanedDelta;
+                  
+                  sendEvent("assistant-delta", { delta: cleanedDelta });
                 }
                 
+                // Strip markdown from complete text as a final safety pass
+                cleanedAssistantFullText = stripMarkdown(cleanedAssistantFullText);
                 
-            sendEvent("assistant-complete", { text: assistantFullText });
+            sendEvent("assistant-complete", { text: cleanedAssistantFullText });
                 
               } catch (error) {
                 
@@ -486,9 +569,9 @@ export async function POST(req: NextRequest) {
 
             // If the model did not produce a chat message, synthesize a concise one so UI has content.
             // Do NOT include the "searched the web for" phrase here; the UI shows that separately.
-            if (searchWasUsed && (!assistantFullText || assistantFullText.trim().length === 0)) {
+            if (searchWasUsed && (!cleanedAssistantFullText || cleanedAssistantFullText.trim().length === 0)) {
               const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-              assistantFullText = `Here is an update based on the latest information as of ${dateStr}.`;
+              cleanedAssistantFullText = `Here is an update based on the latest information as of ${dateStr}.`;
             }
 
             // Now generate change map, incorporating web findings if available
@@ -541,15 +624,18 @@ export async function POST(req: NextRequest) {
             const changesArray = changeMapResult.object.changes;
             const changeMap: Record<string, string> = {};
             for (const change of changesArray) {
-              changeMap[change.original] = change.replacement;
+              // Strip markdown from replacement text (this is what gets applied to the document)
+              const cleanedReplacement = stripMarkdown(change.replacement);
+              changeMap[change.original] = cleanedReplacement;
             }
+            
             sendEvent("changes-final", { changes: changeMap });
 
             // Update conversation history with the assistant's response
             const updatedHistory = [
               ...history,
               { role: "user", parts: userPrompt },
-              { role: "model", parts: assistantFullText },
+              { role: "model", parts: cleanedAssistantFullText },
             ];
 
             // Update context
@@ -577,7 +663,7 @@ export async function POST(req: NextRequest) {
             }
 
             sendEvent("result", {
-              result: [assistantFullText, {}],
+              result: [cleanedAssistantFullText, {}],
               history: updatedHistory,
               remainingUses,
               searchUsed: searchWasUsed,
