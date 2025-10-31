@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import DashboardClient from "./_components/DashboardClient";
+import InfiniteCanvas from "./_components/InfiniteCanvas";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -43,12 +44,14 @@ export default async function Home() {
   }
 
   return (
-    <DashboardClient
-      userId={userId}
-      recentDocuments={recentDocuments}
-      bulletinNotes={bulletinNotes}
-      goals={goals}
-      totalGoalsCount={totalGoalsCount}
-    />
+    <InfiniteCanvas>
+      <DashboardClient
+        userId={userId}
+        recentDocuments={recentDocuments}
+        bulletinNotes={bulletinNotes}
+        goals={goals}
+        totalGoalsCount={totalGoalsCount}
+      />
+    </InfiniteCanvas>
   );
 }
