@@ -1256,23 +1256,28 @@ export default function WritePanel({
                     <RefreshCw size={20} />
                   </button>
                 )}
-                <button
-                  className={`rounded-full ${
-                    webSearchEnabled
-                      ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
-                      : "hover:bg-gray-300 dark:hover:bg-dark-hover text-gray-600 dark:text-gray-400"
-                  } transition-colors duration-200 p-2 ml-2`}
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  title="Web Search (1 premium use)"
-                  disabled={
-                    isImageUploading ||
-                    isChatLoading ||
-                    (premiumUsesRemaining !== null &&
-                      premiumUsesRemaining === 0)
-                  }
-                >
-                  <Globe size={20} />
-                </button>
+                <div className="relative group">
+                  <button
+                    className={`rounded-full ${
+                      webSearchEnabled
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+                        : "hover:bg-gray-300 dark:hover:bg-dark-hover text-gray-600 dark:text-gray-400"
+                    } transition-colors duration-200 p-2 ml-2`}
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    title="Web Search (1 premium use)"
+                    disabled={
+                      isImageUploading ||
+                      isChatLoading ||
+                      (premiumUsesRemaining !== null &&
+                        premiumUsesRemaining === 0)
+                    }
+                  >
+                    <Globe size={20} />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    Web Search (1 premium use)
+                  </div>
+                </div>
                 <button
                   className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                   onClick={() => fileInputRef.current?.click()}

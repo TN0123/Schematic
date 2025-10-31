@@ -9,7 +9,14 @@ import {
 } from "react";
 import { ChangeHandler } from "./ChangeHandler";
 import { DiffChangeHandler } from "./DiffChangeHandler";
-import { Info, AlertCircle, RefreshCw, X, Loader2 } from "lucide-react";
+import {
+  Info,
+  AlertCircle,
+  RefreshCw,
+  X,
+  Loader2,
+  Command,
+} from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
 import {
   useModifierKeyLabel,
@@ -1057,20 +1064,24 @@ export default function WriteEditor({
                     transform: "translateX(-50%)",
                   }}
                 >
-                  <div className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] leading-none bg-neutral-900/90 text-neutral-100 shadow-xl ring-1 ring-black/10 backdrop-blur-md dark:bg-dark-secondary/90 dark:text-dark-textPrimary dark:ring-dark-divider">
-                    <kbd className="px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-inner uppercase tracking-wide text-[10px] dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
-                      {modKeyLabel}
+                  <div className="relative flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] leading-none bg-white/90 text-gray-700 shadow-md ring-1 ring-gray-200 backdrop-blur-sm dark:bg-dark-paper/90 dark:text-dark-textPrimary dark:ring-dark-divider">
+                    <kbd className="px-1.5 py-0.5 rounded border bg-gray-50 text-gray-700 border-gray-200 text-[10px] font-medium dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
+                      {modKeyLabel === "Cmd" ? (
+                        <Command className="w-3.5 h-3.5" />
+                      ) : (
+                        "Ctrl"
+                      )}
                     </kbd>
-                    <span className="text-neutral-300 dark:text-dark-textSecondary">
+                    <span className="text-gray-400 dark:text-dark-textSecondary">
                       +
                     </span>
-                    <kbd className="px-1.5 py-0.5 rounded-md bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-inner uppercase tracking-wide text-[10px] dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
+                    <kbd className="px-1.5 py-0.5 rounded border bg-gray-50 text-gray-700 border-gray-200 text-[10px] font-medium dark:bg-dark-background dark:text-dark-textPrimary dark:border-dark-divider">
                       I
                     </kbd>
-                    <span className="ml-0.5 text-neutral-300 dark:text-dark-textSecondary">
+                    <span className="ml-0.5 text-gray-500 dark:text-dark-textSecondary">
                       to improve
                     </span>
-                    <span className="absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-neutral-900/90 ring-1 ring-black/10 dark:bg-dark-secondary/90 dark:ring-dark-divider" />
+                    <span className="absolute left-1/2 -bottom-1 h-2 w-2 -translate-x-1/2 rotate-45 bg-white/90 border border-gray-200 dark:bg-dark-paper/90 dark:border-dark-divider" />
                   </div>
                 </div>
               )}
