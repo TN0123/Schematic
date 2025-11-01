@@ -158,12 +158,22 @@ export async function POST(req: NextRequest) {
     const collectedSources: string[] = [];
     let collectedQuery: string | null = null;
     let collectedSearchText: string | null = null;
-
+    
+    // Promise-based approach for waiting on search results
+    let searchResultsResolver: ((value: { text: string; sources: string[]; query: string }) => void) | null = null;
+    let searchResultsPromise: Promise<{ text: string; sources: string[]; query: string }> | null = null;
+    let searchResultsResolved = false;
+    
     if (webSearchEnabled && userId) {
       // Check if user has premium uses available
       const usageCheck = await canUsePremiumModel(userId);
       
       if (usageCheck.allowed) {
+        // Create promise that resolves when search results are collected
+        searchResultsPromise = new Promise((resolve) => {
+          searchResultsResolver = resolve;
+        });
+        
         webSearchTool = createWebSearchTool((data) => {
           try {
             if (typeof data?.text === 'string') {
@@ -179,8 +189,27 @@ export async function POST(req: NextRequest) {
             if (typeof data?.query === 'string') {
               collectedQuery = data.query;
             }
+            
+            // Resolve the promise with search results (only once and only if we have text)
+            if (searchResultsResolver && !searchResultsResolved && collectedSearchText !== null && collectedSearchText.length > 0) {
+              searchResultsResolved = true;
+              searchResultsResolver({
+                text: collectedSearchText,
+                sources: [...collectedSources], // Create a copy to avoid mutation
+                query: collectedQuery || '',
+              });
+            }
           } catch (error) {
             console.error(`[NOTEBOOK_CHAT] Error in web search callback:`, error);
+            // Resolve promise even on error to prevent hanging (only if not already resolved)
+            if (searchResultsResolver && !searchResultsResolved) {
+              searchResultsResolved = true;
+              searchResultsResolver({
+                text: '',
+                sources: [...collectedSources],
+                query: collectedQuery || '',
+              });
+            }
           }
         });
       }
@@ -350,6 +379,70 @@ export async function POST(req: NextRequest) {
               
               // Send raw delta without markdown stripping for assistant messages
               sendEvent("assistant-delta", { delta });
+            }
+
+            // If web search was used but no text was generated, wait for search results and generate a response
+            if (searchWasUsed && (!fullResponse || fullResponse.trim().length === 0)) {
+              // Wait for search results using promise-based approach
+              if (searchResultsPromise) {
+                try {
+                  // Wait for search results with a timeout
+                  const searchResults = await Promise.race([
+                    searchResultsPromise,
+                    new Promise<{ text: string; sources: string[]; query: string }>((_, reject) =>
+                      setTimeout(() => reject(new Error('Search results timeout')), 10000)
+                    ),
+                  ]);
+
+                  if (searchResults && searchResults.text) {
+                    // Update collectedSearchText for consistency
+                    collectedSearchText = searchResults.text;
+                    if (searchResults.query) collectedQuery = searchResults.query;
+                    
+                    // Generate a response based on the search results
+                    sendEvent("status", { message: "generating", isSearching: false });
+                    
+                    const followUpPrompt = `
+                      Based on the web search results below, provide a helpful answer to the user's question: "${instructions}"
+                      
+                      Web search findings:
+                      ${searchResults.text}
+                      
+                      ${context ? `Context from the user's document:\n${context}` : ''}
+                      
+                      Provide a clear, helpful answer based on the search results. Write in natural, plain text without markdown formatting.
+                    `;
+
+                    const followUpResult = await streamText({
+                      model: selectedModelProvider,
+                      messages: [
+                        { role: "system", content: systemPrompt },
+                        ...messages.slice(1), // Skip the original system message
+                        { role: "user", content: followUpPrompt },
+                      ],
+                    });
+
+                    for await (const delta of followUpResult.textStream) {
+                      fullResponse += delta;
+                      sendEvent("assistant-delta", { delta });
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error waiting for search results:", error);
+                }
+              }
+            }
+
+            // Clear searching status if still set
+            if (isSearching) {
+              isSearching = false;
+              sendEvent("status", { message: "generating", isSearching: false });
+            }
+
+            // If still no response but search was used, provide a fallback message
+            if (searchWasUsed && (!fullResponse || fullResponse.trim().length === 0)) {
+              fullResponse = "I've searched for information about your question. Here are some relevant sources I found.";
+              sendEvent("assistant-delta", { delta: fullResponse });
             }
 
             // No markdown stripping for assistant messages
@@ -704,11 +797,22 @@ export async function POST(req: NextRequest) {
             await assistantStreamPromise;
 
             // If web search was used, ensure results are collected before generating change map
-            if (webSearchTool && searchWasUsed && !collectedSearchText) {
-              let attempts = 0;
-              while (!collectedSearchText && attempts < 15) {
-                await new Promise(resolve => setTimeout(resolve, 200));
-                attempts++;
+            if (webSearchTool && searchWasUsed && !collectedSearchText && searchResultsPromise) {
+              try {
+                // Wait for search results with a timeout
+                const searchResults = await Promise.race([
+                  searchResultsPromise,
+                  new Promise<{ text: string; sources: string[]; query: string }>((_, reject) =>
+                    setTimeout(() => reject(new Error('Search results timeout')), 10000)
+                  ),
+                ]);
+
+                if (searchResults && searchResults.text) {
+                  collectedSearchText = searchResults.text;
+                  if (searchResults.query) collectedQuery = searchResults.query;
+                }
+              } catch (error) {
+                console.error("Error waiting for search results in edit mode:", error);
               }
             }
 
