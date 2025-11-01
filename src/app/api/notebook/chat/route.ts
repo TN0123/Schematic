@@ -107,8 +107,6 @@ export async function POST(req: NextRequest) {
       webSearchEnabled = false,
     } = await req.json();
 
-    
-
     // Get document context
     const document = await prisma.document.findUnique({
       where: { id: documentId },
@@ -164,10 +162,10 @@ export async function POST(req: NextRequest) {
     if (webSearchEnabled && userId) {
       // Check if user has premium uses available
       const usageCheck = await canUsePremiumModel(userId);
+      
       if (usageCheck.allowed) {
         webSearchTool = createWebSearchTool((data) => {
           try {
-            
             if (typeof data?.text === 'string') {
               collectedSearchText = data.text;
             }
@@ -181,11 +179,10 @@ export async function POST(req: NextRequest) {
             if (typeof data?.query === 'string') {
               collectedQuery = data.query;
             }
-          } catch {}
+          } catch (error) {
+            console.error(`[NOTEBOOK_CHAT] Error in web search callback:`, error);
+          }
         });
-        
-      } else {
-        // Silently disable if no uses available
       }
     }
 
@@ -201,7 +198,7 @@ export async function POST(req: NextRequest) {
 
         Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to help answer their question or provide better guidance." : ""}
-        ${webSearchTool ? "If the question requires current or changing information, call the web_search tool with a concise query to fetch up-to-date information before answering." : ""}
+        ${webSearchTool ? "IMPORTANT: The user has enabled web search. You MUST call the web_search tool with a concise, relevant query to fetch current information that will help you answer their question. Always call this tool first before providing your answer. After the tool returns results, use those results to inform your answer. Incorporate the search findings naturally into your response." : ""}
         
         You should only return a text response answering the user's question or addressing their request. Do not make any changes to their text.
         
@@ -278,29 +275,6 @@ export async function POST(req: NextRequest) {
         { role: "user", content: userContent },
       ];
 
-      
-      const result = await streamText({
-        model: selectedModelProvider,
-        messages,
-        ...(webSearchTool ? { 
-          tools: { web_search: webSearchTool },
-          toolChoice: 'required',
-          maxSteps: 2,
-          onStepFinish: async (step) => {
-            if (step.toolCalls && step.toolCalls.length > 0) {
-              searchWasUsed = true;
-              try {
-                // Server-side visibility: log tool call details
-                const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
-                const first = callsAny[0];
-                const q = first?.args?.query;
-                if (typeof q === 'string') collectedQuery = q;
-              } catch {}
-            }
-          }
-        } : {}),
-      });
-
       let fullResponse = "";
       const encoder = new TextEncoder();
 
@@ -316,19 +290,69 @@ export async function POST(req: NextRequest) {
           try {
             sendEvent("status", { message: "Starting AI processing..." });
 
+            // Track web search status
+            let isSearching = false;
+
+            const streamTextConfig: any = {
+              model: selectedModelProvider,
+              messages,
+            };
+
+            if (webSearchTool) {
+              streamTextConfig.tools = { web_search: webSearchTool };
+              streamTextConfig.toolChoice = 'auto'; // Use auto so model can generate text after tool call
+              streamTextConfig.maxSteps = 5;
+              streamTextConfig.onStepFinish = async (step: any) => {
+                if (step.toolCalls && step.toolCalls.length > 0) {
+                  searchWasUsed = true;
+                  
+                  // Check if web search tool was called
+                  const hasWebSearch = step.toolCalls.some(
+                    (call: any) => call.toolName === 'web_search'
+                  );
+                  
+                  if (hasWebSearch && !isSearching) {
+                    isSearching = true;
+                    sendEvent("status", { message: "searching", isSearching: true });
+                  }
+                  
+                  try {
+                    const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
+                    const first = callsAny[0];
+                    const q = first?.args?.query;
+                    if (typeof q === 'string') {
+                      collectedQuery = q;
+                    }
+                  } catch (error) {
+                    console.error(`[NOTEBOOK_CHAT:ASK] Error extracting query:`, error);
+                  }
+                }
+                
+                // If step has text and we were searching, clear searching status
+                if (step.text && isSearching) {
+                  isSearching = false;
+                  sendEvent("status", { message: "generating", isSearching: false });
+                }
+              };
+            }
+
+            const result = await streamText(streamTextConfig);
+
             // Stream text deltas
             for await (const delta of result.textStream) {
               fullResponse += delta;
               
-              // Strip markdown from delta before sending to client
-              const cleanedDelta = stripMarkdown(delta);
+              // Clear searching status once text starts streaming
+              if (isSearching) {
+                isSearching = false;
+                sendEvent("status", { message: "generating", isSearching: false });
+              }
               
-              sendEvent("assistant-delta", { delta: cleanedDelta });
+              // Send raw delta without markdown stripping for assistant messages
+              sendEvent("assistant-delta", { delta });
             }
 
-            // Strip markdown from final response
-            fullResponse = stripMarkdown(fullResponse);
-
+            // No markdown stripping for assistant messages
             sendEvent("assistant-complete", { text: fullResponse });
             
 
@@ -411,7 +435,7 @@ export async function POST(req: NextRequest) {
         END OF CONTEXT
 
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to better understand their request and provide more relevant changes." : ""}
-        ${webSearchTool ? "If the request requires current or changing information, call the web_search tool with a focused query to gather up-to-date facts before responding." : ""}
+        ${webSearchTool ? "IMPORTANT: The user has enabled web search. You MUST call the web_search tool with a concise, relevant query to fetch current information that will help you fulfill their request. Always call this tool first before providing your response. After the tool returns results, use those results to inform your response and the changes you make." : ""}
 
         Your job is to provide a brief, friendly response to the user explaining what changes you're making to their text.
         
@@ -513,53 +537,165 @@ export async function POST(req: NextRequest) {
 
             let assistantFullText = "";
             let cleanedAssistantFullText = "";
+            let changeMapGenerationStarted = false;
+            let changeMapPromise: Promise<any> | null = null;
 
-            // Start streaming assistant text immediately (don't create promise wrapper)
-            
+            // Track web search status
+            let isSearching = false;
+
+            // Start streaming assistant text immediately
             let deltaCount = 0;
             
             const assistantStreamPromise = (async () => {
               try {
             
-            const result = await streamText({
+            const streamTextConfig: any = {
                   model: selectedModelProvider,
                   messages: assistantMessages,
-                  ...(webSearchTool ? { 
-                    tools: { web_search: webSearchTool },
-                toolChoice: 'required',
-                    maxSteps: 2,
-                    onStepFinish: async (step) => {
-                      if (step.toolCalls && step.toolCalls.length > 0) {
-                        searchWasUsed = true;
-                    try {
-                      const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
-                      const first = callsAny[0];
-                      const q = first?.args?.query;
-                      if (typeof q === 'string') collectedQuery = q;
-                    } catch {}
+                };
+
+                if (webSearchTool) {
+                  streamTextConfig.tools = { web_search: webSearchTool };
+                  streamTextConfig.toolChoice = 'auto'; // Use auto so model can generate text after tool call
+                  streamTextConfig.maxSteps = 5;
+                  streamTextConfig.onStepFinish = async (step: any) => {
+                    if (step.toolCalls && step.toolCalls.length > 0) {
+                      searchWasUsed = true;
+                      
+                      // Check if web search tool was called
+                      const hasWebSearch = step.toolCalls.some(
+                        (call: any) => call.toolName === 'web_search'
+                      );
+                      
+                      if (hasWebSearch && !isSearching) {
+                        isSearching = true;
+                        sendEvent("status", { message: "searching", isSearching: true });
+                      }
+                      
+                      try {
+                        const callsAny = step.toolCalls as unknown as Array<{ toolName?: string; args?: any }>;
+                        const first = callsAny[0];
+                        const q = first?.args?.query;
+                        if (typeof q === 'string') {
+                          collectedQuery = q;
+                        }
+                      } catch (error) {
+                        console.error(`[NOTEBOOK_CHAT:EDIT] Error extracting query:`, error);
                       }
                     }
-                  } : {}),
-                });
+                    
+                    // If step has text and we were searching, clear searching status
+                    if (step.text && isSearching) {
+                      isSearching = false;
+                      sendEvent("status", { message: "generating", isSearching: false });
+                    }
+                  };
+                }
+
+                const result = await streamText(streamTextConfig);
 
                 for await (const delta of result.textStream) {
                   assistantFullText += delta;
                   deltaCount++;
                   
-                  // Strip markdown from delta before sending to client
-                  const cleanedDelta = stripMarkdown(delta);
-                  cleanedAssistantFullText += cleanedDelta;
+                  // Clear searching status once text starts streaming
+                  if (isSearching) {
+                    isSearching = false;
+                    sendEvent("status", { message: "generating", isSearching: false });
+                  }
                   
-                  sendEvent("assistant-delta", { delta: cleanedDelta });
+                  // Send raw delta without markdown stripping for assistant messages
+                  cleanedAssistantFullText += delta;
+                  
+                  sendEvent("assistant-delta", { delta });
+
+                  // PARALLELIZATION: Start change map generation early once we have enough text
+                  // BUT: If web search is enabled, don't start early - wait for search results first
+                  // Trigger after ~1000 characters or 20 deltas (whichever comes first)
+                  // Skip early generation if web search is enabled (we'll do it after stream completes)
+                  if (!changeMapGenerationStarted && 
+                      !webSearchTool && // Don't start early if web search is enabled
+                      (assistantFullText.length > 1000 || deltaCount > 20)) {
+                    changeMapGenerationStarted = true;
+                    
+                    // Start change map generation in parallel (don't await yet)
+                    changeMapPromise = (async () => {
+
+                      // Build the change map prompt with current assistant text (may be partial)
+                      const changeMapPrompt = `
+                        You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
+
+                        Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+                        BEGINNING OF CONTEXT
+                        ${context}
+                        END OF CONTEXT
+
+                        ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
+
+                        ${collectedSearchText ? `The assistant has run a web search with the query "${collectedQuery ?? ''}" and obtained the following findings. Base your changes on these findings when relevant, and ensure factual accuracy:\n\nBEGIN WEB FINDINGS\n${collectedSearchText}\nEND WEB FINDINGS` : ''}
+
+                        ${assistantFullText ? `The assistant has started explaining the changes:\n"${assistantFullText}"\n\n` : ''}
+
+                        Your job is to analyze the current text and the user's request, then generate an array of changes.
+                        
+                        Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
+                        
+                        Rules for generating changes:
+                        1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
+                        2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
+                        3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
+                        4. Choose text snippets that are unique enough to be found in the document (include enough context)
+                        5. If replacing multiple separate sections, create multiple change objects in the array
+                        6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
+                        7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
+                        
+                        Example changes array:
+                        - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
+                        - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
+                        - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
+                        - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
+
+                        Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      `;
+
+                      const changeMapMessages = [
+                        {
+                          role: "system",
+                          content: changeMapPrompt,
+                        },
+                        ...uiMessages,
+                      ];
+                      
+                      return await generateObject({
+                        model: selectedModelProvider,
+                        messages: changeMapMessages,
+                        schema: changeMapSchema,
+                      });
+                    })();
+                  }
                 }
                 
-                // Strip markdown from complete text as a final safety pass
-                cleanedAssistantFullText = stripMarkdown(cleanedAssistantFullText);
+                // No markdown stripping for assistant messages
+                cleanedAssistantFullText = assistantFullText;
+                
+                // Clear searching status if still set (happens when tool was called but no text generated)
+                if (isSearching) {
+                  isSearching = false;
+                  sendEvent("status", { message: "generating", isSearching: false });
+                }
+                
+                // If no assistant text was generated but search was used, create a minimal message
+                if (!cleanedAssistantFullText || cleanedAssistantFullText.trim().length === 0) {
+                  if (searchWasUsed && collectedSearchText) {
+                    cleanedAssistantFullText = "I've searched for current information and will apply the relevant updates to your document.";
+                    // Send this as a delta so it appears in the chat
+                    sendEvent("assistant-delta", { delta: cleanedAssistantFullText });
+                  }
+                }
                 
             sendEvent("assistant-complete", { text: cleanedAssistantFullText });
                 
               } catch (error) {
-                
                 throw error;
               }
             })();
@@ -567,60 +703,70 @@ export async function POST(req: NextRequest) {
             // Wait for assistant stream to complete
             await assistantStreamPromise;
 
-            // If the model did not produce a chat message, synthesize a concise one so UI has content.
-            // Do NOT include the "searched the web for" phrase here; the UI shows that separately.
-            if (searchWasUsed && (!cleanedAssistantFullText || cleanedAssistantFullText.trim().length === 0)) {
-              const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-              cleanedAssistantFullText = `Here is an update based on the latest information as of ${dateStr}.`;
+            // If web search was used, ensure results are collected before generating change map
+            if (webSearchTool && searchWasUsed && !collectedSearchText) {
+              let attempts = 0;
+              while (!collectedSearchText && attempts < 15) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+              }
             }
 
-            // Now generate change map, incorporating web findings if available
-            const changeMapPrompt = `
-              You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
+            // Now wait for change map generation (which may have already started or completed)
+            let changeMapResult;
+            if (changeMapPromise) {
+              // If we started it early, wait for it now
+              changeMapResult = await changeMapPromise;
+            } else {
+              // If we didn't start it early (web search was used or stream was very short), start it now
+              const changeMapPrompt = `
+                You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
 
-              Here is the context for what the user is writing (will be empty if the user has not written anything yet):
-              BEGINNING OF CONTEXT
-              ${context}
-              END OF CONTEXT
+                Here is the context for what the user is writing (will be empty if the user has not written anything yet):
+                BEGINNING OF CONTEXT
+                ${context}
+                END OF CONTEXT
 
-              ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
+                ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
 
-              ${collectedSearchText ? `The assistant has run a web search with the query "${collectedQuery ?? ''}" and obtained the following findings. Base your changes on these findings when relevant, and ensure factual accuracy:\n\nBEGIN WEB FINDINGS\n${collectedSearchText}\nEND WEB FINDINGS` : ''}
+                ${collectedSearchText ? `The assistant has run a web search with the query "${collectedQuery ?? ''}" and obtained the following findings. Base your changes on these findings when relevant, and ensure factual accuracy:\n\nBEGIN WEB FINDINGS\n${collectedSearchText}\nEND WEB FINDINGS` : ''}
 
-              Your job is to analyze the current text and the user's request, then generate an array of changes.
-              
-              Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
-              
-              Rules for generating changes:
-              1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
-              2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
-              3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
-              4. Choose text snippets that are unique enough to be found in the document (include enough context)
-              5. If replacing multiple separate sections, create multiple change objects in the array
-              6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
-              7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
-              
-              Example changes array:
-              - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
-              - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
-              - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
-              - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
+                Your job is to analyze the current text and the user's request, then generate an array of changes.
+                
+                Each change has an "original" field (the text to replace) and a "replacement" field (the new text).
+                
+                Rules for generating changes:
+                1. If the user's document is empty and they want you to create new content, use "!ADD_TO_END!" as the original and the new content as the replacement
+                2. If you need to append new content to the end of existing text, use "!ADD_TO_END!" as the original and the content to append as the replacement
+                3. For edits/replacements, use the EXACT original text snippet as the original, and the replacement text as the replacement
+                4. Choose text snippets that are unique enough to be found in the document (include enough context)
+                5. If replacing multiple separate sections, create multiple change objects in the array
+                6. Keep the snippets focused on what actually needs to change - don't include large unchanged portions
+                7. If the user asks you to delete something, use the original text as original and an empty string "" as replacement
+                
+                Example changes array:
+                - Adding to empty document: [{"original": "!ADD_TO_END!", "replacement": "This is the new content the user requested."}]
+                - Replacing text: [{"original": "The quick brown fox", "replacement": "The swift red fox"}]
+                - Multiple changes: [{"original": "old sentence 1", "replacement": "new sentence 1"}, {"original": "old sentence 2", "replacement": "new sentence 2"}]
+                - Appending: [{"original": "!ADD_TO_END!", "replacement": "\\n\\nThis is new content at the end."}]
 
-              Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            `;
+                Today's date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              `;
 
-            const changeMapMessages = [
-              {
-                role: "system",
-                content: changeMapPrompt,
-              },
-              ...uiMessages,
-            ];
-            const changeMapResult = await generateObject({
-              model: selectedModelProvider,
-              messages: changeMapMessages,
-              schema: changeMapSchema,
-            });
+              const changeMapMessages = [
+                {
+                  role: "system",
+                  content: changeMapPrompt,
+                },
+                ...uiMessages,
+              ];
+              changeMapResult = await generateObject({
+                model: selectedModelProvider,
+                messages: changeMapMessages,
+                schema: changeMapSchema,
+              });
+            }
+            
             const changesArray = changeMapResult.object.changes;
             const changeMap: Record<string, string> = {};
             for (const change of changesArray) {

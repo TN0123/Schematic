@@ -38,6 +38,7 @@ interface MessageProps {
   };
   isStreaming?: boolean;
   isTyping?: boolean;
+  isSearching?: boolean;
   id?: string;
   searchUsed?: boolean;
   sources?: string[];
@@ -50,7 +51,7 @@ interface ErrorState {
 }
 
 // Typing animation component
-function TypingIndicator() {
+function TypingIndicator({ isSearching = false }: { isSearching?: boolean }) {
   return (
     <div className="flex w-full justify-start">
       <motion.div
@@ -94,7 +95,7 @@ function TypingIndicator() {
             />
           </div>
           <span className="text-xs text-gray-500 dark:text-dark-textDisabled ml-2">
-            AI is typing...
+            {isSearching ? "Searching the web..." : "AI is typing..."}
           </span>
         </div>
       </motion.div>
@@ -109,6 +110,7 @@ export function Message({
   contextChange,
   isStreaming,
   isTyping,
+  isSearching,
   isGeneratingChanges,
   isCurrentAssistantMessage,
   searchUsed,
@@ -121,7 +123,7 @@ export function Message({
 }) {
   // If typing has started but no content yet, show typing indicator
   if (isTyping && !message) {
-    return <TypingIndicator />;
+    return <TypingIndicator isSearching={isSearching || false} />;
   }
 
   return (
@@ -191,7 +193,9 @@ export function Message({
                 >
                   <RefreshCw size={12} />
                 </motion.div>
-                <span>Editing...</span>
+                <span>
+                  {isSearching ? "Searching the web..." : "Editing..."}
+                </span>
               </div>
             )}
         </div>
@@ -492,6 +496,7 @@ export default function WritePanel({
     return new Promise<void>(async (resolve, reject) => {
       let assistantMessageId: string | null = null;
       let currentAssistantText = "";
+      let isSearching = false;
 
       // Add a typing indicator for the message
       const msgId = generateMessageId();
@@ -499,6 +504,7 @@ export default function WritePanel({
         message: "",
         role: "assistant" as const,
         isTyping: true,
+        isSearching: false,
         id: msgId,
       };
       assistantMessageId = msgId;
@@ -571,16 +577,45 @@ export default function WritePanel({
               try {
                 const jsonData = line.substring(5).trim();
                 const data = JSON.parse(jsonData);
-                if (process.env.NODE_ENV !== "production") {
-                  try {
-                    console.log("[WritePanel] SSE event", {
-                      hasDelta: typeof data.delta !== "undefined",
-                      hasText: typeof data.text !== "undefined",
-                      hasChanges: typeof data.changes !== "undefined",
-                      hasResult: typeof data.result !== "undefined",
-                      actionMode,
-                    });
-                  } catch {}
+
+                // PRIORITY: Handle status events FIRST to ensure UI updates immediately
+                if (data.message && typeof data.isSearching === "boolean") {
+                  // Update local variable for tracking
+                  isSearching = data.isSearching;
+
+                  // In edit mode, only set isSearching=true immediately, but don't clear it until changes-final arrives
+                  // This ensures "Searching the web..." shows until changes are ready
+                  if (actionMode === "edit") {
+                    if (data.isSearching) {
+                      // Set searching status immediately
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === assistantMessageId
+                            ? {
+                                ...msg,
+                                isSearching: true,
+                                isTyping: true,
+                              }
+                            : msg
+                        )
+                      );
+                    }
+                    // Don't clear isSearching on "generating" status in edit mode - wait for changes-final
+                  } else {
+                    // In ask mode, update normally
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              isSearching: data.isSearching,
+                              isTyping: true,
+                            }
+                          : msg
+                      )
+                    );
+                  }
+                  continue; // Skip other processing for status events
                 }
 
                 // Handle new event types from dual-stream architecture
@@ -589,16 +624,22 @@ export default function WritePanel({
                   currentAssistantText += data.delta;
 
                   // Update the chat message with streaming content
+                  // Preserve isSearching from current message state (updated by status events)
                   setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            message: currentAssistantText,
-                            isTyping: true,
-                          }
-                        : msg
-                    )
+                    prev.map((msg) => {
+                      if (msg.id === assistantMessageId) {
+                        // Preserve existing isSearching state or use current local value
+                        const currentIsSearching =
+                          msg.isSearching ?? isSearching;
+                        return {
+                          ...msg,
+                          message: currentAssistantText,
+                          isTyping: true,
+                          isSearching: currentIsSearching,
+                        };
+                      }
+                      return msg;
+                    })
                   );
                 } else if (data.text !== undefined) {
                   // assistant-complete event: final text received, keep typing indicator for edit mode
@@ -612,6 +653,19 @@ export default function WritePanel({
                     setChanges(data.changes);
                     setIsGeneratingChanges(false);
                     setCurrentAssistantMessageId(null);
+
+                    // Clear searching status now that changes are ready
+                    isSearching = false;
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              isSearching: false,
+                            }
+                          : msg
+                      )
+                    );
                   }
                 } else if (data.result !== undefined) {
                   // result event: final consolidated result - NOW we can stop the typing indicator
@@ -1501,6 +1555,7 @@ export default function WritePanel({
                   contextChange={msg.contextChange}
                   isStreaming={msg.isStreaming}
                   isTyping={msg.isTyping}
+                  isSearching={msg.isSearching}
                   searchUsed={msg.searchUsed}
                   sources={msg.sources}
                   searchQuery={msg.searchQuery}
