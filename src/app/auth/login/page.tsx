@@ -13,6 +13,10 @@ export default function Login() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const { data: session, status } = useSession();
   const modKeyLabel = useModifierKeyLabel();
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
 
   if (status === "authenticated") {
     redirect("/");
@@ -147,6 +151,53 @@ export default function Login() {
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
+  };
+
+  // Mobile swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = () => {
+    if (
+      !touchStartX.current ||
+      !touchEndX.current ||
+      !touchStartY.current ||
+      !touchEndY.current
+    )
+      return;
+
+    const deltaX = touchStartX.current - touchEndX.current;
+    const deltaY = touchStartY.current - touchEndY.current;
+    const minSwipeDistance = 50; // Minimum distance to trigger a swipe
+
+    // Only trigger if horizontal swipe is greater than vertical (more horizontal than vertical)
+    if (
+      Math.abs(deltaX) > Math.abs(deltaY) &&
+      Math.abs(deltaX) > minSwipeDistance
+    ) {
+      if (deltaX > 0) {
+        // Swipe left - go to next slide
+        setCurrentSlide((prev) => (prev + 1) % features.length);
+      } else {
+        // Swipe right - go to previous slide
+        setCurrentSlide(
+          (prev) => (prev - 1 + features.length) % features.length
+        );
+      }
+    }
+
+    // Reset touch positions
+    touchStartX.current = null;
+    touchEndX.current = null;
+    touchStartY.current = null;
+    touchEndY.current = null;
   };
 
   const navItems = [
@@ -402,7 +453,12 @@ export default function Login() {
             <div className="relative">
               {/* Image Section with Overlay Header */}
               <div className="mb-10">
-                <div className="relative overflow-hidden rounded-3xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5">
+                <div
+                  className="relative overflow-hidden rounded-3xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5 touch-pan-y"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={currentSlide}
