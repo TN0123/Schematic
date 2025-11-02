@@ -110,6 +110,8 @@ export default function Login() {
         "Select any text as context for AI queries",
         `Instant AI continuation with ${modKeyLabel}+Enter in your writing style`,
         `Smart text improvements with ${modKeyLabel}+I over highlighted text`,
+        "Web search integration for real-time information and current events",
+        "Upload and analyze images with AI vision capabilities",
       ],
     },
     {
