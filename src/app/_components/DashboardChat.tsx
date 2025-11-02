@@ -263,12 +263,34 @@ export default function DashboardChat({
       {/* Chat Bar - Always visible at top */}
       <div className="w-full max-w-4xl mx-auto mb-4 sm:mb-8">
         {/* Assistant Profile Header */}
-        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 flex items-center justify-center">
-            <User size={16} className="text-white sm:hidden" />
-            <User size={20} className="text-white hidden sm:block" />
-          </div>
-          <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-3 sm:mb-4 relative">
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <motion.div
+              className="flex-shrink-0 flex items-center justify-center"
+              animate={{
+                opacity: [1, 0.7, 1],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              <User
+                size={20}
+                className="sm:hidden stroke-[1.5] text-gray-900 dark:text-gray-100"
+                style={{
+                  stroke: "currentColor",
+                }}
+              />
+              <User
+                size={24}
+                className="hidden sm:block stroke-[1.5] text-gray-900 dark:text-gray-100"
+                style={{
+                  stroke: "currentColor",
+                }}
+              />
+            </motion.div>
             <div className="flex items-center gap-1 sm:gap-2">
               {isEditingName ? (
                 <div className="flex items-center gap-1 sm:gap-2">
@@ -348,7 +370,7 @@ export default function DashboardChat({
           {chatMessages.length > 0 && (
             <button
               onClick={() => setChatMessages([])}
-              className="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 text-gray-500 dark:text-dark-textSecondary flex-shrink-0"
+              className="absolute right-0 p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 text-gray-500 dark:text-dark-textSecondary flex-shrink-0"
               title="Clear chat"
             >
               <RefreshCw size={16} className="sm:hidden" />
