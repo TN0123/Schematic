@@ -185,6 +185,35 @@ export default function BulletinNote({
         class:
           "h-full min-h-[100px] w-full outline-none dark:bg-dark-editorBackground dark:text-dark-textPrimary [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1",
       },
+      handleDOMEvents: {
+        copy: (view, event) => {
+          const { state } = view;
+          const { selection } = state;
+
+          // If there's no selection, let TipTap handle it normally
+          if (selection.empty) {
+            return false;
+          }
+
+          // Extract text exactly as it appears, preserving all newlines
+          const selectedText = state.doc.textBetween(
+            selection.from,
+            selection.to,
+            "\n"
+          );
+
+          // Set clipboard data with exact text (no normalization)
+          if (event.clipboardData) {
+            event.clipboardData.setData("text/plain", selectedText);
+            // Also preserve HTML for rich text contexts
+            event.clipboardData.setData("text/html", view.dom.innerHTML);
+            event.preventDefault();
+            return true;
+          }
+
+          return false;
+        },
+      },
     },
     immediatelyRender: false,
   });
