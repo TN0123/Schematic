@@ -217,12 +217,14 @@ export async function suggest_events(userId: string, timezone: string) {
     checked: boolean;
   }
 
-  const todoItems: TodoItemWithContext[] = aggregatedTodos.map(todo => ({
-    bulletinTitle: todo.noteTitle,
-    text: todo.text,
-    dueDate: todo.dueDate,
-    checked: todo.checked,
-  }));
+  const todoItems: TodoItemWithContext[] = aggregatedTodos
+    .filter(todo => !todo.checked) // Only include unchecked items
+    .map(todo => ({
+      bulletinTitle: todo.noteTitle,
+      text: todo.text,
+      dueDate: todo.dueDate,
+      checked: todo.checked,
+    }));
 
   // Filter todo items due today or overdue for high-priority reminders
   const todayDate = new Date(todayInUserTz);
