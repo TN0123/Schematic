@@ -15,7 +15,7 @@ export const steps: Tour[] = [
         icon: "",
         title: "AI-Powered Event Creation",
         content:
-          "Simply type your schedule or tasks and let AI do the rest. Try '9-10 breakfast, 11-12 meeting' or 'I need to study, grocery shop, and exercise today - find me times that work!'",
+          "Simply type your schedule or tasks and let AI do the rest. Try '9-10 breakfast, 11-12 meeting' or 'I need to study, grocery shop, and exercise today - find me times that work!' Use the dropdown to switch between Generate mode (for creating events) and Chat mode (for asking questions about your schedule).",
         selector: "#event-adder",
         side: "bottom-left",
         pointerRadius: 10,
@@ -46,11 +46,11 @@ export const steps: Tour[] = [
       },
       {
         icon: "",
-        title: "AI Chat",
+        title: "AI Chat Mode",
         content:
-          "Click the 'AI Chat' tab to talk with an assistant that can help you manage your schedule, get recommendations, and more.",
-        selector: "#ai-chat-tab-button",
-        side: "bottom-right",
+          "Switch to Chat mode using the dropdown above the input area to talk with an AI assistant that can help you manage your schedule, get recommendations, and answer questions about your calendar.",
+        selector: "#event-adder",
+        side: "bottom-left",
         pointerRadius: 10,
         pointerPadding: 20,
         showSkip: true,
