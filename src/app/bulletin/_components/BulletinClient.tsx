@@ -2,6 +2,7 @@
 import { useEffect, useState, JSX } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import BulletinNote from "./BulletinNote";
+import BulletinMarkdown from "./BulletinMarkdown";
 import BulletinTodo from "./BulletinTodo";
 import BulletinKanban from "./BulletinKanban";
 import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
@@ -24,6 +25,7 @@ import {
   X,
   ChevronUp,
   GripVertical,
+  Pilcrow,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -44,6 +46,7 @@ type BulletinItem = {
   updatedAt: Date;
 } & (
   | { type: "text"; data?: undefined }
+  | { type: "markdown"; data?: undefined }
   | { type: "todo"; data: { items: TodoItem[] } }
   | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
   | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
@@ -192,6 +195,9 @@ export default function BulletinClient() {
   const typeIcons: Record<string, JSX.Element> = {
     text: (
       <NotepadText className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+    markdown: (
+      <Pilcrow className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
     todo: (
       <ClipboardList className="w-4 h-4 text-light-icon dark:text-dark-icon" />
@@ -583,6 +589,19 @@ export default function BulletinClient() {
             isSaving={savingItems.has(item.id)}
           />
         );
+      case "markdown":
+        return (
+          <BulletinMarkdown
+            key={item.id}
+            id={item.id}
+            initialTitle={item.title}
+            initialContent={item.content}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
       case "text":
       default:
         return (
@@ -830,6 +849,16 @@ export default function BulletinClient() {
                         </button>
                         <button
                           onClick={() => {
+                            addItem("markdown");
+                            setShowDropdown(false);
+                          }}
+                          className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                          title="Markdown Note"
+                        >
+                          <Pilcrow />
+                        </button>
+                        <button
+                          onClick={() => {
                             addItem("todo");
                             setShowDropdown(false);
                           }}
@@ -872,6 +901,16 @@ export default function BulletinClient() {
                         >
                           <NotepadText />
                           Text Note
+                        </button>
+                        <button
+                          onClick={() => {
+                            addItem("markdown");
+                            setShowDropdown(false);
+                          }}
+                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                        >
+                          <Pilcrow />
+                          Markdown Note
                         </button>
                         <button
                           onClick={() => {
@@ -1097,6 +1136,16 @@ export default function BulletinClient() {
                       </button>
                       <button
                         onClick={() => {
+                          addItem("markdown");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 dark:text-dark-textPrimary dark:hover:bg-dark-hover transition-colors active:bg-gray-100 dark:active:bg-dark-actionHover"
+                      >
+                        <Pilcrow className="w-5 h-5" />
+                        <span className="font-medium">Markdown Note</span>
+                      </button>
+                      <button
+                        onClick={() => {
                           addItem("todo");
                           setShowDropdown(false);
                         }}
@@ -1180,6 +1229,8 @@ export default function BulletinClient() {
                               switch (item.type) {
                                 case "text":
                                   return <NotepadText className={iconClass} />;
+                                case "markdown":
+                                  return <Pilcrow className={iconClass} />;
                                 case "todo":
                                   return (
                                     <ClipboardList className={iconClass} />
