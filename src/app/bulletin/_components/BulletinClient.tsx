@@ -23,6 +23,7 @@ import {
   Trash2,
   X,
   ChevronUp,
+  GripVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -133,7 +134,10 @@ function DeleteConfirmationModal({
 
 export default function BulletinClient() {
   const [items, setItems] = useState<BulletinItem[]>([]);
-  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  // Split-screen: [left, right] - can be null for single view or both null for aggregated view
+  const [expandedItemIds, setExpandedItemIds] = useState<
+    [string | null, string | null]
+  >([null, null]);
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const [loading, setLoading] = useState(true);
@@ -145,6 +149,12 @@ export default function BulletinClient() {
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
   const [showDynamicCreator, setShowDynamicCreator] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Drag and drop state
+  const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
+  const [dragOverPanel, setDragOverPanel] = useState<"left" | "right" | null>(
+    null
+  );
 
   // Delete confirmation modal state
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -200,7 +210,11 @@ export default function BulletinClient() {
 
   useEffect(() => {
     const noteId = searchParams.get("noteId");
-    setExpandedItemId(noteId);
+    if (noteId) {
+      setExpandedItemIds([noteId, null]);
+    } else {
+      setExpandedItemIds([null, null]);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -219,6 +233,22 @@ export default function BulletinClient() {
     if (noteId && !items.some((item) => item.id === noteId)) {
       router.replace(pathname);
     }
+
+    // Validate that expanded items still exist
+    setExpandedItemIds((current) => {
+      const [left, right] = current;
+      const newLeft =
+        left && items.some((item) => item.id === left) ? left : null;
+      const newRight =
+        right && items.some((item) => item.id === right) ? right : null;
+
+      // If we had a URL param but item doesn't exist, clear URL
+      if (noteId && !newLeft && !newRight) {
+        router.replace(pathname);
+      }
+
+      return [newLeft, newRight];
+    });
 
     // Don't auto-select a note - let the user see the aggregated view by default
   }, [items, loading, searchParams, pathname, router]);
@@ -324,16 +354,31 @@ export default function BulletinClient() {
       const newItems = items.filter((item) => item.id !== id);
       setItems(newItems);
 
-      if (expandedItemId === id) {
-        if (newItems.length > 0) {
-          const newExpandedId = newItems[0].id;
-          setExpandedItemId(newExpandedId);
-          router.replace(`${pathname}?noteId=${newExpandedId}`);
+      setExpandedItemIds((current) => {
+        const [left, right] = current;
+        let newLeft = left === id ? null : left;
+        let newRight = right === id ? null : right;
+
+        // If we deleted the left item and right exists, move right to left
+        if (newLeft === null && newRight !== null) {
+          newLeft = newRight;
+          newRight = null;
+        }
+
+        // If both are null and we have items, select first one
+        if (newLeft === null && newRight === null && newItems.length > 0) {
+          newLeft = newItems[0].id;
+        }
+
+        // Update URL if needed
+        if (newLeft) {
+          router.replace(`${pathname}?noteId=${newLeft}`);
         } else {
-          setExpandedItemId(null);
           router.replace(pathname);
         }
-      }
+
+        return [newLeft, newRight];
+      });
 
       await fetch(`/api/bulletins/${id}`, {
         method: "DELETE",
@@ -382,7 +427,7 @@ export default function BulletinClient() {
 
     const newBulletin = await response.json();
     setItems([newBulletin, ...items]);
-    setExpandedItemId(newBulletin.id);
+    setExpandedItemIds([newBulletin.id, null]);
     router.push(`${pathname}?noteId=${newBulletin.id}`);
   };
 
@@ -408,12 +453,151 @@ export default function BulletinClient() {
 
     const newBulletin = await response.json();
     setItems([newBulletin, ...items]);
-    setExpandedItemId(newBulletin.id);
+    setExpandedItemIds([newBulletin.id, null]);
     router.push(`${pathname}?noteId=${newBulletin.id}`);
   };
 
   const stripHtml = (html: string) => {
     return html.replace(/<[^>]+>/g, " ");
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, noteId: string) => {
+    setDraggedNoteId(noteId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", noteId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedNoteId(null);
+    setDragOverPanel(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, panel: "left" | "right") => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverPanel(panel);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverPanel(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, panel: "left" | "right") => {
+    e.preventDefault();
+    setDragOverPanel(null);
+
+    if (!draggedNoteId) return;
+
+    const noteId = e.dataTransfer.getData("text/plain") || draggedNoteId;
+    const item = items.find((item) => item.id === noteId);
+    if (!item) return;
+
+    setExpandedItemIds((current) => {
+      const [left, right] = current;
+
+      // If dropping on the same panel that already has this note, do nothing
+      if (panel === "left" && left === noteId) return current;
+      if (panel === "right" && right === noteId) return current;
+
+      // If dropping on a panel that already has a different note, swap them
+      if (panel === "left") {
+        // If the note is in the right panel, swap them
+        if (right === noteId) {
+          return [right, left];
+        }
+        // Otherwise, set left to the note and keep right
+        return [noteId, right === noteId ? left : right];
+      } else {
+        // If the note is in the left panel, swap them
+        if (left === noteId) {
+          return [right, left];
+        }
+        // Otherwise, set right to the note and keep left
+        return [left === noteId ? right : left, noteId];
+      }
+    });
+
+    setDraggedNoteId(null);
+  };
+
+  const closePanel = (panel: "left" | "right") => {
+    setExpandedItemIds((current) => {
+      const [left, right] = current;
+      if (panel === "left") {
+        const newLeft = right; // Move right to left if it exists
+        // Update URL if needed
+        if (newLeft) {
+          router.push(`${pathname}?noteId=${newLeft}`);
+        } else {
+          router.push(pathname);
+        }
+        return [newLeft, null];
+      } else {
+        // Just close right panel
+        return [left, null];
+      }
+    });
+  };
+
+  // Helper to render a note component
+  const renderNote = (item: BulletinItem, panel: "left" | "right") => {
+    switch (item.type) {
+      case "todo":
+        return (
+          <BulletinTodo
+            key={item.id}
+            id={item.id}
+            title={item.title}
+            data={item.data}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
+      case "kanban":
+        return (
+          <BulletinKanban
+            key={item.id}
+            id={item.id}
+            title={item.title}
+            data={item.data}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
+      case "dynamic":
+        return (
+          <BulletinDynamic
+            key={item.id}
+            id={item.id}
+            initialTitle={item.title}
+            initialSchema={item.schema}
+            initialData={item.data}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
+      case "text":
+      default:
+        return (
+          <BulletinNote
+            key={item.id}
+            id={item.id}
+            initialTitle={item.title}
+            initialContent={item.content}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
+    }
   };
 
   const handleToggle = () => {
@@ -439,7 +623,7 @@ export default function BulletinClient() {
         )}
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex md:flex-row flex-col">
         {loading ? (
           <AnimatePresence>
             {loading && (
@@ -462,76 +646,112 @@ export default function BulletinClient() {
           </AnimatePresence>
         ) : (
           <>
-            {items.map((item) => {
-              if (item.id !== expandedItemId) return null;
+            {(() => {
+              const [leftId, rightId] = expandedItemIds;
+              const leftItem = leftId
+                ? items.find((item) => item.id === leftId)
+                : null;
+              const rightItem = rightId
+                ? items.find((item) => item.id === rightId)
+                : null;
+              const isSplitScreen = leftItem && rightItem;
+              const hasAnyNote = leftItem || rightItem;
 
-              switch (item.type) {
-                case "todo":
-                  return (
-                    <BulletinTodo
-                      key={item.id}
-                      id={item.id}
-                      title={item.title}
-                      data={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => handleDeleteRequest(item.id)}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "kanban":
-                  return (
-                    <BulletinKanban
-                      key={item.id}
-                      id={item.id}
-                      title={item.title}
-                      data={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => handleDeleteRequest(item.id)}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "dynamic":
-                  return (
-                    <BulletinDynamic
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialSchema={item.schema}
-                      initialData={item.data}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => handleDeleteRequest(item.id)}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
-                case "text":
-                default:
-                  return (
-                    <BulletinNote
-                      key={item.id}
-                      id={item.id}
-                      initialTitle={item.title}
-                      initialContent={item.content}
-                      updatedAt={item.updatedAt}
-                      onSave={saveItem}
-                      onDelete={() => handleDeleteRequest(item.id)}
-                      isSaving={savingItems.has(item.id)}
-                    />
-                  );
+              // Show aggregated view if no notes are selected
+              if (!hasAnyNote) {
+                return (
+                  <AggregatedTodosView
+                    items={items as any}
+                    onNavigateToNote={(noteId) => {
+                      setExpandedItemIds([noteId, null]);
+                      router.push(`${pathname}?noteId=${noteId}`);
+                    }}
+                  />
+                );
               }
-            })}
 
-            {expandedItemId === null && (
-              <AggregatedTodosView
-                items={items as any}
-                onNavigateToNote={(noteId) => {
-                  setExpandedItemId(noteId);
-                  router.push(`${pathname}?noteId=${noteId}`);
-                }}
-              />
-            )}
+              return (
+                <div className="flex-1 flex md:flex-row flex-col h-full">
+                  {/* Left Panel */}
+                  <div
+                    className={`relative ${
+                      isSplitScreen || (draggedNoteId && leftItem)
+                        ? "md:w-1/2"
+                        : "w-full"
+                    } h-full ${
+                      isSplitScreen || (draggedNoteId && leftItem)
+                        ? "border-r border-gray-200 dark:border-dark-divider"
+                        : ""
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, "left")}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, "left")}
+                  >
+                    {dragOverPanel === "left" && (
+                      <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed z-10 pointer-events-none" />
+                    )}
+                    {leftItem ? (
+                      <div className="relative h-full">
+                        {isSplitScreen && (
+                          <button
+                            onClick={() => closePanel("left")}
+                            className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-gray-100 dark:bg-dark-hover hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors"
+                            title="Close panel"
+                          >
+                            <X className="w-4 h-4 text-gray-600 dark:text-dark-textSecondary" />
+                          </button>
+                        )}
+                        {renderNote(leftItem, "left")}
+                      </div>
+                    ) : (
+                      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-dark-background border-2 border-dashed border-gray-300 dark:border-dark-divider">
+                        <div className="text-center p-8">
+                          <GripVertical className="w-12 h-12 mx-auto text-gray-400 dark:text-dark-textSecondary mb-4" />
+                          <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
+                            Drag a note here
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Panel - show only when a second note exists, or while dragging to initiate split */}
+                  {(rightItem || (draggedNoteId && leftItem)) && (
+                    <div
+                      className={`relative md:w-1/2 w-full h-full border-l border-gray-200 dark:border-dark-divider`}
+                      onDragOver={(e) => handleDragOver(e, "right")}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, "right")}
+                    >
+                      {dragOverPanel === "right" && (
+                        <div className="absolute inset-0 bg-blue-500/10 border-2 border-blue-500 border-dashed z-10 pointer-events-none" />
+                      )}
+                      {rightItem ? (
+                        <div className="relative h-full">
+                          <button
+                            onClick={() => closePanel("right")}
+                            className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-gray-100 dark:bg-dark-hover hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-colors"
+                            title="Close panel"
+                          >
+                            <X className="w-4 h-4 text-gray-600 dark:text-dark-textSecondary" />
+                          </button>
+                          {renderNote(rightItem, "right")}
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-dark-background border-2 border-dashed border-gray-300 dark:border-dark-divider">
+                          <div className="text-center p-8">
+                            <GripVertical className="w-12 h-12 mx-auto text-gray-400 dark:text-dark-textSecondary mb-4" />
+                            <p className="text-sm text-gray-500 dark:text-dark-textSecondary">
+                              Drag a note here to split-screen
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
@@ -718,59 +938,60 @@ export default function BulletinClient() {
                     new Date(b.updatedAt).getTime() -
                     new Date(a.updatedAt).getTime()
                 )
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    className={`cursor-pointer px-3 py-2.5 rounded-md transition-all duration-150 ${
-                      item.id === expandedItemId
-                        ? "bg-blue-500/10 text-blue-600 dark:bg-neutral-700/50 dark:text-neutral-200"
-                        : "hover:bg-gray-100 dark:hover:bg-dark-hover text-light-heading dark:text-dark-textPrimary"
-                    }`}
-                    onClick={() => {
-                      if (item.id === expandedItemId) {
-                        // Toggle off - unselect the note
-                        setExpandedItemId(null);
-                        router.push(pathname);
-                      } else {
-                        // Select the note
-                        setExpandedItemId(item.id);
+                .map((item) => {
+                  const [leftId, rightId] = expandedItemIds;
+                  const isExpanded = item.id === leftId || item.id === rightId;
+                  return (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`cursor-pointer px-3 py-2.5 rounded-md transition-all duration-150 ${
+                        isExpanded
+                          ? "bg-blue-500/10 text-blue-600 dark:bg-neutral-700/50 dark:text-neutral-200"
+                          : "hover:bg-gray-100 dark:hover:bg-dark-hover text-light-heading dark:text-dark-textPrimary"
+                      } ${draggedNoteId === item.id ? "opacity-50" : ""}`}
+                      onClick={() => {
+                        // Clicking a note always opens it as the single note (no split via click)
+                        setExpandedItemIds([item.id, null]);
                         router.push(`${pathname}?noteId=${item.id}`);
-                      }
-                      setSearchQuery("");
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      {typeIcons[item.type] || (
-                        <NotepadText
-                          className={`w-4 h-4 ${
-                            item.id === expandedItemId
-                              ? "text-blue-500 dark:text-neutral-300"
-                              : "text-light-icon dark:text-dark-icon"
+                        setSearchQuery("");
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {typeIcons[item.type] || (
+                          <NotepadText
+                            className={`w-4 h-4 ${
+                              isExpanded
+                                ? "text-blue-500 dark:text-neutral-300"
+                                : "text-light-icon dark:text-dark-icon"
+                            }`}
+                          />
+                        )}
+                        <h3
+                          className={`font-medium truncate text-sm ${
+                            isExpanded
+                              ? "text-blue-600 dark:text-neutral-200"
+                              : "text-light-heading dark:text-dark-textPrimary"
                           }`}
-                        />
-                      )}
-                      <h3
-                        className={`font-medium truncate text-sm ${
-                          item.id === expandedItemId
-                            ? "text-blue-600 dark:text-neutral-200"
-                            : "text-light-heading dark:text-dark-textPrimary"
+                        >
+                          {item.title || "Untitled"}
+                        </h3>
+                      </div>
+
+                      <p
+                        className={`text-xs truncate leading-relaxed ${
+                          isExpanded
+                            ? "text-blue-500/70 dark:text-neutral-400"
+                            : "text-light-subtle dark:text-dark-textSecondary"
                         }`}
                       >
-                        {item.title || "Untitled"}
-                      </h3>
+                        {stripHtml(item.content) || ""}
+                      </p>
                     </div>
-
-                    <p
-                      className={`text-xs truncate leading-relaxed ${
-                        item.id === expandedItemId
-                          ? "text-blue-500/70 dark:text-neutral-400"
-                          : "text-light-subtle dark:text-dark-textSecondary"
-                      }`}
-                    >
-                      {stripHtml(item.content) || ""}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
         </div>
@@ -926,93 +1147,94 @@ export default function BulletinClient() {
                         new Date(b.updatedAt).getTime() -
                         new Date(a.updatedAt).getTime()
                     )
-                    .map((item) => (
-                      <motion.div
-                        key={item.id}
-                        className={`cursor-pointer p-4 rounded-2xl transition-all duration-200 active:scale-[0.98] ${
-                          item.id === expandedItemId
-                            ? "bg-green-50 border-2 border-green-200 dark:bg-green-900/20 dark:border-green-700/50"
-                            : "bg-gray-50 hover:bg-gray-100 dark:bg-dark-hover dark:hover:bg-dark-actionHover border-2 border-transparent"
-                        }`}
-                        onClick={() => {
-                          if (item.id === expandedItemId) {
-                            // Toggle off - unselect the note
-                            setExpandedItemId(null);
-                            router.push(pathname);
-                          } else {
-                            // Select the note
-                            setExpandedItemId(item.id);
-                            router.push(`${pathname}?noteId=${item.id}`);
-                          }
-                          setSearchQuery("");
-                          setIsSidebarOpen(false);
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                        layout
-                      >
-                        <div className="flex items-center gap-3 mb-2">
-                          {(() => {
-                            const iconClass = `w-5 h-5 ${
-                              item.id === expandedItemId
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-light-icon dark:text-dark-icon"
-                            }`;
-
-                            switch (item.type) {
-                              case "text":
-                                return <NotepadText className={iconClass} />;
-                              case "todo":
-                                return <ClipboardList className={iconClass} />;
-                              case "kanban":
-                                return <Columns className={iconClass} />;
-                              case "dynamic":
-                                return <Sparkles className={iconClass} />;
-                              default:
-                                return <NotepadText className={iconClass} />;
-                            }
-                          })()}
-                          <h3
-                            className={`font-semibold truncate text-base ${
-                              item.id === expandedItemId
-                                ? "text-green-700 dark:text-green-300"
-                                : "text-light-heading dark:text-dark-textPrimary"
-                            }`}
-                          >
-                            {item.title || "Untitled"}
-                          </h3>
-                        </div>
-
-                        <p
-                          className={`text-sm line-clamp-2 leading-relaxed ${
-                            item.id === expandedItemId
-                              ? "text-green-600/80 dark:text-green-400/80"
-                              : "text-light-subtle dark:text-dark-textSecondary"
+                    .map((item) => {
+                      const [leftId, rightId] = expandedItemIds;
+                      const isExpanded =
+                        item.id === leftId || item.id === rightId;
+                      return (
+                        <motion.div
+                          key={item.id}
+                          className={`cursor-pointer p-4 rounded-2xl transition-all duration-200 active:scale-[0.98] ${
+                            isExpanded
+                              ? "bg-green-50 border-2 border-green-200 dark:bg-green-900/20 dark:border-green-700/50"
+                              : "bg-gray-50 hover:bg-gray-100 dark:bg-dark-hover dark:hover:bg-dark-actionHover border-2 border-transparent"
                           }`}
+                          onClick={() => {
+                            // Clicking a note always opens it as the single note (no split via click)
+                            setExpandedItemIds([item.id, null]);
+                            router.push(`${pathname}?noteId=${item.id}`);
+                            setSearchQuery("");
+                            setIsSidebarOpen(false);
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                          layout
                         >
-                          {stripHtml(item.content) || "No content"}
-                        </p>
+                          <div className="flex items-center gap-3 mb-2">
+                            {(() => {
+                              const iconClass = `w-5 h-5 ${
+                                isExpanded
+                                  ? "text-green-600 dark:text-green-400"
+                                  : "text-light-icon dark:text-dark-icon"
+                              }`;
 
-                        <div className="flex justify-between items-center mt-3">
-                          <span
-                            className={`text-xs ${
-                              item.id === expandedItemId
-                                ? "text-green-500/70 dark:text-green-400/70"
-                                : "text-gray-400 dark:text-gray-500"
+                              switch (item.type) {
+                                case "text":
+                                  return <NotepadText className={iconClass} />;
+                                case "todo":
+                                  return (
+                                    <ClipboardList className={iconClass} />
+                                  );
+                                case "kanban":
+                                  return <Columns className={iconClass} />;
+                                case "dynamic":
+                                  return <Sparkles className={iconClass} />;
+                                default:
+                                  return <NotepadText className={iconClass} />;
+                              }
+                            })()}
+                            <h3
+                              className={`font-semibold truncate text-base ${
+                                isExpanded
+                                  ? "text-green-700 dark:text-green-300"
+                                  : "text-light-heading dark:text-dark-textPrimary"
+                              }`}
+                            >
+                              {item.title || "Untitled"}
+                            </h3>
+                          </div>
+
+                          <p
+                            className={`text-sm line-clamp-2 leading-relaxed ${
+                              isExpanded
+                                ? "text-green-600/80 dark:text-green-400/80"
+                                : "text-light-subtle dark:text-dark-textSecondary"
                             }`}
                           >
-                            {new Date(item.updatedAt).toLocaleDateString()}
-                          </span>
-                          {item.id === expandedItemId && (
-                            <motion.div
-                              className="w-2 h-2 bg-green-500 rounded-full"
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ delay: 0.1 }}
-                            />
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
+                            {stripHtml(item.content) || "No content"}
+                          </p>
+
+                          <div className="flex justify-between items-center mt-3">
+                            <span
+                              className={`text-xs ${
+                                isExpanded
+                                  ? "text-green-500/70 dark:text-green-400/70"
+                                  : "text-gray-400 dark:text-gray-500"
+                              }`}
+                            >
+                              {new Date(item.updatedAt).toLocaleDateString()}
+                            </span>
+                            {isExpanded && (
+                              <motion.div
+                                className="w-2 h-2 bg-green-500 rounded-full"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.1 }}
+                              />
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                 </div>
               </div>
             </motion.div>
