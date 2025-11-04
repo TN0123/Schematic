@@ -6,6 +6,7 @@ import BulletinMarkdown from "./BulletinMarkdown";
 import BulletinTodo from "./BulletinTodo";
 import BulletinKanban from "./BulletinKanban";
 import BulletinDynamic, { DynamicSchema } from "./BulletinDynamic";
+import BulletinWhiteboard from "./BulletinWhiteboard";
 import DynamicNoteCreator from "./DynamicNoteCreator";
 import AggregatedTodosView from "./AggregatedTodosView";
 import { KanbanCard, KanbanColumn } from "./kanban";
@@ -26,6 +27,7 @@ import {
   ChevronUp,
   GripVertical,
   Pilcrow,
+  PenTool,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
@@ -50,6 +52,13 @@ type BulletinItem = {
   | { type: "todo"; data: { items: TodoItem[] } }
   | { type: "kanban"; data: { columns: KanbanColumn[]; cards: KanbanCard[] } }
   | { type: "dynamic"; data: Record<string, any>; schema: DynamicSchema }
+  | {
+      type: "whiteboard";
+      data?: {
+        strokes: any[];
+        viewport: { offsetX: number; offsetY: number; scale: number };
+      };
+    }
 );
 
 // Confirmation Modal Component
@@ -205,6 +214,9 @@ export default function BulletinClient() {
     kanban: <Columns className="w-4 h-4 text-light-icon dark:text-dark-icon" />,
     dynamic: (
       <Sparkles className="w-4 h-4 text-light-icon dark:text-dark-icon" />
+    ),
+    whiteboard: (
+      <PenTool className="w-4 h-4 text-light-icon dark:text-dark-icon" />
     ),
   };
 
@@ -420,6 +432,11 @@ export default function BulletinClient() {
                 ] as KanbanColumn[],
                 cards: [] as KanbanCard[],
               }
+            : type === "whiteboard"
+            ? {
+                strokes: [],
+                viewport: { offsetX: 0, offsetY: 0, scale: 1 },
+              }
             : undefined,
       }),
     });
@@ -596,6 +613,19 @@ export default function BulletinClient() {
             id={item.id}
             initialTitle={item.title}
             initialContent={item.content}
+            updatedAt={item.updatedAt}
+            onSave={saveItem}
+            onDelete={() => handleDeleteRequest(item.id)}
+            isSaving={savingItems.has(item.id)}
+          />
+        );
+      case "whiteboard":
+        return (
+          <BulletinWhiteboard
+            key={item.id}
+            id={item.id}
+            initialTitle={item.title}
+            data={item.data}
             updatedAt={item.updatedAt}
             onSave={saveItem}
             onDelete={() => handleDeleteRequest(item.id)}
@@ -879,6 +909,16 @@ export default function BulletinClient() {
                         </button>
                         <button
                           onClick={() => {
+                            addItem("whiteboard");
+                            setShowDropdown(false);
+                          }}
+                          className="flex justify-center w-full py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                          title="Whiteboard"
+                        >
+                          <PenTool />
+                        </button>
+                        <button
+                          onClick={() => {
                             setShowDynamicCreator(true);
                             setShowDropdown(false);
                           }}
@@ -907,10 +947,13 @@ export default function BulletinClient() {
                             addItem("markdown");
                             setShowDropdown(false);
                           }}
-                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover"
+                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
                         >
                           <Pilcrow />
                           Markdown Note
+                          <span className="absolute right-0 top-0 text-[9px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                            new
+                          </span>
                         </button>
                         <button
                           onClick={() => {
@@ -931,6 +974,19 @@ export default function BulletinClient() {
                         >
                           <Columns />
                           Kanban Board
+                        </button>
+                        <button
+                          onClick={() => {
+                            addItem("whiteboard");
+                            setShowDropdown(false);
+                          }}
+                          className="flex gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-dark-textPrimary dark:hover:bg-dark-hover relative"
+                        >
+                          <PenTool />
+                          Whiteboard
+                          <span className="absolute right-0 top-0 text-[9px] bg-green-500/70 text-white px-2 rounded-sm leading-[1.3]">
+                            new
+                          </span>
                         </button>
                         <button
                           onClick={() => {
@@ -1139,10 +1195,13 @@ export default function BulletinClient() {
                           addItem("markdown");
                           setShowDropdown(false);
                         }}
-                        className="flex gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 dark:text-dark-textPrimary dark:hover:bg-dark-hover transition-colors active:bg-gray-100 dark:active:bg-dark-actionHover"
+                        className="flex gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 dark:text-dark-textPrimary dark:hover:bg-dark-hover transition-colors active:bg-gray-100 dark:active:bg-dark-actionHover relative"
                       >
                         <Pilcrow className="w-5 h-5" />
                         <span className="font-medium">Markdown Note</span>
+                        <span className="absolute right-4 top-1 text-[10px] bg-blue-500/80 text-white px-2 py-0.5 rounded-md leading-none font-medium">
+                          new
+                        </span>
                       </button>
                       <button
                         onClick={() => {
@@ -1163,6 +1222,19 @@ export default function BulletinClient() {
                       >
                         <Columns className="w-5 h-5" />
                         <span className="font-medium">Kanban Board</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          addItem("whiteboard");
+                          setShowDropdown(false);
+                        }}
+                        className="flex gap-3 w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 dark:text-dark-textPrimary dark:hover:bg-dark-hover transition-colors active:bg-gray-100 dark:active:bg-dark-actionHover relative"
+                      >
+                        <PenTool className="w-5 h-5" />
+                        <span className="font-medium">Whiteboard</span>
+                        <span className="absolute right-4 top-1 text-[10px] bg-green-500/80 text-white px-2 py-0.5 rounded-md leading-none font-medium">
+                          new
+                        </span>
                       </button>
                       <button
                         onClick={() => {
@@ -1237,6 +1309,8 @@ export default function BulletinClient() {
                                   );
                                 case "kanban":
                                   return <Columns className={iconClass} />;
+                                case "whiteboard":
+                                  return <PenTool className={iconClass} />;
                                 case "dynamic":
                                   return <Sparkles className={iconClass} />;
                                 default:
