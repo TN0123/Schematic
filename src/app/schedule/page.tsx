@@ -448,7 +448,11 @@ export default function CalendarApp() {
         }
       }
 
-      if (e.key === "Backspace" && calendarState.selectedEventIds.size > 0) {
+      if (
+        e.key === "Backspace" &&
+        calendarState.selectedEventIds.size > 0 &&
+        (calendarState.shiftSelectionActive)
+      ) {
         calendarState.handleBackspaceDelete();
       } else if (
         (e.ctrlKey || e.metaKey) &&
