@@ -258,11 +258,46 @@ export default function DashboardChat({
     setTempName("");
   };
 
+  // Helper function to render chat input
+  const renderChatInput = () => (
+    <div className="relative">
+      <textarea
+        ref={inputRef}
+        className="w-full p-3 sm:p-4 pr-12 sm:pr-32 resize-none border-2 dark:border-dark-divider rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-dark-secondary dark:text-dark-textPrimary text-sm sm:text-base placeholder-gray-400 dark:placeholder-dark-textDisabled shadow-lg transition-all duration-200"
+        value={chatInput}
+        onChange={(e) => setChatInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleChatSubmit();
+          }
+        }}
+        placeholder="Ask anything..."
+        rows={1}
+        disabled={isChatLoading}
+        style={{
+          minHeight: "48px",
+          maxHeight: "200px",
+        }}
+      />
+      <div className="absolute right-1.5 sm:right-2 top-2 sm:top-3 flex items-center gap-1 sm:gap-2">
+        <button
+          className="p-1.5 sm:p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 flex items-center justify-center"
+          onClick={handleChatSubmit}
+          disabled={isChatLoading || !chatInput.trim()}
+          title="Send message"
+        >
+          <CircleArrowUp size={16} className="sm:hidden" />
+          <CircleArrowUp size={20} className="hidden sm:block" />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {/* Chat Bar - Always visible at top */}
-      <div className="w-full max-w-4xl mx-auto mb-4 sm:mb-8">
-        {/* Assistant Profile Header */}
+      <div className="w-full max-w-4xl mx-auto">
+        {/* Assistant Profile Header - Always at top */}
         <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-3 sm:mb-4 relative">
           <div className="flex items-center gap-1 sm:gap-1.5">
             <motion.div
@@ -379,242 +414,233 @@ export default function DashboardChat({
           )}
         </div>
 
-        {/* Chat Input */}
-        <div className="relative">
-          <textarea
-            ref={inputRef}
-            className="w-full p-3 sm:p-4 pr-12 sm:pr-32 resize-none border-2 dark:border-dark-divider rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-dark-secondary dark:text-dark-textPrimary text-sm sm:text-base placeholder-gray-400 dark:placeholder-dark-textDisabled shadow-lg transition-all duration-200"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleChatSubmit();
-              }
-            }}
-            placeholder="Ask anything..."
-            rows={1}
-            disabled={isChatLoading}
-            style={{
-              minHeight: "48px",
-              maxHeight: "200px",
-            }}
-          />
-          <div className="absolute right-1.5 sm:right-2 top-2 sm:top-3 flex items-center gap-1 sm:gap-2">
-            <button
-              className="p-1.5 sm:p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 flex items-center justify-center"
-              onClick={handleChatSubmit}
-              disabled={isChatLoading || !chatInput.trim()}
-              title="Send message"
-            >
-              <CircleArrowUp size={16} className="sm:hidden" />
-              <CircleArrowUp size={20} className="hidden sm:block" />
-            </button>
-          </div>
-        </div>
-      </div>
+        {/* Chat Input at top when no messages */}
+        {chatMessages.length === 0 && (
+          <div className="mb-4 sm:mb-8 flex-shrink-0">{renderChatInput()}</div>
+        )}
 
-      {/* Chat Messages Area */}
-      <AnimatePresence>
-        {chatMessages.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3 }}
-            className="w-full max-w-4xl mx-auto"
-          >
-            <div ref={chatContainerRef} className="space-y-4 pb-6 sm:pb-8">
-              <AnimatePresence>
-                {chatMessages.map((message, index) => (
-                  <motion.div
-                    key={index}
-                    layout
-                    initial={{ opacity: 0, scale: 0.8, y: 50 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, y: 50 }}
-                    transition={{
-                      opacity: { duration: 0.2 },
-                      layout: {
-                        type: "spring",
-                        bounce: 0.4,
-                        duration: 0.3,
-                      },
-                    }}
-                    style={{
-                      originX: message.role === "user" ? 1 : 0,
-                    }}
-                    className={`flex ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+        {/* Chat Messages Area */}
+        <AnimatePresence>
+          {chatMessages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col"
+            >
+              <div
+                ref={chatContainerRef}
+                className="space-y-4 overflow-y-auto pb-4 max-h-[60vh]"
+              >
+                <AnimatePresence>
+                  {chatMessages.map((message, index) => (
+                    <motion.div
+                      key={index}
+                      layout
+                      initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                      transition={{
+                        opacity: { duration: 0.2 },
+                        layout: {
+                          type: "spring",
+                          bounce: 0.4,
+                          duration: 0.3,
+                        },
+                      }}
+                      style={{
+                        originX: message.role === "user" ? 1 : 0,
+                      }}
+                      className={`flex ${
                         message.role === "user"
-                          ? "bg-blue-500 text-white"
-                          : message.isError
-                          ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700"
-                          : "bg-gray-200 dark:bg-dark-secondary"
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
-                      <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: (props) => (
-                              <p
-                                {...props}
-                                className={`mb-2 last:mb-0 ${
-                                  message.isError
-                                    ? "text-red-800 dark:text-red-200"
-                                    : ""
-                                }`}
-                              />
-                            ),
-                            ul: (props) => (
-                              <ul {...props} className="mb-2 last:mb-0 pl-4" />
-                            ),
-                            ol: (props) => (
-                              <ol {...props} className="mb-2 last:mb-0 pl-4" />
-                            ),
-                            li: (props) => <li {...props} className="mb-1" />,
-                            code: (props) => (
-                              <code
-                                {...props}
-                                className={`px-1 py-0.5 rounded text-xs ${
-                                  message.role === "user"
-                                    ? "bg-blue-600 text-blue-100"
-                                    : "bg-gray-300 dark:bg-dark-background text-gray-800 dark:text-dark-textPrimary"
-                                }`}
-                              />
-                            ),
-                            pre: (props) => (
-                              <pre
-                                {...props}
-                                className={`p-2 rounded text-xs overflow-x-auto ${
-                                  message.role === "user"
-                                    ? "bg-blue-600"
-                                    : "bg-gray-300 dark:bg-dark-background"
-                                }`}
-                              />
-                            ),
-                            blockquote: (props) => (
-                              <blockquote
-                                {...props}
-                                className={`border-l-2 pl-2 italic ${
-                                  message.role === "user"
-                                    ? "border-blue-300"
-                                    : "border-gray-400 dark:border-dark-divider"
-                                }`}
-                              />
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                      {message.isError &&
-                        message.isRetryable &&
-                        message.originalInput && (
-                          <button
-                            onClick={() =>
-                              handleRetryMessage(message.originalInput!)
-                            }
-                            className="mt-2 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-md transition-colors duration-200 flex items-center gap-1"
-                          >
-                            <RefreshCw size={12} />
-                            Retry
-                          </button>
-                        )}
-                      <div className="flex flex-col gap-1 mt-2">
-                        {message.toolCalls && message.toolCalls.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {message.toolCalls.map((toolCall, toolIndex) => (
-                              <div
-                                key={toolIndex}
-                                className="flex flex-col gap-1"
-                              >
-                                <div
-                                  className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
-                                  title={`Tool used: ${toolCall.name}`}
-                                >
-                                  <Eye size={10} className="mr-1" />
-                                  <span>{toolCall.description}</span>
-                                </div>
-                                {/* Display note bubbles for bulletin notes */}
-                                {toolCall.name === "search_bulletin_notes" &&
-                                  toolCall.notes &&
-                                  toolCall.notes.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {toolCall.notes.map((note, noteIndex) => (
-                                        <div
-                                          key={noteIndex}
-                                          className="inline-flex items-center text-xs bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-full border border-gray-300 dark:border-dark-divider"
-                                        >
-                                          <span className="text-gray-600 dark:text-dark-textSecondary mr-1">
-                                            Read
-                                          </span>
-                                          <a
-                                            href={`/bulletin?noteId=${note.id}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
-                                            title={`Read ${note.title}`}
-                                          >
-                                            {note.title}
-                                          </a>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {message.contextUpdated && (
-                          <button
-                            className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
-                            title="Click to see context changes"
-                            onClick={() => {
-                              if (message.contextChange) {
-                                setContextDiffModal({
-                                  isOpen: true,
-                                  before: message.contextChange.before,
-                                  after: message.contextChange.after,
-                                });
-                              }
+                      <div
+                        className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+                          message.role === "user"
+                            ? "bg-blue-500 text-white"
+                            : message.isError
+                            ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700"
+                            : "bg-gray-200 dark:bg-dark-secondary"
+                        }`}
+                      >
+                        <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: (props) => (
+                                <p
+                                  {...props}
+                                  className={`mb-2 last:mb-0 ${
+                                    message.isError
+                                      ? "text-red-800 dark:text-red-200"
+                                      : ""
+                                  }`}
+                                />
+                              ),
+                              ul: (props) => (
+                                <ul
+                                  {...props}
+                                  className="mb-2 last:mb-0 pl-4"
+                                />
+                              ),
+                              ol: (props) => (
+                                <ol
+                                  {...props}
+                                  className="mb-2 last:mb-0 pl-4"
+                                />
+                              ),
+                              li: (props) => <li {...props} className="mb-1" />,
+                              code: (props) => (
+                                <code
+                                  {...props}
+                                  className={`px-1 py-0.5 rounded text-xs ${
+                                    message.role === "user"
+                                      ? "bg-blue-600 text-blue-100"
+                                      : "bg-gray-300 dark:bg-dark-background text-gray-800 dark:text-dark-textPrimary"
+                                  }`}
+                                />
+                              ),
+                              pre: (props) => (
+                                <pre
+                                  {...props}
+                                  className={`p-2 rounded text-xs overflow-x-auto ${
+                                    message.role === "user"
+                                      ? "bg-blue-600"
+                                      : "bg-gray-300 dark:bg-dark-background"
+                                  }`}
+                                />
+                              ),
+                              blockquote: (props) => (
+                                <blockquote
+                                  {...props}
+                                  className={`border-l-2 pl-2 italic ${
+                                    message.role === "user"
+                                      ? "border-blue-300"
+                                      : "border-gray-400 dark:border-dark-divider"
+                                  }`}
+                                />
+                              ),
                             }}
                           >
-                            <UserPen size={12} className="mr-1" />
-                            <span>Context Updated</span>
-                          </button>
-                        )}
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                        {message.isError &&
+                          message.isRetryable &&
+                          message.originalInput && (
+                            <button
+                              onClick={() =>
+                                handleRetryMessage(message.originalInput!)
+                              }
+                              className="mt-2 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-md transition-colors duration-200 flex items-center gap-1"
+                            >
+                              <RefreshCw size={12} />
+                              Retry
+                            </button>
+                          )}
+                        <div className="flex flex-col gap-1 mt-2">
+                          {message.toolCalls &&
+                            message.toolCalls.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {message.toolCalls.map(
+                                  (toolCall, toolIndex) => (
+                                    <div
+                                      key={toolIndex}
+                                      className="flex flex-col gap-1"
+                                    >
+                                      <div
+                                        className="flex items-center text-xs text-gray-500 dark:text-dark-textDisabled bg-gray-100 dark:bg-dark-actionDisabledBackground px-2 py-1 rounded-full"
+                                        title={`Tool used: ${toolCall.name}`}
+                                      >
+                                        <Eye size={10} className="mr-1" />
+                                        <span>{toolCall.description}</span>
+                                      </div>
+                                      {/* Display note bubbles for bulletin notes */}
+                                      {toolCall.name ===
+                                        "search_bulletin_notes" &&
+                                        toolCall.notes &&
+                                        toolCall.notes.length > 0 && (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {toolCall.notes.map(
+                                              (note, noteIndex) => (
+                                                <div
+                                                  key={noteIndex}
+                                                  className="inline-flex items-center text-xs bg-gray-100 dark:bg-dark-secondary px-2 py-1 rounded-full border border-gray-300 dark:border-dark-divider"
+                                                >
+                                                  <span className="text-gray-600 dark:text-dark-textSecondary mr-1">
+                                                    Read
+                                                  </span>
+                                                  <a
+                                                    href={`/bulletin?noteId=${note.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-green-600 dark:text-green-400 underline hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200"
+                                                    title={`Read ${note.title}`}
+                                                  >
+                                                    {note.title}
+                                                  </a>
+                                                </div>
+                                              )
+                                            )}
+                                          </div>
+                                        )}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+                          {message.contextUpdated && (
+                            <button
+                              className="flex items-center justify-end text-xs text-gray-500 dark:text-dark-textDisabled hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+                              title="Click to see context changes"
+                              onClick={() => {
+                                if (message.contextChange) {
+                                  setContextDiffModal({
+                                    isOpen: true,
+                                    before: message.contextChange.before,
+                                    after: message.contextChange.after,
+                                  });
+                                }
+                              }}
+                            >
+                              <UserPen size={12} className="mr-1" />
+                              <span>Context Updated</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
-              {isChatLoading && (
-                <div className="flex justify-start">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
-                  >
-                    <div className="typing-indicator">
-                      <span></span>
-                      <span></span>
-                      <span></span>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {isChatLoading && (
+                  <div className="flex justify-start">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
+                    >
+                      <div className="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input at bottom when messages exist */}
+              <div className="mt-4 flex-shrink-0">{renderChatInput()}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Context Diff Modal */}
       {contextDiffModal.isOpen && (
