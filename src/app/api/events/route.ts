@@ -5,6 +5,7 @@ import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
 import { recordEventAction } from "@/lib/habit-ingestion";
 import { invalidateAllUserCaches } from "@/lib/cache-utils";
+import { pushEventToGoogle } from "@/lib/google-calendar-sync";
 
 
 export async function GET(req: NextRequest) {
@@ -71,6 +72,11 @@ export async function POST(req: Request) {
     // Invalidate cache asynchronously (don't await to avoid blocking)
     invalidateAllUserCaches(session.user.id).catch(err => 
       console.error('Failed to invalidate cache:', err)
+    );
+
+    // Sync to Google Calendar if enabled (don't await to avoid blocking)
+    pushEventToGoogle(event.id, session.user.id).catch(err => 
+      console.error('Failed to sync event to Google Calendar:', err)
     );
     
     return NextResponse.json(event, { status: 201 });

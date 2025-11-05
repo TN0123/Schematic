@@ -40,7 +40,6 @@ export async function getUserSubscriptionTier(
   // Check if subscription is active and not expired
   const now = new Date();
   const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
-  
 
   if (
     user.subscriptionStatus === "active" &&

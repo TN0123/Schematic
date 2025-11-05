@@ -27,20 +27,12 @@ export async function GET() {
       return new NextResponse("User not found", { status: 404 });
     }
 
-    console.log(`[Subscription Status] User: ${session.user.email}`);
-    console.log(`[Subscription Status] DB values:`, {
-      subscriptionStatus: user.subscriptionStatus,
-      stripeCurrentPeriodEnd: user.stripeCurrentPeriodEnd,
-      stripeCustomerId: user.stripeCustomerId,
-      stripeSubscriptionId: user.stripeSubscriptionId,
-    });
 
     const [tier, usageStats] = await Promise.all([
       getUserSubscriptionTier(user.id),
       getUserUsageStats(user.id),
     ]);
 
-    console.log(`[Subscription Status] Calculated tier: ${tier}`);
 
     return NextResponse.json({
       tier,

@@ -52,6 +52,15 @@ model User {
   eventActions          EventAction[]
   habitProfiles         HabitProfile[]
   habitClusters         HabitCluster[]
+
+  // Google Calendar Sync
+  googleCalendarSyncEnabled     Boolean   @default(false)
+  googleCalendarId              String?
+  googleCalendarSyncToken       String?
+  googleCalendarLastSyncAt      DateTime?
+  googleCalendarWatchChannelId  String?
+  googleCalendarWatchExpiration DateTime?
+  syncedEvents                  SyncedEvent[]
 }
 
 model Account {
@@ -267,4 +276,20 @@ model BackgroundJobLog {
 
   @@index([jobType])
   @@index([startedAt])
+}
+
+/// Track Google Calendar sync state for events
+model SyncedEvent {
+  id              String   @id @default(cuid())
+  userId          String
+  localEventId    String   @unique
+  googleEventId   String
+  googleCalendarId String
+  lastSyncedAt    DateTime @default(now())
+  syncHash        String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, googleEventId])
+  @@index([userId, googleCalendarId])
 }

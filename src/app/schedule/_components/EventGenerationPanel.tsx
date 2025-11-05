@@ -15,6 +15,7 @@ import {
   Pen,
   X,
   Check,
+  CalendarSync,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -141,6 +142,9 @@ export default function EventGenerationPanel({
   const [assistantName, setAssistantName] = useState("AI Life Assistant");
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState("");
+  const [googleSyncEnabled, setGoogleSyncEnabled] = useState(false);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>("");
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // File upload state
   const [extractedEvents, setExtractedEvents] = useState<
@@ -162,6 +166,23 @@ export default function EventGenerationPanel({
       setLocalGenerationResult(null);
     }
   }, [generationResult]);
+
+  // Load Google Calendar sync settings so we can show Manual Sync when set up
+  useEffect(() => {
+    const fetchGoogleSyncSettings = async () => {
+      try {
+        const response = await fetch("/api/google-calendar/sync-settings");
+        if (response.ok) {
+          const data = await response.json();
+          setGoogleSyncEnabled(!!data.enabled);
+          setSelectedCalendarId(data.calendarId || "");
+        }
+      } catch (error) {
+        console.error("Error fetching Google sync settings:", error);
+      }
+    };
+    fetchGoogleSyncSettings();
+  }, []);
 
   const formatTwo = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 
@@ -330,6 +351,23 @@ export default function EventGenerationPanel({
     } else {
       resetTranscript();
       SpeechRecognition.startListening({ continuous: false });
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!googleSyncEnabled || !selectedCalendarId || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const response = await fetch("/api/google-calendar/manual-sync", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        console.error("Manual sync failed");
+      }
+    } catch (error) {
+      console.error("Error performing manual sync:", error);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -628,6 +666,20 @@ export default function EventGenerationPanel({
             </button>
           </div>
           <div className="flex items-center gap-1">
+            {googleSyncEnabled && selectedCalendarId && (
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                title={isSyncing ? "Syncing..." : "Sync with Google Calendar"}
+              >
+                {isSyncing ? (
+                  <RefreshCw size={20} />
+                ) : (
+                  <CalendarSync size={20} />
+                )}
+              </button>
+            )}
             {actionMode === "chat" && (
               <button
                 className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"

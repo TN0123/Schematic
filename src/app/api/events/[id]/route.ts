@@ -5,6 +5,82 @@ import authOptions from "@/lib/auth";
 import { normalizeUrls } from "@/lib/url";
 import { recordEventAction } from "@/lib/habit-ingestion";
 import { invalidateAllUserCaches } from "@/lib/cache-utils";
+import { getGoogleCalendarClient } from "@/lib/google-calendar-sync";
+import { convertToGoogleDateTime } from "@/lib/timezone";
+import { generateSyncHash } from "@/lib/sync-conflict-resolver";
+
+// Helper function to update Google Calendar event
+async function updateGoogleCalendarEvent(event: any, userId: string): Promise<void> {
+  try {
+    const syncedEvent = await prisma.syncedEvent.findUnique({
+      where: { localEventId: event.id },
+    });
+
+    if (!syncedEvent) return;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleCalendarId: true },
+    });
+
+    if (!user?.googleCalendarId) return;
+
+    const client = await getGoogleCalendarClient(userId);
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const googleEvent = {
+      summary: event.title,
+      start: convertToGoogleDateTime(event.start, userTimezone),
+      end: convertToGoogleDateTime(event.end, userTimezone),
+    };
+
+    await client.updateEvent(user.googleCalendarId, syncedEvent.googleEventId, googleEvent);
+
+    // Update sync hash
+    const newHash = generateSyncHash({
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      links: event.links || [],
+    });
+
+    await prisma.syncedEvent.update({
+      where: { id: syncedEvent.id },
+      data: { syncHash: newHash, lastSyncedAt: new Date() },
+    });
+  } catch (error) {
+    console.error('Error updating Google Calendar event:', error);
+  }
+}
+
+// Helper function to delete Google Calendar event
+async function deleteGoogleCalendarEvent(eventId: string, userId: string): Promise<void> {
+  try {
+    const syncedEvent = await prisma.syncedEvent.findUnique({
+      where: { localEventId: eventId },
+    });
+
+    if (!syncedEvent) return;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleCalendarId: true },
+    });
+
+    if (!user?.googleCalendarId) return;
+
+    const client = await getGoogleCalendarClient(userId);
+    await client.deleteEvent(user.googleCalendarId, syncedEvent.googleEventId);
+
+    // Delete sync mapping
+    await prisma.syncedEvent.delete({
+      where: { id: syncedEvent.id },
+    });
+  } catch (error) {
+    console.error('Error deleting Google Calendar event:', error);
+  }
+}
 
 export async function DELETE(
   req: Request,
@@ -58,6 +134,13 @@ export async function DELETE(
         console.error('Failed to invalidate cache:', err)
       );
 
+      // Delete from Google Calendar if synced (don't await to avoid blocking)
+      eventsToDelete.forEach(event => {
+        deleteGoogleCalendarEvent(event.id, session.user.id).catch(err => 
+          console.error('Failed to delete Google Calendar event:', err)
+        );
+      });
+
       return NextResponse.json(deletedEvents, { status: 200 });
     } else {
       // Fetch event before deletion to record habit action
@@ -81,6 +164,11 @@ export async function DELETE(
       // Invalidate cache asynchronously (don't await to avoid blocking)
       invalidateAllUserCaches(session.user.id).catch(err => 
         console.error('Failed to invalidate cache:', err)
+      );
+
+      // Delete from Google Calendar if synced (don't await to avoid blocking)
+      deleteGoogleCalendarEvent(id, session.user.id).catch(err => 
+        console.error('Failed to delete Google Calendar event:', err)
       );
 
       return NextResponse.json(event, { status: 200 });
@@ -141,6 +229,11 @@ export async function PUT(
     // Invalidate cache asynchronously (don't await to avoid blocking)
     invalidateAllUserCaches(session.user.id).catch(err => 
       console.error('Failed to invalidate cache:', err)
+    );
+
+    // Update Google Calendar event if synced (don't await to avoid blocking)
+    updateGoogleCalendarEvent(updatedEvent, session.user.id).catch(err => 
+      console.error('Failed to update Google Calendar event:', err)
     );
 
     return NextResponse.json(updatedEvent, { status: 200 });
