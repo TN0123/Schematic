@@ -666,6 +666,20 @@ export default function EventGenerationPanel({
             </button>
           </div>
           <div className="flex items-center gap-1">
+            {googleSyncEnabled && selectedCalendarId && (
+              <button
+                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                title={isSyncing ? "Syncing..." : "Sync with Google Calendar"}
+              >
+                {isSyncing ? (
+                  <RefreshCw size={20} />
+                ) : (
+                  <CalendarSync size={20} />
+                )}
+              </button>
+            )}
             {actionMode === "chat" && (
               <button
                 className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
