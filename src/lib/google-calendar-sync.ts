@@ -52,6 +52,7 @@ function levenshteinDistance(str1: string, str2: string): number {
 /**
  * Find existing local event that matches a Google Calendar event
  * This helps prevent duplicates when users unsync and resync
+ * Excludes events that are already synced to avoid matching during batch syncs
  */
 async function findExistingEvent(
   googleEvent: GoogleCalendarEvent,
@@ -66,12 +67,23 @@ async function findExistingEvent(
   const startWindow = new Date(googleStart.getTime() - timeWindow);
   const endWindow = new Date(googleEnd.getTime() + timeWindow);
   
+  // Get all synced event IDs to exclude them from matching
+  const syncedLocalEventIds = await prisma.syncedEvent.findMany({
+    where: { userId },
+    select: { localEventId: true },
+  });
+  const syncedEventIdsSet = new Set(syncedLocalEventIds.map(se => se.localEventId));
+  
   const existingEvents = await prisma.event.findMany({
     where: {
       userId,
       start: {
         gte: startWindow,
         lte: endWindow,
+      },
+      // Exclude events that are already synced
+      id: {
+        notIn: Array.from(syncedEventIdsSet),
       },
     },
   });
@@ -407,29 +419,43 @@ async function processGoogleEvent(
     }
   } else {
     // Check for existing local event that might be a duplicate
+    // Only do this if we're not in an incremental sync (to avoid matching events created in the same batch)
+    // For incremental syncs, we should only create new events if no sync mapping exists
     const existingEventMatch = await findExistingEvent(googleEvent, userId, userTimezone);
     
     if (existingEventMatch) {
-      // Found a potential duplicate - create sync mapping for existing event instead of creating new one
-      console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
-      
-      const syncHash = generateSyncHash({
-        id: existingEventMatch.event.id,
-        title: existingEventMatch.event.title,
-        start: existingEventMatch.event.start,
-        end: existingEventMatch.event.end,
-        links: existingEventMatch.event.links || [],
+      // Check if this local event already has a sync mapping
+      const existingLocalSync = await prisma.syncedEvent.findUnique({
+        where: { localEventId: existingEventMatch.event.id },
       });
       
-      await prisma.syncedEvent.create({
-        data: {
-          userId,
-          localEventId: existingEventMatch.event.id,
-          googleEventId: googleEvent.id,
-          googleCalendarId: calendarId,
-          syncHash,
-        },
-      });
+      if (existingLocalSync) {
+        // Local event is already synced with a different Google event - don't reassign it
+        // This prevents stealing events from other Google events during batch syncs
+        console.log(`Skipping Google event ${googleEvent.id} - matched local event ${existingEventMatch.event.id} is already synced with Google event ${existingLocalSync.googleEventId}`);
+        return; // Skip this Google event - it shouldn't steal an already-synced local event
+      } else {
+        // Found a potential duplicate - create sync mapping for existing event instead of creating new one
+        console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
+        
+        const syncHash = generateSyncHash({
+          id: existingEventMatch.event.id,
+          title: existingEventMatch.event.title,
+          start: existingEventMatch.event.start,
+          end: existingEventMatch.event.end,
+          links: existingEventMatch.event.links || [],
+        });
+        
+        await prisma.syncedEvent.create({
+          data: {
+            userId,
+            localEventId: existingEventMatch.event.id,
+            googleEventId: googleEvent.id,
+            googleCalendarId: calendarId,
+            syncHash,
+          },
+        });
+      }
       
       // Update the existing event with Google Calendar data if similarity is high enough
       if (existingEventMatch.similarity >= 0.8) {
@@ -454,17 +480,20 @@ async function processGoogleEvent(
           links: existingEventMatch.event.links || [],
         });
         
-        await prisma.syncedEvent.updateMany({
-          where: {
-            userId,
-            googleEventId: googleEvent.id,
-            googleCalendarId: calendarId,
-          },
-          data: {
-            syncHash: updatedHash,
-            lastSyncedAt: new Date(),
-          },
+        // Get the sync record (could be newly created or existing)
+        const currentSync = await prisma.syncedEvent.findUnique({
+          where: { localEventId: existingEventMatch.event.id },
         });
+        
+        if (currentSync) {
+          await prisma.syncedEvent.update({
+            where: { id: currentSync.id },
+            data: {
+              syncHash: updatedHash,
+              lastSyncedAt: new Date(),
+            },
+          });
+        }
       }
     } else {
       // No existing event found - create new local event
@@ -543,24 +572,50 @@ export async function pushEventToGoogle(eventId: string, userId: string): Promis
     
     const createdEvent = await client.createEvent(user.googleCalendarId, googleEvent);
     
-    // Create sync mapping
-    const syncHash = generateSyncHash({
-      id: event.id,
-      title: event.title,
-      start: event.start,
-      end: event.end,
-      links: event.links || [],
+    // Check if sync mapping already exists
+    const existingSync = await prisma.syncedEvent.findUnique({
+      where: { localEventId: event.id },
     });
     
-    await prisma.syncedEvent.create({
-      data: {
-        userId,
-        localEventId: event.id,
-        googleEventId: createdEvent.id,
-        googleCalendarId: user.googleCalendarId,
-        syncHash,
-      },
-    });
+    if (existingSync) {
+      // Update existing sync mapping
+      const syncHash = generateSyncHash({
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        links: event.links || [],
+      });
+      
+      await prisma.syncedEvent.update({
+        where: { id: existingSync.id },
+        data: {
+          googleEventId: createdEvent.id,
+          googleCalendarId: user.googleCalendarId,
+          syncHash,
+          lastSyncedAt: new Date(),
+        },
+      });
+    } else {
+      // Create sync mapping
+      const syncHash = generateSyncHash({
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        links: event.links || [],
+      });
+      
+      await prisma.syncedEvent.create({
+        data: {
+          userId,
+          localEventId: event.id,
+          googleEventId: createdEvent.id,
+          googleCalendarId: user.googleCalendarId,
+          syncHash,
+        },
+      });
+    }
     
     return createdEvent.id;
   } catch (error) {
@@ -584,26 +639,37 @@ export async function pullEventFromGoogle(
     const existingEventMatch = await findExistingEvent(googleEvent, userId, userTimezone);
     
     if (existingEventMatch) {
-      // Found a potential duplicate - create sync mapping for existing event instead of creating new one
-      console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
-      
-      const syncHash = generateSyncHash({
-        id: existingEventMatch.event.id,
-        title: existingEventMatch.event.title,
-        start: existingEventMatch.event.start,
-        end: existingEventMatch.event.end,
-        links: existingEventMatch.event.links || [],
+      // Check if this local event already has a sync mapping
+      const existingLocalSync = await prisma.syncedEvent.findUnique({
+        where: { localEventId: existingEventMatch.event.id },
       });
       
-      await prisma.syncedEvent.create({
-        data: {
-          userId,
-          localEventId: existingEventMatch.event.id,
-          googleEventId: googleEvent.id,
-          googleCalendarId: calendarId,
-          syncHash,
-        },
-      });
+      if (existingLocalSync) {
+        // Local event is already synced with a different Google event - don't reassign it
+        console.log(`Skipping Google event ${googleEvent.id} - matched local event ${existingEventMatch.event.id} is already synced with Google event ${existingLocalSync.googleEventId}`);
+        return; // Skip this Google event - it shouldn't steal an already-synced local event
+      } else {
+        // Found a potential duplicate - create sync mapping for existing event instead of creating new one
+        console.log(`Found existing event ${existingEventMatch.event.id} with ${(existingEventMatch.similarity * 100).toFixed(1)}% similarity to Google event ${googleEvent.id}`);
+        
+        const syncHash = generateSyncHash({
+          id: existingEventMatch.event.id,
+          title: existingEventMatch.event.title,
+          start: existingEventMatch.event.start,
+          end: existingEventMatch.event.end,
+          links: existingEventMatch.event.links || [],
+        });
+        
+        await prisma.syncedEvent.create({
+          data: {
+            userId,
+            localEventId: existingEventMatch.event.id,
+            googleEventId: googleEvent.id,
+            googleCalendarId: calendarId,
+            syncHash,
+          },
+        });
+      }
       
       // Update the existing event with Google Calendar data if similarity is high enough
       if (existingEventMatch.similarity >= 0.8) {
@@ -628,17 +694,20 @@ export async function pullEventFromGoogle(
           links: existingEventMatch.event.links || [],
         });
         
-        await prisma.syncedEvent.updateMany({
-          where: {
-            userId,
-            googleEventId: googleEvent.id,
-            googleCalendarId: calendarId,
-          },
-          data: {
-            syncHash: updatedHash,
-            lastSyncedAt: new Date(),
-          },
+        // Get the sync record (could be newly created or existing)
+        const currentSync = await prisma.syncedEvent.findUnique({
+          where: { localEventId: existingEventMatch.event.id },
         });
+        
+        if (currentSync) {
+          await prisma.syncedEvent.update({
+            where: { id: currentSync.id },
+            data: {
+              syncHash: updatedHash,
+              lastSyncedAt: new Date(),
+            },
+          });
+        }
       }
     } else {
       // No existing event found - create new local event
