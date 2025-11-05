@@ -248,11 +248,12 @@ export const useCalendarState = (
 
   // Handle keyboard shortcuts
   const handleBackspaceDelete = useCallback(() => {
-    if (selectedEventIds.size > 0) {
+    // Only allow Backspace-based deletion when selection was made via Shift + drag
+    if (selectedEventIds.size > 0 && (shiftSelectionActive || lastSelectWasShiftRef.current)) {
       setEventToDelete(null);
       setIsDeleteModalOpen(true);
     }
-  }, [selectedEventIds]);
+  }, [selectedEventIds, shiftSelectionActive]);
 
   const handleCopyEvents = useCallback(() => {
     if (selectedEventIds.size > 0) {
@@ -364,7 +365,8 @@ export const useCalendarState = (
       if (e.key === "Shift") {
         setIsShiftPressed(true);
       }
-      if (e.key === "Backspace" && selectedEventIds.size > 0) {
+      // Only trigger delete modal if a Shift-selection is active
+      if (e.key === "Backspace" && selectedEventIds.size > 0 && (shiftSelectionActive || lastSelectWasShiftRef.current)) {
         handleBackspaceDelete();
       } else if (
         (e.ctrlKey || e.metaKey) &&
@@ -393,7 +395,7 @@ export const useCalendarState = (
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [selectedEventIds, copiedEvents, handleBackspaceDelete, handleCopyEvents]);
+  }, [selectedEventIds, copiedEvents, handleBackspaceDelete, handleCopyEvents, shiftSelectionActive]);
 
   return {
     // Modal states

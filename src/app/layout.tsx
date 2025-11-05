@@ -81,9 +81,9 @@ export default async function RootLayout({
   if (session?.user?.id) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { lastSeenUpdatesAt: true },
+      select: { lastSeenUpdatesAt: true, createdAt: true },
     });
-    const baseline = user?.lastSeenUpdatesAt || null;
+    const baseline = user?.lastSeenUpdatesAt || user?.createdAt || null;
 
     const updates = await prisma.productUpdate.findMany({
       where: baseline

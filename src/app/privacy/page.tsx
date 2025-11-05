@@ -254,7 +254,7 @@ export default function PrivacyPolicy() {
             className="text-sm text-gray-500 dark:text-dark-textSecondary"
             variants={fadeUpVariants}
           >
-            Last updated: {new Date().toLocaleDateString()}
+            Last updated: 10/30/2025
           </motion.p>
         </motion.div>
 
@@ -337,6 +337,167 @@ export default function PrivacyPolicy() {
             you of any changes by posting the new Privacy Policy on this page
             and updating the "Last updated" date.
           </p>
+        </motion.section>
+
+        {/* Terms of Service Header */}
+        <motion.div
+          className="text-center py-16 space-y-6"
+          variants={staggerVariants}
+          initial="initial"
+          animate="animate"
+        >
+          <motion.h1
+            className="text-4xl sm:text-6xl font-bold text-gray-900 dark:text-dark-textPrimary"
+            variants={fadeUpVariants}
+          >
+            Terms of Service
+          </motion.h1>
+          <motion.p
+            className="text-lg text-gray-600 dark:text-dark-textSecondary max-w-3xl mx-auto"
+            variants={fadeUpVariants}
+          >
+            Please read these terms carefully. By using Schematic, you agree to
+            the following terms and conditions.
+          </motion.p>
+          <motion.p
+            className="text-sm text-gray-500 dark:text-dark-textSecondary"
+            variants={fadeUpVariants}
+          >
+            Last updated: 10/30/2025
+          </motion.p>
+        </motion.div>
+
+        {/* Terms of Service (Scrollable Section) */}
+        <motion.section
+          className="mt-16"
+          variants={fadeUpVariants}
+          initial="initial"
+          animate="animate"
+        >
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-dark-textPrimary mb-6">
+            Terms of Service
+          </h2>
+          <div className="bg-white dark:bg-dark-paper rounded-2xl border border-gray-200 dark:border-dark-divider shadow-sm p-6">
+            <div className="max-h-80 overflow-y-auto pr-2 space-y-6">
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  1. Acceptance of Terms
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  By accessing or using Schematic, you agree to be bound by
+                  these Terms of Service. If you do not agree, you may not use
+                  the Service.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  2. Use of the Service
+                </h3>
+                <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-dark-textSecondary">
+                  <li>You must be at least 13 years old to use the Service.</li>
+                  <li>
+                    You are responsible for your account and for all activity
+                    under it.
+                  </li>
+                  <li>
+                    Do not misuse the Service, including attempting to disrupt
+                    or access it using a method other than the provided
+                    interfaces.
+                  </li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  3. Subscriptions and Billing
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  Certain features may require a paid subscription. Fees are
+                  billed in advance and are non‑refundable except where required
+                  by law.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  4. User Content
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  You retain ownership of your content. By using the Service,
+                  you grant us a limited license to process and store your
+                  content solely to operate and improve the Service, as
+                  described in the Privacy Policy.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  5. Prohibited Conduct
+                </h3>
+                <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-dark-textSecondary">
+                  <li>No unlawful, infringing, or harmful activity.</li>
+                  <li>
+                    No reverse engineering, scraping, or automated data
+                    extraction without permission.
+                  </li>
+                  <li>
+                    No uploading of malicious code or interference with Service
+                    operations.
+                  </li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  6. Disclaimers and Limitation of Liability
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  The Service is provided "as is" without warranties of any
+                  kind. To the fullest extent permitted by law, Schematic is not
+                  liable for any indirect or consequential damages arising from
+                  your use of the Service.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  7. Termination
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  We may suspend or terminate access if you violate these Terms.
+                  You may stop using the Service at any time.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  8. Changes to These Terms
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  We may modify these Terms from time to time. Changes will be
+                  effective when posted. Your continued use constitutes
+                  acceptance.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary mb-2">
+                  9. Contact
+                </h3>
+                <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
+                  Questions about these Terms? Contact us at
+                  <a
+                    href="mailto:support@schematic.now"
+                    className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                  >
+                    support@schematic.now
+                  </a>
+                  .
+                </p>
+              </section>
+            </div>
+          </div>
         </motion.section>
       </main>
     </motion.div>

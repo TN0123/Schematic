@@ -120,9 +120,8 @@ export default function EventGenerationPanel({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isScheduleContextModalOpen, setIsScheduleContextModalOpen] =
     useState(false);
-  const [activeTab, setActiveTab] = useState<"generate" | "chat">("generate");
+  const [actionMode, setActionMode] = useState<"generate" | "chat">("generate");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -373,15 +372,15 @@ export default function EventGenerationPanel({
   };
 
   const handleChatSubmit = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
+    if (!inputText.trim() || isChatLoading) return;
 
     const newMessages: ChatMessage[] = [
       ...chatMessages,
-      { role: "user", content: chatInput },
+      { role: "user", content: inputText },
     ];
     setChatMessages(newMessages);
-    const currentChatInput = chatInput;
-    setChatInput("");
+    const currentChatInput = inputText;
+    setInputText("");
     setIsChatLoading(true);
 
     try {
@@ -468,7 +467,7 @@ export default function EventGenerationPanel({
   };
 
   const handleRetryMessage = (originalInput: string) => {
-    setChatInput(originalInput);
+    setInputText(originalInput);
     // Remove the error message and retry
     setChatMessages((prev) => prev.slice(0, -1));
   };
@@ -620,150 +619,145 @@ export default function EventGenerationPanel({
       <aside
         className={`hidden md:flex fixed md:relative z-30 h-full ${
           width ? "" : "w-80 md:w-96"
-        } bg-white dark:bg-dark-background border-l dark:border-dark-divider px-6 py-4 flex-col gap-4 transition-all duration-300 ${className}`}
+        } bg-white dark:bg-dark-background border-l dark:border-dark-divider px-4 py-4 flex-col gap-4 transition-all duration-300 ${className}`}
         style={width ? { width: `${width}px` } : undefined}
       >
-        {/* Tab Navigation */}
-        <div className="flex border-b dark:border-dark-divider">
-          <button
-            onClick={() => setActiveTab("generate")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all duration-200 ${
-              activeTab === "generate"
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary hover:border-gray-300 dark:hover:border-dark-divider"
-            }`}
-          >
-            <CalendarPlus size={16} />
-            Generate
-          </button>
-          <button
-            onClick={() => setActiveTab("chat")}
-            id="ai-chat-tab-button"
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium border-b-2 transition-all duration-200 ${
-              activeTab === "chat"
-                ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                : "border-transparent text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary hover:border-gray-300 dark:hover:border-dark-divider"
-            }`}
-          >
-            <MessageCircle size={16} />
-            AI Chat
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === "generate" && (
-          <>
-            {/* Menu Bar */}
-            <div className="flex justify-between" id="event-menu-bar">
-              {isMobileOpen && (
-                <button
-                  onClick={handleToggle}
-                  className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
-                >
-                  <PanelRightClose
-                    size={24}
-                    className="text-gray-700 dark:text-dark-textSecondary"
-                  />
-                </button>
-              )}
-              <div className="flex">
-                <button
-                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-                  onClick={() => {
-                    setShowModal(true);
-                    setIsMobileOpen(false);
-                  }}
-                >
-                  <Plus size={20} />
-                </button>
-                <button
-                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setIsMobileOpen(false);
-                  }}
-                  title="Upload PDF or Image"
-                >
-                  <FileUp size={20} />
-                </button>
-                <button
-                  className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-                  onClick={() => {
-                    setIsIcsUploaderModalOpen(true);
-                    setIsMobileOpen(false);
-                  }}
-                >
-                  <CalendarPlus size={20} />
-                </button>
-                {googleSyncEnabled && selectedCalendarId && (
-                  <button
-                    className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleManualSync}
-                    title="Sync Google Calendar"
-                    disabled={isSyncing}
-                  >
-                    {isSyncing ? (
-                      <CalendarSync size={20} className="animate-spin" />
-                    ) : (
-                      <CalendarSync size={20} />
-                    )}
-                  </button>
-                )}
-              </div>
+        {/* Menu Bar - Always visible */}
+        <div className="flex justify-between" id="event-menu-bar">
+          {isMobileOpen && (
+            <button
+              onClick={handleToggle}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-actionHover transition-all duration-200"
+            >
+              <PanelRightClose
+                size={24}
+                className="text-gray-700 dark:text-dark-textSecondary"
+              />
+            </button>
+          )}
+          <div className="flex">
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setShowModal(true);
+                setIsMobileOpen(false);
+              }}
+            >
+              <Plus size={20} />
+            </button>
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                fileInputRef.current?.click();
+                setIsMobileOpen(false);
+              }}
+              title="Upload PDF or Image"
+            >
+              <FileUp size={20} />
+            </button>
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setIsIcsUploaderModalOpen(true);
+                setIsMobileOpen(false);
+              }}
+            >
+              <CalendarPlus size={20} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1">
+            {actionMode === "chat" && (
               <button
                 className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
-                onClick={() => {
-                  setIsScheduleContextModalOpen(true);
-                  setIsMobileOpen(false);
-                }}
-                id="event-menu-bar-context-button"
-                title="Edit AI Context"
+                onClick={() => setChatMessages([])}
+                title="Clear chat"
               >
-                <UserPen size={20} />
+                <RefreshCw size={20} />
               </button>
-            </div>
+            )}
+            <button
+              className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2"
+              onClick={() => {
+                setIsScheduleContextModalOpen(true);
+                setIsMobileOpen(false);
+              }}
+              id="event-menu-bar-context-button"
+              title="Edit AI Context"
+            >
+              <UserPen size={20} />
+            </button>
+          </div>
+        </div>
 
-            <div id="event-adder">
-              <div className="relative">
-                <textarea
-                  ref={inputTextareaRef}
-                  className={`flex w-full p-4 pr-12 pb-8 h-auto resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent text-sm transition-colors ${
-                    loading
-                      ? "text-gray-400 dark:text-dark-textDisabled cursor-not-allowed"
-                      : "dark:text-dark-textPrimary cursor-text"
-                  } ${
-                    isDragging
-                      ? "border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/10"
-                      : ""
-                  }`}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onInput={(e) => {
-                    const textarea = e.target as HTMLTextAreaElement;
-                    textarea.style.height = "auto";
-                    textarea.style.height = `${Math.min(
-                      textarea.scrollHeight,
-                      300
-                    )}px`;
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                      setIsMobileOpen(false);
-                    }
-                  }}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleFileDrop}
-                  placeholder={
-                    isDragging
-                      ? "Drop your PDF or image here..."
-                      : "Enter your events and reminders here"
+        {/* Input Area - Always visible */}
+        <div id="event-adder">
+          <div
+            className={`flex flex-col bg-white dark:bg-dark-paper rounded-xl border shadow-sm transition-all duration-200 ${
+              isDragging
+                ? "border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/10 ring-2 ring-blue-400/20"
+                : "border-gray-200 dark:border-dark-divider focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-400/20"
+            }`}
+          >
+            <textarea
+              ref={inputTextareaRef}
+              className={`flex w-full p-4 pr-12 pb-8 h-auto resize-none bg-transparent focus:outline-none text-sm transition-colors ${
+                loading
+                  ? "text-gray-400 dark:text-dark-textDisabled cursor-not-allowed"
+                  : "dark:text-dark-textPrimary cursor-text placeholder-gray-500 dark:placeholder-dark-textDisabled"
+              }`}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onInput={(e) => {
+                const textarea = e.target as HTMLTextAreaElement;
+                textarea.style.height = "auto";
+                textarea.style.height = `${Math.min(
+                  textarea.scrollHeight,
+                  300
+                )}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (actionMode === "generate") {
+                    handleSubmit();
+                  } else {
+                    handleChatSubmit();
                   }
-                  disabled={loading}
-                />
-                <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                  setIsMobileOpen(false);
+                }
+              }}
+              onDragOver={
+                actionMode === "generate" ? handleDragOver : undefined
+              }
+              onDragLeave={
+                actionMode === "generate" ? handleDragLeave : undefined
+              }
+              onDrop={actionMode === "generate" ? handleFileDrop : undefined}
+              placeholder={
+                isDragging
+                  ? "Drop your PDF or image here..."
+                  : actionMode === "generate"
+                  ? "Enter your events and reminders here"
+                  : `Chat with ${assistantName}...`
+              }
+              disabled={loading || isChatLoading}
+            />
+            <div className="flex w-full justify-between items-center px-2 py-1 border-t border-gray-200 dark:border-dark-divider">
+              <div className="flex items-center">
+                <select
+                  value={actionMode}
+                  onChange={(e) =>
+                    setActionMode(e.target.value as "generate" | "chat")
+                  }
+                  className="text-xs bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-full px-1 py-1 text-gray-700 dark:text-dark-textSecondary focus:outline-none"
+                  disabled={loading || isChatLoading}
+                >
+                  <option value="generate">Generate</option>
+                  <option value="chat">Chat</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                {actionMode === "generate" && (
                   <button
                     className={`p-1 rounded-full transition-colors duration-200 ${
                       listening
@@ -782,223 +776,246 @@ export default function EventGenerationPanel({
                       }
                     />
                   </button>
-                  {loading ? (
-                    <button
-                      className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
-                      onClick={() => {
-                        onCancelGeneration?.();
-                        setIsMobileOpen(false);
-                      }}
-                      title="Stop generating"
-                    >
-                      <CircleStop
-                        size={16}
-                        className="text-black dark:text-dark-textPrimary"
-                      />
-                    </button>
-                  ) : (
-                    <button
-                      className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => {
+                )}
+                {actionMode === "generate" && loading ? (
+                  <button
+                    className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                    onClick={() => {
+                      onCancelGeneration?.();
+                      setIsMobileOpen(false);
+                    }}
+                    title="Stop generating"
+                  >
+                    <CircleStop
+                      size={16}
+                      className="text-black dark:text-dark-textPrimary"
+                    />
+                  </button>
+                ) : actionMode === "chat" && isChatLoading ? (
+                  <button
+                    className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover"
+                    onClick={() => {
+                      // Cancel chat request if we have an abort controller
+                      setIsChatLoading(false);
+                      setIsMobileOpen(false);
+                    }}
+                    title="Stop chat"
+                  >
+                    <CircleStop
+                      size={16}
+                      className="text-black dark:text-dark-textPrimary"
+                    />
+                  </button>
+                ) : (
+                  <button
+                    className="p-1 rounded-full transition-colors duration-200 bg-gray-200 dark:bg-dark-actionDisabledBackground hover:bg-gray-300 dark:hover:bg-dark-actionHover disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      if (actionMode === "generate") {
                         handleSubmit();
-                        setIsMobileOpen(false);
-                      }}
-                      disabled={!inputText.trim()}
-                      title="Generate"
-                    >
-                      <CircleArrowUp
-                        size={16}
-                        className="text-black dark:text-dark-textPrimary"
-                      />
-                    </button>
-                  )}
-                </div>
+                      } else {
+                        handleChatSubmit();
+                      }
+                      setIsMobileOpen(false);
+                    }}
+                    disabled={!inputText.trim()}
+                    title={actionMode === "generate" ? "Generate" : "Send"}
+                  >
+                    <CircleArrowUp
+                      size={16}
+                      className="text-black dark:text-dark-textPrimary"
+                    />
+                  </button>
+                )}
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf, image/jpeg, image/png"
-              onChange={handleFileInputChange}
-              className="hidden"
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf, image/jpeg, image/png"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
+        {/* File Upload Error Message */}
+        {fileUploadError && (
+          <div className="px-2 py-2 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md">
+            <p className="text-sm text-red-800 dark:text-red-200">
+              {fileUploadError}
+            </p>
+          </div>
+        )}
+
+        {/* File Upload Loading */}
+        {isFileUploading && (
+          <div className="px-2 py-4 flex items-center justify-center">
+            <RefreshCw
+              size={24}
+              className="animate-spin text-blue-500 dark:text-blue-400"
             />
+            <span className="ml-2 text-sm text-gray-600 dark:text-dark-textSecondary">
+              Extracting events from file...
+            </span>
+          </div>
+        )}
 
-            {/* File Upload Error Message */}
-            {fileUploadError && (
-              <div className="px-2 py-2 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-md">
-                <p className="text-sm text-red-800 dark:text-red-200">
-                  {fileUploadError}
-                </p>
-              </div>
-            )}
-
-            {/* File Upload Loading */}
-            {isFileUploading && (
-              <div className="px-2 py-4 flex items-center justify-center">
-                <RefreshCw
-                  size={24}
-                  className="animate-spin text-blue-500 dark:text-blue-400"
-                />
-                <span className="ml-2 text-sm text-gray-600 dark:text-dark-textSecondary">
-                  Extracting events from file...
-                </span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">
-              {/* Generation Result Summary */}
-              <AnimatePresence>
-                {localGenerationResult && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-3 relative"
-                  >
-                    <div className="flex items-center justify-between">
+        {/* Content Area - Different based on mode */}
+        {actionMode === "generate" && (
+          <div className="flex flex-col gap-2 overflow-y-auto px-2 flex-1">
+            {/* Generation Result Summary */}
+            <AnimatePresence>
+              {localGenerationResult && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3 relative"
+                >
+                  <div className="flex items-center justify-between">
+                    <button
+                      className="text-xs text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
+                      onClick={() =>
+                        setIsGenerationResultExpanded(
+                          !isGenerationResultExpanded
+                        )
+                      }
+                    >
+                      {(() => {
+                        const eventsLen = localGenerationResult.events.length;
+                        const remindersLen =
+                          localGenerationResult.reminders.length;
+                        return (
+                          <>
+                            Generated {eventsLen + remindersLen} items
+                            {eventsLen > 0 && remindersLen > 0
+                              ? ` (${eventsLen} events, ${remindersLen} reminders)`
+                              : eventsLen > 0
+                              ? ` (${eventsLen} events)`
+                              : ` (${remindersLen} reminders)`}
+                          </>
+                        );
+                      })()}
+                    </button>
+                    {onClearGenerationResult && (
                       <button
-                        className="text-xs text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary transition-colors duration-200 cursor-pointer"
-                        onClick={() =>
-                          setIsGenerationResultExpanded(
-                            !isGenerationResultExpanded
-                          )
-                        }
+                        onClick={() => {
+                          onClearGenerationResult();
+                          setIsGenerationResultExpanded(false);
+                          setLocalGenerationResult(null);
+                        }}
+                        className="text-gray-400 dark:text-dark-textDisabled hover:text-gray-600 dark:hover:text-dark-textSecondary text-xs ml-2 transition-colors duration-200"
                       >
-                        {(() => {
-                          const eventsLen = localGenerationResult.events.length;
-                          const remindersLen =
-                            localGenerationResult.reminders.length;
-                          return (
-                            <>
-                              Generated {eventsLen + remindersLen} items
-                              {eventsLen > 0 && remindersLen > 0
-                                ? ` (${eventsLen} events, ${remindersLen} reminders)`
-                                : eventsLen > 0
-                                ? ` (${eventsLen} events)`
-                                : ` (${remindersLen} reminders)`}
-                            </>
-                          );
-                        })()}
+                        ✕
                       </button>
-                      {onClearGenerationResult && (
-                        <button
-                          onClick={() => {
-                            onClearGenerationResult();
-                            setIsGenerationResultExpanded(false);
-                            setLocalGenerationResult(null);
-                          }}
-                          className="text-gray-400 dark:text-dark-textDisabled hover:text-gray-600 dark:hover:text-dark-textSecondary text-xs ml-2 transition-colors duration-200"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
+                    )}
+                  </div>
 
-                    <AnimatePresence>
-                      {isGenerationResultExpanded && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0, y: -10 }}
-                          animate={{ opacity: 1, height: "auto", y: 0 }}
-                          exit={{ opacity: 0, height: 0, y: -10 }}
-                          transition={{ duration: 0.2 }}
-                          className="mt-2 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md shadow-sm max-h-40 overflow-y-auto"
-                        >
-                          <div className="p-3 space-y-3">
-                            {localGenerationResult.events.length > 0 && (
-                              <div>
-                                <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
-                                  Events
-                                </h4>
-                                <div className="space-y-1">
-                                  {localGenerationResult.events.map(
-                                    (event, index) => (
-                                      <div
-                                        key={index}
-                                        className="text-xs text-gray-600 dark:text-dark-textSecondary"
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div>
-                                            <div className="font-medium">
-                                              {event.title}
-                                            </div>
-                                            <div className="text-gray-500 dark:text-dark-textDisabled">
-                                              {event.date}
-                                              {event.time &&
-                                                ` at ${event.time}`}
-                                            </div>
+                  <AnimatePresence>
+                    {isGenerationResultExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0, y: -10 }}
+                        animate={{ opacity: 1, height: "auto", y: 0 }}
+                        exit={{ opacity: 0, height: 0, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="mt-2 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md shadow-sm max-h-40 overflow-y-auto"
+                      >
+                        <div className="p-3 space-y-3">
+                          {localGenerationResult.events.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
+                                Events
+                              </h4>
+                              <div className="space-y-1">
+                                {localGenerationResult.events.map(
+                                  (event, index) => (
+                                    <div
+                                      key={index}
+                                      className="text-xs text-gray-600 dark:text-dark-textSecondary"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <div className="font-medium">
+                                            {event.title}
                                           </div>
-                                          <div className="flex items-center gap-1">
-                                            <button
-                                              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
-                                              title="Edit"
-                                              onClick={() =>
-                                                openEditModalForIndex(index)
-                                              }
-                                            >
-                                              <Pen
-                                                size={14}
-                                                className="text-gray-700 dark:text-dark-textSecondary"
-                                              />
-                                            </button>
-                                            <button
-                                              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
-                                              title="Delete"
-                                              onClick={() =>
-                                                deleteLocalAtIndex(index)
-                                              }
-                                            >
-                                              <X
-                                                size={14}
-                                                className="text-gray-700 dark:text-dark-textSecondary"
-                                              />
-                                            </button>
+                                          <div className="text-gray-500 dark:text-dark-textDisabled">
+                                            {event.date}
+                                            {event.time && ` at ${event.time}`}
                                           </div>
                                         </div>
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {localGenerationResult.reminders.length > 0 && (
-                              <div>
-                                <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
-                                  Reminders
-                                </h4>
-                                <div className="space-y-1">
-                                  {localGenerationResult.reminders.map(
-                                    (reminder, index) => (
-                                      <div
-                                        key={index}
-                                        className="text-xs text-gray-600 dark:text-dark-textSecondary"
-                                      >
-                                        <div className="font-medium">
-                                          {reminder.title}
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+                                            title="Edit"
+                                            onClick={() =>
+                                              openEditModalForIndex(index)
+                                            }
+                                          >
+                                            <Pen
+                                              size={14}
+                                              className="text-gray-700 dark:text-dark-textSecondary"
+                                            />
+                                          </button>
+                                          <button
+                                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-dark-actionHover"
+                                            title="Delete"
+                                            onClick={() =>
+                                              deleteLocalAtIndex(index)
+                                            }
+                                          >
+                                            <X
+                                              size={14}
+                                              className="text-gray-700 dark:text-dark-textSecondary"
+                                            />
+                                          </button>
                                         </div>
-                                        <div className="text-gray-500 dark:text-dark-textDisabled">
-                                          {reminder.date}
-                                          {reminder.time &&
-                                            ` at ${reminder.time}`}
-                                        </div>
                                       </div>
-                                    )
-                                  )}
-                                </div>
+                                    </div>
+                                  )
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                            </div>
+                          )}
 
-              {/* Daily Summary */}
+                          {localGenerationResult.reminders.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary mb-1">
+                                Reminders
+                              </h4>
+                              <div className="space-y-1">
+                                {localGenerationResult.reminders.map(
+                                  (reminder, index) => (
+                                    <div
+                                      key={index}
+                                      className="text-xs text-gray-600 dark:text-dark-textSecondary"
+                                    >
+                                      <div className="font-medium">
+                                        {reminder.title}
+                                      </div>
+                                      <div className="text-gray-500 dark:text-dark-textDisabled">
+                                        {reminder.date}
+                                        {reminder.time &&
+                                          ` at ${reminder.time}`}
+                                      </div>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Daily Summary - Only show in generate mode */}
+            {actionMode === "generate" && (
               <AnimatePresence>
                 {dailySummary && (
                   <motion.div
@@ -1045,33 +1062,12 @@ export default function EventGenerationPanel({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-          </>
+            )}
+          </div>
         )}
 
-        {activeTab === "chat" && (
+        {actionMode === "chat" && (
           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            {/* Chat Header with Context Button */}
-            <div className="flex justify-start">
-              <button
-                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
-                onClick={() => {
-                  setIsScheduleContextModalOpen(true);
-                  setIsMobileOpen(false);
-                }}
-                title="Edit AI Context"
-              >
-                <UserPen size={20} />
-              </button>
-              <button
-                className="hover:bg-gray-100 dark:hover:bg-dark-actionHover transition-colors duration-200 p-2 rounded"
-                onClick={() => setChatMessages([])}
-                title="Clear chat"
-              >
-                <RefreshCw size={20} />
-              </button>
-            </div>
-
             <div
               ref={chatContainerRef}
               className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2"
@@ -1331,27 +1327,6 @@ export default function EventGenerationPanel({
                 </div>
               )}
             </div>
-            <div className="relative">
-              <textarea
-                className="flex w-full p-4 pr-12 h-auto max-h-40 resize-none border dark:border-dark-divider placeholder-gray-500 dark:placeholder-dark-textDisabled rounded-xl focus:outline-none bg-transparent dark:text-dark-textPrimary text-sm"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleChatSubmit();
-                  }
-                }}
-                placeholder="Chat with your AI assistant..."
-              />
-              <button
-                className="absolute bottom-3 right-3 rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-blue-500 dark:text-blue-400 transition-colors duration-200 p-2"
-                onClick={handleChatSubmit}
-                disabled={isChatLoading || !chatInput.trim()}
-              >
-                <CircleArrowUp size={20} />
-              </button>
-            </div>
           </div>
         )}
       </aside>
@@ -1454,7 +1429,7 @@ export default function EventGenerationPanel({
                 onClick={() =>
                   setContextDiffModal({ isOpen: false, before: "", after: "" })
                 }
-                className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:text-dark-textPrimary dark:hover:bg-dark-hover transition"
+                className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-dark-secondary dark:text-dark-textPrimary dark:hover:bg-dark-actionHover transition"
               >
                 Close
               </button>

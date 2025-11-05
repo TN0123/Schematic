@@ -42,6 +42,8 @@ export default function BulletinKanban({
   isSaving: externalIsSaving = false,
 }: BulletinKanbanProps) {
   const [title, setTitle] = useState(initialTitle);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isCompact, setIsCompact] = useState(false);
 
   const initialState: KanbanState = {
     columns: data?.columns || DEFAULT_COLUMNS,
@@ -167,6 +169,20 @@ export default function BulletinKanban({
   useEffect(() => {
     debouncedSaveData(columns, cards);
   }, [columns, cards, debouncedSaveData]);
+
+  // Detect compact mode based on container width (better split-view UX)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const element = containerRef.current;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setIsCompact(width <= 900); // tune threshold for split view
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const addCard = (columnId: string) => {
     const newCard: KanbanCard = {
@@ -599,12 +615,12 @@ export default function BulletinKanban({
   }, [hasUnsavedChanges, handleSave]);
 
   return (
-    <div className="w-full h-full dark:bg-dark-background transition-all">
-      <div className="p-4 h-full flex flex-col">
+    <div ref={containerRef} className="w-full h-full dark:bg-dark-background transition-all">
+      <div className={`${isCompact ? "p-3" : "p-4"} h-full flex flex-col`}>
         {/* Title & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 mb-4">
+        <div className={`flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0 ${isCompact ? "mb-3" : "mb-4"}`}>
           <input
-            className="font-semibold text-lg w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg p-2 text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent"
+            className={`font-semibold ${isCompact ? "text-base" : "text-lg"} w-full focus:outline-none focus:ring-2 focus:ring-light-accent rounded-lg ${isCompact ? "p-1.5" : "p-2"} text-center dark:text-dark-textPrimary dark:bg-dark-background dark:focus:ring-dark-accent`}
             value={title}
             onChange={(e) => {
               const newTitle = e.target.value;
@@ -615,7 +631,7 @@ export default function BulletinKanban({
             placeholder="Untitled Project Board"
             aria-label="Board title"
           />
-          <div className="flex gap-2 ml-2">
+          <div className={`flex gap-2 ml-2 ${isCompact ? "scale-95" : ""}`}>
             <button
               onClick={toggleFilters}
               className={`p-2 rounded-lg transition-all ${
@@ -681,7 +697,7 @@ export default function BulletinKanban({
         )}
 
         {/* Kanban Board */}
-        <div className="relative border h-full rounded-lg p-3 flex flex-col dark:border-dark-divider overflow-y-auto">
+        <div className={`relative border h-full rounded-lg ${isCompact ? "p-2" : "p-3"} flex flex-col dark:border-dark-divider overflow-y-auto`}>
           <div className="flex-1 overflow-x-auto">
             <DndContext
               sensors={sensors}
@@ -689,7 +705,11 @@ export default function BulletinKanban({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 h-full">
+              <div className={`${
+                isCompact
+                  ? "grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3 h-full"
+                  : "grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 h-full"
+              }`}>
                 <SortableContext
                   items={columns.map((col) => `column-${col.id}`)}
                   strategy={horizontalListSortingStrategy}

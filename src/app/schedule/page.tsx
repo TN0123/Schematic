@@ -448,7 +448,11 @@ export default function CalendarApp() {
         }
       }
 
-      if (e.key === "Backspace" && calendarState.selectedEventIds.size > 0) {
+      if (
+        e.key === "Backspace" &&
+        calendarState.selectedEventIds.size > 0 &&
+        (calendarState.shiftSelectionActive)
+      ) {
         calendarState.handleBackspaceDelete();
       } else if (
         (e.ctrlKey || e.metaKey) &&
@@ -881,7 +885,7 @@ export default function CalendarApp() {
                 {/* Header */}
                 <div className="flex justify-between items-center px-4 py-4 border-b dark:border-dark-divider">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
-                    Schedule Tools
+                    Schedule
                   </h2>
                   <button
                     onClick={() => setIsMobilePanelOpen(false)}

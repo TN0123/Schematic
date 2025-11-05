@@ -1,5 +1,4 @@
 import {
-  Sparkles,
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
@@ -15,6 +14,7 @@ import {
   Settings,
   Loader2,
   ImagePlus,
+  Globe,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChangeMap, ModelType } from "./utils";
@@ -38,7 +38,11 @@ interface MessageProps {
   };
   isStreaming?: boolean;
   isTyping?: boolean;
+  isSearching?: boolean;
   id?: string;
+  searchUsed?: boolean;
+  sources?: string[];
+  searchQuery?: string | null;
 }
 
 interface ErrorState {
@@ -47,7 +51,7 @@ interface ErrorState {
 }
 
 // Typing animation component
-function TypingIndicator() {
+function TypingIndicator({ isSearching = false }: { isSearching?: boolean }) {
   return (
     <div className="flex w-full justify-start">
       <motion.div
@@ -91,7 +95,7 @@ function TypingIndicator() {
             />
           </div>
           <span className="text-xs text-gray-500 dark:text-dark-textDisabled ml-2">
-            AI is typing...
+            {isSearching ? "Searching the web..." : "AI is typing..."}
           </span>
         </div>
       </motion.div>
@@ -106,8 +110,12 @@ export function Message({
   contextChange,
   isStreaming,
   isTyping,
+  isSearching,
   isGeneratingChanges,
   isCurrentAssistantMessage,
+  searchUsed,
+  sources,
+  searchQuery,
 }: MessageProps & {
   onShowContextDiff?: (before: string, after: string) => void;
   isGeneratingChanges?: boolean;
@@ -115,7 +123,7 @@ export function Message({
 }) {
   // If typing has started but no content yet, show typing indicator
   if (isTyping && !message) {
-    return <TypingIndicator />;
+    return <TypingIndicator isSearching={isSearching || false} />;
   }
 
   return (
@@ -141,10 +149,38 @@ export function Message({
             : ""
         }`}
       >
-        <div className="flex items-start gap-2">
-          <p className="text-gray-900 dark:text-dark-textPrimary text-xs flex-1">
+        <div className="flex flex-col gap-1">
+          {searchUsed && searchQuery && (
+            <div className="text-[10px] text-gray-500 dark:text-dark-textSecondary flex items-center gap-1">
+              <Globe size={10} />
+              <span>searched the web for </span>
+              <span className="italic truncate">"{searchQuery}"</span>
+            </div>
+          )}
+          <p className="text-gray-900 dark:text-dark-textPrimary text-xs">
             {message}
           </p>
+          {searchUsed && sources && sources.length > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[10px] text-gray-500 dark:text-dark-textSecondary">
+                Sources:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {sources.map((u, idx) => (
+                  <a
+                    key={`${u}-${idx}`}
+                    href={u}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 dark:bg-dark-secondary text-[10px] text-gray-700 dark:text-dark-textPrimary hover:bg-gray-300 dark:hover:bg-dark-hover transition"
+                    title={u}
+                  >
+                    {idx + 1}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           {isGeneratingChanges &&
             role === "assistant" &&
             isCurrentAssistantMessage &&
@@ -157,7 +193,9 @@ export function Message({
                 >
                   <RefreshCw size={12} />
                 </motion.div>
-                <span>Editing...</span>
+                <span>
+                  {isSearching ? "Searching the web..." : "Editing..."}
+                </span>
               </div>
             )}
         </div>
@@ -264,6 +302,7 @@ export default function WritePanel({
   const [instructions, setInstructions] = useState<string>("");
   const modKeyLabel = useModifierKeyLabel();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
   const [history, setHistory] = useState<
     { role: "user" | "model"; parts: string }[]
@@ -457,6 +496,7 @@ export default function WritePanel({
     return new Promise<void>(async (resolve, reject) => {
       let assistantMessageId: string | null = null;
       let currentAssistantText = "";
+      let isSearching = false;
 
       // Add a typing indicator for the message
       const msgId = generateMessageId();
@@ -464,6 +504,7 @@ export default function WritePanel({
         message: "",
         role: "assistant" as const,
         isTyping: true,
+        isSearching: false,
         id: msgId,
       };
       assistantMessageId = msgId;
@@ -494,6 +535,7 @@ export default function WritePanel({
             documentId,
             model: selectedModel,
             actionMode,
+            webSearchEnabled: requestPayload.webSearchEnabled,
             images: requestPayload.images || [],
           }),
           signal: controller.signal,
@@ -536,22 +578,68 @@ export default function WritePanel({
                 const jsonData = line.substring(5).trim();
                 const data = JSON.parse(jsonData);
 
+                // PRIORITY: Handle status events FIRST to ensure UI updates immediately
+                if (data.message && typeof data.isSearching === "boolean") {
+                  // Update local variable for tracking
+                  isSearching = data.isSearching;
+
+                  // In edit mode, only set isSearching=true immediately, but don't clear it until changes-final arrives
+                  // This ensures "Searching the web..." shows until changes are ready
+                  if (actionMode === "edit") {
+                    if (data.isSearching) {
+                      // Set searching status immediately
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === assistantMessageId
+                            ? {
+                                ...msg,
+                                isSearching: true,
+                                isTyping: true,
+                              }
+                            : msg
+                        )
+                      );
+                    }
+                    // Don't clear isSearching on "generating" status in edit mode - wait for changes-final
+                  } else {
+                    // In ask mode, update normally
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              isSearching: data.isSearching,
+                              isTyping: true,
+                            }
+                          : msg
+                      )
+                    );
+                  }
+                  continue; // Skip other processing for status events
+                }
+
                 // Handle new event types from dual-stream architecture
                 if (data.delta !== undefined) {
                   // assistant-delta event: streaming text from the assistant
                   currentAssistantText += data.delta;
 
                   // Update the chat message with streaming content
+                  // Preserve isSearching from current message state (updated by status events)
                   setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            message: currentAssistantText,
-                            isTyping: true,
-                          }
-                        : msg
-                    )
+                    prev.map((msg) => {
+                      if (msg.id === assistantMessageId) {
+                        // Preserve existing isSearching state or use current local value
+                        const currentIsSearching =
+                          msg.isSearching ?? isSearching;
+                        return {
+                          ...msg,
+                          message: currentAssistantText,
+                          isTyping: true,
+                          isSearching: currentIsSearching,
+                        };
+                      }
+                      return msg;
+                    })
                   );
                 } else if (data.text !== undefined) {
                   // assistant-complete event: final text received, keep typing indicator for edit mode
@@ -565,6 +653,19 @@ export default function WritePanel({
                     setChanges(data.changes);
                     setIsGeneratingChanges(false);
                     setCurrentAssistantMessageId(null);
+
+                    // Clear searching status now that changes are ready
+                    isSearching = false;
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === assistantMessageId
+                          ? {
+                              ...msg,
+                              isSearching: false,
+                            }
+                          : msg
+                      )
+                    );
                   }
                 } else if (data.result !== undefined) {
                   // result event: final consolidated result - NOW we can stop the typing indicator
@@ -578,6 +679,16 @@ export default function WritePanel({
 
                   let finalMessage: string;
                   let finalChanges: any = {};
+                  const wasSearchUsed = data.searchUsed || false;
+                  const searchQuery: string | null =
+                    typeof data.searchQuery === "string"
+                      ? data.searchQuery
+                      : null;
+                  const searchSources: string[] = Array.isArray(
+                    data.searchSources
+                  )
+                    ? data.searchSources
+                    : [];
 
                   if (actionMode === "ask") {
                     finalMessage = data.result;
@@ -595,6 +706,9 @@ export default function WritePanel({
                     contextChange: data.contextChange,
                     id: assistantMessageId,
                     isTyping: false,
+                    searchUsed: wasSearchUsed,
+                    sources: searchSources,
+                    searchQuery,
                   };
 
                   setMessages((prev) =>
@@ -666,6 +780,7 @@ export default function WritePanel({
       instructions,
       history,
       actionMode,
+      webSearchEnabled,
       // Send full image objects so backend can include base64+mediaType for multimodal providers
       images: uploadedImages.map((img) => ({
         url: img.url,
@@ -888,6 +1003,10 @@ export default function WritePanel({
         contextUpdated: data.contextUpdated,
         contextChange: data.contextChange,
         id: assistantMessageId,
+        searchUsed: data.searchUsed || false,
+        sources: Array.isArray(data.searchSources) ? data.searchSources : [],
+        searchQuery:
+          typeof data.searchQuery === "string" ? data.searchQuery : null,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -1181,18 +1300,6 @@ export default function WritePanel({
                     </span>
                   </p>
                 )}
-                {selected && (
-                  <button
-                    className={`rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2 ${
-                      isImproving ? "animate-spin" : ""
-                    }`}
-                    onClick={handleImprove}
-                    title="Improve selected text"
-                    disabled={isImproving || isChatLoading}
-                  >
-                    <Sparkles size={20} />
-                  </button>
-                )}
                 {lastRequest && (
                   <button
                     className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
@@ -1203,6 +1310,28 @@ export default function WritePanel({
                     <RefreshCw size={20} />
                   </button>
                 )}
+                <div className="relative group">
+                  <button
+                    className={`rounded-full ${
+                      webSearchEnabled
+                        ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+                        : "hover:bg-gray-300 dark:hover:bg-dark-hover text-gray-600 dark:text-gray-400"
+                    } transition-colors duration-200 p-2 ml-2`}
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    title="Web Search (1 premium use)"
+                    disabled={
+                      isImageUploading ||
+                      isChatLoading ||
+                      (premiumUsesRemaining !== null &&
+                        premiumUsesRemaining === 0)
+                    }
+                  >
+                    <Globe size={20} />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-gray-900/80 dark:bg-dark-secondary dark:text-dark-textPrimary dark:border-dark-divider shadow-lg">
+                    Web Search (1 premium use)
+                  </div>
+                </div>
                 <button
                   className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                   onClick={() => fileInputRef.current?.click()}
@@ -1213,7 +1342,7 @@ export default function WritePanel({
                 </button>
                 {isChatLoading ? (
                   <button
-                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                     onClick={cancelChatRequest}
                     title="Stop generating"
                   >
@@ -1221,7 +1350,7 @@ export default function WritePanel({
                   </button>
                 ) : (
                   <button
-                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2"
+                    className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                     onClick={handleSubmit}
                   >
                     <CircleArrowUp size={20} />
@@ -1426,6 +1555,10 @@ export default function WritePanel({
                   contextChange={msg.contextChange}
                   isStreaming={msg.isStreaming}
                   isTyping={msg.isTyping}
+                  isSearching={msg.isSearching}
+                  searchUsed={msg.searchUsed}
+                  sources={msg.sources}
+                  searchQuery={msg.searchQuery}
                   isGeneratingChanges={isGeneratingChanges}
                   isCurrentAssistantMessage={
                     msg.id === currentAssistantMessageId ||

@@ -68,9 +68,9 @@ Before you begin contributing, please make sure you have:
    GOOGLE_GENERATIVE_AI_API_KEY=same as gemini key
    OPENAI_API_KEY="your-openai-api-key"
    ANTHROPIC_API_KEY="your-anthropic-api-key"
+   PERPLEXITY_API_KEY="your-perplexity-api-key"
    GOOGLE_CLIENT_ID="your-google-client-id"
    GOOGLE_CLIENT_SECRET="your-google-client-secret"
-   POSTHOG_API_KEY="your-posthog-api-key"
    ```
 
 5. **Set up the database**

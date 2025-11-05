@@ -162,10 +162,13 @@ async function searchBulletinNotes(
       .split(/\s+/)
       .filter((word) => word.length > 0);
 
-    // First, get all bulletins for the user
+    // First, get all bulletins for the user (excluding whiteboards)
     const bulletins = await prisma.bulletin.findMany({
       where: {
         userId,
+        type: {
+          not: "whiteboard",
+        },
       },
       select: {
         id: true,
