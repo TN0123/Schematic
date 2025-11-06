@@ -60,12 +60,16 @@ export async function POST(req: Request) {
       console.error('Failed to invalidate cache:', err)
     );
 
-    // Sync to Google Calendar if enabled (don't await to avoid blocking)
-    createdEvents.forEach(event => {
-      pushEventToGoogle(event.id, session.user.id).catch(err => 
-        console.error('Failed to sync event to Google Calendar:', err)
-      );
-    });
+    // Sync to Google Calendar if enabled - await to ensure sync mappings are created before webhooks fire
+    // This prevents race conditions where webhooks process events before sync mappings exist
+    await Promise.all(
+      createdEvents.map(event => 
+        pushEventToGoogle(event.id, session.user.id).catch(err => {
+          console.error('Failed to sync event to Google Calendar:', err);
+          // Don't throw - we still want to return the created events even if sync fails
+        })
+      )
+    );
 
     return NextResponse.json(createdEvents, { status: 201 });
   } catch (error) {
