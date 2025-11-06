@@ -291,6 +291,12 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
         userId,
         googleCalendarId: user.googleCalendarId,
       },
+      select: {
+        id: true,
+        localEventId: true,
+        googleEventId: true,
+        lastSyncedAt: true,
+      },
     });
     
     // Create a set of Google event IDs that still exist
@@ -308,8 +314,29 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
     }
     
     // Remove local events that no longer exist in Google Calendar
+    // IMPORTANT: Only delete if we're using a syncToken (incremental sync).
+    // If syncToken is null/undefined, we're doing a full sync and shouldn't delete
+    // events that might have been created locally but not yet visible in the full sync.
+    // Also, don't delete events that were synced very recently (within last 5 minutes)
+    // to avoid race conditions where events are created but not yet visible in Google Calendar.
+    const recentSyncThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+    
     for (const syncedEvent of syncedEvents) {
       if (!existingGoogleEventIds.has(syncedEvent.googleEventId)) {
+        // Skip deletion if:
+        // 1. No syncToken was used (full sync) - we can't trust the event list
+        // 2. Event was synced very recently (race condition protection)
+        if (!user.googleCalendarSyncToken) {
+          console.log(`Skipping deletion of ${syncedEvent.localEventId} - no syncToken (full sync mode)`);
+          continue;
+        }
+        
+        // Check if this event was synced recently
+        if (syncedEvent.lastSyncedAt && syncedEvent.lastSyncedAt > recentSyncThreshold) {
+          console.log(`Skipping deletion of ${syncedEvent.localEventId} - recently synced (${syncedEvent.lastSyncedAt})`);
+          continue;
+        }
+        
         try {
           // Get the local event details before deleting
           const localEvent = await prisma.event.findUnique({
