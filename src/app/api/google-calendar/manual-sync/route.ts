@@ -10,14 +10,31 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Parse query parameters for sync options
+    const searchParams = req.nextUrl.searchParams;
+    const monthsPast = searchParams.get('monthsPast');
+    const monthsFuture = searchParams.get('monthsFuture');
+    const fullHistorical = searchParams.get('fullHistorical') === 'true';
+    const batchSize = searchParams.get('batchSize');
+    
+    const options = {
+      ...(monthsPast && { monthsPast: parseInt(monthsPast, 10) }),
+      ...(monthsFuture && { monthsFuture: parseInt(monthsFuture, 10) }),
+      ...(fullHistorical && { fullHistorical: true }),
+      ...(batchSize && { batchSize: parseInt(batchSize, 10) }),
+    };
+    
     console.log('[GCAL Manual Sync] Triggered', {
       userId: session.user.id,
+      options,
       env: {
         VERCEL_URL: process.env.VERCEL_URL || null,
         NODE_ENV: process.env.NODE_ENV,
       },
     });
-    const result = await performManualSync(session.user.id);
+    
+    const result = await performManualSync(session.user.id, Object.keys(options).length > 0 ? options : undefined);
+    
     console.log('[GCAL Manual Sync] Completed', {
       userId: session.user.id,
       pushedToGoogle: result.pushedToGoogle,

@@ -737,6 +737,9 @@ export default function SettingsPage() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 Google Calendar Sync
+                <span className="ml-1 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-full border border-blue-200 dark:border-blue-800">
+                  BETA
+                </span>
               </h3>
 
               <div className="flex justify-between items-center">

@@ -184,9 +184,22 @@ export async function listUserCalendars(userId: string): Promise<GoogleCalendar[
  * This function ONLY creates events - it never deletes anything
  * - All local events that aren't synced will be pushed to Google Calendar
  * - All Google Calendar events that aren't synced will be pulled to Schematic
+ * 
+ * @param userId - User ID to sync for
+ * @param options - Optional configuration for sync behavior
+ * @param options.monthsPast - Number of months in the past to sync (default: 3)
+ * @param options.monthsFuture - Number of months in the future to sync (default: 6)
+ * @param options.fullHistorical - If true, syncs 2 years past + 3 years future (default: false)
+ * @param options.batchSize - Number of events to process in each batch (default: 50)
  */
 export async function performManualSync(
-  userId: string
+  userId: string,
+  options?: {
+    monthsPast?: number;
+    monthsFuture?: number;
+    fullHistorical?: boolean;
+    batchSize?: number;
+  }
 ): Promise<{ success: boolean; pushedToGoogle: number; pulledFromGoogle: number; errors: string[] }> {
   try {
     // Get user's Google Calendar settings
@@ -211,218 +224,300 @@ export async function performManualSync(
     const client = await getGoogleCalendarClient(userId);
     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    console.log('[Manual Sync] Starting manual sync', { userId, calendarId });
+    // Configure time window - optimized by default, full historical if requested
+    const now = new Date();
+    let timeMin: Date, timeMax: Date;
     
-    // Get all synced event mappings for this user and calendar
-    const syncedEvents = await prisma.syncedEvent.findMany({
-      where: {
-        userId,
-        googleCalendarId: calendarId,
-      },
+    if (options?.fullHistorical) {
+      // Full historical sync (original behavior)
+      timeMin = new Date(now);
+      timeMin.setFullYear(now.getFullYear() - 2);
+      timeMax = new Date(now);
+      timeMax.setFullYear(now.getFullYear() + 3);
+    } else {
+      // Optimized time window (default)
+      const monthsPast = options?.monthsPast ?? 3;
+      const monthsFuture = options?.monthsFuture ?? 6;
+      
+      timeMin = new Date(now);
+      timeMin.setMonth(now.getMonth() - monthsPast);
+      timeMax = new Date(now);
+      timeMax.setMonth(now.getMonth() + monthsFuture);
+    }
+    
+    const batchSize = options?.batchSize ?? 50;
+    
+    console.log('[Manual Sync] Starting manual sync', {
+      userId,
+      calendarId,
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      fullHistorical: options?.fullHistorical ?? false,
+      batchSize,
+    });
+    
+    // Build sync mappings once - more efficient than repeated queries
+    const syncMappings = await prisma.syncedEvent.findMany({
+      where: { userId, googleCalendarId: calendarId },
       select: {
         localEventId: true,
         googleEventId: true,
       },
     });
     
-    const syncedLocalIds = new Set(syncedEvents.map(se => se.localEventId));
-    const syncedGoogleIds = new Set(syncedEvents.map(se => se.googleEventId));
+    const localToGoogleMap = new Map(syncMappings.map(s => [s.localEventId, s.googleEventId]));
+    const googleToLocalMap = new Map(syncMappings.map(s => [s.googleEventId, s.localEventId]));
     
-    console.log('[Manual Sync] Found existing synced events', {
-      syncedCount: syncedEvents.length,
-      syncedLocalIds: syncedLocalIds.size,
-      syncedGoogleIds: syncedGoogleIds.size,
+    console.log('[Manual Sync] Existing sync mappings', {
+      count: syncMappings.length,
     });
     
-    // Fetch all local events
-    const localEvents = await prisma.event.findMany({
-      where: { userId },
-      orderBy: { start: 'asc' },
-    });
+    // Fetch unsynced local events using SQL-level filtering (more efficient)
+    const unsyncedLocalEvents = await prisma.$queryRaw<Array<{
+      id: string;
+      title: string;
+      start: Date;
+      end: Date;
+      links: string[] | null;
+    }>>`
+      SELECT e.id, e.title, e.start, e.end, e.links
+      FROM "Event" e
+      LEFT JOIN "SyncedEvent" se ON e.id = se."localEventId"
+      WHERE e."userId" = ${userId}
+        AND e.start >= ${timeMin}
+        AND e.start <= ${timeMax}
+        AND se.id IS NULL
+      ORDER BY e.start ASC
+    `;
     
-    // Fetch Google Calendar events with a wide time range
-    // Get events from 2 years in the past to 3 years in the future
-    const now = new Date();
-    const timeMin = new Date(now);
-    timeMin.setFullYear(now.getFullYear() - 2);
-    const timeMax = new Date(now);
-    timeMax.setFullYear(now.getFullYear() + 3);
-    
-    console.log('[Manual Sync] Fetching Google events with time range', {
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-    });
-    
+    // Fetch Google Calendar events within the time window
     const { events: googleEvents } = await client.listEvents(
       calendarId,
       timeMin.toISOString(),
       timeMax.toISOString()
     );
     
-    console.log('[Manual Sync] Fetched events', {
-      localCount: localEvents.length,
-      googleCount: googleEvents.length,
-    });
-    
-    // Check for orphaned sync mappings (events that no longer exist)
-    const actualLocalIds = new Set(localEvents.map(e => e.id));
-    const actualGoogleIds = new Set(googleEvents.map(e => e.id));
-    const orphanedSyncs = syncedEvents.filter(
-      se => !actualLocalIds.has(se.localEventId) || !actualGoogleIds.has(se.googleEventId)
-    );
-    
-    if (orphanedSyncs.length > 0) {
-      console.log('[Manual Sync] Found orphaned sync mappings - cleaning up', { 
-        count: orphanedSyncs.length,
-        sample: orphanedSyncs.slice(0, 3).map(s => ({
-          localEventId: s.localEventId,
-          googleEventId: s.googleEventId,
-          localExists: actualLocalIds.has(s.localEventId),
-          googleExists: actualGoogleIds.has(s.googleEventId),
-        }))
-      });
-      
-      // Delete orphaned sync mappings
-      for (const orphan of orphanedSyncs) {
-        await prisma.syncedEvent.deleteMany({
-          where: {
-            userId,
-            localEventId: orphan.localEventId,
-            googleEventId: orphan.googleEventId,
-          },
-        });
-      }
-      
-      // Rebuild the synced sets after cleanup
-      const cleanedSyncedEvents = syncedEvents.filter(
-        se => actualLocalIds.has(se.localEventId) && actualGoogleIds.has(se.googleEventId)
-      );
-      syncedLocalIds.clear();
-      syncedGoogleIds.clear();
-      cleanedSyncedEvents.forEach(se => {
-        syncedLocalIds.add(se.localEventId);
-        syncedGoogleIds.add(se.googleEventId);
-      });
-      
-      console.log('[Manual Sync] After cleanup', {
-        syncedLocalIds: syncedLocalIds.size,
-        syncedGoogleIds: syncedGoogleIds.size,
-      });
-    }
-    
-    // Calculate which events are NOT synced
-    const unsyncedLocalEvents = localEvents.filter(e => !syncedLocalIds.has(e.id));
-    const unsyncedGoogleEvents = googleEvents.filter(e => 
-      e.status !== 'cancelled' && !syncedGoogleIds.has(e.id)
+    // Filter out already synced and cancelled Google events
+    const unsyncedGoogleEvents = googleEvents.filter(
+      e => e.status !== 'cancelled' && !googleToLocalMap.has(e.id)
     );
     
     console.log('[Manual Sync] Events to sync', {
       unsyncedLocal: unsyncedLocalEvents.length,
       unsyncedGoogle: unsyncedGoogleEvents.length,
-      sampleUnsyncedLocal: unsyncedLocalEvents.slice(0, 3).map(e => ({ id: e.id, title: e.title })),
-      sampleUnsyncedGoogle: unsyncedGoogleEvents.slice(0, 3).map(e => ({ id: e.id, title: e.summary })),
     });
     
     let pushedToGoogle = 0;
     let pulledFromGoogle = 0;
     const errors: string[] = [];
     
-    // Step 1: Push local events to Google Calendar (only if not already synced)
-    console.log('[Manual Sync] Starting push phase - checking local events');
-    for (const localEvent of localEvents) {
-      if (syncedLocalIds.has(localEvent.id)) {
-        continue; // Already synced, skip
-      }
+    // Step 1: Push local events to Google in batches
+    console.log('[Manual Sync] Starting push phase');
+    for (let i = 0; i < unsyncedLocalEvents.length; i += batchSize) {
+      const batch = unsyncedLocalEvents.slice(i, i + batchSize);
       
-      console.log('[Manual Sync] Pushing unsynced local event to Google', {
-        eventId: localEvent.id,
-        title: localEvent.title,
-        start: localEvent.start,
-      });
-      
-      try {
-        const googleEvent = {
-          summary: localEvent.title,
-          start: convertToGoogleDateTime(localEvent.start, userTimezone),
-          end: convertToGoogleDateTime(localEvent.end, userTimezone),
-          description: localEvent.links?.length ? `Links: ${localEvent.links.join(', ')}` : undefined,
-        };
-        
-        const createdEvent = await client.createEvent(calendarId, googleEvent);
-        
-        // Create sync mapping
-        const syncHash = generateSyncHash({
-          id: localEvent.id,
-          title: localEvent.title,
-          start: localEvent.start,
-          end: localEvent.end,
-          links: localEvent.links || [],
-        });
-        
-        await prisma.syncedEvent.create({
-          data: {
-            userId,
+      const results = await Promise.allSettled(
+        batch.map(async (localEvent) => {
+          // Double-check no sync mapping exists (race condition protection)
+          if (localToGoogleMap.has(localEvent.id)) {
+            return { skipped: true };
+          }
+          
+          const googleEvent = {
+            summary: localEvent.title,
+            start: convertToGoogleDateTime(localEvent.start, userTimezone),
+            end: convertToGoogleDateTime(localEvent.end, userTimezone),
+            description: localEvent.links?.length ? `Links: ${localEvent.links.join(', ')}` : undefined,
+          };
+          
+          const createdEvent = await client.createEvent(calendarId, googleEvent);
+          const syncHash = generateSyncHash({
+            id: localEvent.id,
+            title: localEvent.title,
+            start: localEvent.start,
+            end: localEvent.end,
+            links: localEvent.links || [],
+          });
+          
+          return {
             localEventId: localEvent.id,
             googleEventId: createdEvent.id,
-            googleCalendarId: calendarId,
             syncHash,
-          },
-        });
-        
-        pushedToGoogle++;
-        console.log('[Manual Sync] Pushed local event to Google', {
-          localEventId: localEvent.id,
-          googleEventId: createdEvent.id,
-          title: localEvent.title,
-        });
-      } catch (error) {
-        console.error('[Manual Sync] Error pushing event to Google', {
-          localEventId: localEvent.id,
-          error,
-        });
-        errors.push(`Failed to push event "${localEvent.title}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+            title: localEvent.title,
+          };
+        })
+      );
+      
+      // Collect successful sync mappings for bulk insert
+      const syncMappingsToCreate = results
+        .filter((r): r is PromiseFulfilledResult<{ localEventId: string; googleEventId: string; syncHash: string; title: string }> => 
+          r.status === 'fulfilled' && !('skipped' in r.value)
+        )
+        .map(r => ({
+          userId,
+          localEventId: r.value.localEventId,
+          googleEventId: r.value.googleEventId,
+          googleCalendarId: calendarId,
+          syncHash: r.value.syncHash,
+        }));
+      
+      // Bulk insert sync mappings
+      if (syncMappingsToCreate.length > 0) {
+        try {
+          await prisma.syncedEvent.createMany({
+            data: syncMappingsToCreate,
+            skipDuplicates: true,
+          });
+          
+          pushedToGoogle += syncMappingsToCreate.length;
+          
+          // Update local maps
+          syncMappingsToCreate.forEach(m => {
+            localToGoogleMap.set(m.localEventId, m.googleEventId);
+            googleToLocalMap.set(m.googleEventId, m.localEventId);
+          });
+          
+          console.log('[Manual Sync] Pushed batch to Google', {
+            batchNumber: Math.floor(i / batchSize) + 1,
+            count: syncMappingsToCreate.length,
+          });
+        } catch (error) {
+          console.error('[Manual Sync] Error creating sync mappings batch', error);
+          errors.push(`Failed to create sync mappings for batch: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }
+      
+      // Collect errors
+      results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .forEach(r => {
+          console.error('[Manual Sync] Error pushing event:', r.reason);
+          errors.push(`Failed to push event: ${r.reason instanceof Error ? r.reason.message : 'Unknown error'}`);
+        });
     }
     
-    // Step 2: Pull Google Calendar events to Schematic (only if not already synced)
-    // Use processGoogleEvent which has duplicate detection logic built in
-    console.log('[Manual Sync] Starting pull phase - checking Google events');
-    for (const googleEvent of googleEvents) {
-      // Skip cancelled events
-      if (googleEvent.status === 'cancelled') {
-        console.log('[Manual Sync] Skipping cancelled Google event', {
-          eventId: googleEvent.id,
-          title: googleEvent.summary,
-        });
-        continue;
+    // Step 2: Pull Google events to local in batches
+    console.log('[Manual Sync] Starting pull phase');
+    for (let i = 0; i < unsyncedGoogleEvents.length; i += batchSize) {
+      const batch = unsyncedGoogleEvents.slice(i, i + batchSize);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (googleEvent) => {
+          // Check if already synced (race condition protection)
+          if (googleToLocalMap.has(googleEvent.id)) {
+            return { skipped: true };
+          }
+          
+          const googleStart = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+          const googleEnd = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+          
+          // Check for exact content match to avoid duplicates
+          const timeTolerance = 60 * 1000; // 1 minute
+          const matchingLocalEvent = await prisma.event.findFirst({
+            where: {
+              userId,
+              title: googleEvent.summary,
+              start: {
+                gte: new Date(googleStart.getTime() - timeTolerance),
+                lte: new Date(googleStart.getTime() + timeTolerance),
+              },
+              end: {
+                gte: new Date(googleEnd.getTime() - timeTolerance),
+                lte: new Date(googleEnd.getTime() + timeTolerance),
+              },
+              // Exclude events that are already synced
+              id: {
+                notIn: Array.from(localToGoogleMap.keys()),
+              },
+            },
+          });
+          
+          let localEventId: string;
+          
+          if (matchingLocalEvent && !localToGoogleMap.has(matchingLocalEvent.id)) {
+            // Found exact match - use existing event
+            localEventId = matchingLocalEvent.id;
+            console.log('[Manual Sync] Found exact match for Google event', {
+              googleEventId: googleEvent.id,
+              localEventId,
+              title: googleEvent.summary,
+            });
+          } else {
+            // Create new local event
+            const newEvent = await prisma.event.create({
+              data: {
+                title: googleEvent.summary,
+                start: googleStart,
+                end: googleEnd,
+                userId,
+              },
+            });
+            localEventId = newEvent.id;
+          }
+          
+          const syncHash = generateSyncHash({
+            id: localEventId,
+            title: googleEvent.summary,
+            start: googleStart,
+            end: googleEnd,
+            links: [],
+          });
+          
+          return {
+            localEventId,
+            googleEventId: googleEvent.id,
+            syncHash,
+            title: googleEvent.summary,
+          };
+        })
+      );
+      
+      // Collect successful sync mappings for bulk insert
+      const syncMappingsToCreate = results
+        .filter((r): r is PromiseFulfilledResult<{ localEventId: string; googleEventId: string; syncHash: string; title: string }> => 
+          r.status === 'fulfilled' && !('skipped' in r.value)
+        )
+        .map(r => ({
+          userId,
+          localEventId: r.value.localEventId,
+          googleEventId: r.value.googleEventId,
+          googleCalendarId: calendarId,
+          syncHash: r.value.syncHash,
+        }));
+      
+      // Bulk insert sync mappings
+      if (syncMappingsToCreate.length > 0) {
+        try {
+          await prisma.syncedEvent.createMany({
+            data: syncMappingsToCreate,
+            skipDuplicates: true,
+          });
+          
+          pulledFromGoogle += syncMappingsToCreate.length;
+          
+          // Update local maps
+          syncMappingsToCreate.forEach(m => {
+            localToGoogleMap.set(m.localEventId, m.googleEventId);
+            googleToLocalMap.set(m.googleEventId, m.localEventId);
+          });
+          
+          console.log('[Manual Sync] Pulled batch from Google', {
+            batchNumber: Math.floor(i / batchSize) + 1,
+            count: syncMappingsToCreate.length,
+          });
+        } catch (error) {
+          console.error('[Manual Sync] Error creating sync mappings batch', error);
+          errors.push(`Failed to create sync mappings for batch: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }
       
-      if (syncedGoogleIds.has(googleEvent.id)) {
-        continue; // Already synced, skip
-      }
-      
-      console.log('[Manual Sync] Pulling unsynced Google event to local', {
-        eventId: googleEvent.id,
-        title: googleEvent.summary,
-        start: googleEvent.start,
-      });
-      
-      try {
-        // Use processGoogleEvent which checks for existing events and creates sync mappings
-        // This prevents duplicate creation by matching with existing local events
-        await processGoogleEvent(googleEvent, userId, calendarId, userTimezone);
-        pulledFromGoogle++;
-        console.log('[Manual Sync] Pulled Google event to local', {
-          googleEventId: googleEvent.id,
-          title: googleEvent.summary,
+      // Collect errors
+      results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .forEach(r => {
+          console.error('[Manual Sync] Error pulling event:', r.reason);
+          errors.push(`Failed to pull event: ${r.reason instanceof Error ? r.reason.message : 'Unknown error'}`);
         });
-      } catch (error) {
-        console.error('[Manual Sync] Error pulling event from Google', {
-          googleEventId: googleEvent.id,
-          error,
-        });
-        errors.push(`Failed to pull event "${googleEvent.summary}": ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
     }
     
     // Invalidate cache
