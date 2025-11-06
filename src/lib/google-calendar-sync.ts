@@ -285,6 +285,28 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
     let deleted = 0;
     const errors: string[] = [];
     
+    // Separate cancelled events from active events
+    // When using a sync token, Google Calendar API returns only changed events.
+    // Deleted events are included with status: 'cancelled', while unchanged events
+    // are not included at all. We need to handle these differently.
+    const cancelledEventIds = new Set<string>();
+    const activeGoogleEvents: GoogleCalendarEvent[] = [];
+    
+    for (const event of googleEvents) {
+      if (event.status === 'cancelled') {
+        cancelledEventIds.add(event.id);
+      } else {
+        activeGoogleEvents.push(event);
+      }
+    }
+    
+    console.log('[GCAL Sync] Event categorization', {
+      total: googleEvents.length,
+      cancelled: cancelledEventIds.size,
+      active: activeGoogleEvents.length,
+      usingSyncToken: !!user.googleCalendarSyncToken,
+    });
+    
     // Get all currently synced events for this user
     const syncedEvents = await prisma.syncedEvent.findMany({
       where: {
@@ -299,11 +321,9 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
       },
     });
     
-    // Create a set of Google event IDs that still exist
-    const existingGoogleEventIds = new Set(googleEvents.map(e => e.id));
-    
-    // Process each Google event (create/update)
-    for (const googleEvent of googleEvents) {
+    // Process each active Google event (create/update)
+    // Skip cancelled events - they will be handled in the deletion logic below
+    for (const googleEvent of activeGoogleEvents) {
       try {
         await processGoogleEvent(googleEvent, userId, user.googleCalendarId, userTimezone);
         synced++;
@@ -313,25 +333,18 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
       }
     }
     
-    // Remove local events that no longer exist in Google Calendar
-    // IMPORTANT: Only delete if we're using a syncToken (incremental sync).
-    // If syncToken is null/undefined, we're doing a full sync and shouldn't delete
-    // events that might have been created locally but not yet visible in the full sync.
+    // Remove local events that were explicitly cancelled in Google Calendar
+    // IMPORTANT: Only delete events that are explicitly marked as cancelled.
+    // When using a sync token, unchanged events are not in the response at all,
+    // so we should NOT delete events that aren't in the response - they simply haven't changed.
     // Also, don't delete events that were synced very recently (within last 5 minutes)
     // to avoid race conditions where events are created but not yet visible in Google Calendar.
     const recentSyncThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
     
     for (const syncedEvent of syncedEvents) {
-      if (!existingGoogleEventIds.has(syncedEvent.googleEventId)) {
-        // Skip deletion if:
-        // 1. No syncToken was used (full sync) - we can't trust the event list
-        // 2. Event was synced very recently (race condition protection)
-        if (!user.googleCalendarSyncToken) {
-          console.log(`Skipping deletion of ${syncedEvent.localEventId} - no syncToken (full sync mode)`);
-          continue;
-        }
-        
-        // Check if this event was synced recently
+      // Only delete if the event is explicitly marked as cancelled
+      if (cancelledEventIds.has(syncedEvent.googleEventId)) {
+        // Skip deletion if event was synced very recently (race condition protection)
         if (syncedEvent.lastSyncedAt && syncedEvent.lastSyncedAt > recentSyncThreshold) {
           console.log(`Skipping deletion of ${syncedEvent.localEventId} - recently synced (${syncedEvent.lastSyncedAt})`);
           continue;
@@ -353,7 +366,7 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
             where: { id: syncedEvent.id },
           });
           
-          console.log(`Deleted local event ${syncedEvent.localEventId} (Google event ${syncedEvent.googleEventId} was deleted)`);
+          console.log(`Deleted local event ${syncedEvent.localEventId} (Google event ${syncedEvent.googleEventId} was cancelled)`);
           deleted++;
           
           // Invalidate cache for the deleted event
@@ -368,6 +381,10 @@ export async function performIncrementalSync(userId: string): Promise<SyncResult
         }
       }
     }
+    
+    // Handle full sync mode (no sync token): if an event exists locally but not in Google,
+    // we still shouldn't delete it because it might have been created locally.
+    // The original logic already handled this correctly by checking for syncToken.
     
     // Update sync token
     if (nextSyncToken) {

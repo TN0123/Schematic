@@ -18,6 +18,7 @@ export interface GoogleCalendarEvent {
   description?: string;
   location?: string;
   updated: string;
+  status?: string; // 'confirmed', 'tentative', 'cancelled'
 }
 
 export interface GoogleCalendar {
@@ -177,6 +178,7 @@ export class GoogleCalendarClient {
           description: event.description,
           location: event.location,
           updated: event.updated,
+          status: event.status, // Include status to detect cancelled events
         })) || [];
 
       return {
@@ -203,6 +205,7 @@ export class GoogleCalendarClient {
         description: response.data.description,
         location: response.data.location,
         updated: response.data.updated,
+        status: response.data.status,
       };
     }, 'createEvent');
   }
@@ -229,6 +232,7 @@ export class GoogleCalendarClient {
         description: response.data.description,
         location: response.data.location,
         updated: response.data.updated,
+        status: response.data.status,
       };
     }, 'updateEvent');
   }
@@ -261,6 +265,7 @@ export class GoogleCalendarClient {
         description: response.data.description,
         location: response.data.location,
         updated: response.data.updated,
+        status: response.data.status,
       };
     }, 'getEvent');
   }
