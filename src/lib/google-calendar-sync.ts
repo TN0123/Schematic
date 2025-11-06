@@ -385,6 +385,7 @@ export async function performManualSync(
     }
     
     // Step 2: Pull Google Calendar events to Schematic (only if not already synced)
+    // Use processGoogleEvent which has duplicate detection logic built in
     console.log('[Manual Sync] Starting pull phase - checking Google events');
     for (const googleEvent of googleEvents) {
       // Skip cancelled events
@@ -407,51 +408,14 @@ export async function performManualSync(
       });
       
       try {
-        const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
-        const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
-        
-        // Create new local event
-        const newEvent = await prisma.event.create({
-          data: {
-            title: googleEvent.summary,
-            start: startDate,
-            end: endDate,
-            userId,
-          },
-        });
-        
-        // Create sync mapping
-        const syncHash = generateSyncHash({
-          id: newEvent.id,
-          title: newEvent.title,
-          start: newEvent.start,
-          end: newEvent.end,
-          links: [],
-        });
-        
-        await prisma.syncedEvent.create({
-          data: {
-            userId,
-            localEventId: newEvent.id,
-            googleEventId: googleEvent.id,
-            googleCalendarId: calendarId,
-            syncHash,
-          },
-        });
-        
+        // Use processGoogleEvent which checks for existing events and creates sync mappings
+        // This prevents duplicate creation by matching with existing local events
+        await processGoogleEvent(googleEvent, userId, calendarId, userTimezone);
         pulledFromGoogle++;
         console.log('[Manual Sync] Pulled Google event to local', {
           googleEventId: googleEvent.id,
-          localEventId: newEvent.id,
           title: googleEvent.summary,
         });
-        
-        // Record habit action
-        recordEventAction(userId, 'created', {
-          title: newEvent.title,
-          start: newEvent.start,
-          end: newEvent.end,
-        }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
       } catch (error) {
         console.error('[Manual Sync] Error pulling event from Google', {
           googleEventId: googleEvent.id,
