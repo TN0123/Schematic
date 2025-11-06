@@ -179,6 +179,318 @@ export async function listUserCalendars(userId: string): Promise<GoogleCalendar[
   }
 }
 
+/**
+ * Perform a manual bidirectional sync between Schematic and Google Calendar
+ * This function ONLY creates events - it never deletes anything
+ * - All local events that aren't synced will be pushed to Google Calendar
+ * - All Google Calendar events that aren't synced will be pulled to Schematic
+ */
+export async function performManualSync(
+  userId: string
+): Promise<{ success: boolean; pushedToGoogle: number; pulledFromGoogle: number; errors: string[] }> {
+  try {
+    // Get user's Google Calendar settings
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        googleCalendarSyncEnabled: true,
+        googleCalendarId: true,
+      },
+    });
+    
+    if (!user?.googleCalendarSyncEnabled || !user.googleCalendarId) {
+      return {
+        success: false,
+        pushedToGoogle: 0,
+        pulledFromGoogle: 0,
+        errors: ['Google Calendar sync is not enabled or calendar ID is missing'],
+      };
+    }
+    
+    const calendarId = user.googleCalendarId;
+    const client = await getGoogleCalendarClient(userId);
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    console.log('[Manual Sync] Starting manual sync', { userId, calendarId });
+    
+    // Get all synced event mappings for this user and calendar
+    const syncedEvents = await prisma.syncedEvent.findMany({
+      where: {
+        userId,
+        googleCalendarId: calendarId,
+      },
+      select: {
+        localEventId: true,
+        googleEventId: true,
+      },
+    });
+    
+    const syncedLocalIds = new Set(syncedEvents.map(se => se.localEventId));
+    const syncedGoogleIds = new Set(syncedEvents.map(se => se.googleEventId));
+    
+    console.log('[Manual Sync] Found existing synced events', {
+      syncedCount: syncedEvents.length,
+      syncedLocalIds: syncedLocalIds.size,
+      syncedGoogleIds: syncedGoogleIds.size,
+    });
+    
+    // Fetch all local events
+    const localEvents = await prisma.event.findMany({
+      where: { userId },
+      orderBy: { start: 'asc' },
+    });
+    
+    // Fetch Google Calendar events with a wide time range
+    // Get events from 2 years in the past to 3 years in the future
+    const now = new Date();
+    const timeMin = new Date(now);
+    timeMin.setFullYear(now.getFullYear() - 2);
+    const timeMax = new Date(now);
+    timeMax.setFullYear(now.getFullYear() + 3);
+    
+    console.log('[Manual Sync] Fetching Google events with time range', {
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+    });
+    
+    const { events: googleEvents } = await client.listEvents(
+      calendarId,
+      timeMin.toISOString(),
+      timeMax.toISOString()
+    );
+    
+    console.log('[Manual Sync] Fetched events', {
+      localCount: localEvents.length,
+      googleCount: googleEvents.length,
+    });
+    
+    // Check for orphaned sync mappings (events that no longer exist)
+    const actualLocalIds = new Set(localEvents.map(e => e.id));
+    const actualGoogleIds = new Set(googleEvents.map(e => e.id));
+    const orphanedSyncs = syncedEvents.filter(
+      se => !actualLocalIds.has(se.localEventId) || !actualGoogleIds.has(se.googleEventId)
+    );
+    
+    if (orphanedSyncs.length > 0) {
+      console.log('[Manual Sync] Found orphaned sync mappings - cleaning up', { 
+        count: orphanedSyncs.length,
+        sample: orphanedSyncs.slice(0, 3).map(s => ({
+          localEventId: s.localEventId,
+          googleEventId: s.googleEventId,
+          localExists: actualLocalIds.has(s.localEventId),
+          googleExists: actualGoogleIds.has(s.googleEventId),
+        }))
+      });
+      
+      // Delete orphaned sync mappings
+      for (const orphan of orphanedSyncs) {
+        await prisma.syncedEvent.deleteMany({
+          where: {
+            userId,
+            localEventId: orphan.localEventId,
+            googleEventId: orphan.googleEventId,
+          },
+        });
+      }
+      
+      // Rebuild the synced sets after cleanup
+      const cleanedSyncedEvents = syncedEvents.filter(
+        se => actualLocalIds.has(se.localEventId) && actualGoogleIds.has(se.googleEventId)
+      );
+      syncedLocalIds.clear();
+      syncedGoogleIds.clear();
+      cleanedSyncedEvents.forEach(se => {
+        syncedLocalIds.add(se.localEventId);
+        syncedGoogleIds.add(se.googleEventId);
+      });
+      
+      console.log('[Manual Sync] After cleanup', {
+        syncedLocalIds: syncedLocalIds.size,
+        syncedGoogleIds: syncedGoogleIds.size,
+      });
+    }
+    
+    // Calculate which events are NOT synced
+    const unsyncedLocalEvents = localEvents.filter(e => !syncedLocalIds.has(e.id));
+    const unsyncedGoogleEvents = googleEvents.filter(e => 
+      e.status !== 'cancelled' && !syncedGoogleIds.has(e.id)
+    );
+    
+    console.log('[Manual Sync] Events to sync', {
+      unsyncedLocal: unsyncedLocalEvents.length,
+      unsyncedGoogle: unsyncedGoogleEvents.length,
+      sampleUnsyncedLocal: unsyncedLocalEvents.slice(0, 3).map(e => ({ id: e.id, title: e.title })),
+      sampleUnsyncedGoogle: unsyncedGoogleEvents.slice(0, 3).map(e => ({ id: e.id, title: e.summary })),
+    });
+    
+    let pushedToGoogle = 0;
+    let pulledFromGoogle = 0;
+    const errors: string[] = [];
+    
+    // Step 1: Push local events to Google Calendar (only if not already synced)
+    console.log('[Manual Sync] Starting push phase - checking local events');
+    for (const localEvent of localEvents) {
+      if (syncedLocalIds.has(localEvent.id)) {
+        continue; // Already synced, skip
+      }
+      
+      console.log('[Manual Sync] Pushing unsynced local event to Google', {
+        eventId: localEvent.id,
+        title: localEvent.title,
+        start: localEvent.start,
+      });
+      
+      try {
+        const googleEvent = {
+          summary: localEvent.title,
+          start: convertToGoogleDateTime(localEvent.start, userTimezone),
+          end: convertToGoogleDateTime(localEvent.end, userTimezone),
+          description: localEvent.links?.length ? `Links: ${localEvent.links.join(', ')}` : undefined,
+        };
+        
+        const createdEvent = await client.createEvent(calendarId, googleEvent);
+        
+        // Create sync mapping
+        const syncHash = generateSyncHash({
+          id: localEvent.id,
+          title: localEvent.title,
+          start: localEvent.start,
+          end: localEvent.end,
+          links: localEvent.links || [],
+        });
+        
+        await prisma.syncedEvent.create({
+          data: {
+            userId,
+            localEventId: localEvent.id,
+            googleEventId: createdEvent.id,
+            googleCalendarId: calendarId,
+            syncHash,
+          },
+        });
+        
+        pushedToGoogle++;
+        console.log('[Manual Sync] Pushed local event to Google', {
+          localEventId: localEvent.id,
+          googleEventId: createdEvent.id,
+          title: localEvent.title,
+        });
+      } catch (error) {
+        console.error('[Manual Sync] Error pushing event to Google', {
+          localEventId: localEvent.id,
+          error,
+        });
+        errors.push(`Failed to push event "${localEvent.title}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    // Step 2: Pull Google Calendar events to Schematic (only if not already synced)
+    console.log('[Manual Sync] Starting pull phase - checking Google events');
+    for (const googleEvent of googleEvents) {
+      // Skip cancelled events
+      if (googleEvent.status === 'cancelled') {
+        console.log('[Manual Sync] Skipping cancelled Google event', {
+          eventId: googleEvent.id,
+          title: googleEvent.summary,
+        });
+        continue;
+      }
+      
+      if (syncedGoogleIds.has(googleEvent.id)) {
+        continue; // Already synced, skip
+      }
+      
+      console.log('[Manual Sync] Pulling unsynced Google event to local', {
+        eventId: googleEvent.id,
+        title: googleEvent.summary,
+        start: googleEvent.start,
+      });
+      
+      try {
+        const startDate = convertFromGoogleDateTime(googleEvent.start, userTimezone);
+        const endDate = convertFromGoogleDateTime(googleEvent.end, userTimezone);
+        
+        // Create new local event
+        const newEvent = await prisma.event.create({
+          data: {
+            title: googleEvent.summary,
+            start: startDate,
+            end: endDate,
+            userId,
+          },
+        });
+        
+        // Create sync mapping
+        const syncHash = generateSyncHash({
+          id: newEvent.id,
+          title: newEvent.title,
+          start: newEvent.start,
+          end: newEvent.end,
+          links: [],
+        });
+        
+        await prisma.syncedEvent.create({
+          data: {
+            userId,
+            localEventId: newEvent.id,
+            googleEventId: googleEvent.id,
+            googleCalendarId: calendarId,
+            syncHash,
+          },
+        });
+        
+        pulledFromGoogle++;
+        console.log('[Manual Sync] Pulled Google event to local', {
+          googleEventId: googleEvent.id,
+          localEventId: newEvent.id,
+          title: googleEvent.summary,
+        });
+        
+        // Record habit action
+        recordEventAction(userId, 'created', {
+          title: newEvent.title,
+          start: newEvent.start,
+          end: newEvent.end,
+        }, newEvent.id).catch(err => console.error('Failed to record habit action:', err));
+      } catch (error) {
+        console.error('[Manual Sync] Error pulling event from Google', {
+          googleEventId: googleEvent.id,
+          error,
+        });
+        errors.push(`Failed to pull event "${googleEvent.summary}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    // Invalidate cache
+    await invalidateAllUserCaches(userId).catch(err => 
+      console.error('Failed to invalidate cache:', err)
+    );
+    
+    console.log('[Manual Sync] Manual sync completed', {
+      userId,
+      calendarId,
+      pushedToGoogle,
+      pulledFromGoogle,
+      errorCount: errors.length,
+    });
+    
+    return {
+      success: true,
+      pushedToGoogle,
+      pulledFromGoogle,
+      errors,
+    };
+  } catch (error) {
+    console.error('[Manual Sync] Error performing manual sync:', error);
+    return {
+      success: false,
+      pushedToGoogle: 0,
+      pulledFromGoogle: 0,
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
+    };
+  }
+}
+
 export async function performInitialSync(
   userId: string,
   calendarId: string

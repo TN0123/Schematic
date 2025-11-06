@@ -156,21 +156,52 @@ export class GoogleCalendarClient {
         calendarId,
         singleEvents: true,
         orderBy: 'startTime',
+        maxResults: 2500, // Fetch more events per page (max is 2500)
       };
 
       if (timeMin) params.timeMin = timeMin;
       if (timeMax) params.timeMax = timeMax;
       if (syncToken) params.syncToken = syncToken;
 
-      const response = await this.calendar.events.list(params);
+      // Fetch all pages of events
+      let allEvents: any[] = [];
+      let pageToken: string | undefined = undefined;
+      let pageCount = 0;
+      let nextSyncToken: string | undefined = undefined;
+      const maxPages = 100; // Safety limit to prevent infinite loops
+
+      do {
+        if (pageToken) {
+          params.pageToken = pageToken;
+        }
+
+        const response = await this.calendar.events.list(params);
+        pageCount++;
+        
+        const pageEvents = response.data.items || [];
+        allEvents = allEvents.concat(pageEvents);
+        
+        pageToken = response.data.nextPageToken;
+        nextSyncToken = response.data.nextSyncToken; // Store sync token from last response
+        
+        console.log(`[Google Calendar] Fetched page ${pageCount}, events: ${pageEvents.length}, total so far: ${allEvents.length}, hasMore: ${!!pageToken}`);
+        
+        // Break if we've fetched too many pages (safety check)
+        if (pageCount >= maxPages) {
+          console.warn(`[Google Calendar] Reached max page limit (${maxPages}), stopping pagination`);
+          break;
+        }
+      } while (pageToken);
+
+      console.log(`[Google Calendar] Finished fetching all events, total: ${allEvents.length} events across ${pageCount} pages`);
       
-      const events = response.data.items
-        ?.filter((event: any) => {
+      const events = allEvents
+        .filter((event: any) => {
           // Filter out recurring events since our calendar doesn't support them
           // Recurring events have a 'recurrence' property
           return !event.recurrence;
         })
-        ?.map((event: any) => ({
+        .map((event: any) => ({
           id: event.id,
           summary: event.summary || 'No Title',
           start: event.start,
@@ -179,11 +210,11 @@ export class GoogleCalendarClient {
           location: event.location,
           updated: event.updated,
           status: event.status, // Include status to detect cancelled events
-        })) || [];
+        }));
 
       return {
         events,
-        nextSyncToken: response.data.nextSyncToken,
+        nextSyncToken,
       };
     }, 'listEvents');
   }
