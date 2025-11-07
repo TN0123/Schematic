@@ -346,6 +346,12 @@ export default function WritePanel({
       mimeType?: string;
     }>
   >([]);
+  const [uploadedPdfs, setUploadedPdfs] = useState<
+    Array<{
+      name: string;
+      text: string;
+    }>
+  >([]);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -537,6 +543,7 @@ export default function WritePanel({
             actionMode,
             webSearchEnabled: requestPayload.webSearchEnabled,
             images: requestPayload.images || [],
+            pdfs: requestPayload.pdfs || [],
           }),
           signal: controller.signal,
         });
@@ -787,6 +794,11 @@ export default function WritePanel({
         base64: img.base64,
         mimeType: img.mimeType,
       })),
+      // Send PDF text content
+      pdfs: uploadedPdfs.map((pdf) => ({
+        name: pdf.name,
+        text: pdf.text,
+      })),
     };
 
     const userMessage = {
@@ -801,8 +813,9 @@ export default function WritePanel({
     try {
       // Use streaming endpoint (now unified in main chat route)
       await handleStreamingResponse(requestPayload);
-      // Clear uploaded images after successful submission
+      // Clear uploaded images and PDFs after successful submission
       setUploadedImages([]);
+      setUploadedPdfs([]);
     } catch (error) {
       const errorState = handleNetworkError(error as Error);
     } finally {
@@ -1050,7 +1063,7 @@ export default function WritePanel({
   }, [handleKeyPress]);
 
   // File upload handlers
-  const handleImageUpload = async (file: File) => {
+  const handleFileUpload = async (file: File) => {
     setIsImageUploading(true);
     setImageUploadError(null);
 
@@ -1058,32 +1071,49 @@ export default function WritePanel({
     formData.append("file", file);
 
     try {
-      const response = await fetch("/api/notebook/upload-image", {
+      const isPdf = file.type === "application/pdf";
+      const uploadUrl = isPdf
+        ? "/api/notebook/upload-pdf"
+        : "/api/notebook/upload-image";
+
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
 
       const data = await response.json();
-      if (response.ok && data.url) {
-        // Add the uploaded image to the list
-        setUploadedImages((prev) => [
-          ...prev,
-          {
-            url: data.url,
-            name: file.name,
-            base64: data.base64,
-            mimeType: data.mimeType,
-          },
-        ]);
+      if (response.ok) {
+        if (isPdf) {
+          // Add the uploaded PDF to the list
+          setUploadedPdfs((prev) => [
+            ...prev,
+            {
+              name: file.name,
+              text: data.text,
+            },
+          ]);
+        } else {
+          // Add the uploaded image to the list
+          setUploadedImages((prev) => [
+            ...prev,
+            {
+              url: data.url,
+              name: file.name,
+              base64: data.base64,
+              mimeType: data.mimeType,
+            },
+          ]);
+        }
         setImageUploadError(null);
       } else {
         setImageUploadError(
-          data.error || "Failed to upload image. Please try again."
+          data.error ||
+            `Failed to upload ${isPdf ? "PDF" : "image"}. Please try again.`
         );
       }
     } catch (error) {
       console.error("Upload error:", error);
-      setImageUploadError("An error occurred while uploading the image.");
+      setImageUploadError("An error occurred while uploading the file.");
     } finally {
       setIsImageUploading(false);
     }
@@ -1097,12 +1127,18 @@ export default function WritePanel({
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const validTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf",
+      ];
       if (validTypes.includes(file.type)) {
-        handleImageUpload(file);
+        handleFileUpload(file);
       } else {
         setImageUploadError(
-          "Please upload a valid image file (JPEG, PNG, GIF, or WebP)."
+          "Please upload a valid image file (JPEG, PNG, GIF, or WebP) or PDF."
         );
       }
     }
@@ -1123,12 +1159,16 @@ export default function WritePanel({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleImageUpload(files[0]);
+      handleFileUpload(files[0]);
     }
   };
 
   const removeUploadedImage = (index: number) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeUploadedPdf = (index: number) => {
+    setUploadedPdfs((prev) => prev.filter((_, i) => i !== index));
   };
 
   const wrapperClass =
@@ -1267,7 +1307,7 @@ export default function WritePanel({
               onDragLeave={handleDragLeave}
               onDrop={handleFileDrop}
               placeholder={
-                isDragging ? "Drop your image here..." : "Ask anything"
+                isDragging ? "Drop your image or PDF here..." : "Ask anything"
               }
               rows={3}
               disabled={isChatLoading}
@@ -1335,7 +1375,7 @@ export default function WritePanel({
                 <button
                   className="rounded-full hover:bg-gray-300 dark:hover:bg-dark-hover text-purple-600 dark:text-purple-400 transition-colors duration-200 p-2 ml-2"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Upload image"
+                  title="Upload image or PDF"
                   disabled={isImageUploading || isChatLoading}
                 >
                   <ImagePlus size={20} />
@@ -1364,7 +1404,7 @@ export default function WritePanel({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg, image/png, image/gif, image/webp"
+            accept="image/jpeg, image/png, image/gif, image/webp, application/pdf"
             onChange={handleFileInputChange}
             className="hidden"
           />
@@ -1386,7 +1426,7 @@ export default function WritePanel({
             </div>
           )}
 
-          {/* Image Upload Loading */}
+          {/* File Upload Loading */}
           {isImageUploading && (
             <div className="mx-4 px-3 py-3 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
               <RefreshCw
@@ -1394,7 +1434,7 @@ export default function WritePanel({
                 className="animate-spin text-blue-500 dark:text-blue-400"
               />
               <span className="ml-2 text-sm text-blue-800 dark:text-blue-200">
-                Uploading image...
+                Uploading file...
               </span>
             </div>
           )}
@@ -1427,6 +1467,51 @@ export default function WritePanel({
                       title="Remove image"
                     >
                       <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Uploaded PDFs Display */}
+          {uploadedPdfs.length > 0 && (
+            <div className="mx-4 px-3 py-2 bg-gray-50 dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-700 dark:text-dark-textPrimary">
+                  Attached PDFs ({uploadedPdfs.length})
+                </p>
+                <button
+                  onClick={() => setUploadedPdfs([])}
+                  className="text-xs text-gray-500 dark:text-dark-textSecondary hover:text-gray-700 dark:hover:text-dark-textPrimary"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {uploadedPdfs.map((pdf, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-white dark:bg-dark-paper rounded border border-gray-200 dark:border-dark-divider"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <FileText
+                        size={16}
+                        className="text-gray-500 dark:text-dark-textSecondary flex-shrink-0"
+                      />
+                      <span className="text-xs text-gray-700 dark:text-dark-textPrimary truncate">
+                        {pdf.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-dark-textSecondary">
+                        ({Math.ceil(pdf.text.length / 1000)}k chars)
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removeUploadedPdf(index)}
+                      className="p-1 text-red-500 hover:text-red-600 transition-colors flex-shrink-0"
+                      title="Remove PDF"
+                    >
+                      <X size={14} />
                     </button>
                   </div>
                 ))}

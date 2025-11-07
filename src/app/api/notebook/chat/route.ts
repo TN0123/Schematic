@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       model = "basic",
       actionMode = "edit",
       images = [],
+      pdfs = [],
       webSearchEnabled = false,
     } = await req.json();
 
@@ -217,6 +218,10 @@ export async function POST(req: NextRequest) {
 
     if (actionMode === "ask") {
       // ASK MODE: Simple streaming text response
+      const pdfContext = pdfs && pdfs.length > 0
+        ? `\n\nThe user has also provided ${pdfs.length} PDF document(s) for context:\n${pdfs.map((pdf: any, idx: number) => `\n--- PDF ${idx + 1}: ${pdf.name || 'Untitled'} ---\n${pdf.text || ''}\n--- End of PDF ${idx + 1} ---`).join('\n\n')}\n\nUse the information from these PDFs to help answer the user's question or provide better guidance.`
+        : "";
+
       const systemPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has asked you a question about their work.
 
@@ -224,6 +229,7 @@ export async function POST(req: NextRequest) {
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT
+        ${pdfContext}
 
         Your job is to understand what the user has written so far and answer their question or provide guidance based on their request.
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to help answer their question or provide better guidance." : ""}
@@ -519,6 +525,10 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // EDIT MODE: Stream assistant text + generate change map JSON
+      const pdfContext = pdfs && pdfs.length > 0
+        ? `\n\nThe user has also provided ${pdfs.length} PDF document(s) for context:\n${pdfs.map((pdf: any, idx: number) => `\n--- PDF ${idx + 1}: ${pdf.name || 'Untitled'} ---\n${pdf.text || ''}\n--- End of PDF ${idx + 1} ---`).join('\n\n')}\n\nUse the information from these PDFs to better understand the user's request and provide more relevant changes.`
+        : "";
+
       const assistantTextPrompt = `
         You are an AI writing assistant embedded in a text editor. A user is working on writing something and has requested something of you.
 
@@ -526,6 +536,7 @@ export async function POST(req: NextRequest) {
         BEGINNING OF CONTEXT
         ${context}
         END OF CONTEXT
+        ${pdfContext}
 
         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to better understand their request and provide more relevant changes." : ""}
         ${webSearchTool ? "IMPORTANT: The user has enabled web search. You MUST call the web_search tool with a concise, relevant query to fetch current information that will help you fulfill their request. Always call this tool first before providing your response. After the tool returns results, use those results to inform your response and the changes you make." : ""}
@@ -715,6 +726,10 @@ export async function POST(req: NextRequest) {
                     changeMapPromise = (async () => {
 
                       // Build the change map prompt with current assistant text (may be partial)
+                      const pdfContextForChanges = pdfs && pdfs.length > 0
+                        ? `\n\nThe user has also provided ${pdfs.length} PDF document(s) for context:\n${pdfs.map((pdf: any, idx: number) => `\n--- PDF ${idx + 1}: ${pdf.name || 'Untitled'} ---\n${pdf.text || ''}\n--- End of PDF ${idx + 1} ---`).join('\n\n')}\n\nUse the information from these PDFs to understand what content the user wants to add or how they want to modify their text based on the PDF content.`
+                        : "";
+
                       const changeMapPrompt = `
                         You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
 
@@ -722,6 +737,7 @@ export async function POST(req: NextRequest) {
                         BEGINNING OF CONTEXT
                         ${context}
                         END OF CONTEXT
+                        ${pdfContextForChanges}
 
                         ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
 
@@ -823,6 +839,10 @@ export async function POST(req: NextRequest) {
               changeMapResult = await changeMapPromise;
             } else {
               // If we didn't start it early (web search was used or stream was very short), start it now
+              const pdfContextForChanges = pdfs && pdfs.length > 0
+                ? `\n\nThe user has also provided ${pdfs.length} PDF document(s) for context:\n${pdfs.map((pdf: any, idx: number) => `\n--- PDF ${idx + 1}: ${pdf.name || 'Untitled'} ---\n${pdf.text || ''}\n--- End of PDF ${idx + 1} ---`).join('\n\n')}\n\nUse the information from these PDFs to understand what content the user wants to add or how they want to modify their text based on the PDF content.`
+                : "";
+
               const changeMapPrompt = `
                 You are an AI writing assistant that generates precise text edit instructions. A user is working on a document and has requested changes.
 
@@ -830,6 +850,7 @@ export async function POST(req: NextRequest) {
                 BEGINNING OF CONTEXT
                 ${context}
                 END OF CONTEXT
+                ${pdfContextForChanges}
 
                 ${images && images.length > 0 ? "The user has also provided images for you to analyze. Use the visual information from the images to understand what content they want to add or how they want to modify their text based on the images." : ""}
 
