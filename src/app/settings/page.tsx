@@ -1137,6 +1137,26 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Support */}
+        <div className="border-2 border-gray-200 dark:border-dark-divider rounded-xl overflow-hidden">
+          <div className="bg-gray-100 dark:bg-dark-secondary px-4 py-3 border-b border-gray-200 dark:border-dark-divider">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
+              Support
+            </h2>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-gray-700 dark:text-dark-textSecondary">
+              Have questions or issues with the app? Contact us at{" "}
+              <a
+                href="mailto:support@schematic.now"
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                support@schematic.now
+              </a>
+            </p>
+          </div>
+        </div>
+
         {/* Sign Out */}
         <div className="flex justify-center pb-8">
           <button
