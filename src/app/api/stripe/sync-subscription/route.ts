@@ -10,10 +10,33 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 /**
  * Calculate the current billing period end date based on the subscription's billing cycle anchor
- * This properly handles multiple billing periods (renewals)
+ * This properly handles multiple billing periods (renewals) and lifetime subscriptions
  */
 function calculateCurrentPeriodEnd(subscription: Stripe.Subscription): Date | null {
-  if (!subscription.billing_cycle_anchor || !subscription.items.data[0]?.price.recurring) {
+  // For lifetime/lifelong subscriptions (non-recurring), use Stripe's current_period_end directly
+  // or set to a far-future date if the subscription is active
+  if (!subscription.items.data[0]?.price.recurring) {
+    // Lifetime subscription - use Stripe's current_period_end if available
+    const periodEnd = (subscription as any).current_period_end;
+    if (periodEnd) {
+      return new Date(periodEnd * 1000);
+    }
+    // If subscription is active but has no period end, treat as lifetime (set far future)
+    if (subscription.status === 'active') {
+      const farFuture = new Date();
+      farFuture.setFullYear(farFuture.getFullYear() + 100); // 100 years in the future
+      return farFuture;
+    }
+    return null;
+  }
+
+  // For recurring subscriptions, calculate based on billing cycle
+  if (!subscription.billing_cycle_anchor) {
+    // Fallback to Stripe's current_period_end if available
+    const periodEnd = (subscription as any).current_period_end;
+    if (periodEnd) {
+      return new Date(periodEnd * 1000);
+    }
     return null;
   }
 
@@ -124,9 +147,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate the current billing period end
-    const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
-    console.log(`[Sync Subscription] Calculated period end: ${currentPeriodEnd?.toISOString()}`);
+    // Use Stripe's current_period_end directly (most reliable) or calculate if not available
+    const periodEnd = (subscription as any).current_period_end;
+    const currentPeriodEnd = periodEnd 
+      ? new Date(periodEnd * 1000)
+      : calculateCurrentPeriodEnd(subscription);
+    console.log(`[Sync Subscription] Period end: ${currentPeriodEnd?.toISOString()}`);
 
     const updateData = {
       stripeCustomerId: customerId,

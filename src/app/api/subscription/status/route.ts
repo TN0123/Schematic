@@ -27,17 +27,25 @@ export async function GET() {
       return new NextResponse("User not found", { status: 404 });
     }
 
-
+    // getUserSubscriptionTier will automatically sync with Stripe if needed
     const [tier, usageStats] = await Promise.all([
       getUserSubscriptionTier(user.id),
       getUserUsageStats(user.id),
     ]);
 
+    // Fetch updated user data after potential sync
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        subscriptionStatus: true,
+        stripeCurrentPeriodEnd: true,
+      },
+    });
 
     return NextResponse.json({
       tier,
-      subscriptionStatus: user.subscriptionStatus,
-      currentPeriodEnd: user.stripeCurrentPeriodEnd,
+      subscriptionStatus: updatedUser?.subscriptionStatus || user.subscriptionStatus,
+      currentPeriodEnd: updatedUser?.stripeCurrentPeriodEnd || user.stripeCurrentPeriodEnd,
       hasStripeCustomer: !!user.stripeCustomerId,
       hasActiveSubscription: !!user.stripeSubscriptionId,
       usage: usageStats,

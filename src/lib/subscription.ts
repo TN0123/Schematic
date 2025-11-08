@@ -1,7 +1,13 @@
 import prisma from "./prisma";
+import Stripe from "stripe";
 
 // Subscription tier types
 export type SubscriptionTier = "free" | "premium";
+
+// Initialize Stripe client
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2025-09-30.clover",
+});
 
 // Subscription limits
 export const SUBSCRIPTION_LIMITS = {
@@ -20,7 +26,36 @@ export const SUBSCRIPTION_LIMITS = {
 };
 
 /**
+ * Sync subscription data from Stripe
+ */
+async function syncSubscriptionFromStripe(
+  subscriptionId: string
+): Promise<{
+  currentPeriodEnd: Date | null;
+  status: string;
+  priceId: string | null;
+} | null> {
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    // Use Stripe's current_period_end directly (most reliable)
+    const periodEnd = (subscription as any).current_period_end;
+    const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000) : null;
+
+    return {
+      currentPeriodEnd,
+      status: subscription.status,
+      priceId: subscription.items.data[0]?.price.id || null,
+    };
+  } catch (error) {
+    console.error(`[Sync Subscription] Error syncing subscription ${subscriptionId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Get the user's current subscription tier
+ * Automatically syncs with Stripe if the period end has passed
  */
 export async function getUserSubscriptionTier(
   userId: string
@@ -30,6 +65,7 @@ export async function getUserSubscriptionTier(
     select: {
       subscriptionStatus: true,
       stripeCurrentPeriodEnd: true,
+      stripeSubscriptionId: true,
     },
   });
 
@@ -41,12 +77,66 @@ export async function getUserSubscriptionTier(
   const now = new Date();
   const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
 
-  if (
-    user.subscriptionStatus === "active" &&
-    periodEnd &&
-    periodEnd > now
-  ) {
-    return "premium";
+  // For active subscriptions, check if they're still valid
+  if (user.subscriptionStatus === "active") {
+    // If there's a period end date, check if it's in the future
+    if (periodEnd) {
+      if (periodEnd > now) {
+        return "premium";
+      } else {
+        // Period end has passed - sync with Stripe to get updated period end
+        // This handles subscription renewals
+        if (user.stripeSubscriptionId) {
+          console.log(`[Subscription Tier] Period end passed, syncing subscription ${user.stripeSubscriptionId} for user ${userId}`);
+          const syncResult = await syncSubscriptionFromStripe(user.stripeSubscriptionId);
+          
+          if (syncResult) {
+            // Update the user's subscription data
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
+                subscriptionStatus: syncResult.status,
+                stripePriceId: syncResult.priceId,
+              },
+            });
+
+            // Check again with updated data
+            if (syncResult.status === "active" && syncResult.currentPeriodEnd && syncResult.currentPeriodEnd > now) {
+              return "premium";
+            }
+          }
+        }
+      }
+    } else {
+      // If periodEnd is null but subscription is active, it's likely a lifetime subscription
+      // But let's sync with Stripe to be sure
+      if (user.stripeSubscriptionId) {
+        console.log(`[Subscription Tier] No period end, syncing subscription ${user.stripeSubscriptionId} for user ${userId}`);
+        const syncResult = await syncSubscriptionFromStripe(user.stripeSubscriptionId);
+        
+        if (syncResult) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
+              subscriptionStatus: syncResult.status,
+              stripePriceId: syncResult.priceId,
+            },
+          });
+
+          if (syncResult.status === "active") {
+            return "premium";
+          }
+        } else {
+          // If sync fails but subscription is marked active, treat as premium (lifetime)
+          return "premium";
+        }
+      } else {
+        // No subscription ID but marked active - treat as premium (lifetime)
+        return "premium";
+      }
+    }
   }
 
   return "free";

@@ -10,10 +10,33 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 /**
  * Calculate the current billing period end date based on the subscription's billing cycle anchor
- * This properly handles multiple billing periods (renewals)
+ * This properly handles multiple billing periods (renewals) and lifetime subscriptions
  */
 function calculateCurrentPeriodEnd(subscription: Stripe.Subscription): Date | null {
-  if (!subscription.billing_cycle_anchor || !subscription.items.data[0]?.price.recurring) {
+  // For lifetime/lifelong subscriptions (non-recurring), use Stripe's current_period_end directly
+  // or set to a far-future date if the subscription is active
+  if (!subscription.items.data[0]?.price.recurring) {
+    // Lifetime subscription - use Stripe's current_period_end if available
+    const periodEnd = (subscription as any).current_period_end;
+    if (periodEnd) {
+      return new Date(periodEnd * 1000);
+    }
+    // If subscription is active but has no period end, treat as lifetime (set far future)
+    if (subscription.status === 'active') {
+      const farFuture = new Date();
+      farFuture.setFullYear(farFuture.getFullYear() + 100); // 100 years in the future
+      return farFuture;
+    }
+    return null;
+  }
+
+  // For recurring subscriptions, calculate based on billing cycle
+  if (!subscription.billing_cycle_anchor) {
+    // Fallback to Stripe's current_period_end if available
+    const periodEnd = (subscription as any).current_period_end;
+    if (periodEnd) {
+      return new Date(periodEnd * 1000);
+    }
     return null;
   }
 
@@ -138,8 +161,11 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
-  // Calculate the current billing period end
-  const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+  // Use Stripe's current_period_end directly (most reliable) or calculate if not available
+  const periodEnd = (subscription as any).current_period_end;
+  const currentPeriodEnd = periodEnd 
+    ? new Date(periodEnd * 1000)
+    : calculateCurrentPeriodEnd(subscription);
 
   console.log(`[Subscription Update] Period end: ${currentPeriodEnd?.toISOString()}`);
 
@@ -220,8 +246,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     console.log(`[Checkout Completed] Found user: ${user.email} (ID: ${user.id})`);
 
-    // Calculate the current billing period end
-    const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+    // Use Stripe's current_period_end directly (most reliable) or calculate if not available
+    const periodEnd = (subscription as any).current_period_end;
+    const currentPeriodEnd = periodEnd 
+      ? new Date(periodEnd * 1000)
+      : calculateCurrentPeriodEnd(subscription);
 
     console.log(`[Checkout Completed] Period end: ${currentPeriodEnd?.toISOString()}`);
 
@@ -259,8 +288,11 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   
-  // Calculate the current billing period end
-  const currentPeriodEnd = calculateCurrentPeriodEnd(subscription);
+  // Use Stripe's current_period_end directly (most reliable) or calculate if not available
+  const periodEnd = (subscription as any).current_period_end;
+  const currentPeriodEnd = periodEnd 
+    ? new Date(periodEnd * 1000)
+    : calculateCurrentPeriodEnd(subscription);
 
   console.log(`[Payment Succeeded] Period end: ${currentPeriodEnd?.toISOString()}`);
 
