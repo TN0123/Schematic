@@ -415,6 +415,7 @@ export async function getUserUsageStats(userId: string) {
         weeklyPremiumUsesResetAt: true,
         monthlyPremiumUsesCount: true,
         monthlyPremiumUsesResetAt: true,
+        stripeCurrentPeriodEnd: true,
       },
     }),
   ]);
@@ -435,6 +436,13 @@ export async function getUserUsageStats(userId: string) {
   const weeklyUsed = weeklyNeedsReset ? 0 : user.weeklyPremiumUsesCount;
   const monthlyUsed = monthlyNeedsReset ? 0 : user.monthlyPremiumUsesCount;
 
+  // For premium users, use stripeCurrentPeriodEnd as the reset date
+  // This aligns with Stripe's billing cycle (even for $0/month subscriptions)
+  // For free users, use the weekly reset date
+  const resetAt = tier === "premium" 
+    ? (user.stripeCurrentPeriodEnd || user.monthlyPremiumUsesResetAt)
+    : user.weeklyPremiumUsesResetAt;
+
   return {
     tier,
     documents: {
@@ -453,10 +461,7 @@ export async function getUserUsageStats(userId: string) {
         tier === "premium"
           ? limits.monthlyPremiumUses
           : limits.weeklyPremiumUses,
-      resetAt:
-        tier === "premium"
-          ? user.monthlyPremiumUsesResetAt
-          : user.weeklyPremiumUsesResetAt,
+      resetAt: resetAt,
       period: tier === "premium" ? "monthly" : "weekly",
     },
   };
