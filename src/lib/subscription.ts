@@ -26,6 +26,52 @@ export const SUBSCRIPTION_LIMITS = {
 };
 
 /**
+ * Calculate period end from billing cycle anchor for recurring subscriptions
+ */
+function calculatePeriodEndFromAnchor(
+  subscription: Stripe.Subscription
+): Date | null {
+  if (!subscription.billing_cycle_anchor || !subscription.items.data[0]?.price.recurring) {
+    return null;
+  }
+
+  const interval = subscription.items.data[0].price.recurring.interval;
+  const intervalCount = subscription.items.data[0].price.recurring.interval_count || 1;
+  const anchorTimestamp = subscription.billing_cycle_anchor * 1000;
+  const now = Date.now();
+
+  // Start from the billing cycle anchor
+  let periodStart = new Date(anchorTimestamp);
+  let periodEnd = new Date(periodStart);
+
+  // Calculate how many milliseconds in one billing period
+  const calculatePeriodEnd = (startDate: Date): Date => {
+    const endDate = new Date(startDate);
+    if (interval === 'month') {
+      endDate.setMonth(endDate.getMonth() + intervalCount);
+    } else if (interval === 'year') {
+      endDate.setFullYear(endDate.getFullYear() + intervalCount);
+    } else if (interval === 'week') {
+      endDate.setDate(endDate.getDate() + (7 * intervalCount));
+    } else if (interval === 'day') {
+      endDate.setDate(endDate.getDate() + intervalCount);
+    }
+    return endDate;
+  };
+
+  // Find the current billing period by advancing from the anchor date
+  periodEnd = calculatePeriodEnd(periodStart);
+  
+  // Keep advancing periods until we find the one that contains "now"
+  while (periodEnd.getTime() <= now) {
+    periodStart = new Date(periodEnd);
+    periodEnd = calculatePeriodEnd(periodStart);
+  }
+
+  return periodEnd;
+}
+
+/**
  * Sync subscription data from Stripe
  */
 async function syncSubscriptionFromStripe(
@@ -38,19 +84,39 @@ async function syncSubscriptionFromStripe(
   try {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     
-    // Use Stripe's current_period_end directly (most reliable)
-    const periodEnd = (subscription as any).current_period_end;
-    const currentPeriodEnd = periodEnd ? new Date(periodEnd * 1000) : null;
+    // Try multiple ways to get current_period_end
+    let periodEnd: number | null = null;
+    
+    // Method 1: Direct property access
+    if ((subscription as any).current_period_end) {
+      periodEnd = (subscription as any).current_period_end;
+    }
+    
+    // Method 2: Check if it's a number directly on the subscription
+    if (!periodEnd && typeof (subscription as any).currentPeriodEnd === 'number') {
+      periodEnd = (subscription as any).currentPeriodEnd;
+    }
+
+    let currentPeriodEnd: Date | null = periodEnd ? new Date(periodEnd * 1000) : null;
+
+    // If we still don't have a period end but it's a recurring subscription, calculate it
+    if (!currentPeriodEnd && subscription.items.data[0]?.price.recurring && subscription.status === 'active') {
+      console.log(`[Sync Subscription] Calculating period end from billing cycle anchor for ${subscriptionId}`);
+      currentPeriodEnd = calculatePeriodEndFromAnchor(subscription);
+    }
 
     console.log(`[Sync Subscription] Retrieved subscription ${subscriptionId}:`, {
       status: subscription.status,
-      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : 'null',
+      current_period_end_raw: (subscription as any).current_period_end,
+      current_period_end_calculated: currentPeriodEnd?.toISOString() || 'null',
       hasRecurring: !!subscription.items.data[0]?.price.recurring,
       interval: subscription.items.data[0]?.price.recurring?.interval,
+      billing_cycle_anchor: subscription.billing_cycle_anchor,
+      subscription_keys: Object.keys(subscription).filter(k => k.includes('period') || k.includes('Period')),
     });
 
     if (!currentPeriodEnd && subscription.status === 'active') {
-      console.warn(`[Sync Subscription] Warning: Active subscription ${subscriptionId} has no current_period_end`);
+      console.warn(`[Sync Subscription] Warning: Active subscription ${subscriptionId} has no current_period_end and could not calculate it`);
     }
 
     return {
