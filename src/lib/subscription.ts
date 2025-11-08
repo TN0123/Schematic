@@ -92,13 +92,21 @@ export async function getUserSubscriptionTier(
           
           if (syncResult) {
             // Update the user's subscription data
+            // Also update monthlyPremiumUsesResetAt to match the new period end
+            const updateData: any = {
+              stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
+              subscriptionStatus: syncResult.status,
+              stripePriceId: syncResult.priceId,
+            };
+
+            // If we have a new period end and subscription is active, update the reset date
+            if (syncResult.status === "active" && syncResult.currentPeriodEnd) {
+              updateData.monthlyPremiumUsesResetAt = syncResult.currentPeriodEnd;
+            }
+
             await prisma.user.update({
               where: { id: userId },
-              data: {
-                stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
-                subscriptionStatus: syncResult.status,
-                stripePriceId: syncResult.priceId,
-              },
+              data: updateData,
             });
 
             // Check again with updated data
@@ -116,13 +124,20 @@ export async function getUserSubscriptionTier(
         const syncResult = await syncSubscriptionFromStripe(user.stripeSubscriptionId);
         
         if (syncResult) {
+          const updateData: any = {
+            stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
+            subscriptionStatus: syncResult.status,
+            stripePriceId: syncResult.priceId,
+          };
+
+          // If we have a new period end and subscription is active, update the reset date
+          if (syncResult.status === "active" && syncResult.currentPeriodEnd) {
+            updateData.monthlyPremiumUsesResetAt = syncResult.currentPeriodEnd;
+          }
+
           await prisma.user.update({
             where: { id: userId },
-            data: {
-              stripeCurrentPeriodEnd: syncResult.currentPeriodEnd,
-              subscriptionStatus: syncResult.status,
-              stripePriceId: syncResult.priceId,
-            },
+            data: updateData,
           });
 
           if (syncResult.status === "active") {

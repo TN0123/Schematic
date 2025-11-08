@@ -154,13 +154,18 @@ export async function POST(req: NextRequest) {
       : calculateCurrentPeriodEnd(subscription);
     console.log(`[Sync Subscription] Period end: ${currentPeriodEnd?.toISOString()}`);
 
-    const updateData = {
+    const updateData: any = {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0]?.price.id,
       stripeCurrentPeriodEnd: currentPeriodEnd,
       subscriptionStatus: subscription.status,
     };
+
+    // If subscription is active and we have a period end, update the reset date
+    if (subscription.status === "active" && currentPeriodEnd) {
+      updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+    }
 
     console.log(`[Sync Subscription] Updating user:`, updateData);
 

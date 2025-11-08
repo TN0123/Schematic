@@ -170,14 +170,22 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
   console.log(`[Subscription Update] Period end: ${currentPeriodEnd?.toISOString()}`);
 
   // Update user subscription info
+  // Also update monthlyPremiumUsesResetAt to match the new period end for active subscriptions
+  const updateData: any = {
+    stripeSubscriptionId: subscriptionId,
+    stripePriceId: priceId,
+    stripeCurrentPeriodEnd: currentPeriodEnd,
+    subscriptionStatus: status,
+  };
+
+  // If subscription is active and we have a period end, update the reset date
+  if (status === "active" && currentPeriodEnd) {
+    updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+  }
+
   await prisma.user.update({
     where: { id: user.id },
-    data: {
-      stripeSubscriptionId: subscriptionId,
-      stripePriceId: priceId,
-      stripeCurrentPeriodEnd: currentPeriodEnd,
-      subscriptionStatus: status,
-    },
+    data: updateData,
   });
 
   console.log(`Updated subscription for user: ${user.email}`);
@@ -254,13 +262,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     console.log(`[Checkout Completed] Period end: ${currentPeriodEnd?.toISOString()}`);
 
-    const updateData = {
+    const updateData: any = {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscription.id,
       stripePriceId: subscription.items.data[0]?.price.id,
       stripeCurrentPeriodEnd: currentPeriodEnd,
       subscriptionStatus: subscription.status,
     };
+
+    // If subscription is active and we have a period end, update the reset date
+    if (subscription.status === "active" && currentPeriodEnd) {
+      updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+    }
 
     console.log(`[Checkout Completed] Updating user with data:`, updateData);
 
@@ -301,12 +314,19 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   });
 
   if (user) {
+    const updateData: any = {
+      subscriptionStatus: subscription.status,
+      stripeCurrentPeriodEnd: currentPeriodEnd,
+    };
+
+    // If subscription is active and we have a period end, update the reset date
+    if (subscription.status === "active" && currentPeriodEnd) {
+      updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+    }
+
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        subscriptionStatus: subscription.status,
-        stripeCurrentPeriodEnd: currentPeriodEnd,
-      },
+      data: updateData,
     });
   }
 }
