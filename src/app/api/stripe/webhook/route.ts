@@ -167,20 +167,27 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     ? new Date(periodEnd * 1000)
     : calculateCurrentPeriodEnd(subscription);
 
-  console.log(`[Subscription Update] Period end: ${currentPeriodEnd?.toISOString()}`);
+  console.log(`[Subscription Update] Period end: ${currentPeriodEnd?.toISOString()}, Status: ${status}`);
 
   // Update user subscription info
   // Also update monthlyPremiumUsesResetAt to match the new period end for active subscriptions
   const updateData: any = {
     stripeSubscriptionId: subscriptionId,
     stripePriceId: priceId,
-    stripeCurrentPeriodEnd: currentPeriodEnd,
     subscriptionStatus: status,
   };
 
-  // If subscription is active and we have a period end, update the reset date
-  if (status === "active" && currentPeriodEnd) {
-    updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+  // Always update stripeCurrentPeriodEnd if we have a value
+  // For active subscriptions, never set to null (keep existing if Stripe returns null)
+  if (currentPeriodEnd) {
+    updateData.stripeCurrentPeriodEnd = currentPeriodEnd;
+    // If subscription is active, also update the reset date
+    if (status === "active") {
+      updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+    }
+  } else if (status === "active") {
+    // Active subscription but no period end - log warning but don't set to null
+    console.warn(`[Subscription Update] Active subscription ${subscriptionId} has no period end - keeping existing value`);
   }
 
   await prisma.user.update({
@@ -307,7 +314,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     ? new Date(periodEnd * 1000)
     : calculateCurrentPeriodEnd(subscription);
 
-  console.log(`[Payment Succeeded] Period end: ${currentPeriodEnd?.toISOString()}`);
+  console.log(`[Payment Succeeded] Period end: ${currentPeriodEnd?.toISOString()}, Status: ${subscription.status}`);
 
   const user = await prisma.user.findUnique({
     where: { stripeCustomerId: customerId },
@@ -316,12 +323,21 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   if (user) {
     const updateData: any = {
       subscriptionStatus: subscription.status,
-      stripeCurrentPeriodEnd: currentPeriodEnd,
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: subscription.items.data[0]?.price.id || null,
     };
 
-    // If subscription is active and we have a period end, update the reset date
-    if (subscription.status === "active" && currentPeriodEnd) {
-      updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+    // Always update stripeCurrentPeriodEnd if we have a value
+    // For active subscriptions, never set to null (keep existing if Stripe returns null)
+    if (currentPeriodEnd) {
+      updateData.stripeCurrentPeriodEnd = currentPeriodEnd;
+      // If subscription is active, also update the reset date
+      if (subscription.status === "active") {
+        updateData.monthlyPremiumUsesResetAt = currentPeriodEnd;
+      }
+    } else if (subscription.status === "active") {
+      // Active subscription but no period end - log warning but don't set to null
+      console.warn(`[Payment Succeeded] Active subscription ${subscriptionId} has no period end - keeping existing value`);
     }
 
     await prisma.user.update({
