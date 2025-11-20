@@ -130,6 +130,7 @@ export default function WriteEditor({
   const [showHandleChangesTooltip, setShowHandleChangesTooltip] =
     useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [notification, setNotification] = useState<string | null>(null);
 
   // Debounced save for content
   const debouncedSaveContent = useDebouncedCallback((newContent: string) => {
@@ -630,6 +631,20 @@ export default function WriteEditor({
       textEditTimerRef.current = null;
     }
 
+    // Check if the original text exists in the document
+    // Skip this check for special keys like !ADD_TO_END!
+    if (original !== "!ADD_TO_END!" && !inputText.includes(original)) {
+      // Original text not found, append to end instead
+      setNotification("No valid replacement found, adding to end");
+      setTimeout(() => setNotification(null), 3000);
+      // Remove the original change from pendingChanges since we're appending instead
+      const updatedChanges = { ...pendingChanges };
+      delete updatedChanges[original];
+      setPendingChanges(updatedChanges);
+      appendChange(replacement);
+      return;
+    }
+
     // Record undo operation
     if (!isUndoingRef.current && !isRedoingRef.current) {
       const undoOp = createAcceptSuggestionOperation(
@@ -1004,6 +1019,18 @@ export default function WriteEditor({
                 <X className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Banner */}
+      {notification && (
+        <div className="w-full max-w-[1200px] px-4 mb-4 mt-4">
+          <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              {notification}
+            </p>
           </div>
         </div>
       )}
