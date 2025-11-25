@@ -1129,19 +1129,7 @@ export default function GoalsPanel({
 
         {/* Progress Indicator */}
         {selectedTodo && selectedTodo.data.items.length > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-gray-400 dark:text-dark-textSecondary mb-1">
-              <span>
-                {hasItemsWithDates && todayItems.length > 0
-                  ? "Today's progress"
-                  : "Progress"}
-              </span>
-              <span>
-                {hasItemsWithDates && todayItems.length > 0
-                  ? `${todayCheckedItems.length}/${todayItems.length} completed`
-                  : `${checkedItems.length}/${selectedTodo.data.items.length} completed`}
-              </span>
-            </div>
+          <div className="mb-3">
             <div className="w-full bg-gray-100 dark:bg-dark-secondary rounded-full h-1.5 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-300 ease-out"
