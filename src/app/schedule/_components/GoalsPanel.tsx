@@ -114,6 +114,7 @@ export default function GoalsPanel({
     string | null
   >(null);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
   // Sort goals by duration type in the order: DAILY, WEEKLY, MONTHLY, YEARLY
   const sortGoalsByDuration = (goalsToSort: Goal[]): Goal[] => {
@@ -1275,70 +1276,83 @@ export default function GoalsPanel({
                 );
               })}
 
-              {/* Completed Items */}
+              {/* Completed Items - Collapsible */}
               {checkedItems.length > 0 && (
-                <div className="mt-6 space-y-1">
-                  <div className="flex items-center gap-2 py-2">
-                    <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
+                <div className="mt-6">
+                  <button
+                    onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
+                    className="flex items-center gap-2 w-full py-2 group hover:bg-gray-50 dark:hover:bg-dark-hover rounded-lg px-2 transition-all duration-150"
+                  >
+                    <ChevronRight
+                      className={`w-4 h-4 text-gray-400 dark:text-dark-textSecondary transition-transform duration-200 ${
+                        isCompletedExpanded ? "rotate-90" : ""
+                      }`}
+                    />
                     <span className="text-xs font-medium text-gray-500 dark:text-dark-textSecondary">
-                      Completed • {checkedItems.length}
+                      Completed ({checkedItems.length})
                     </span>
-                    <hr className="flex-grow border-gray-200 dark:border-dark-divider" />
-                  </div>
-                  {checkedItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150 min-w-0"
-                    >
-                      <button
-                        onClick={() =>
-                          updateTodoItem(item.id, { checked: false })
-                        }
-                        aria-label="Uncheck task"
-                        className="relative"
-                      >
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      </button>
-                      <div className="flex-grow flex items-center min-w-0">
-                        <div className="flex items-center gap-2 w-full min-w-0">
-                          <textarea
-                            ref={(el) => {
-                              if (el) textareaRefs.current[item.id] = el;
-                            }}
-                            rows={1}
-                            value={item.text}
-                            onChange={(e) => {
-                              e.target.style.height = "auto";
-                              e.target.style.height =
-                                Math.max(20, e.target.scrollHeight) + "px";
-                              updateTodoItem(item.id, { text: e.target.value });
-                            }}
-                            className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
-                            style={{ minHeight: "20px" }}
-                          />
-                          {item.dueDate && (
-                            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
-                              <span>
-                                {item.dueTime
-                                  ? formatDueDateWithTime(
-                                      item.dueDate,
-                                      item.dueTime
-                                    )
-                                  : formatDueDate(item.dueDate)}
-                              </span>
+                  </button>
+
+                  {isCompletedExpanded && (
+                    <div className="space-y-1 mt-1">
+                      {checkedItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="group flex items-center gap-2 rounded-lg px-2 py-2 opacity-60 hover:opacity-80 transition-all duration-150 min-w-0"
+                        >
+                          <button
+                            onClick={() =>
+                              updateTodoItem(item.id, { checked: false })
+                            }
+                            aria-label="Uncheck task"
+                            className="relative"
+                          >
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          </button>
+                          <div className="flex-grow flex items-center min-w-0">
+                            <div className="flex items-center gap-2 w-full min-w-0">
+                              <textarea
+                                ref={(el) => {
+                                  if (el) textareaRefs.current[item.id] = el;
+                                }}
+                                rows={1}
+                                value={item.text}
+                                onChange={(e) => {
+                                  e.target.style.height = "auto";
+                                  e.target.style.height =
+                                    Math.max(20, e.target.scrollHeight) + "px";
+                                  updateTodoItem(item.id, {
+                                    text: e.target.value,
+                                  });
+                                }}
+                                className="flex-grow bg-transparent focus:outline-none line-through text-gray-500 dark:text-dark-textSecondary resize-none border-none text-sm leading-5 min-w-0 overflow-hidden"
+                                style={{ minHeight: "20px" }}
+                              />
+                              {item.dueDate && (
+                                <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-dark-textSecondary flex-shrink-0">
+                                  <span>
+                                    {item.dueTime
+                                      ? formatDueDateWithTime(
+                                          item.dueDate,
+                                          item.dueTime
+                                        )
+                                      : formatDueDate(item.dueDate)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                          )}
+                          </div>
+                          <button
+                            onClick={() => removeTodoItem(item.id)}
+                            className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
+                            aria-label="Delete item"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        onClick={() => removeTodoItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-gray-400 transition-all hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-hover dark:hover:text-dark-textPrimary"
-                        aria-label="Delete item"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
