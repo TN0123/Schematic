@@ -64,11 +64,30 @@ function SortableColumnComponent({
   const cardCount = cards.length;
   const isOverLimit = column.limit && cardCount > column.limit;
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    // Don't create a card if double-clicking on interactive elements or cards
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === "BUTTON" ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("textarea") ||
+      target.closest("li") || // Don't trigger when double-clicking on cards
+      target.closest('[role="button"]')
+    ) {
+      return;
+    }
+    onAddCard(column.id);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className="flex flex-col h-full bg-gray-50 dark:bg-dark-secondary rounded-lg p-2 sm:p-4 overflow-y-scroll"
+      onDoubleClick={handleDoubleClick}
     >
       {/* Column Header */}
       <div className="flex items-center justify-between mb-2 sm:mb-4">
