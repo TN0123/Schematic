@@ -498,8 +498,8 @@ export default function BulletinKanban({
         }
       }
 
-      // Move card within column with Ctrl + Up/Down
-      else if (event.ctrlKey && event.key === "ArrowUp" && !event.metaKey) {
+      // Move card within column with Cmd/Ctrl + Up/Down
+      else if ((event.metaKey || event.ctrlKey) && event.key === "ArrowUp") {
         event.preventDefault();
         if (currentCardIndex > 0) {
           const cardIndex = cards.findIndex(
@@ -515,7 +515,7 @@ export default function BulletinKanban({
             });
           }
         }
-      } else if (event.ctrlKey && event.key === "ArrowDown" && !event.metaKey) {
+      } else if ((event.metaKey || event.ctrlKey) && event.key === "ArrowDown") {
         event.preventDefault();
         if (currentCardIndex < currentColumnCards.length - 1) {
           const cardIndex = cards.findIndex(
