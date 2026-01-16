@@ -7,6 +7,7 @@ import {
   MessageCircle,
   X,
   CircleArrowUp,
+  ArrowUp,
   RefreshCw,
   UserPen,
   Eye,
@@ -206,10 +207,10 @@ export default function DashboardChat({
 
   // Helper function to render chat input
   const renderChatInput = () => (
-    <div className="relative">
+    <div className="flex items-center w-full px-4 sm:px-6 py-1 border border-gray-200 dark:border-dark-divider rounded-[2rem] bg-white dark:bg-dark-secondary shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] focus-within:ring-4 focus-within:ring-gray-900/5 dark:focus-within:ring-white/5 focus-within:border-gray-300 dark:focus-within:border-dark-divider transition-all duration-300 ease-in-out group">
       <textarea
         ref={inputRef}
-        className="w-full p-3 sm:p-4 pr-12 sm:pr-32 resize-none border-2 dark:border-dark-divider rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-dark-secondary dark:text-dark-textPrimary text-sm sm:text-base placeholder-gray-400 dark:placeholder-dark-textDisabled shadow-lg transition-all duration-200"
+        className="flex-1 py-2 sm:py-3 resize-none bg-transparent focus:outline-none dark:text-dark-textPrimary text-xs sm:text-sm placeholder-gray-400 dark:placeholder-dark-textDisabled"
         value={chatInput}
         onChange={(e) => setChatInput(e.target.value)}
         onKeyDown={(e) => {
@@ -222,19 +223,22 @@ export default function DashboardChat({
         rows={1}
         disabled={isChatLoading}
         style={{
-          minHeight: "48px",
+          minHeight: "40px",
           maxHeight: "200px",
         }}
       />
-      <div className="absolute right-1.5 sm:right-2 top-2 sm:top-3 flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center ml-2">
         <button
-          className="p-1.5 sm:p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 flex items-center justify-center"
+          className={`p-1.5 sm:p-2 rounded-full transition-all duration-300 flex items-center justify-center active:scale-95 ${
+            chatInput.trim()
+              ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm hover:opacity-90"
+              : "text-gray-300 dark:text-dark-textDisabled"
+          }`}
           onClick={handleChatSubmit}
           disabled={isChatLoading || !chatInput.trim()}
           title="Send message"
         >
-          <CircleArrowUp size={16} className="sm:hidden" />
-          <CircleArrowUp size={20} className="hidden sm:block" />
+          <ArrowUp size={18} className="stroke-[3]" />
         </button>
       </div>
     </div>
@@ -292,12 +296,12 @@ export default function DashboardChat({
                       }`}
                     >
                       <div
-                        className={`p-3 rounded-lg max-w-xs lg:max-w-md ${
+                        className={`p-4 rounded-[1.5rem] max-w-xs lg:max-w-md shadow-sm transition-all duration-300 ${
                           message.role === "user"
-                            ? "bg-blue-500 text-white"
+                            ? "bg-blue-500 text-white rounded-tr-none shadow-blue-500/10 hover:shadow-blue-500/20"
                             : message.isError
-                            ? "bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700"
-                            : "bg-gray-200 dark:bg-dark-secondary"
+                            ? "bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-tl-none"
+                            : "bg-white dark:bg-dark-secondary border border-gray-100 dark:border-dark-divider rounded-tl-none shadow-black/5 hover:shadow-black/10"
                         }`}
                       >
                         <div className="text-sm prose dark:prose-invert max-w-none prose-sm">
@@ -459,7 +463,7 @@ export default function DashboardChat({
                       exit={{ opacity: 0, y: -10, height: 0 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                      <div className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary">
+                      <div className="p-4 rounded-[1.5rem] rounded-tl-none bg-white dark:bg-dark-secondary border border-gray-100 dark:border-dark-divider shadow-sm">
                         <div className="typing-indicator">
                           <span></span>
                           <span></span>
@@ -577,15 +581,17 @@ export default function DashboardChat({
       <style jsx global>{`
         .typing-indicator {
           display: flex;
-          gap: 4px;
+          gap: 5px;
           align-items: center;
+          padding: 2px 4px;
         }
         .typing-indicator span {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
-          background-color: #9ca3af;
-          animation: typing 1.4s infinite;
+          background-color: #374151;
+          opacity: 0.4;
+          animation: typing 1.4s infinite ease-in-out;
         }
         .typing-indicator span:nth-child(2) {
           animation-delay: 0.2s;
@@ -598,9 +604,11 @@ export default function DashboardChat({
           60%,
           100% {
             transform: translateY(0);
+            opacity: 0.4;
           }
           30% {
-            transform: translateY(-10px);
+            transform: translateY(-6px);
+            opacity: 1;
           }
         }
       `}</style>

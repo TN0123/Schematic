@@ -16,7 +16,7 @@ const MemoizedDateTimeDisplay = memo(DateTimeDisplay);
 
 function DashboardClient({ userId }: DashboardClientProps) {
   return (
-    <main className="min-h-screen w-full px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background pb-20 md:py-8">
+    <main className="min-h-screen w-full px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background">
       <div className="max-w-4xl mx-auto min-h-screen flex flex-col">
         {/* Date/Time section with fixed height to prevent layout shift */}
         <div
