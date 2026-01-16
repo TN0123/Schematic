@@ -10,8 +10,6 @@ import {
   RefreshCw,
   UserPen,
   Eye,
-  Pen,
-  Check,
   User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,8 +59,6 @@ export default function DashboardChat({
     after: string;
   }>({ isOpen: false, before: "", after: "" });
   const [assistantName, setAssistantName] = useState("");
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState("");
   const [isLoadingName, setIsLoadingName] = useState(true);
 
   const isChatActive = chatMessages.length > 0;
@@ -208,56 +204,6 @@ export default function DashboardChat({
     setChatMessages((prev) => prev.slice(0, -1));
   };
 
-  const handleEditName = () => {
-    setTempName(assistantName);
-    setIsEditingName(true);
-  };
-
-  const handleSaveName = async () => {
-    if (tempName.trim() === assistantName) {
-      setIsEditingName(false);
-      return;
-    }
-
-    // Client-side sanitization
-    const sanitizedName = tempName
-      .trim()
-      .replace(/["'`\\]/g, "") // Remove quotes and backslashes
-      .replace(/[\r\n\t]/g, " ") // Replace newlines and tabs with spaces
-      .replace(/\s+/g, " ") // Collapse multiple spaces
-      .substring(0, 50); // Ensure max length
-
-    if (sanitizedName.length === 0) {
-      alert("Assistant name contains only invalid characters");
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/user/assistant-name", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assistantName: sanitizedName }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAssistantName(data.assistantName);
-        setIsEditingName(false);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Failed to update assistant name");
-      }
-    } catch (error) {
-      console.error("Error updating assistant name:", error);
-      alert("Failed to update assistant name");
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditingName(false);
-    setTempName("");
-  };
-
   // Helper function to render chat input
   const renderChatInput = () => (
     <div className="relative">
@@ -297,156 +243,43 @@ export default function DashboardChat({
   return (
     <>
       <div className="w-full max-w-4xl mx-auto">
-        {/* Assistant Profile Header - Always at top */}
-        <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-3 sm:mb-4 relative">
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            <motion.div
-              className="flex-shrink-0 flex items-center justify-center"
-              animate={{
-                opacity: [1, 0.7, 1],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            >
-              <User
-                size={20}
-                className="sm:hidden stroke-[1.5] text-gray-900 dark:text-gray-100"
-                style={{
-                  stroke: "currentColor",
-                }}
-              />
-              <User
-                size={24}
-                className="hidden sm:block stroke-[1.5] text-gray-900 dark:text-gray-100"
-                style={{
-                  stroke: "currentColor",
-                }}
-              />
-            </motion.div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              {isEditingName ? (
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <input
-                    type="text"
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSaveName();
-                      } else if (e.key === "Escape") {
-                        handleCancelEdit();
-                      }
-                    }}
-                    className="px-2 py-1 text-base sm:text-lg font-semibold bg-transparent border border-gray-300 dark:border-dark-divider rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-dark-textPrimary w-full max-w-[200px] sm:max-w-none"
-                    autoFocus
-                    maxLength={50}
-                  />
-                  <button
-                    onClick={handleSaveName}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
-                    title="Save name"
-                  >
-                    <Check
-                      size={14}
-                      className="text-green-600 dark:text-green-400 sm:hidden"
-                    />
-                    <Check
-                      size={16}
-                      className="text-green-600 dark:text-green-400 hidden sm:block"
-                    />
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200"
-                    title="Cancel"
-                  >
-                    <X
-                      size={14}
-                      className="text-gray-500 dark:text-dark-textSecondary sm:hidden"
-                    />
-                    <X
-                      size={16}
-                      className="text-gray-500 dark:text-dark-textSecondary hidden sm:block"
-                    />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {isLoadingName ? (
-                    <div className="h-5 sm:h-6 w-32 sm:w-40 bg-gray-200 dark:bg-dark-secondary rounded animate-pulse"></div>
-                  ) : (
-                    <>
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-dark-textPrimary truncate">
-                        {assistantName}
-                      </h3>
-                      <button
-                        onClick={handleEditName}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded transition-colors duration-200 flex-shrink-0"
-                        title="Edit assistant name"
-                      >
-                        <Pen
-                          size={12}
-                          className="text-gray-500 dark:text-dark-textSecondary sm:hidden"
-                        />
-                        <Pen
-                          size={14}
-                          className="text-gray-500 dark:text-dark-textSecondary hidden sm:block"
-                        />
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          {chatMessages.length > 0 && (
-            <button
-              onClick={() => setChatMessages([])}
-              className="absolute right-0 p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-dark-actionHover rounded-lg transition-colors duration-200 text-gray-500 dark:text-dark-textSecondary flex-shrink-0"
-              title="Clear chat"
-            >
-              <RefreshCw size={16} className="sm:hidden" />
-              <RefreshCw size={18} className="hidden sm:block" />
-            </button>
-          )}
-        </div>
-
         {/* Chat Input at top when no messages */}
         {chatMessages.length === 0 && (
-          <div className="mb-4 sm:mb-8 flex-shrink-0">{renderChatInput()}</div>
+          <div className="mb-4 sm:mb-8 flex-shrink-0 animate-fade-in">
+            {renderChatInput()}
+          </div>
         )}
 
         {/* Chat Messages Area */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {chatMessages.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
               className="flex flex-col"
             >
               <div
                 ref={chatContainerRef}
-                className="space-y-4 overflow-y-auto pb-4 max-h-[60vh]"
+                className="space-y-4 overflow-y-auto pb-4 max-h-[60vh] scroll-smooth"
               >
-                <AnimatePresence>
+                <AnimatePresence mode="popLayout">
                   {chatMessages.map((message, index) => (
                     <motion.div
                       key={index}
                       layout
-                      initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
                       transition={{
                         opacity: { duration: 0.2 },
+                        scale: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+                        y: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
                         layout: {
                           type: "spring",
-                          bounce: 0.4,
-                          duration: 0.3,
+                          bounce: 0.15,
+                          duration: 0.4,
                         },
                       }}
                       style={{
@@ -617,22 +450,25 @@ export default function DashboardChat({
                   ))}
                 </AnimatePresence>
 
-                {isChatLoading && (
-                  <div className="flex justify-start">
+                <AnimatePresence>
+                  {isChatLoading && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary"
+                      className="flex justify-start"
+                      initial={{ opacity: 0, y: 10, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, y: -10, height: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
                     >
-                      <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                      <div className="p-3 rounded-lg bg-gray-200 dark:bg-dark-secondary">
+                        <div className="typing-indicator">
+                          <span></span>
+                          <span></span>
+                          <span></span>
+                        </div>
                       </div>
                     </motion.div>
-                  </div>
-                )}
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Chat Input at bottom when messages exist */}
