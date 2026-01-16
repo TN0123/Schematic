@@ -61,6 +61,7 @@ model User {
   googleCalendarWatchChannelId  String?
   googleCalendarWatchExpiration DateTime?
   syncedEvents                  SyncedEvent[]
+  shortcuts                     Shortcut[]
 }
 
 model Account {
@@ -229,6 +230,27 @@ enum HabitType {
   COMMUTE
   WORK_BLOCK
   PERSONAL
+}
+
+enum ShortcutTargetType {
+  DOCUMENT
+  BULLETIN
+}
+
+model Shortcut {
+  id         String             @id @default(cuid())
+  userId     String
+  targetType ShortcutTargetType
+  targetId   String
+  x          Float
+  y          Float
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, targetType, targetId])
 }
 
 /// Real-time per-user habit statistics
