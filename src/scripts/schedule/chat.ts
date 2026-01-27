@@ -3,12 +3,20 @@ import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
 import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
 import {
-  getMemoryContext,
-  formatMemoryForPrompt,
+  getExtendedMemoryContext,
+  formatExtendedMemoryForPrompt,
   saveToMemory,
   updateUserProfileField,
+  searchMemoriesBySemantic,
   UserProfile,
+  MemorySearchResult,
 } from "@/lib/memory";
+import {
+  getContextUsage,
+  splitHistoryForSummarization,
+  truncateHistory,
+  estimateTokens,
+} from "@/lib/token-utils";
 
 const prisma = new PrismaClient();
 
@@ -273,9 +281,10 @@ export async function scheduleChat(
         }
       }
 
-      // Load memory context from the new multi-layer memory system
-      const memory = await getMemoryContext(userId, userTimezone);
-      memoryContext = formatMemoryForPrompt(memory);
+      // Load extended memory context with auto-fetched relevant content
+      // This includes: daily memories, longterm memory, profile, keyword-matched bulletins, and relevant past memories
+      const memory = await getExtendedMemoryContext(userId, userTimezone, instructions);
+      memoryContext = formatExtendedMemoryForPrompt(memory);
       
       // Fetch goals context based on the selected view
       if (goalsView === "text" && user?.goalText) {
@@ -528,6 +537,27 @@ IMPORTANT:
             required: ["category", "field", "value"],
           },
         },
+        {
+          name: "search_memories",
+          description:
+            "Search through the user's saved memories semantically. Use this when you need to recall past conversations, facts, or information that was previously saved. This performs a deep search through all memories using AI similarity matching.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description:
+                  "What to search for in memories. Can be a question, topic, or keywords related to what you want to find.",
+              },
+              limit: {
+                type: "number",
+                description:
+                  "Maximum number of results to return (default: 5, max: 10)",
+              },
+            },
+            required: ["query"],
+          },
+        },
       ],
     },
   ];
@@ -538,7 +568,95 @@ IMPORTANT:
     tools: tools,
   });
 
-  const formattedHistory = history.map(
+  // ==========================================================================
+  // PRE-COMPACTION FLUSH: Check context size and summarize if approaching limit
+  // ==========================================================================
+  let processedHistory = history;
+  let preCompactionSummary: string | null = null;
+
+  if (userId && timezone) {
+    const contextUsage = getContextUsage(systemPrompt, history, userPrompt);
+    
+    if (contextUsage.recommendedAction === "summarize" || contextUsage.recommendedAction === "truncate") {
+      console.log(`Pre-compaction triggered: ${contextUsage.percentageUsed.toFixed(1)}% context used`);
+      
+      // Split history into parts: older messages to summarize, recent messages to keep
+      const { toSummarize, toKeep } = splitHistoryForSummarization(history, 20000);
+      
+      if (toSummarize.length > 0) {
+        try {
+          // Use a lightweight model call to extract important points
+          const extractionPrompt = `
+You are analyzing a conversation to extract important information that should be remembered.
+
+CONVERSATION TO ANALYZE:
+${toSummarize.map(m => `${m.role}: ${m.content}`).join('\n\n')}
+
+Extract the following and return as JSON:
+{
+  "dailyFacts": ["facts specific to today's events or decisions"],
+  "longtermFacts": ["durable facts about the user that should be remembered permanently"],
+  "summary": "A brief 1-2 sentence summary of what was discussed"
+}
+
+Only include meaningful facts, not trivial conversation. Return valid JSON only.`;
+
+          const extractionModel = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+          });
+          
+          const extractionResult = await extractionModel.generateContent(extractionPrompt);
+          const extractionText = extractionResult.response.text();
+          
+          // Parse the extraction result
+          try {
+            const cleanedText = extractionText
+              .replace(/^```json\s*/, "")
+              .replace(/\s*```$/, "")
+              .trim();
+            const extracted = JSON.parse(cleanedText);
+            
+            // Save daily facts
+            if (extracted.dailyFacts && extracted.dailyFacts.length > 0) {
+              const dailyContent = extracted.dailyFacts.join('\n• ');
+              await saveToMemory(userId, `Pre-compaction summary:\n• ${dailyContent}`, "daily", timezone);
+            }
+            
+            // Save longterm facts
+            if (extracted.longtermFacts && extracted.longtermFacts.length > 0) {
+              const longtermContent = extracted.longtermFacts.join('\n• ');
+              await saveToMemory(userId, `From conversation:\n• ${longtermContent}`, "longterm", timezone);
+            }
+            
+            preCompactionSummary = extracted.summary || null;
+            console.log(`Pre-compaction: Saved ${extracted.dailyFacts?.length || 0} daily facts, ${extracted.longtermFacts?.length || 0} longterm facts`);
+          } catch (parseError) {
+            console.error("Failed to parse extraction result:", parseError);
+          }
+        } catch (extractError) {
+          console.error("Pre-compaction extraction failed:", extractError);
+        }
+        
+        // Use only the recent history
+        processedHistory = toKeep;
+        
+        // If we have a summary, prepend it to give context
+        if (preCompactionSummary && processedHistory.length > 0) {
+          processedHistory = [
+            { role: "user", content: `[Earlier conversation summary: ${preCompactionSummary}]` },
+            ...processedHistory
+          ];
+        }
+      }
+    } else if (contextUsage.recommendedAction === "truncate") {
+      // If still too large, just truncate
+      processedHistory = truncateHistory(history, 50000);
+      console.log(`Truncated history from ${history.length} to ${processedHistory.length} messages`);
+    }
+  }
+  // ==========================================================================
+
+  const formattedHistory = processedHistory.map(
     (entry: { role: string; content: string }) => ({
       role: entry.role,
       parts: [{ text: entry.content }],
@@ -710,6 +828,46 @@ IMPORTANT:
         } catch (error) {
           console.error("Error in update_user_profile:", error);
           const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to update profile"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        }
+      } else if (name === "search_memories" && userId) {
+        const { query, limit } = args;
+        
+        try {
+          // Use semantic search to find relevant memories
+          const searchResults = await searchMemoriesBySemantic(
+            userId,
+            query,
+            Math.min(limit || 5, 10)
+          );
+
+          // Format results for the model
+          const formattedResults = searchResults.map((m: MemorySearchResult) => ({
+            type: m.type,
+            date: m.date ? new Date(m.date).toLocaleDateString() : "Long-term",
+            content: m.content.length > 300 
+              ? m.content.substring(0, 300) + "..." 
+              : m.content,
+            relevanceScore: Math.round(m.score * 100) / 100,
+          }));
+
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "search_memories",
+            description: `Searched memories for "${query}" - found ${searchResults.length} results`,
+          });
+
+          // Send results back to the model
+          const functionResponseMessage = `Function ${name} returned: ${JSON.stringify({
+            success: true,
+            query,
+            resultsCount: searchResults.length,
+            memories: formattedResults,
+          })}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        } catch (error) {
+          console.error("Error in search_memories:", error);
+          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to search memories"}`;
           result = await chatSession.sendMessage(functionResponseMessage);
         }
       } else {

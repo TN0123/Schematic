@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import type { MouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { FileText, StickyNote, Trash2, X } from "lucide-react";
+import { FileText, StickyNote, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import DashboardChat from "./DashboardChat";
 import DateTimeDisplay from "./DateTimeDisplay";
@@ -20,10 +20,6 @@ interface Shortcut {
 
 interface DashboardClientProps {
   userId: string | undefined;
-  recentDocuments: Array<{ id: string; title: string }>;
-  bulletinNotes: Array<{ id: string; title: string; type: string }>;
-  goals: Array<{ id: string; title: string; type: string; createdAt: Date }>;
-  totalGoalsCount: number;
 }
 
 const MemoizedDateTimeDisplay = memo(DateTimeDisplay);
@@ -37,8 +33,6 @@ const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 function DashboardClient({
   userId,
-  recentDocuments,
-  bulletinNotes,
 }: DashboardClientProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,11 +48,6 @@ function DashboardClient({
   const lastDragTimeRef = useRef(0);
 
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [pendingPlacement, setPendingPlacement] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     id: string;
     x: number;
@@ -192,58 +181,6 @@ function DashboardClient({
     };
   }, []);
 
-  const handleDoubleClick = (event: MouseEvent<HTMLElement>) => {
-    if (!userId || isPickerOpen || draggingId) {
-      return;
-    }
-
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-
-    const rect = container.getBoundingClientRect();
-    setPendingPlacement({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    });
-    setIsPickerOpen(true);
-    setContextMenu(null);
-  };
-
-  const handleCreateShortcut = async (
-    targetType: ShortcutTargetType,
-    targetId: string
-  ) => {
-    if (!pendingPlacement || !containerRef.current) {
-      return;
-    }
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = clamp(pendingPlacement.x / rect.width);
-    const y = clamp(pendingPlacement.y / rect.height);
-
-    try {
-      const response = await fetch("/api/shortcuts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetType, targetId, x, y }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create shortcut");
-      }
-
-      const created = (await response.json()) as Shortcut;
-      setShortcuts((prev) => [...prev, created]);
-      setIsPickerOpen(false);
-      setPendingPlacement(null);
-    } catch (error) {
-      console.error(error);
-      setMessage("Unable to create shortcut right now.");
-    }
-  };
-
   const handlePointerDown = (
     event: ReactPointerEvent<HTMLButtonElement>,
     shortcut: Shortcut
@@ -344,7 +281,6 @@ function DashboardClient({
   return (
     <main
       className="min-h-screen w-full px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background"
-      onDoubleClick={handleDoubleClick}
       onClick={() => setContextMenu(null)}
     >
       <div
@@ -365,7 +301,7 @@ function DashboardClient({
             minHeight: "calc(120px + 2.5rem)",
           }}
         >
-          <MemoizedDateTimeDisplay userId={userId} />
+          <MemoizedDateTimeDisplay />
         </div>
 
         {/* Chat section - fills remaining space with smooth transitions */}
@@ -434,105 +370,6 @@ function DashboardClient({
             </button>
           </div>
         )}
-
-        {isPickerOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[60] p-4"
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setIsPickerOpen(false);
-                setPendingPlacement(null);
-              }
-            }}
-          >
-            <div
-              className="bg-white dark:bg-dark-background rounded-lg shadow-xl max-w-xl w-full overflow-hidden"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="flex justify-between items-center p-4 border-b dark:border-dark-divider">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-textPrimary">
-                  Add a shortcut
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsPickerOpen(false);
-                    setPendingPlacement(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700 dark:text-dark-textSecondary dark:hover:text-dark-textPrimary p-1"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="p-4 space-y-5 max-h-[70vh] overflow-y-auto">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary mb-2">
-                    Documents
-                  </h3>
-                  {recentDocuments.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-dark-textDisabled">
-                      No recent documents.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {recentDocuments.map((doc) => (
-                        <button
-                          key={doc.id}
-                          type="button"
-                          onClick={() => handleCreateShortcut("DOCUMENT", doc.id)}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-md border border-gray-200 dark:border-dark-divider hover:bg-gray-50 dark:hover:bg-dark-hover text-left"
-                        >
-                          <FileText className="w-4 h-4 text-gray-600 dark:text-dark-textSecondary" />
-                          <span className="text-sm text-gray-800 dark:text-dark-textPrimary truncate">
-                            {doc.title || "Untitled Document"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-dark-textSecondary mb-2">
-                    Notes
-                  </h3>
-                  {bulletinNotes.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-dark-textDisabled">
-                      No recent notes.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {bulletinNotes.map((note) => (
-                        <button
-                          key={note.id}
-                          type="button"
-                          onClick={() => handleCreateShortcut("BULLETIN", note.id)}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-md border border-gray-200 dark:border-dark-divider hover:bg-gray-50 dark:hover:bg-dark-hover text-left"
-                        >
-                          <StickyNote className="w-4 h-4 text-gray-600 dark:text-dark-textSecondary" />
-                          <span className="text-sm text-gray-800 dark:text-dark-textPrimary truncate">
-                            {note.title || "Untitled Note"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {isLoadingShortcuts && (
-                  <p className="text-xs text-gray-500 dark:text-dark-textDisabled">
-                    Loading shortcuts...
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Bottom hint text */}
-        <div className="mt-auto pb-4 text-center">
-          <p className="text-xs italic text-gray-500 dark:text-dark-textDisabled">
-            double-click to add shortcut
-          </p>
-        </div>
       </div>
     </main>
   );
