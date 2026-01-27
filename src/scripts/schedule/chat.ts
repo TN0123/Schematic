@@ -329,7 +329,7 @@ export async function scheduleChat(
 
   const systemPrompt = `
 You are ${sanitizedAssistantName}, ${userId ? "the user's" : "a"} personal life assistant helping ${userId ? "them" : "users"} manage their schedule and providing helpful advice.
-Current date: ${userNow.toLocaleString("en-US", {
+Current date: ${now.toLocaleString("en-US", {
   timeZone: timezone || "UTC",
   weekday: "long",
   year: "numeric",
