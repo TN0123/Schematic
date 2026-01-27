@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { Event } from "@/app/schedule/types";
 import { getHabitBasedSuggestions } from "@/lib/habit-profile";
 import { aggregateAllTodos } from "@/lib/todo-aggregation";
+import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
 
 const prisma = new PrismaClient();
 
@@ -184,8 +185,12 @@ export async function suggest_events(userId: string, timezone: string) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { scheduleContext: true, goalText: true },
+    select: { goalText: true },
   });
+
+  // Get memory context from the new multi-layer memory system
+  const memoryData = await getMemoryContext(userId, timezone);
+  const memoryContext = formatMemoryForPrompt(memoryData);
 
   const bulletins = await prisma.bulletin.findMany({
     where: { userId },
@@ -364,8 +369,8 @@ export async function suggest_events(userId: string, timezone: string) {
     **EXISTING REMINDERS FOR TODAY (don't repeat!):**
     ${reminderSummary}
 
-    **USER CONTEXT (if available):**
-    ${user?.scheduleContext}
+    **USER MEMORY & CONTEXT:**
+    ${memoryContext}
 
     ---
 

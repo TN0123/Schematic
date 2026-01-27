@@ -49,7 +49,7 @@ function getDateKeyForTimezone(date: Date, timezone: string): Date {
 export async function getDailyMemory(
   userId: string,
   timezone: string,
-  date?: Date
+  date?: Date,
 ): Promise<string | null> {
   const targetDate = date || new Date();
   const dateKey = getDateKeyForTimezone(targetDate, timezone);
@@ -72,7 +72,7 @@ export async function getDailyMemory(
 export async function appendToDailyMemory(
   userId: string,
   content: string,
-  timezone: string
+  timezone: string,
 ): Promise<void> {
   const dateKey = getDateKeyForTimezone(new Date(), timezone);
 
@@ -93,7 +93,7 @@ export async function appendToDailyMemory(
       hour12: true,
     });
     const newContent = `${existing.content}\n\n[${timestamp}] ${content}`;
-    
+
     await prisma.userMemory.update({
       where: { id: existing.id },
       data: { content: newContent },
@@ -106,7 +106,7 @@ export async function appendToDailyMemory(
       minute: "2-digit",
       hour12: true,
     });
-    
+
     await prisma.userMemory.create({
       data: {
         userId,
@@ -121,7 +121,9 @@ export async function appendToDailyMemory(
 /**
  * Get the user's long-term memory
  */
-export async function getLongtermMemory(userId: string): Promise<string | null> {
+export async function getLongtermMemory(
+  userId: string,
+): Promise<string | null> {
   const memory = await prisma.userMemory.findFirst({
     where: {
       userId,
@@ -138,7 +140,7 @@ export async function getLongtermMemory(userId: string): Promise<string | null> 
  */
 export async function updateLongtermMemory(
   userId: string,
-  content: string
+  content: string,
 ): Promise<void> {
   const existing = await prisma.userMemory.findFirst({
     where: {
@@ -168,7 +170,9 @@ export async function updateLongtermMemory(
 /**
  * Get the user's structured profile
  */
-export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+export async function getUserProfile(
+  userId: string,
+): Promise<UserProfile | null> {
   const memory = await prisma.userMemory.findFirst({
     where: {
       userId,
@@ -181,7 +185,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return null;
   }
 
-  return memory.metadata as UserProfile;
+  return memory.metadata as unknown as UserProfile;
 }
 
 /**
@@ -191,7 +195,7 @@ export async function updateUserProfileField(
   userId: string,
   category: keyof UserProfile,
   field: string,
-  value: string | string[]
+  value: string | string[],
 ): Promise<void> {
   const existing = await prisma.userMemory.findFirst({
     where: {
@@ -201,12 +205,13 @@ export async function updateUserProfileField(
     },
   });
 
-  const currentProfile: UserProfile = (existing?.metadata as UserProfile) || {
-    preferences: {},
-    routines: {},
-    constraints: {},
-    workPatterns: {},
-  };
+  const currentProfile: UserProfile =
+    (existing?.metadata as unknown as UserProfile) || {
+      preferences: {},
+      routines: {},
+      constraints: {},
+      workPatterns: {},
+    };
 
   // Update the specific field in the category
   if (!currentProfile[category]) {
@@ -248,20 +253,25 @@ function formatProfileAsContent(profile: UserProfile): string {
     const prefs = profile.preferences;
     if (prefs.wakeTime) lines.push(`Wake time: ${prefs.wakeTime}`);
     if (prefs.workHours) lines.push(`Work hours: ${prefs.workHours}`);
-    if (prefs.focusTimePreference) lines.push(`Focus time preference: ${prefs.focusTimePreference}`);
-    if (prefs.meetingPreference) lines.push(`Meeting preference: ${prefs.meetingPreference}`);
+    if (prefs.focusTimePreference)
+      lines.push(`Focus time preference: ${prefs.focusTimePreference}`);
+    if (prefs.meetingPreference)
+      lines.push(`Meeting preference: ${prefs.meetingPreference}`);
   }
 
   if (profile.routines) {
     const routines = profile.routines;
-    if (routines.morningRoutine) lines.push(`Morning routine: ${routines.morningRoutine}`);
-    if (routines.eveningRoutine) lines.push(`Evening routine: ${routines.eveningRoutine}`);
+    if (routines.morningRoutine)
+      lines.push(`Morning routine: ${routines.morningRoutine}`);
+    if (routines.eveningRoutine)
+      lines.push(`Evening routine: ${routines.eveningRoutine}`);
   }
 
   if (profile.constraints) {
     const constraints = profile.constraints;
     if (constraints.commute) lines.push(`Commute: ${constraints.commute}`);
-    if (constraints.familyObligations) lines.push(`Family obligations: ${constraints.familyObligations}`);
+    if (constraints.familyObligations)
+      lines.push(`Family obligations: ${constraints.familyObligations}`);
   }
 
   if (profile.workPatterns) {
@@ -269,7 +279,8 @@ function formatProfileAsContent(profile: UserProfile): string {
     if (work.wfhDays && work.wfhDays.length > 0) {
       lines.push(`Work from home days: ${work.wfhDays.join(", ")}`);
     }
-    if (work.officeLocation) lines.push(`Office location: ${work.officeLocation}`);
+    if (work.officeLocation)
+      lines.push(`Office location: ${work.officeLocation}`);
   }
 
   return lines.length > 0 ? lines.join("\n") : "No profile information yet.";
@@ -281,7 +292,7 @@ function formatProfileAsContent(profile: UserProfile): string {
  */
 export async function getMemoryContext(
   userId: string,
-  timezone: string
+  timezone: string,
 ): Promise<MemoryContext> {
   const now = new Date();
   const yesterday = new Date(now);
@@ -318,7 +329,9 @@ export function formatMemoryForPrompt(memory: MemoryContext): string {
 
   // Long-term memory section
   if (memory.longterm) {
-    sections.push(`LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`);
+    sections.push(
+      `LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`,
+    );
   }
 
   // Daily memories section
@@ -347,16 +360,14 @@ export async function saveToMemory(
   userId: string,
   content: string,
   memoryType: "daily" | "longterm",
-  timezone: string
+  timezone: string,
 ): Promise<void> {
   if (memoryType === "daily") {
     await appendToDailyMemory(userId, content, timezone);
   } else {
     // For longterm, we append to existing content rather than replace
     const existing = await getLongtermMemory(userId);
-    const newContent = existing 
-      ? `${existing}\n\n${content}`
-      : content;
+    const newContent = existing ? `${existing}\n\n${content}` : content;
     await updateLongtermMemory(userId, newContent);
   }
 }

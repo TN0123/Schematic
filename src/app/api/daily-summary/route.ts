@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import authOptions from "@/lib/auth";
 import { daily_summary } from "@/scripts/schedule/daily-summary";
 import {
   fetchDailySummaryCacheData,
@@ -9,7 +11,21 @@ import {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { date, timezone, userId, goalsView } = await request.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+
+    // Ensure the user is only requesting their own summary
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const targetDate = new Date(date);
 

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
+import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
 
 const prisma = new PrismaClient();
 
@@ -31,8 +32,12 @@ export async function generate_events(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { scheduleContext: true, goalText: true },
+    select: { goalText: true },
   });
+
+  // Get memory context from the new multi-layer memory system
+  const memoryData = await getMemoryContext(userId, timezone);
+  const memoryContext = formatMemoryForPrompt(memoryData);
 
   let goalsContext = "";
   
@@ -134,8 +139,8 @@ export async function generate_events(
       use it if applicable, otherwise ignore it.
       
       BEGIN CONTEXT
-      GENERAL CONTEXT:
-      ${user?.scheduleContext}
+      USER MEMORY & CONTEXT:
+      ${memoryContext}
 
       ${goalsContext || "User has not set any goals."}
       END CONTEXT

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos } from "@/lib/todo-aggregation";
+import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
 
 /**
  * Comprehensive data structure for cache hash generation
@@ -13,7 +14,7 @@ interface CacheHashData {
     start: string;
     end: string;
   }>;
-  scheduleContext?: string;
+  memoryContext?: string;
   goalText?: string;
   goals?: Array<{
     id: string;
@@ -60,7 +61,7 @@ export function generateCacheHash(data: CacheHashData): string {
   // Create a stable object with sorted and normalized data
   const normalized = {
     events: sortedEvents,
-    scheduleContext: data.scheduleContext || "",
+    memoryContext: data.memoryContext || "",
     goalText: data.goalText || "",
     goals: data.goals
       ? [...data.goals].sort((a, b) => a.id.localeCompare(b.id))
@@ -111,7 +112,7 @@ export async function fetchDailySummaryCacheData(
   );
 
   // Parallelize all database queries
-  const [eventsForDay, user, goals, todoBulletins, aggregatedTodos] = await Promise.all([
+  const [eventsForDay, user, memoryData, goals, todoBulletins, aggregatedTodos] = await Promise.all([
     // 1. Fetch events for the day
     prisma.event.findMany({
       where: {
@@ -122,13 +123,16 @@ export async function fetchDailySummaryCacheData(
       orderBy: { start: "asc" },
     }),
 
-    // 2. Fetch user context
+    // 2. Fetch user goalText
     prisma.user.findUnique({
       where: { id: userId },
-      select: { scheduleContext: true, goalText: true },
+      select: { goalText: true },
     }),
 
-    // 3. Fetch goals (only if needed for this view)
+    // 3. Fetch memory context from the new multi-layer memory system
+    getMemoryContext(userId, timezone),
+
+    // 4. Fetch goals (only if needed for this view)
     goalsView === "list" || !goalsView
       ? prisma.goal.findMany({
           where: { userId },
@@ -136,7 +140,7 @@ export async function fetchDailySummaryCacheData(
         })
       : Promise.resolve([]),
 
-    // 4. Fetch todo bulletins (only if needed for this view)
+    // 5. Fetch todo bulletins (only if needed for this view)
     goalsView === "todo"
       ? prisma.bulletin.findMany({
           where: { userId, type: "todo" },
@@ -146,11 +150,14 @@ export async function fetchDailySummaryCacheData(
         })
       : Promise.resolve([]),
 
-    // 5. Fetch aggregated todos (only if needed for this view)
+    // 6. Fetch aggregated todos (only if needed for this view)
     goalsView === "todo"
       ? aggregateAllTodos(userId, 50)
       : Promise.resolve([]),
   ]);
+
+  // Format memory context for cache hash
+  const memoryContext = formatMemoryForPrompt(memoryData);
 
   // Normalize events
   const normalizedEvents = eventsForDay.map((e) => ({
@@ -185,7 +192,7 @@ export async function fetchDailySummaryCacheData(
 
   const cacheData: CacheHashData = {
     events: normalizedEvents,
-    scheduleContext: user?.scheduleContext,
+    memoryContext,
     goalText: user?.goalText,
     goals: goals.length > 0 ? goals.map(g => ({ id: g.id, title: g.title, type: g.type })) : undefined,
     todoBulletins:
@@ -214,7 +221,7 @@ export async function fetchDailySuggestionsCacheData(
   );
 
   // Parallelize ALL database queries for maximum performance
-  const [eventsForDay, remindersForDay, user, bulletins, goals, todoBulletins, aggregatedTodos] =
+  const [eventsForDay, remindersForDay, user, memoryData, bulletins, goals, todoBulletins, aggregatedTodos] =
     await Promise.all([
       // 1. Fetch events for the day
       prisma.event.findMany({
@@ -236,13 +243,16 @@ export async function fetchDailySuggestionsCacheData(
         orderBy: { time: "asc" },
       }),
 
-      // 3. Fetch user context
+      // 3. Fetch user goalText
       prisma.user.findUnique({
         where: { id: userId },
-        select: { scheduleContext: true, goalText: true },
+        select: { goalText: true },
       }),
 
-      // 4. Fetch recent bulletins (top 10 most recent)
+      // 4. Fetch memory context from the new multi-layer memory system
+      getMemoryContext(userId, timezone),
+
+      // 5. Fetch recent bulletins (top 10 most recent)
       prisma.bulletin.findMany({
         where: { userId },
         orderBy: { updatedAt: "desc" },
@@ -250,13 +260,13 @@ export async function fetchDailySuggestionsCacheData(
         select: { id: true, title: true, updatedAt: true },
       }),
 
-      // 5. Fetch goals
+      // 6. Fetch goals
       prisma.goal.findMany({
         where: { userId },
         select: { id: true, title: true, type: true },
       }),
 
-      // 6. Fetch todo bulletins (top 5 most recent)
+      // 7. Fetch todo bulletins (top 5 most recent)
       prisma.bulletin.findMany({
         where: { userId, type: "todo" },
         orderBy: { updatedAt: "desc" },
@@ -264,9 +274,12 @@ export async function fetchDailySuggestionsCacheData(
         select: { id: true, title: true, data: true, updatedAt: true },
       }),
 
-      // 7. Fetch aggregated todos
+      // 8. Fetch aggregated todos
       aggregateAllTodos(userId, 50),
     ]);
+
+  // Format memory context for cache hash
+  const memoryContext = formatMemoryForPrompt(memoryData);
 
   // Normalize events
   const normalizedEvents = eventsForDay.map((e) => ({
@@ -308,7 +321,7 @@ export async function fetchDailySuggestionsCacheData(
 
   const cacheData: CacheHashData = {
     events: normalizedEvents,
-    scheduleContext: user?.scheduleContext,
+    memoryContext,
     goalText: user?.goalText,
     goals: goals.map(g => ({ id: g.id, title: g.title, type: g.type })),
     bulletins,
