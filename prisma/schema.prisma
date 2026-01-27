@@ -22,7 +22,6 @@ model User {
   sessions                 Session[]
   documents                Document[]
   reminders                Reminder[]
-  scheduleContext          String                  @default("")
   goalText                 String                  @default("")
   assistantName            String                  @default("AI Life Assistant")
   dailySummaryCaches       DailySummaryCache[]

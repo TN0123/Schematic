@@ -3,8 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { RefreshCw, TrendingUp } from "lucide-react";
+import {
+  RefreshCw,
+  TrendingUp,
+  Brain,
+  Sparkles,
+  Activity,
+  Clock,
+} from "lucide-react";
 import type { Event as CalendarEvent } from "../schedule/types";
+import { MemoryDisplay } from "./_components/MemoryDisplay";
 
 type StatsEvent = Omit<CalendarEvent, "start" | "end"> & {
   start: Date;
@@ -48,10 +56,10 @@ function clampToRange(
   intervalStart: Date,
   intervalEnd: Date,
   rangeStart: Date,
-  rangeEnd: Date
+  rangeEnd: Date,
 ): [Date, Date] | null {
   const start = new Date(
-    Math.max(intervalStart.getTime(), rangeStart.getTime())
+    Math.max(intervalStart.getTime(), rangeStart.getTime()),
   );
   const end = new Date(Math.min(intervalEnd.getTime(), rangeEnd.getTime()));
   if (end <= start) return null;
@@ -66,7 +74,7 @@ function splitByDayWithinRange(
   start: Date,
   end: Date,
   rangeStart: Date,
-  rangeEnd: Date
+  rangeEnd: Date,
 ): Array<{ day: number; hours: number }> {
   const result: Array<{ day: number; hours: number }> = [];
   const clamped = clampToRange(start, end, rangeStart, rangeEnd);
@@ -87,7 +95,7 @@ function splitByHourWithinRange(
   start: Date,
   end: Date,
   rangeStart: Date,
-  rangeEnd: Date
+  rangeEnd: Date,
 ): Array<{ hour: number; hours: number }> {
   const result: Array<{ hour: number; hours: number }> = [];
   const clamped = clampToRange(start, end, rangeStart, rangeEnd);
@@ -139,6 +147,8 @@ export default function StatisticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [habitsData, setHabitsData] = useState<HabitsData | null>(null);
   const [habitsLoading, setHabitsLoading] = useState<boolean>(false);
+  const [memory, setMemory] = useState<any>(null);
+  const [memoryLoading, setMemoryLoading] = useState<boolean>(false);
 
   const handleExport = () => {
     // Build CSV for current events in selected range
@@ -161,7 +171,7 @@ export default function StatisticsPage() {
         "EndTime",
         "FirstLink",
         "AllLinks",
-      ].join(",")
+      ].join(","),
     );
 
     for (const ev of events) {
@@ -169,7 +179,7 @@ export default function StatisticsPage() {
       const end = new Date(ev.end);
       const durationHours = Math.max(
         0,
-        (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        (end.getTime() - start.getTime()) / (1000 * 60 * 60),
       );
       const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const dateStr = start.toISOString().slice(0, 10);
@@ -190,7 +200,7 @@ export default function StatisticsPage() {
           time(end),
           escapeCsv(firstLink),
           escapeCsv(allLinks),
-        ].join(",")
+        ].join(","),
       );
     }
 
@@ -216,7 +226,7 @@ export default function StatisticsPage() {
       setError(null);
       try {
         const url = `/api/events?start=${encodeURIComponent(
-          startOfDay(startDate).toISOString()
+          startOfDay(startDate).toISOString(),
         )}&end=${encodeURIComponent(endOfDay(endDate).toISOString())}`;
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error("Failed to fetch events");
@@ -257,6 +267,26 @@ export default function StatisticsPage() {
     };
     fetchHabits();
   }, [status]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.id) return;
+    const fetchMemory = async () => {
+      setMemoryLoading(true);
+      try {
+        const res = await fetch(
+          `/api/schedule/context?userId=${session.user.id}`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch memory");
+        const data = await res.json();
+        setMemory(data.memory);
+      } catch (err: any) {
+        console.error("Error loading memory:", err);
+      } finally {
+        setMemoryLoading(false);
+      }
+    };
+    fetchMemory();
+  }, [status, session?.user?.id]);
 
   const rangeStart = useMemo(() => startOfDay(startDate), [startDate]);
   const rangeEnd = useMemo(() => endOfDay(endDate), [endDate]);
@@ -311,7 +341,7 @@ export default function StatisticsPage() {
         ev.start,
         ev.end,
         rangeStart,
-        rangeEnd
+        rangeEnd,
       )) {
         dayTotals[seg.day] += seg.hours;
       }
@@ -321,7 +351,7 @@ export default function StatisticsPage() {
         ev.start,
         ev.end,
         rangeStart,
-        rangeEnd
+        rangeEnd,
       )) {
         hourTotals[seg.hour] += seg.hours;
       }
@@ -340,8 +370,8 @@ export default function StatisticsPage() {
     const daysInRange = Math.max(
       1,
       Math.ceil(
-        (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)
-      )
+        (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24),
+      ),
     );
     const avgHoursPerDay = totalHours / daysInRange;
 
@@ -367,11 +397,11 @@ export default function StatisticsPage() {
 
   const totalForTitles = useMemo(
     () => stats.titles.reduce((s, d) => s + d.value, 0),
-    [stats.titles]
+    [stats.titles],
   );
   const totalForDomains = useMemo(
     () => stats.domains.reduce((s, d) => s + d.value, 0),
-    [stats.domains]
+    [stats.domains],
   );
   const maxDay = useMemo(() => Math.max(1, ...stats.days), [stats.days]);
   const maxHour = useMemo(() => Math.max(1, ...stats.hours), [stats.hours]);
@@ -426,7 +456,7 @@ export default function StatisticsPage() {
                 className="px-2.5 py-1 rounded-md border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition"
                 onClick={() =>
                   setStartDate(
-                    startOfDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000))
+                    startOfDay(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)),
                   )
                 }
                 title="Last 7 days"
@@ -437,7 +467,7 @@ export default function StatisticsPage() {
                 className="px-2.5 py-1 rounded-md border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition"
                 onClick={() =>
                   setStartDate(
-                    startOfDay(new Date(Date.now() - 29 * 24 * 60 * 60 * 1000))
+                    startOfDay(new Date(Date.now() - 29 * 24 * 60 * 60 * 1000)),
                   )
                 }
                 title="Last 30 days"
@@ -448,7 +478,7 @@ export default function StatisticsPage() {
                 className="px-2.5 py-1 rounded-md border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition"
                 onClick={() =>
                   setStartDate(
-                    startOfDay(new Date(new Date().getFullYear(), 0, 1))
+                    startOfDay(new Date(new Date().getFullYear(), 0, 1)),
                   )
                 }
                 title="Year to date"
@@ -499,35 +529,8 @@ export default function StatisticsPage() {
 
         {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
 
-        {/* Habits Section */}
-        {habitsData?.enabled && (
-          <div className="mb-3 md:mb-4">
-            <Card title="Learned Habits">
-              {habitsLoading ? (
-                <div className="h-24 flex items-center justify-center">
-                  <RefreshCw className="h-5 w-5 animate-spin text-gray-600 dark:text-dark-textSecondary" />
-                </div>
-              ) : habitsData.habits.length === 0 ? (
-                <div className="h-24 flex flex-col items-center justify-center text-sm text-gray-500 dark:text-dark-textSecondary">
-                  <TrendingUp className="h-8 w-8 mb-2 opacity-50" />
-                  <p>No habits learned yet</p>
-                  <p className="text-xs mt-1">
-                    Put events into Schedule to see your habits
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {habitsData.habits.map((habit) => (
-                    <HabitCard key={habit.habitType} habit={habit} />
-                  ))}
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
-
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 mb-8">
           <div className="lg:col-span-2">
             <Card title="Top Titles">
               {stats.titles.length === 0 ? (
@@ -558,6 +561,46 @@ export default function StatisticsPage() {
           </Card>
         </div>
 
+        {/* Memories Section */}
+        <div className="mb-8">
+          <SectionHeader
+            title="AI Memory"
+            subtitle="Contextual knowledge and preferences learned by your assistant"
+            icon={<Brain className="h-5 w-5 text-purple-500" />}
+          />
+          <MemoryDisplay memory={memory} loading={memoryLoading} />
+        </div>
+
+        {/* Habits Section */}
+        {habitsData?.enabled && (
+          <div className="mb-8">
+            <SectionHeader
+              title="Learned Habits"
+              subtitle="Statistical patterns and recurring behaviors in your schedule"
+              icon={<Activity className="h-5 w-5 text-blue-500" />}
+            />
+            {habitsLoading ? (
+              <div className="h-24 flex items-center justify-center">
+                <RefreshCw className="h-5 w-5 animate-spin text-gray-600 dark:text-dark-textSecondary" />
+              </div>
+            ) : habitsData.habits.length === 0 ? (
+              <div className="h-48 flex flex-col items-center justify-center bg-white dark:bg-dark-paper rounded-xl border border-gray-200 dark:border-dark-divider text-gray-500 dark:text-dark-textSecondary">
+                <TrendingUp className="h-10 w-10 mb-3 opacity-20" />
+                <p className="text-sm font-medium">No habits learned yet</p>
+                <p className="text-xs mt-1 opacity-70">
+                  Add more events to your schedule to see patterns
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {habitsData.habits.map((habit) => (
+                  <HabitCard key={habit.habitType} habit={habit} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {loading && (
           <div className="fixed inset-0 pointer-events-none flex items-center justify-center">
             <div className="rounded-full bg-white/70 dark:bg-dark-paper/70 p-3 shadow-sm">
@@ -577,13 +620,15 @@ function SummaryCard(props: {
 }) {
   const { title, value, subtext } = props;
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper p-4">
-      <div className="text-xs text-gray-600 dark:text-dark-textSecondary mb-1">
+    <div className="p-4 bg-white dark:bg-dark-paper border border-gray-100 dark:border-dark-divider rounded-xl shadow-sm">
+      <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-dark-textDisabled mb-1">
         {title}
       </div>
-      <div className="text-2xl font-semibold tracking-tight">{value}</div>
+      <div className="text-2xl font-bold tracking-tight text-gray-900 dark:text-dark-textPrimary">
+        {value}
+      </div>
       {subtext ? (
-        <div className="mt-1 text-xs text-gray-500 dark:text-dark-textDisabled">
+        <div className="mt-1 text-[10px] text-gray-500 dark:text-dark-textSecondary font-medium">
           {subtext}
         </div>
       ) : null}
@@ -591,11 +636,37 @@ function SummaryCard(props: {
   );
 }
 
+function SectionHeader({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-6 mt-8 pb-2 border-b border-gray-100 dark:border-dark-divider">
+      <div className="flex items-center gap-3">
+        <div className="text-gray-400 dark:text-dark-textDisabled">{icon}</div>
+        <div>
+          <h2 className="text-sm font-bold text-gray-900 dark:text-dark-textPrimary uppercase tracking-widest">
+            {title}
+          </h2>
+          <p className="text-[10px] text-gray-500 dark:text-dark-textSecondary font-medium">
+            {subtitle}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Card(props: { title: string; children: any }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-dark-divider bg-white dark:bg-dark-paper p-3">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-dark-textPrimary">
+    <div className="bg-white dark:bg-dark-paper border border-gray-100 dark:border-dark-divider rounded-xl p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-bold text-gray-400 dark:text-dark-textDisabled uppercase tracking-widest">
           {props.title}
         </h2>
       </div>
@@ -696,18 +767,13 @@ function ColumnChart(props: {
 function HabitCard(props: { habit: HabitStat }) {
   const { habit } = props;
 
-  const habitColors: Record<string, string> = {
-    MEAL: "bg-orange-100 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700",
-    WORKOUT:
-      "bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-700",
-    MEETING:
-      "bg-blue-100 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700",
-    COMMUTE:
-      "bg-purple-100 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700",
-    WORK_BLOCK:
-      "bg-indigo-100 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700",
-    PERSONAL:
-      "bg-pink-100 dark:bg-pink-900/20 border-pink-300 dark:border-pink-700",
+  const habitAccentColors: Record<string, string> = {
+    MEAL: "text-orange-500",
+    WORKOUT: "text-green-500",
+    MEETING: "text-blue-500",
+    COMMUTE: "text-purple-500",
+    WORK_BLOCK: "text-indigo-500",
+    PERSONAL: "text-pink-500",
   };
 
   const habitIcons: Record<string, string> = {
@@ -730,65 +796,46 @@ function HabitCard(props: { habit: HabitStat }) {
   const habitName = habit.habitType.toLowerCase().replace("_", " ");
   const typicalTime = formatTime(
     habit.centroid.avgHour,
-    habit.centroid.avgMinute
+    habit.centroid.avgMinute,
   );
   const duration = Math.round(habit.centroid.avgDuration);
   const confidencePercent = Math.round(habit.confidenceScore * 100);
 
   return (
-    <div
-      className={`rounded-lg border p-3 ${
-        habitColors[habit.habitType] ||
-        "bg-gray-100 dark:bg-gray-900/20 border-gray-300 dark:border-gray-700"
-      }`}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">
-            {habitIcons[habit.habitType] || "📊"}
-          </span>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-dark-textPrimary capitalize">
-              {habitName}
-            </h3>
-            <p className="text-xs text-gray-600 dark:text-dark-textSecondary">
-              {habit.count} times
-            </p>
-          </div>
-        </div>
+    <div className="group flex items-center gap-4 py-4 border-b border-gray-50 dark:border-dark-divider/50 last:border-0 hover:bg-gray-50/50 dark:hover:bg-dark-paper/30 px-2 rounded-lg transition-colors">
+      <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center text-2xl bg-gray-50 dark:bg-dark-paper rounded-xl border border-gray-100 dark:border-dark-divider">
+        {habitIcons[habit.habitType] || "📊"}
       </div>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-600 dark:text-dark-textSecondary">
-            Typical time:
-          </span>
-          <span className="font-medium text-gray-900 dark:text-dark-textPrimary">
-            {typicalTime}
-          </span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-600 dark:text-dark-textSecondary">
-            Duration:
-          </span>
-          <span className="font-medium text-gray-900 dark:text-dark-textPrimary">
-            {duration} min
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-dark-textPrimary capitalize truncate">
+            {habitName}
+          </h3>
+          <span className="text-[10px] font-bold text-gray-400 dark:text-dark-textDisabled uppercase tracking-tighter">
+            {habit.count} occurrences
           </span>
         </div>
-        <div className="mt-2">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-gray-600 dark:text-dark-textSecondary">
-              Confidence:
-            </span>
-            <span className="font-medium text-gray-900 dark:text-dark-textPrimary">
+
+        <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex items-center gap-1 text-gray-500 dark:text-dark-textSecondary">
+            <Clock className="h-3 w-3 opacity-70" />
+            <span>{typicalTime}</span>
+          </div>
+          <div className="flex items-center gap-1 text-gray-500 dark:text-dark-textSecondary">
+            <Sparkles className="h-3 w-3 opacity-70" />
+            <span>{duration} min</span>
+          </div>
+          <div className="flex-1 flex items-center gap-2 max-w-[100px]">
+            <div className="flex-1 h-1 bg-gray-100 dark:bg-dark-divider rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gray-400 dark:bg-gray-500 rounded-full"
+                style={{ width: `${confidencePercent}%` }}
+              />
+            </div>
+            <span className="text-[9px] font-bold text-gray-400">
               {confidencePercent}%
             </span>
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-dark-divider rounded-full h-1.5">
-            <div
-              className="bg-gray-700 dark:bg-gray-300 h-1.5 rounded-full transition-all"
-              style={{ width: `${confidencePercent}%` }}
-            />
           </div>
         </div>
       </div>

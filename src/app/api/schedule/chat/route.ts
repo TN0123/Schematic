@@ -24,11 +24,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { response, contextUpdated, toolCalls, contextChange } =
+    const { response, contextUpdated, toolCalls } =
       await scheduleChat(instructions, history, userId, timezone, goalsView);
 
     return NextResponse.json(
-      { response, contextUpdated, toolCalls, contextChange },
+      { response, contextUpdated, toolCalls },
       { status: 200 }
     );
   } catch (error) {
