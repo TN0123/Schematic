@@ -81,14 +81,15 @@ export default function DateTimeDisplay({ userId }: { userId?: string }) {
     if (Number.isNaN(diffMs) || diffMs <= 0) return null;
 
     const diffMinutes = Math.ceil(diffMs / 60000);
+    const eventTitle = nextEvent.title || "event";
     if (diffMinutes < 60) {
       const unit = diffMinutes === 1 ? "minute" : "minutes";
-      return `meeting in ${diffMinutes} ${unit}`;
+      return `${eventTitle} in ${diffMinutes} ${unit}`;
     }
 
     const diffHours = Math.ceil(diffMinutes / 60);
     const unit = diffHours === 1 ? "hour" : "hours";
-    return `meeting in ${diffHours} ${unit}`;
+    return `${eventTitle} in ${diffHours} ${unit}`;
   }, [nextEvent, currentTime]);
 
   // Show skeleton placeholder during SSR and initial hydration
