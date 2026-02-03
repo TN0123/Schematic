@@ -55,7 +55,7 @@ function getDateKeyForTimezone(date: Date, timezone: string): Date {
 export async function getDailyMemory(
   userId: string,
   timezone: string,
-  date?: Date,
+  date?: Date
 ): Promise<string | null> {
   const targetDate = date || new Date();
   const dateKey = getDateKeyForTimezone(targetDate, timezone);
@@ -78,7 +78,7 @@ export async function getDailyMemory(
 export async function appendToDailyMemory(
   userId: string,
   content: string,
-  timezone: string,
+  timezone: string
 ): Promise<void> {
   const dateKey = getDateKeyForTimezone(new Date(), timezone);
 
@@ -128,7 +128,7 @@ export async function appendToDailyMemory(
  * Get the user's long-term memory
  */
 export async function getLongtermMemory(
-  userId: string,
+  userId: string
 ): Promise<string | null> {
   const memory = await prisma.userMemory.findFirst({
     where: {
@@ -146,7 +146,7 @@ export async function getLongtermMemory(
  */
 export async function updateLongtermMemory(
   userId: string,
-  content: string,
+  content: string
 ): Promise<void> {
   const existing = await prisma.userMemory.findFirst({
     where: {
@@ -177,7 +177,7 @@ export async function updateLongtermMemory(
  * Get the user's structured profile
  */
 export async function getUserProfile(
-  userId: string,
+  userId: string
 ): Promise<UserProfile | null> {
   const memory = await prisma.userMemory.findFirst({
     where: {
@@ -201,7 +201,7 @@ export async function updateUserProfileField(
   userId: string,
   category: keyof UserProfile,
   field: string,
-  value: string | string[],
+  value: string | string[]
 ): Promise<void> {
   const existing = await prisma.userMemory.findFirst({
     where: {
@@ -298,7 +298,7 @@ function formatProfileAsContent(profile: UserProfile): string {
  */
 export async function getMemoryContext(
   userId: string,
-  timezone: string,
+  timezone: string
 ): Promise<MemoryContext> {
   const now = new Date();
   const yesterday = new Date(now);
@@ -336,7 +336,7 @@ export function formatMemoryForPrompt(memory: MemoryContext): string {
   // Long-term memory section
   if (memory.longterm) {
     sections.push(
-      `LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`,
+      `LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`
     );
   }
 
@@ -367,7 +367,7 @@ export async function saveToMemory(
   userId: string,
   content: string,
   memoryType: "daily" | "longterm",
-  timezone: string,
+  timezone: string
 ): Promise<void> {
   // Extract keywords from the content for fast searching
   const keywords = extractKeywords(content, 15);
@@ -389,7 +389,7 @@ async function appendToDailyMemoryWithKeywords(
   userId: string,
   content: string,
   timezone: string,
-  newKeywords: string[],
+  newKeywords: string[]
 ): Promise<void> {
   const dateKey = getDateKeyForTimezone(new Date(), timezone);
 
@@ -413,7 +413,7 @@ async function appendToDailyMemoryWithKeywords(
     // Merge existing keywords with new ones
     const existingKeywords = (existing.keywords as string[]) || [];
     const mergedKeywords = Array.from(
-      new Set([...existingKeywords, ...newKeywords]),
+      new Set([...existingKeywords, ...newKeywords])
     ).slice(0, 30);
 
     await prisma.userMemory.update({
@@ -421,7 +421,7 @@ async function appendToDailyMemoryWithKeywords(
       data: {
         content: newContent,
         keywords: mergedKeywords,
-        embedding: null, // Invalidate embedding when content changes
+        embedding: undefined, // Invalidate embedding when content changes
       },
     });
   } else {
@@ -450,7 +450,7 @@ async function appendToDailyMemoryWithKeywords(
 async function updateLongtermMemoryWithKeywords(
   userId: string,
   content: string,
-  newKeywords: string[],
+  newKeywords: string[]
 ): Promise<void> {
   const existing = await prisma.userMemory.findFirst({
     where: {
@@ -469,7 +469,7 @@ async function updateLongtermMemoryWithKeywords(
       data: {
         content,
         keywords: allKeywords,
-        embedding: null, // Invalidate embedding when content changes
+        embedding: undefined, // Invalidate embedding when content changes
       },
     });
   } else {
@@ -505,7 +505,7 @@ export interface MemorySearchResult {
 export async function searchMemoriesByKeywords(
   userId: string,
   queryKeywords: string[],
-  limit: number = 5,
+  limit: number = 5
 ): Promise<MemorySearchResult[]> {
   if (queryKeywords.length === 0) {
     return [];
@@ -530,16 +530,16 @@ export async function searchMemoriesByKeywords(
     // Check for keyword overlap
     const { matches, matchedKeywords } = containsKeywords(
       memory.content,
-      queryKeywords,
+      queryKeywords
     );
 
     // Also check stored keywords
     const keywordOverlap = queryKeywords.filter((kw) =>
-      memoryKeywords.some((mk) => mk.toLowerCase().includes(kw.toLowerCase())),
+      memoryKeywords.some((mk) => mk.toLowerCase().includes(kw.toLowerCase()))
     );
 
     const allMatchedKeywords = Array.from(
-      new Set([...matchedKeywords, ...keywordOverlap]),
+      new Set([...matchedKeywords, ...keywordOverlap])
     );
 
     if (allMatchedKeywords.length > 0) {
@@ -567,7 +567,7 @@ export async function searchMemoriesBySemantic(
   userId: string,
   query: string,
   limit: number = 5,
-  similarityThreshold: number = 0.7,
+  similarityThreshold: number = 0.7
 ): Promise<MemorySearchResult[]> {
   // Generate embedding for the query
   const queryEmbedding = await generateEmbedding(query);
@@ -600,7 +600,7 @@ export async function searchMemoriesBySemantic(
       } catch (error) {
         console.error(
           `Failed to generate embedding for memory ${memory.id}:`,
-          error,
+          error
         );
         continue;
       }
@@ -631,7 +631,7 @@ export async function searchMemoriesBySemantic(
 export async function getRelevantMemories(
   userId: string,
   userMessage: string,
-  limit: number = 3,
+  limit: number = 3
 ): Promise<MemorySearchResult[]> {
   // Extract keywords from the user message
   const keywords = extractKeywords(userMessage, 10);
@@ -694,7 +694,7 @@ function extractSearchableTextFromData(data: any, type: string): string {
             obj.forEach((item) => strings.push(...extractStrings(item)));
           } else if (obj && typeof obj === "object") {
             Object.values(obj).forEach((value) =>
-              strings.push(...extractStrings(value)),
+              strings.push(...extractStrings(value))
             );
           }
           return strings;
@@ -720,7 +720,7 @@ export async function getRelevantBulletinSnippets(
   userId: string,
   userMessage: string,
   limit: number = 3,
-  maxSnippetLength: number = 200,
+  maxSnippetLength: number = 200
 ): Promise<BulletinSnippet[]> {
   // Extract keywords from the user message
   const keywords = extractKeywords(userMessage, 10);
@@ -751,7 +751,10 @@ export async function getRelevantBulletinSnippets(
 
   for (const bulletin of bulletins) {
     // Combine title, content, and data text for searching
-    const dataText = extractSearchableTextFromData(bulletin.data, bulletin.type);
+    const dataText = extractSearchableTextFromData(
+      bulletin.data,
+      bulletin.type
+    );
     const fullText = `${bulletin.title} ${bulletin.content} ${dataText}`;
 
     // Check for keyword matches
@@ -777,7 +780,9 @@ export async function getRelevantBulletinSnippets(
   }
 
   // Sort by relevance and return top results
-  return results.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, limit);
+  return results
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .slice(0, limit);
 }
 
 /**
@@ -789,10 +794,7 @@ export function formatBulletinSnippets(snippets: BulletinSnippet[]): string {
   }
 
   return snippets
-    .map(
-      (s) =>
-        `• ${s.title} (${s.type}): ${s.snippet}`,
-    )
+    .map((s) => `• ${s.title} (${s.type}): ${s.snippet}`)
     .join("\n");
 }
 
@@ -811,7 +813,7 @@ export interface ExtendedMemoryContext extends MemoryContext {
 export async function getExtendedMemoryContext(
   userId: string,
   timezone: string,
-  userMessage?: string,
+  userMessage?: string
 ): Promise<ExtendedMemoryContext> {
   // Get base memory context
   const baseContext = await getMemoryContext(userId, timezone);
@@ -842,7 +844,7 @@ export async function getExtendedMemoryContext(
  * Format extended memory context for inclusion in the AI system prompt
  */
 export function formatExtendedMemoryForPrompt(
-  memory: ExtendedMemoryContext,
+  memory: ExtendedMemoryContext
 ): string {
   const sections: string[] = [];
 
@@ -857,7 +859,7 @@ export function formatExtendedMemoryForPrompt(
   // Long-term memory section
   if (memory.longterm) {
     sections.push(
-      `LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`,
+      `LONG-TERM MEMORY (curated important facts):\n${memory.longterm}`
     );
   }
 
