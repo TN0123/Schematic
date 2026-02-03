@@ -18,8 +18,71 @@ import {
   getContextUsage,
   splitHistoryForSummarization,
   truncateHistory,
-  estimateTokens,
 } from "@/lib/token-utils";
+import { openai } from "@ai-sdk/openai";
+import { generateText, tool, CoreMessage, stepCountIs } from "ai";
+import { z } from "zod";
+
+// Define Zod schemas for tools
+const getCalendarEventsSchema = z.object({
+  startDate: z.string().describe("Start date in ISO 8601 format (YYYY-MM-DD)"),
+  endDate: z.string().describe("End date in ISO 8601 format (YYYY-MM-DD)"),
+});
+
+const searchBulletinNotesSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "The search query to find relevant notes. Can be keywords, phrases, or topics to search for in note titles and content."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe("Maximum number of results to return (default: 5, max: 10)"),
+});
+
+const saveToMemorySchema = z.object({
+  content: z
+    .string()
+    .describe(
+      "The information to save. Be concise but include relevant context."
+    ),
+  memoryType: z
+    .enum(["daily", "longterm"])
+    .describe(
+      "daily = today's events/notes (date-specific), longterm = durable facts that should persist (preferences, relationships, important info)"
+    ),
+});
+
+const updateUserProfileSchema = z.object({
+  category: z
+    .enum(["preferences", "routines", "constraints", "workPatterns"])
+    .describe(
+      "The category of profile to update: preferences (wakeTime, workHours, focusTimePreference, meetingPreference), routines (morningRoutine, eveningRoutine), constraints (commute, familyObligations), workPatterns (wfhDays, officeLocation)"
+    ),
+  field: z
+    .string()
+    .describe(
+      "The specific field within the category to update (e.g., 'wakeTime', 'morningRoutine', 'commute', 'wfhDays')"
+    ),
+  value: z
+    .string()
+    .describe(
+      "The value to set for this field. For wfhDays, use comma-separated days like 'Monday, Friday'"
+    ),
+});
+
+const searchMemoriesSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "What to search for in memories. Can be a question, topic, or keywords related to what you want to find."
+    ),
+  limit: z
+    .number()
+    .optional()
+    .describe("Maximum number of results to return (default: 5, max: 10)"),
+});
 
 const prisma = new PrismaClient();
 
@@ -266,9 +329,7 @@ export async function scheduleChat(
   timezone?: string,
   goalsView?: "list" | "text" | "todo"
 ) {
-  const { GoogleGenerativeAI } = require("@google/generative-ai");
   require("dotenv").config();
-  const geminiKey = process.env.GEMINI_API_KEY;
 
   let memoryContext = "";
   let goals: { title: string; type: string }[] = [];
@@ -472,135 +533,203 @@ IMPORTANT:
 `;
   const userPrompt = instructions;
 
-  const genAI = new GoogleGenerativeAI(geminiKey);
+  // Track tool calls for UI display
+  const toolCallsExecuted: Array<{
+    name: string;
+    description: string;
+    notes?: Array<{
+      id: string;
+      title: string;
+      type?: string;
+    }>;
+  }> = [];
 
-  const tools = [
-    {
-      functionDeclarations: [
-        {
+  // Define tools using Vercel AI SDK format with Zod schemas
+  const tools = {
+    get_calendar_events: tool({
+      description:
+        "Get calendar events for a specific date or date range. Use this when user asks about their schedule for any day other than today.",
+      inputSchema: getCalendarEventsSchema,
+      execute: async ({ startDate, endDate }) => {
+        if (!userId) return { error: "User not authenticated" };
+
+        const toolResult = await getCalendarEvents(
+          userId,
+          startDate,
+          endDate,
+          timezone
+        );
+
+        // Track this tool call for UI display
+        const startDateFormatted = new Date(
+          startDate + "T12:00:00"
+        ).toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          timeZone: timezone,
+        });
+        const endDateFormatted = new Date(
+          endDate + "T12:00:00"
+        ).toLocaleDateString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          timeZone: timezone,
+        });
+
+        let description = `Read events from ${startDateFormatted}`;
+        if (startDate !== endDate) {
+          description = `Read events from ${startDateFormatted} - ${endDateFormatted}`;
+        }
+
+        toolCallsExecuted.push({
           name: "get_calendar_events",
-          description:
-            "Get calendar events for a specific date or date range. Use this when user asks about their schedule for any day other than today.",
-          parameters: {
-            type: "object",
-            properties: {
-              startDate: {
-                type: "string",
-                description: "Start date in ISO 8601 format (YYYY-MM-DD)",
-              },
-              endDate: {
-                type: "string",
-                description: "End date in ISO 8601 format (YYYY-MM-DD)",
-              },
-            },
-            required: ["startDate", "endDate"],
-          },
-        },
-        {
-          name: "search_bulletin_notes",
-          description:
-            "Search through the user's bulletin notes by title or content. Use this when you need to find specific information from the user's notes, ideas, or written content. The search will look through all their bulletin items and return relevant matches.",
-          parameters: {
-            type: "object",
-            properties: {
-              query: {
-                type: "string",
-                description:
-                  "The search query to find relevant notes. Can be keywords, phrases, or topics to search for in note titles and content.",
-              },
-              limit: {
-                type: "number",
-                description:
-                  "Maximum number of results to return (default: 5, max: 10)",
-              },
-            },
-            required: ["query"],
-          },
-        },
-        {
-          name: "save_to_memory",
-          description:
-            "Save important information to the user's memory. Use this when the user shares something they want you to remember, or when they mention important facts, preferences, or events. Daily memories are for today's events; longterm memories persist indefinitely.",
-          parameters: {
-            type: "object",
-            properties: {
-              content: {
-                type: "string",
-                description:
-                  "The information to save. Be concise but include relevant context.",
-              },
-              memoryType: {
-                type: "string",
-                enum: ["daily", "longterm"],
-                description:
-                  "daily = today's events/notes (date-specific), longterm = durable facts that should persist (preferences, relationships, important info)",
-              },
-            },
-            required: ["content", "memoryType"],
-          },
-        },
-        {
-          name: "update_user_profile",
-          description:
-            "Update a specific field in the user's structured profile. Use this for preferences, routines, constraints, and work patterns. This creates structured data that helps personalize the assistant.",
-          parameters: {
-            type: "object",
-            properties: {
-              category: {
-                type: "string",
-                enum: [
-                  "preferences",
-                  "routines",
-                  "constraints",
-                  "workPatterns",
-                ],
-                description:
-                  "The category of profile to update: preferences (wakeTime, workHours, focusTimePreference, meetingPreference), routines (morningRoutine, eveningRoutine), constraints (commute, familyObligations), workPatterns (wfhDays, officeLocation)",
-              },
-              field: {
-                type: "string",
-                description:
-                  "The specific field within the category to update (e.g., 'wakeTime', 'morningRoutine', 'commute', 'wfhDays')",
-              },
-              value: {
-                type: "string",
-                description:
-                  "The value to set for this field. For wfhDays, use comma-separated days like 'Monday, Friday'",
-              },
-            },
-            required: ["category", "field", "value"],
-          },
-        },
-        {
-          name: "search_memories",
-          description:
-            "Search through the user's saved memories semantically. Use this when you need to recall past conversations, facts, or information that was previously saved. This performs a deep search through all memories using AI similarity matching.",
-          parameters: {
-            type: "object",
-            properties: {
-              query: {
-                type: "string",
-                description:
-                  "What to search for in memories. Can be a question, topic, or keywords related to what you want to find.",
-              },
-              limit: {
-                type: "number",
-                description:
-                  "Maximum number of results to return (default: 5, max: 10)",
-              },
-            },
-            required: ["query"],
-          },
-        },
-      ],
-    },
-  ];
+          description,
+        });
 
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-    systemInstruction: systemPrompt,
-    tools: tools,
-  });
+        return toolResult;
+      },
+    }),
+    search_bulletin_notes: tool({
+      description:
+        "Search through the user's bulletin notes by title or content. Use this when you need to find specific information from the user's notes, ideas, or written content. The search will look through all their bulletin items and return relevant matches.",
+      inputSchema: searchBulletinNotesSchema,
+      execute: async ({ query, limit }) => {
+        if (!userId) return { error: "User not authenticated" };
+
+        const toolResult = await searchBulletinNotes(userId, query, limit || 5);
+
+        // Track this tool call for UI display
+        toolCallsExecuted.push({
+          name: "search_bulletin_notes",
+          description: `Searched notes for "${query}"`,
+          notes: Array.isArray(toolResult)
+            ? toolResult.map((note) => ({
+                id: note.id || note.title,
+                title: note.title,
+                type: note.type,
+              }))
+            : [],
+        });
+
+        return toolResult;
+      },
+    }),
+    save_to_memory: tool({
+      description:
+        "Save important information to the user's memory. Use this when the user shares something they want you to remember, or when they mention important facts, preferences, or events. Daily memories are for today's events; longterm memories persist indefinitely.",
+      inputSchema: saveToMemorySchema,
+      execute: async ({ content, memoryType }) => {
+        if (!userId || !timezone)
+          return { success: false, error: "User not authenticated" };
+
+        try {
+          await saveToMemory(userId, content, memoryType, timezone);
+
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "save_to_memory",
+            description: `Saved to ${memoryType} memory: "${content.substring(
+              0,
+              50
+            )}${content.length > 50 ? "..." : ""}"`,
+          });
+
+          return {
+            success: true,
+            message: `Memory saved successfully to ${memoryType} memory`,
+          };
+        } catch (error) {
+          console.error("Error in save_to_memory:", error);
+          return { success: false, error: "Failed to save memory" };
+        }
+      },
+    }),
+    update_user_profile: tool({
+      description:
+        "Update a specific field in the user's structured profile. Use this for preferences, routines, constraints, and work patterns. This creates structured data that helps personalize the assistant.",
+      inputSchema: updateUserProfileSchema,
+      execute: async ({ category, field, value }) => {
+        if (!userId) return { success: false, error: "User not authenticated" };
+
+        try {
+          // Handle wfhDays as an array
+          const processedValue =
+            field === "wfhDays"
+              ? value.split(",").map((d: string) => d.trim())
+              : value;
+
+          await updateUserProfileField(
+            userId,
+            category as keyof UserProfile,
+            field,
+            processedValue
+          );
+
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "update_user_profile",
+            description: `Updated profile: ${category}.${field} = "${value}"`,
+          });
+
+          return {
+            success: true,
+            message: `Profile updated successfully: ${category}.${field}`,
+          };
+        } catch (error) {
+          console.error("Error in update_user_profile:", error);
+          return { success: false, error: "Failed to update profile" };
+        }
+      },
+    }),
+    search_memories: tool({
+      description:
+        "Search through the user's saved memories semantically. Use this when you need to recall past conversations, facts, or information that was previously saved. This performs a deep search through all memories using AI similarity matching.",
+      inputSchema: searchMemoriesSchema,
+      execute: async ({ query, limit }) => {
+        if (!userId) return { success: false, error: "User not authenticated" };
+
+        try {
+          // Use semantic search to find relevant memories
+          const searchResults = await searchMemoriesBySemantic(
+            userId,
+            query,
+            Math.min(limit || 5, 10)
+          );
+
+          // Format results for the model
+          const formattedResults = searchResults.map(
+            (m: MemorySearchResult) => ({
+              type: m.type,
+              date: m.date
+                ? new Date(m.date).toLocaleDateString()
+                : "Long-term",
+              content:
+                m.content.length > 300
+                  ? m.content.substring(0, 300) + "..."
+                  : m.content,
+              relevanceScore: Math.round(m.score * 100) / 100,
+            })
+          );
+
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "search_memories",
+            description: `Searched memories for "${query}" - found ${searchResults.length} results`,
+          });
+
+          return {
+            success: true,
+            query,
+            resultsCount: searchResults.length,
+            memories: formattedResults,
+          };
+        } catch (error) {
+          console.error("Error in search_memories:", error);
+          return { success: false, error: "Failed to search memories" };
+        }
+      },
+    }),
+  };
 
   // ==========================================================================
   // PRE-COMPACTION FLUSH: Check context size and summarize if approaching limit
@@ -645,14 +774,12 @@ Extract the following and return as JSON:
 
 Only include meaningful facts, not trivial conversation. Return valid JSON only.`;
 
-          const extractionModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+          const extractionResult = await generateText({
+            model: openai("gpt-5-mini"),
+            prompt: extractionPrompt,
+            temperature: 0,
           });
-
-          const extractionResult = await extractionModel.generateContent(
-            extractionPrompt
-          );
-          const extractionText = extractionResult.response.text();
+          const extractionText = extractionResult.text;
 
           // Parse the extraction result
           try {
@@ -723,236 +850,31 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
   }
   // ==========================================================================
 
-  const formattedHistory = processedHistory.map(
+  // Convert history to AI SDK CoreMessage format
+  const messages: CoreMessage[] = processedHistory.map(
     (entry: { role: string; content: string }) => ({
-      role: entry.role,
-      parts: [{ text: entry.content }],
+      role: entry.role as "user" | "assistant",
+      content: entry.content,
     })
   );
 
-  const chatSession = model.startChat({
-    history: formattedHistory,
-    generationConfig: {
-      temperature: 0, // Make responses more deterministic
-      candidateCount: 1,
-      maxOutputTokens: 2048,
-      topP: 0.1,
-      topK: 1,
-    },
+  // Add the current user prompt
+  messages.push({
+    role: "user",
+    content: userPrompt,
   });
 
-  let result = await chatSession.sendMessage(userPrompt);
+  // Use generateText with tools and stopWhen for automatic tool execution
+  const result = await generateText({
+    model: openai("gpt-5-mini"),
+    system: systemPrompt,
+    messages,
+    tools,
+    stopWhen: stepCountIs(10), // Allow up to 10 tool call iterations
+    temperature: 0,
+  });
 
-  // Track tool calls for UI display
-  const toolCallsExecuted: Array<{
-    name: string;
-    description: string;
-    notes?: Array<{
-      id: string;
-      title: string;
-      type?: string;
-    }>;
-  }> = [];
-
-  let _continue = true;
-  while (_continue) {
-    const toolCalls = result.response.functionCalls();
-
-    if (toolCalls && toolCalls.length > 0) {
-      const toolCall = toolCalls[0];
-      const { name, args } = toolCall;
-
-      if (name === "get_calendar_events" && userId) {
-        const { startDate, endDate } = args;
-        const toolResult = await getCalendarEvents(
-          userId,
-          startDate,
-          endDate,
-          timezone
-        );
-
-        // Track this tool call for UI display
-        // Use the user's timezone for proper date formatting
-        const startDateFormatted = new Date(
-          startDate + "T12:00:00"
-        ).toLocaleDateString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          timeZone: timezone,
-        });
-        const endDateFormatted = new Date(
-          endDate + "T12:00:00"
-        ).toLocaleDateString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          timeZone: timezone,
-        });
-
-        let description = `Read events from ${startDateFormatted}`;
-        if (startDate !== endDate) {
-          description = `Read events from ${startDateFormatted} - ${endDateFormatted}`;
-        }
-
-        toolCallsExecuted.push({
-          name: "get_calendar_events",
-          description,
-        });
-
-        // Check if result has an error property
-        if (
-          toolResult &&
-          typeof toolResult === "object" &&
-          "error" in toolResult
-        ) {
-          console.error("Error in get_calendar_events:", toolResult.error);
-        }
-
-        // Send the function response back to the model
-        const functionResponseMessage = `Function ${name} returned: ${JSON.stringify(
-          toolResult
-        )}`;
-        result = await chatSession.sendMessage(functionResponseMessage);
-      } else if (name === "search_bulletin_notes" && userId) {
-        const { query, limit } = args;
-        const toolResult = await searchBulletinNotes(userId, query, limit || 5);
-
-        // Track this tool call for UI display
-        toolCallsExecuted.push({
-          name: "search_bulletin_notes",
-          description: `Searched notes for "${query}"`,
-          notes: Array.isArray(toolResult)
-            ? toolResult.map((note) => ({
-                id: note.id || note.title, // Use title as fallback ID
-                title: note.title,
-                type: note.type,
-              }))
-            : [],
-        });
-
-        // Check if result has an error property
-        if (
-          toolResult &&
-          typeof toolResult === "object" &&
-          "error" in toolResult
-        ) {
-          console.error("Error in search_bulletin_notes:", toolResult.error);
-        }
-
-        // Send the function response back to the model
-        const functionResponseMessage = `Function ${name} returned: ${JSON.stringify(
-          toolResult
-        )}`;
-        result = await chatSession.sendMessage(functionResponseMessage);
-      } else if (name === "save_to_memory" && userId && timezone) {
-        const { content, memoryType } = args;
-
-        try {
-          await saveToMemory(userId, content, memoryType, timezone);
-
-          // Track this tool call for UI display
-          toolCallsExecuted.push({
-            name: "save_to_memory",
-            description: `Saved to ${memoryType} memory: "${content.substring(
-              0,
-              50
-            )}${content.length > 50 ? "..." : ""}"`,
-          });
-
-          // Send success response back to the model
-          const functionResponseMessage = `Function ${name} returned: {"success": true, "message": "Memory saved successfully to ${memoryType} memory"}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        } catch (error) {
-          console.error("Error in save_to_memory:", error);
-          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to save memory"}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        }
-      } else if (name === "update_user_profile" && userId) {
-        const { category, field, value } = args;
-
-        try {
-          // Handle wfhDays as an array
-          const processedValue =
-            field === "wfhDays"
-              ? value.split(",").map((d: string) => d.trim())
-              : value;
-
-          await updateUserProfileField(
-            userId,
-            category as keyof UserProfile,
-            field,
-            processedValue
-          );
-
-          // Track this tool call for UI display
-          toolCallsExecuted.push({
-            name: "update_user_profile",
-            description: `Updated profile: ${category}.${field} = "${value}"`,
-          });
-
-          // Send success response back to the model
-          const functionResponseMessage = `Function ${name} returned: {"success": true, "message": "Profile updated successfully: ${category}.${field}"}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        } catch (error) {
-          console.error("Error in update_user_profile:", error);
-          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to update profile"}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        }
-      } else if (name === "search_memories" && userId) {
-        const { query, limit } = args;
-
-        try {
-          // Use semantic search to find relevant memories
-          const searchResults = await searchMemoriesBySemantic(
-            userId,
-            query,
-            Math.min(limit || 5, 10)
-          );
-
-          // Format results for the model
-          const formattedResults = searchResults.map(
-            (m: MemorySearchResult) => ({
-              type: m.type,
-              date: m.date
-                ? new Date(m.date).toLocaleDateString()
-                : "Long-term",
-              content:
-                m.content.length > 300
-                  ? m.content.substring(0, 300) + "..."
-                  : m.content,
-              relevanceScore: Math.round(m.score * 100) / 100,
-            })
-          );
-
-          // Track this tool call for UI display
-          toolCallsExecuted.push({
-            name: "search_memories",
-            description: `Searched memories for "${query}" - found ${searchResults.length} results`,
-          });
-
-          // Send results back to the model
-          const functionResponseMessage = `Function ${name} returned: ${JSON.stringify(
-            {
-              success: true,
-              query,
-              resultsCount: searchResults.length,
-              memories: formattedResults,
-            }
-          )}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        } catch (error) {
-          console.error("Error in search_memories:", error);
-          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to search memories"}`;
-          result = await chatSession.sendMessage(functionResponseMessage);
-        }
-      } else {
-        _continue = false;
-      }
-    } else {
-      _continue = false;
-    }
-  }
-
-  const responseText = result.response.text();
+  const responseText = result.text;
 
   if (!responseText || responseText.trim() === "") {
     console.error("Empty response text received");
