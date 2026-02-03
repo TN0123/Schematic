@@ -14,6 +14,16 @@ export async function POST(req: Request) {
     }
 
     const { text, timezone, userId, goalsView } = await req.json();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+
+    // Ensure the user is only generating events for themselves
+    if (userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const result = await generate_events(text, timezone, userId, goalsView);
 
     const cleanedResult = result.replace(/```json|```/g, "").trim();

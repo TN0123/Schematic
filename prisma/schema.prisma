@@ -22,7 +22,6 @@ model User {
   sessions                 Session[]
   documents                Document[]
   reminders                Reminder[]
-  scheduleContext          String                  @default("")
   goalText                 String                  @default("")
   assistantName            String                  @default("AI Life Assistant")
   dailySummaryCaches       DailySummaryCache[]
@@ -62,6 +61,7 @@ model User {
   googleCalendarWatchExpiration DateTime?
   syncedEvents                  SyncedEvent[]
   shortcuts                     Shortcut[]
+  memories                      UserMemory[]
 }
 
 model Account {
@@ -314,4 +314,24 @@ model SyncedEvent {
 
   @@index([userId, googleEventId])
   @@index([userId, googleCalendarId])
+}
+
+/// Multi-layer memory system for AI assistant personalization
+model UserMemory {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    /// "daily" | "longterm" | "profile"
+  date      DateTime? /// For daily memories only (stores the date in user's timezone)
+  content   String    @db.Text
+  metadata  Json?     /// For structured data (profile fields, importance, etc.)
+  embedding Json?     /// Vector embedding for semantic search (768-dim from text-embedding-004)
+  keywords  String[]  @default([]) /// Extracted keywords for fast filtering
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, date]) /// One daily memory per day, one longterm, one profile
+  @@index([userId, type])
+  @@index([userId, date])
 }

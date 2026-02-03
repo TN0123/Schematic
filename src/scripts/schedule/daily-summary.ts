@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
+import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
 
 const prisma = new PrismaClient();
 
@@ -41,8 +42,12 @@ export async function daily_summary(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { scheduleContext: true, goalText: true },
+    select: { goalText: true },
   });
+
+  // Get memory context from the new multi-layer memory system
+  const memoryData = await getMemoryContext(userId, timezone);
+  const memoryContext = formatMemoryForPrompt(memoryData);
 
   let goalsContext = "";
   
@@ -90,7 +95,7 @@ export async function daily_summary(
     
     Here is some context around the user's schedule (if available):
     BEGIN CONTEXT
-    ${user?.scheduleContext}
+    ${memoryContext}
     END CONTEXT
 
     Don't mention any specific times, instead use words like "morning", "afternoon", "evening", etc.

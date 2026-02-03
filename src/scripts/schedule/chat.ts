@@ -2,19 +2,23 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
 import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
+import {
+  getExtendedMemoryContext,
+  formatExtendedMemoryForPrompt,
+  saveToMemory,
+  updateUserProfileField,
+  searchMemoriesBySemantic,
+  UserProfile,
+  MemorySearchResult,
+} from "@/lib/memory";
+import {
+  getContextUsage,
+  splitHistoryForSummarization,
+  truncateHistory,
+  estimateTokens,
+} from "@/lib/token-utils";
 
 const prisma = new PrismaClient();
-
-async function updateScheduleContext(userId: string, newContext: string) {
-  try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { scheduleContext: newContext },
-    });
-  } catch (error) {
-    console.error("Error updating schedule context:", error);
-  }
-}
 
 async function getCalendarEvents(
   userId: string,
@@ -247,7 +251,7 @@ export async function scheduleChat(
   require("dotenv").config();
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  let context = "";
+  let memoryContext = "";
   let goals: { title: string; type: string }[] = [];
   let goalsContext = "";
   let events: { title: string; start: Date; end: Date }[] = [];
@@ -255,32 +259,32 @@ export async function scheduleChat(
 
   // Calculate dates in user's timezone
   const now = new Date();
+  const userTimezone = timezone || "UTC";
   const userNow = new Date(
-    now.toLocaleString("en-US", { timeZone: timezone || "UTC" })
+    now.toLocaleString("en-US", { timeZone: userTimezone })
   );
   const yesterdayInUserTz = new Date(userNow);
   yesterdayInUserTz.setDate(yesterdayInUserTz.getDate() - 1);
   const tomorrowInUserTz = new Date(userNow);
   tomorrowInUserTz.setDate(tomorrowInUserTz.getDate() + 1);
 
-  // Store original context for before/after comparison
-  let originalContext = "";
-
   if (userId && timezone) {
     try {
+      // Load user settings
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { scheduleContext: true, goalText: true, assistantName: true },
+        select: { goalText: true, assistantName: true },
       });
       if (user) {
-        if (user.scheduleContext) {
-          context = user.scheduleContext;
-          originalContext = user.scheduleContext;
-        }
         if (user.assistantName) {
           assistantName = user.assistantName;
         }
       }
+
+      // Load extended memory context with auto-fetched relevant content
+      // This includes: daily memories, longterm memory, profile, keyword-matched bulletins, and relevant past memories
+      const memory = await getExtendedMemoryContext(userId, userTimezone, instructions);
+      memoryContext = formatExtendedMemoryForPrompt(memory);
       
       // Fetch goals context based on the selected view
       if (goalsView === "text" && user?.goalText) {
@@ -378,51 +382,55 @@ BULLETIN NOTES SEARCH:
 Today: ${userNow.toISOString().split("T")[0]}
 Yesterday: ${yesterdayInUserTz.toISOString().split("T")[0]}
 
-User context: ${context}
+USER MEMORY & CONTEXT:
+${memoryContext}
 
-CONTEXT UPDATE RULES:
-The user context is general information about the user's life that has been accumulated over time.
-It is used to help the AI understand the user's life and provide better advice.
-It is updated automatically by the AI when the user shares information that should be saved to their context.
+MEMORY MANAGEMENT RULES:
+You have access to a multi-layer memory system to remember information about the user:
 
-You must automatically detect when the user shares information that should be saved to their context. Look for:
-- Daily routines, habits, or patterns (wake up time, work hours, meal times, etc.)
-- Scheduling preferences (preferred meeting times, break preferences, etc.)
-- Personal constraints (commute time, family obligations, etc.)
-- Work patterns (focus time preferences, meeting preferences, etc.)
-- Location information (work from home days, office location, etc.)
-- Health or wellness routines (exercise time, sleep schedule, etc.)
-- Goals (work goals, personal goals, etc.)
+1. DAILY MEMORY (save_to_memory with memoryType="daily"):
+   - Use for things that happened today
+   - Events, conversations, decisions made today
+   - Temporary notes that are date-specific
+   - Examples: "Had a great meeting with Sarah about the project", "Decided to push the deadline to Friday"
 
-CRITICAL: When updating context, make INCREMENTAL changes only:
-- Always preserve all the information contained in the original context
-- If the existing context already contains related information, modify or add to it rather than replacing it
-- Preserve all existing context unless it directly contradicts new information
-- Add new information by appending or integrating it with existing content
-- Only replace specific pieces of information that are being updated
+2. LONG-TERM MEMORY (save_to_memory with memoryType="longterm"):
+   - Use for durable facts that should persist over time
+   - Important preferences, life facts, relationships
+   - Things the user wants you to remember permanently
+   - Examples: "User's mother's name is Maria", "User is allergic to shellfish", "User prefers to work on creative tasks in the morning"
+
+3. USER PROFILE (update_user_profile):
+   - Use for structured preferences and routines
+   - Categories: preferences, routines, constraints, workPatterns
+   - Examples: wake time, work hours, commute time, WFH days
+
+WHEN TO SAVE MEMORIES:
+- When user explicitly says "remember this" or "don't forget"
+- When user shares personal information, preferences, or habits
+- When important decisions or events are mentioned
+- When user shares constraints or obligations
 
 CRITICAL: You MUST ALWAYS respond with valid JSON format. Never respond with plain text.
 
 WORKFLOW:
 1. If user asks about non-today dates: First call get_calendar_events function
-2. After getting function results: Return JSON response with the information
-3. If no function call needed: Return JSON response directly
+2. If user shares information to remember: Call save_to_memory or update_user_profile
+3. After getting function results: Return JSON response with the information
+4. If no function call needed: Return JSON response directly
 
 REQUIRED JSON FORMAT (this is mandatory - never deviate from this format):
 {
-  "response": "your conversational response to the user. Whenever you mention times use 12 hour format",
-  "contextUpdate": null or "incrementally updated context preserving existing information"
+  "response": "your conversational response to the user. Whenever you mention times use 12 hour format"
 }
 
 EXAMPLES OF CORRECT RESPONSES:
 {
-  "response": "I see you have a meeting at 2:00 PM today. That sounds important!",
-  "contextUpdate": null
+  "response": "I see you have a meeting at 2:00 PM today. That sounds important!"
 }
 
 {
-  "response": "I'll remember that you prefer morning workouts. That's great for starting your day energized!",
-  "contextUpdate": "User preferences: Prefers morning workouts around 7:00 AM to start the day energized."
+  "response": "I'll remember that you prefer morning workouts. That's great for starting your day energized!"
 }
 
 IMPORTANT: 
@@ -431,6 +439,7 @@ IMPORTANT:
 - Escape any quotes within strings
 - Never include markdown code blocks or additional text outside the JSON
 - Always speak to the user in a friendly, engaging, and conversational tone
+- Use the memory tools to save information instead of including contextUpdate in your response
 `;
   const userPrompt = instructions;
 
@@ -479,6 +488,76 @@ IMPORTANT:
             required: ["query"],
           },
         },
+        {
+          name: "save_to_memory",
+          description:
+            "Save important information to the user's memory. Use this when the user shares something they want you to remember, or when they mention important facts, preferences, or events. Daily memories are for today's events; longterm memories persist indefinitely.",
+          parameters: {
+            type: "object",
+            properties: {
+              content: {
+                type: "string",
+                description:
+                  "The information to save. Be concise but include relevant context.",
+              },
+              memoryType: {
+                type: "string",
+                enum: ["daily", "longterm"],
+                description:
+                  "daily = today's events/notes (date-specific), longterm = durable facts that should persist (preferences, relationships, important info)",
+              },
+            },
+            required: ["content", "memoryType"],
+          },
+        },
+        {
+          name: "update_user_profile",
+          description:
+            "Update a specific field in the user's structured profile. Use this for preferences, routines, constraints, and work patterns. This creates structured data that helps personalize the assistant.",
+          parameters: {
+            type: "object",
+            properties: {
+              category: {
+                type: "string",
+                enum: ["preferences", "routines", "constraints", "workPatterns"],
+                description:
+                  "The category of profile to update: preferences (wakeTime, workHours, focusTimePreference, meetingPreference), routines (morningRoutine, eveningRoutine), constraints (commute, familyObligations), workPatterns (wfhDays, officeLocation)",
+              },
+              field: {
+                type: "string",
+                description:
+                  "The specific field within the category to update (e.g., 'wakeTime', 'morningRoutine', 'commute', 'wfhDays')",
+              },
+              value: {
+                type: "string",
+                description:
+                  "The value to set for this field. For wfhDays, use comma-separated days like 'Monday, Friday'",
+              },
+            },
+            required: ["category", "field", "value"],
+          },
+        },
+        {
+          name: "search_memories",
+          description:
+            "Search through the user's saved memories semantically. Use this when you need to recall past conversations, facts, or information that was previously saved. This performs a deep search through all memories using AI similarity matching.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description:
+                  "What to search for in memories. Can be a question, topic, or keywords related to what you want to find.",
+              },
+              limit: {
+                type: "number",
+                description:
+                  "Maximum number of results to return (default: 5, max: 10)",
+              },
+            },
+            required: ["query"],
+          },
+        },
       ],
     },
   ];
@@ -489,7 +568,95 @@ IMPORTANT:
     tools: tools,
   });
 
-  const formattedHistory = history.map(
+  // ==========================================================================
+  // PRE-COMPACTION FLUSH: Check context size and summarize if approaching limit
+  // ==========================================================================
+  let processedHistory = history;
+  let preCompactionSummary: string | null = null;
+
+  if (userId && timezone) {
+    const contextUsage = getContextUsage(systemPrompt, history, userPrompt);
+    
+    if (contextUsage.recommendedAction === "summarize" || contextUsage.recommendedAction === "truncate") {
+      console.log(`Pre-compaction triggered: ${contextUsage.percentageUsed.toFixed(1)}% context used`);
+      
+      // Split history into parts: older messages to summarize, recent messages to keep
+      const { toSummarize, toKeep } = splitHistoryForSummarization(history, 20000);
+      
+      if (toSummarize.length > 0) {
+        try {
+          // Use a lightweight model call to extract important points
+          const extractionPrompt = `
+You are analyzing a conversation to extract important information that should be remembered.
+
+CONVERSATION TO ANALYZE:
+${toSummarize.map(m => `${m.role}: ${m.content}`).join('\n\n')}
+
+Extract the following and return as JSON:
+{
+  "dailyFacts": ["facts specific to today's events or decisions"],
+  "longtermFacts": ["durable facts about the user that should be remembered permanently"],
+  "summary": "A brief 1-2 sentence summary of what was discussed"
+}
+
+Only include meaningful facts, not trivial conversation. Return valid JSON only.`;
+
+          const extractionModel = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+          });
+          
+          const extractionResult = await extractionModel.generateContent(extractionPrompt);
+          const extractionText = extractionResult.response.text();
+          
+          // Parse the extraction result
+          try {
+            const cleanedText = extractionText
+              .replace(/^```json\s*/, "")
+              .replace(/\s*```$/, "")
+              .trim();
+            const extracted = JSON.parse(cleanedText);
+            
+            // Save daily facts
+            if (extracted.dailyFacts && extracted.dailyFacts.length > 0) {
+              const dailyContent = extracted.dailyFacts.join('\n• ');
+              await saveToMemory(userId, `Pre-compaction summary:\n• ${dailyContent}`, "daily", timezone);
+            }
+            
+            // Save longterm facts
+            if (extracted.longtermFacts && extracted.longtermFacts.length > 0) {
+              const longtermContent = extracted.longtermFacts.join('\n• ');
+              await saveToMemory(userId, `From conversation:\n• ${longtermContent}`, "longterm", timezone);
+            }
+            
+            preCompactionSummary = extracted.summary || null;
+            console.log(`Pre-compaction: Saved ${extracted.dailyFacts?.length || 0} daily facts, ${extracted.longtermFacts?.length || 0} longterm facts`);
+          } catch (parseError) {
+            console.error("Failed to parse extraction result:", parseError);
+          }
+        } catch (extractError) {
+          console.error("Pre-compaction extraction failed:", extractError);
+        }
+        
+        // Use only the recent history
+        processedHistory = toKeep;
+        
+        // If we have a summary, prepend it to give context
+        if (preCompactionSummary && processedHistory.length > 0) {
+          processedHistory = [
+            { role: "user", content: `[Earlier conversation summary: ${preCompactionSummary}]` },
+            ...processedHistory
+          ];
+        }
+      }
+    } else if (contextUsage.recommendedAction === "truncate") {
+      // If still too large, just truncate
+      processedHistory = truncateHistory(history, 50000);
+      console.log(`Truncated history from ${history.length} to ${processedHistory.length} messages`);
+    }
+  }
+  // ==========================================================================
+
+  const formattedHistory = processedHistory.map(
     (entry: { role: string; content: string }) => ({
       role: entry.role,
       parts: [{ text: entry.content }],
@@ -613,6 +780,96 @@ IMPORTANT:
           toolResult
         )}`;
         result = await chatSession.sendMessage(functionResponseMessage);
+      } else if (name === "save_to_memory" && userId && timezone) {
+        const { content, memoryType } = args;
+        
+        try {
+          await saveToMemory(userId, content, memoryType, timezone);
+          
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "save_to_memory",
+            description: `Saved to ${memoryType} memory: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+          });
+
+          // Send success response back to the model
+          const functionResponseMessage = `Function ${name} returned: {"success": true, "message": "Memory saved successfully to ${memoryType} memory"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        } catch (error) {
+          console.error("Error in save_to_memory:", error);
+          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to save memory"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        }
+      } else if (name === "update_user_profile" && userId) {
+        const { category, field, value } = args;
+        
+        try {
+          // Handle wfhDays as an array
+          const processedValue = field === "wfhDays" 
+            ? value.split(",").map((d: string) => d.trim())
+            : value;
+          
+          await updateUserProfileField(
+            userId,
+            category as keyof UserProfile,
+            field,
+            processedValue
+          );
+          
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "update_user_profile",
+            description: `Updated profile: ${category}.${field} = "${value}"`,
+          });
+
+          // Send success response back to the model
+          const functionResponseMessage = `Function ${name} returned: {"success": true, "message": "Profile updated successfully: ${category}.${field}"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        } catch (error) {
+          console.error("Error in update_user_profile:", error);
+          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to update profile"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        }
+      } else if (name === "search_memories" && userId) {
+        const { query, limit } = args;
+        
+        try {
+          // Use semantic search to find relevant memories
+          const searchResults = await searchMemoriesBySemantic(
+            userId,
+            query,
+            Math.min(limit || 5, 10)
+          );
+
+          // Format results for the model
+          const formattedResults = searchResults.map((m: MemorySearchResult) => ({
+            type: m.type,
+            date: m.date ? new Date(m.date).toLocaleDateString() : "Long-term",
+            content: m.content.length > 300 
+              ? m.content.substring(0, 300) + "..." 
+              : m.content,
+            relevanceScore: Math.round(m.score * 100) / 100,
+          }));
+
+          // Track this tool call for UI display
+          toolCallsExecuted.push({
+            name: "search_memories",
+            description: `Searched memories for "${query}" - found ${searchResults.length} results`,
+          });
+
+          // Send results back to the model
+          const functionResponseMessage = `Function ${name} returned: ${JSON.stringify({
+            success: true,
+            query,
+            resultsCount: searchResults.length,
+            memories: formattedResults,
+          })}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        } catch (error) {
+          console.error("Error in search_memories:", error);
+          const functionResponseMessage = `Function ${name} returned: {"success": false, "error": "Failed to search memories"}`;
+          result = await chatSession.sendMessage(functionResponseMessage);
+        }
       } else {
         _continue = false;
       }
@@ -672,25 +929,17 @@ IMPORTANT:
     response = {
       response:
         "I apologize, but I encountered an error processing your request. Please try again.",
-      contextUpdate: null,
     };
   }
 
-  const shouldUpdateContext = response.contextUpdate && userId;
-
-  if (shouldUpdateContext) {
-    await updateScheduleContext(userId, response.contextUpdate);
-  }
+  // Check if any memory-related tool calls were executed
+  const memoryUpdated = toolCallsExecuted.some(
+    (tc) => tc.name === "save_to_memory" || tc.name === "update_user_profile"
+  );
 
   return {
     response: response.response,
-    contextUpdated: !!shouldUpdateContext,
+    contextUpdated: memoryUpdated,
     toolCalls: toolCallsExecuted,
-    contextChange: shouldUpdateContext
-      ? {
-          before: originalContext || "",
-          after: response.contextUpdate,
-        }
-      : undefined,
   };
 }
