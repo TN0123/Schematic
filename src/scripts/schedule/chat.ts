@@ -37,7 +37,7 @@ const searchBulletinNotesSchema = z.object({
   query: z
     .string()
     .describe(
-      "The search query to find relevant notes. Can be keywords, phrases, or topics to search for in note titles and content."
+      "The search query to find relevant notes. Can be keywords, phrases, or topics to search for in note titles and content.",
     ),
   limit: z
     .number()
@@ -49,12 +49,12 @@ const saveToMemorySchema = z.object({
   content: z
     .string()
     .describe(
-      "The information to save. Be concise but include relevant context."
+      "The information to save. Be concise but include relevant context.",
     ),
   memoryType: z
     .enum(["daily", "longterm"])
     .describe(
-      "daily = today's events/notes (date-specific), longterm = durable facts that should persist (preferences, relationships, important info)"
+      "daily = today's events/notes (date-specific), longterm = durable facts that should persist (preferences, relationships, important info)",
     ),
 });
 
@@ -62,17 +62,17 @@ const updateUserProfileSchema = z.object({
   category: z
     .enum(["preferences", "routines", "constraints", "workPatterns"])
     .describe(
-      "The category of profile to update: preferences (wakeTime, workHours, focusTimePreference, meetingPreference), routines (morningRoutine, eveningRoutine), constraints (commute, familyObligations), workPatterns (wfhDays, officeLocation)"
+      "The category of profile to update: preferences (wakeTime, workHours, focusTimePreference, meetingPreference), routines (morningRoutine, eveningRoutine), constraints (commute, familyObligations), workPatterns (wfhDays, officeLocation)",
     ),
   field: z
     .string()
     .describe(
-      "The specific field within the category to update (e.g., 'wakeTime', 'morningRoutine', 'commute', 'wfhDays')"
+      "The specific field within the category to update (e.g., 'wakeTime', 'morningRoutine', 'commute', 'wfhDays')",
     ),
   value: z
     .string()
     .describe(
-      "The value to set for this field. For wfhDays, use comma-separated days like 'Monday, Friday'"
+      "The value to set for this field. For wfhDays, use comma-separated days like 'Monday, Friday'",
     ),
 });
 
@@ -80,7 +80,7 @@ const searchMemoriesSchema = z.object({
   query: z
     .string()
     .describe(
-      "What to search for in memories. Can be a question, topic, or keywords related to what you want to find."
+      "What to search for in memories. Can be a question, topic, or keywords related to what you want to find.",
     ),
   limit: z
     .number()
@@ -92,7 +92,7 @@ const generateCalendarEventsSchema = z.object({
   text: z
     .string()
     .describe(
-      "The user's natural language instructions describing events and reminders to add to their calendar."
+      "The user's natural language instructions describing events and reminders to add to their calendar.",
     ),
 });
 
@@ -102,7 +102,7 @@ async function getCalendarEvents(
   userId: string,
   startDate: string,
   endDate: string,
-  timezone?: string
+  timezone?: string,
 ) {
   try {
     const start = new Date(startDate);
@@ -211,7 +211,7 @@ function extractSearchableTextFromData(data: any, type: string): string {
             obj.forEach((item) => strings.push(...extractStrings(item)));
           } else if (obj && typeof obj === "object") {
             Object.values(obj).forEach((value) =>
-              strings.push(...extractStrings(value))
+              strings.push(...extractStrings(value)),
             );
           }
           return strings;
@@ -233,7 +233,7 @@ function extractSearchableTextFromData(data: any, type: string): string {
 async function searchBulletinNotes(
   userId: string,
   query: string,
-  limit: number = 5
+  limit: number = 5,
 ) {
   try {
     if (!query || query.trim().length === 0) {
@@ -276,18 +276,18 @@ async function searchBulletinNotes(
       const contentMatch =
         bulletin.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         searchWords.some((word) =>
-          bulletin.content.toLowerCase().includes(word)
+          bulletin.content.toLowerCase().includes(word),
         );
 
       // Extract searchable text from data field
       const dataSearchableText = extractSearchableTextFromData(
         bulletin.data,
-        bulletin.type
+        bulletin.type,
       );
       const dataMatch =
         dataSearchableText.toLowerCase().includes(searchQuery.toLowerCase()) ||
         searchWords.some((word) =>
-          dataSearchableText.toLowerCase().includes(word)
+          dataSearchableText.toLowerCase().includes(word),
         );
 
       return titleMatch || contentMatch || dataMatch;
@@ -307,7 +307,7 @@ async function searchBulletinNotes(
       if (bulletin.type !== "text" && bulletin.data) {
         const dataText = extractSearchableTextFromData(
           bulletin.data,
-          bulletin.type
+          bulletin.type,
         );
         if (dataText) {
           const dataPreview =
@@ -339,7 +339,7 @@ export async function scheduleChat(
   history: any[],
   userId?: string,
   timezone?: string,
-  goalsView?: "list" | "text" | "todo"
+  goalsView?: "list" | "text" | "todo",
 ) {
   require("dotenv").config();
 
@@ -353,7 +353,7 @@ export async function scheduleChat(
   const now = new Date();
   const userTimezone = timezone || "UTC";
   const userNow = new Date(
-    now.toLocaleString("en-US", { timeZone: userTimezone })
+    now.toLocaleString("en-US", { timeZone: userTimezone }),
   );
   const yesterdayInUserTz = new Date(userNow);
   yesterdayInUserTz.setDate(yesterdayInUserTz.getDate() - 1);
@@ -378,7 +378,7 @@ export async function scheduleChat(
       const memory = await getExtendedMemoryContext(
         userId,
         userTimezone,
-        instructions
+        instructions,
       );
       memoryContext = formatExtendedMemoryForPrompt(memory);
 
@@ -570,19 +570,19 @@ IMPORTANT:
           userId,
           startDate,
           endDate,
-          timezone
+          timezone,
         );
 
         // Track this tool call for UI display
         const startDateFormatted = new Date(
-          startDate + "T12:00:00"
+          startDate + "T12:00:00",
         ).toLocaleDateString("en-US", {
           month: "numeric",
           day: "numeric",
           timeZone: timezone,
         });
         const endDateFormatted = new Date(
-          endDate + "T12:00:00"
+          endDate + "T12:00:00",
         ).toLocaleDateString("en-US", {
           month: "numeric",
           day: "numeric",
@@ -619,7 +619,7 @@ IMPORTANT:
             text,
             userTimezone,
             userId,
-            goalsViewToUse
+            goalsViewToUse,
           );
 
           const cleanedResult = rawResult.replace(/```json|```/g, "").trim();
@@ -650,8 +650,8 @@ IMPORTANT:
                     end: new Date(event.end),
                     userId,
                   },
-                })
-              )
+                }),
+              ),
             );
 
             // Record habit actions for created events (fire-and-forget)
@@ -665,20 +665,20 @@ IMPORTANT:
                   end: event.end,
                 },
                 eventId: event.id,
-              }))
+              })),
             ).catch((err) =>
               console.error(
                 "Failed to record habit actions for generated events:",
-                err
-              )
+                err,
+              ),
             );
 
             // Invalidate caches asynchronously
             invalidateAllUserCaches(userId).catch((err) =>
               console.error(
                 "Failed to invalidate cache after generating events:",
-                err
-              )
+                err,
+              ),
             );
 
             // Sync to Google Calendar if enabled - don't throw on failure
@@ -687,10 +687,10 @@ IMPORTANT:
                 pushEventToGoogle(event.id, userId).catch((err) =>
                   console.error(
                     "Failed to sync generated event to Google Calendar:",
-                    err
-                  )
-                )
-              )
+                    err,
+                  ),
+                ),
+              ),
             );
           }
 
@@ -720,14 +720,14 @@ IMPORTANT:
           const descriptionParts: string[] = [];
           if (eventsCount > 0) {
             descriptionParts.push(
-              `Created ${eventsCount} event${eventsCount === 1 ? "" : "s"}`
+              `Created ${eventsCount} event${eventsCount === 1 ? "" : "s"}`,
             );
           }
           if (remindersCount > 0) {
             descriptionParts.push(
               `Created ${remindersCount} reminder${
                 remindersCount === 1 ? "" : "s"
-              }`
+              }`,
             );
           }
 
@@ -803,7 +803,7 @@ IMPORTANT:
             name: "save_to_memory",
             description: `Saved to ${memoryType} memory: "${content.substring(
               0,
-              50
+              50,
             )}${content.length > 50 ? "..." : ""}"`,
           });
 
@@ -835,7 +835,7 @@ IMPORTANT:
             userId,
             category as keyof UserProfile,
             field,
-            processedValue
+            processedValue,
           );
 
           // Track this tool call for UI display
@@ -866,7 +866,7 @@ IMPORTANT:
           const searchResults = await searchMemoriesBySemantic(
             userId,
             query,
-            Math.min(limit || 5, 10)
+            Math.min(limit || 5, 10),
           );
 
           // Format results for the model
@@ -881,7 +881,7 @@ IMPORTANT:
                   ? m.content.substring(0, 300) + "..."
                   : m.content,
               relevanceScore: Math.round(m.score * 100) / 100,
-            })
+            }),
           );
 
           // Track this tool call for UI display
@@ -919,14 +919,14 @@ IMPORTANT:
     ) {
       console.log(
         `Pre-compaction triggered: ${contextUsage.percentageUsed.toFixed(
-          1
-        )}% context used`
+          1,
+        )}% context used`,
       );
 
       // Split history into parts: older messages to summarize, recent messages to keep
       const { toSummarize, toKeep } = splitHistoryForSummarization(
         history,
-        20000
+        20000,
       );
 
       if (toSummarize.length > 0) {
@@ -948,7 +948,7 @@ Extract the following and return as JSON:
 Only include meaningful facts, not trivial conversation. Return valid JSON only.`;
 
           const extractionResult = await generateText({
-            model: openai("gpt-5-mini"),
+            model: openai("gpt-5-nano"),
             prompt: extractionPrompt,
             temperature: 0,
           });
@@ -969,7 +969,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
                 userId,
                 `Pre-compaction summary:\n• ${dailyContent}`,
                 "daily",
-                timezone
+                timezone,
               );
             }
 
@@ -980,7 +980,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
                 userId,
                 `From conversation:\n• ${longtermContent}`,
                 "longterm",
-                timezone
+                timezone,
               );
             }
 
@@ -990,7 +990,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
                 extracted.dailyFacts?.length || 0
               } daily facts, ${
                 extracted.longtermFacts?.length || 0
-              } longterm facts`
+              } longterm facts`,
             );
           } catch (parseError) {
             console.error("Failed to parse extraction result:", parseError);
@@ -1017,7 +1017,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
       // If still too large, just truncate
       processedHistory = truncateHistory(history, 50000);
       console.log(
-        `Truncated history from ${history.length} to ${processedHistory.length} messages`
+        `Truncated history from ${history.length} to ${processedHistory.length} messages`,
       );
     }
   }
@@ -1030,7 +1030,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
       role: entry.role === "user" ? "user" : "assistant",
       // Use content parts format expected by the AI SDK
       content: [{ type: "text", text: entry.content }],
-    })
+    }),
   );
 
   // Add the current user prompt
@@ -1041,7 +1041,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
 
   // Use generateText with tools and stopWhen for automatic tool execution
   const result = await generateText({
-    model: openai("gpt-5-mini"),
+    model: openai("gpt-5-nano"),
     system: systemPrompt,
     messages,
     tools,
@@ -1089,7 +1089,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
     // Validate the response structure
     if (!response.response || typeof response.response !== "string") {
       throw new Error(
-        "Invalid response structure - missing or invalid 'response' field"
+        "Invalid response structure - missing or invalid 'response' field",
       );
     }
   } catch (error) {
@@ -1105,7 +1105,7 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
 
   // Check if any memory-related tool calls were executed
   const memoryUpdated = toolCallsExecuted.some(
-    (tc) => tc.name === "save_to_memory" || tc.name === "update_user_profile"
+    (tc) => tc.name === "save_to_memory" || tc.name === "update_user_profile",
   );
 
   return {
