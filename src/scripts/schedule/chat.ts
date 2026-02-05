@@ -22,6 +22,10 @@ import {
 import { openai } from "@ai-sdk/openai";
 import { generateText, tool, CoreMessage, stepCountIs } from "ai";
 import { z } from "zod";
+import { generate_events } from "@/scripts/schedule/generate-events";
+import { recordEventActionsBatch } from "@/lib/habit-ingestion";
+import { invalidateAllUserCaches } from "@/lib/cache-utils";
+import { pushEventToGoogle } from "@/lib/google-calendar-sync";
 
 // Define Zod schemas for tools
 const getCalendarEventsSchema = z.object({
@@ -82,6 +86,14 @@ const searchMemoriesSchema = z.object({
     .number()
     .optional()
     .describe("Maximum number of results to return (default: 5, max: 10)"),
+});
+
+const generateCalendarEventsSchema = z.object({
+  text: z
+    .string()
+    .describe(
+      "The user's natural language instructions describing events and reminders to add to their calendar."
+    ),
 });
 
 const prisma = new PrismaClient();
@@ -459,6 +471,7 @@ FUNCTION CALLING RULES:
   }
 - If user mentions "tomorrow" → call get_calendar_events with tomorrow's date  
 - If user mentions any specific date → call get_calendar_events with that date
+- If the user asks you to create, schedule, or add calendar events or reminders from natural language instructions, call generate_calendar_events with their full request text
 - If you need more context from the user's notes, ideas, or written content → call search_bulletin_notes with a relevant search query
 - DO NOT say "I need to retrieve" - just call the function immediately
 
@@ -587,6 +600,166 @@ IMPORTANT:
         });
 
         return toolResult;
+      },
+    }),
+    generate_calendar_events: tool({
+      description:
+        "Generate and save calendar events and reminders from natural language instructions.",
+      inputSchema: generateCalendarEventsSchema,
+      execute: async ({ text }) => {
+        if (!userId || !timezone)
+          return { success: false, error: "User not authenticated" };
+
+        try {
+          const userTimezone = timezone || "UTC";
+          const goalsViewToUse = goalsView || "list";
+
+          // Use existing event generation pipeline (Gemini-based)
+          const rawResult = await generate_events(
+            text,
+            userTimezone,
+            userId,
+            goalsViewToUse
+          );
+
+          const cleanedResult = rawResult.replace(/```json|```/g, "").trim();
+          const parsed = JSON.parse(cleanedResult);
+
+          let events: any[] = [];
+          let reminders: any[] = [];
+
+          if (Array.isArray(parsed)) {
+            // Old format - just events
+            events = parsed;
+          } else {
+            // New format - object with events and reminders
+            events = parsed.events || [];
+            reminders = parsed.reminders || [];
+          }
+
+          let createdEvents: any[] = [];
+
+          if (events.length > 0) {
+            // Persist events to the database, mirroring /api/events/bulkAdd behaviour
+            createdEvents = await prisma.$transaction(
+              events.map((event: any) =>
+                prisma.event.create({
+                  data: {
+                    title: event.title,
+                    start: new Date(event.start),
+                    end: new Date(event.end),
+                    userId,
+                  },
+                })
+              )
+            );
+
+            // Record habit actions for created events (fire-and-forget)
+            recordEventActionsBatch(
+              userId,
+              createdEvents.map((event) => ({
+                actionType: "created" as const,
+                eventData: {
+                  title: event.title,
+                  start: event.start,
+                  end: event.end,
+                },
+                eventId: event.id,
+              }))
+            ).catch((err) =>
+              console.error(
+                "Failed to record habit actions for generated events:",
+                err
+              )
+            );
+
+            // Invalidate caches asynchronously
+            invalidateAllUserCaches(userId).catch((err) =>
+              console.error(
+                "Failed to invalidate cache after generating events:",
+                err
+              )
+            );
+
+            // Sync to Google Calendar if enabled - don't throw on failure
+            await Promise.all(
+              createdEvents.map((event) =>
+                pushEventToGoogle(event.id, userId).catch((err) =>
+                  console.error(
+                    "Failed to sync generated event to Google Calendar:",
+                    err
+                  )
+                )
+              )
+            );
+          }
+
+          const createdReminders: any[] = [];
+
+          if (reminders.length > 0) {
+            for (const reminder of reminders) {
+              try {
+                const createdReminder = await prisma.reminder.create({
+                  data: {
+                    text: reminder.text || reminder.title,
+                    time: new Date(reminder.time),
+                    isAISuggested: false,
+                    userId,
+                  },
+                });
+                createdReminders.push(createdReminder);
+              } catch (error) {
+                console.error("Error creating generated reminder:", error);
+              }
+            }
+          }
+
+          const eventsCount = createdEvents.length;
+          const remindersCount = createdReminders.length;
+
+          const descriptionParts: string[] = [];
+          if (eventsCount > 0) {
+            descriptionParts.push(
+              `Created ${eventsCount} event${eventsCount === 1 ? "" : "s"}`
+            );
+          }
+          if (remindersCount > 0) {
+            descriptionParts.push(
+              `Created ${remindersCount} reminder${
+                remindersCount === 1 ? "" : "s"
+              }`
+            );
+          }
+
+          toolCallsExecuted.push({
+            name: "generate_calendar_events",
+            description:
+              descriptionParts.length > 0
+                ? descriptionParts.join(" and ")
+                : "Attempted to generate events, but nothing was created",
+          });
+
+          return {
+            success: true,
+            events: createdEvents.map((event) => ({
+              id: event.id,
+              title: event.title,
+              start: event.start,
+              end: event.end,
+            })),
+            reminders: createdReminders.map((r) => ({
+              id: r.id,
+              text: r.text,
+              time: r.time,
+            })),
+          };
+        } catch (error) {
+          console.error("Error in generate_calendar_events tool:", error);
+          return {
+            success: false,
+            error: "Failed to generate calendar events",
+          };
+        }
       },
     }),
     search_bulletin_notes: tool({
@@ -853,15 +1026,17 @@ Only include meaningful facts, not trivial conversation. Return valid JSON only.
   // Convert history to AI SDK CoreMessage format
   const messages: CoreMessage[] = processedHistory.map(
     (entry: { role: string; content: string }) => ({
-      role: entry.role as "user" | "assistant",
-      content: entry.content,
+      // Frontend uses "model" for assistant messages; normalize to "assistant" here
+      role: entry.role === "user" ? "user" : "assistant",
+      // Use content parts format expected by the AI SDK
+      content: [{ type: "text", text: entry.content }],
     })
   );
 
   // Add the current user prompt
   messages.push({
     role: "user",
-    content: userPrompt,
+    content: [{ type: "text", text: userPrompt }],
   });
 
   // Use generateText with tools and stopWhen for automatic tool execution
