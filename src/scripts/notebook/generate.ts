@@ -1,3 +1,5 @@
+import prisma from "@/lib/prisma";
+
 export async function generate(
   startText: string,
   endText: string,
@@ -9,16 +11,12 @@ export async function generate(
   let context = "";
   if (documentId) {
     try {
-      const { PrismaClient } = require("@prisma/client");
-      const prisma = new PrismaClient();
-      
       const document = await prisma.document.findUnique({
         where: { id: documentId },
         select: { context: true },
       });
       
       context = document?.context || "";
-      await prisma.$disconnect();
     } catch (error) {
       console.error("Error fetching document context:", error);
       context = "";

@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { formatDueDate } from "@/app/bulletin/_components/utils/dateHelpers";
-
-const prisma = new PrismaClient();
 
 export interface AggregatedTodoItem {
   id: string;

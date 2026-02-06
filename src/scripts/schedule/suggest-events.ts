@@ -1,10 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { Event } from "@/app/schedule/types";
 import { getHabitBasedSuggestions } from "@/lib/habit-profile";
 import { aggregateAllTodos } from "@/lib/todo-aggregation";
 import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
-
-const prisma = new PrismaClient();
 
 interface TimeSlot {
   start: string;

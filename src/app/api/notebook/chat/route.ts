@@ -4,12 +4,10 @@ import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { contextUpdate } from "@/scripts/notebook/context-update";
 import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
 import { createWebSearchTool } from "@/scripts/notebook/web-search";
-
-const prisma = new PrismaClient();
 
 /**
  * Strips all markdown syntax from text, converting it to plain text.

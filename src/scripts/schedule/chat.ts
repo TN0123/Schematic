@@ -1,4 +1,5 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import {
   aggregateAllTodos,
@@ -95,8 +96,6 @@ const generateCalendarEventsSchema = z.object({
       "The user's natural language instructions describing events and reminders to add to their calendar.",
     ),
 });
-
-const prisma = new PrismaClient();
 
 async function getCalendarEvents(
   userId: string,

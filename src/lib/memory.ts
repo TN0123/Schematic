@@ -1,12 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "./prisma";
 import {
   extractKeywords,
   containsKeywords,
   generateEmbedding,
   cosineSimilarity,
 } from "./embeddings";
-
-const prisma = new PrismaClient();
 
 // Types for the memory system
 export interface UserProfile {

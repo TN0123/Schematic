@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { aggregateAllTodos } from "@/lib/todo-aggregation";
-
-const prisma = new PrismaClient();
 
 /**
  * GET - Fetch comprehensive Goals Panel context for AI reminder generation

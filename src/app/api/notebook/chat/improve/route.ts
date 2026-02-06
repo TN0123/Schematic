@@ -3,10 +3,8 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { canUsePremiumModel, trackPremiumUsage } from "@/lib/subscription";
-
-const prisma = new PrismaClient();
 
 // Simple diff-based function to generate change map from original and improved text
 function generateChangeMapFromDiff(

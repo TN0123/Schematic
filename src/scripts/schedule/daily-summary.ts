@@ -1,9 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { getUtcDayBoundsForTimezone } from "@/lib/timezone";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
 import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
-
-const prisma = new PrismaClient();
 
 export async function daily_summary(
   date: Date,

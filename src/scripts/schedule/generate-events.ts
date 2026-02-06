@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 import { aggregateAllTodos, formatTodosForPrompt } from "@/lib/todo-aggregation";
 import { getMemoryContext, formatMemoryForPrompt } from "@/lib/memory";
-
-const prisma = new PrismaClient();
 
 export async function generate_events(
   text: string,
