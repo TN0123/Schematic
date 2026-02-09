@@ -339,6 +339,11 @@ export async function scheduleChat(
   userId?: string,
   timezone?: string,
   goalsView?: "list" | "text" | "todo",
+  onToolCall?: (toolCall: {
+    name: string;
+    description: string;
+    notes?: Array<{ id: string; title: string; type?: string }>;
+  }) => void,
 ) {
   require("dotenv").config();
 
@@ -597,6 +602,7 @@ IMPORTANT:
           name: "get_calendar_events",
           description,
         });
+        onToolCall?.({ name: "get_calendar_events", description });
 
         return toolResult;
       },
@@ -730,13 +736,15 @@ IMPORTANT:
             );
           }
 
-          toolCallsExecuted.push({
-            name: "generate_calendar_events",
-            description:
+          const genDescription =
               descriptionParts.length > 0
                 ? descriptionParts.join(" and ")
-                : "Attempted to generate events, but nothing was created",
+                : "Attempted to generate events, but nothing was created";
+          toolCallsExecuted.push({
+            name: "generate_calendar_events",
+            description: genDescription,
           });
+          onToolCall?.({ name: "generate_calendar_events", description: genDescription });
 
           return {
             success: true,
@@ -771,17 +779,19 @@ IMPORTANT:
         const toolResult = await searchBulletinNotes(userId, query, limit || 5);
 
         // Track this tool call for UI display
-        toolCallsExecuted.push({
-          name: "search_bulletin_notes",
-          description: `Searched notes for "${query}"`,
-          notes: Array.isArray(toolResult)
+        const searchNotes = Array.isArray(toolResult)
             ? toolResult.map((note) => ({
                 id: note.id || note.title,
                 title: note.title,
                 type: note.type,
               }))
-            : [],
+            : [];
+        toolCallsExecuted.push({
+          name: "search_bulletin_notes",
+          description: `Searched notes for "${query}"`,
+          notes: searchNotes,
         });
+        onToolCall?.({ name: "search_bulletin_notes", description: `Searched notes for "${query}"`, notes: searchNotes });
 
         return toolResult;
       },
@@ -798,13 +808,15 @@ IMPORTANT:
           await saveToMemory(userId, content, memoryType, timezone);
 
           // Track this tool call for UI display
-          toolCallsExecuted.push({
-            name: "save_to_memory",
-            description: `Saved to ${memoryType} memory: "${content.substring(
+          const saveDesc = `Saved to ${memoryType} memory: "${content.substring(
               0,
               50,
-            )}${content.length > 50 ? "..." : ""}"`,
+            )}${content.length > 50 ? "..." : ""}"`;
+          toolCallsExecuted.push({
+            name: "save_to_memory",
+            description: saveDesc,
           });
+          onToolCall?.({ name: "save_to_memory", description: saveDesc });
 
           return {
             success: true,
@@ -838,10 +850,12 @@ IMPORTANT:
           );
 
           // Track this tool call for UI display
+          const profileDesc = `Updated profile: ${category}.${field} = "${value}"`;
           toolCallsExecuted.push({
             name: "update_user_profile",
-            description: `Updated profile: ${category}.${field} = "${value}"`,
+            description: profileDesc,
           });
+          onToolCall?.({ name: "update_user_profile", description: profileDesc });
 
           return {
             success: true,
@@ -884,10 +898,12 @@ IMPORTANT:
           );
 
           // Track this tool call for UI display
+          const memDesc = `Searched memories for "${query}" - found ${searchResults.length} results`;
           toolCallsExecuted.push({
             name: "search_memories",
-            description: `Searched memories for "${query}" - found ${searchResults.length} results`,
+            description: memDesc,
           });
+          onToolCall?.({ name: "search_memories", description: memDesc });
 
           return {
             success: true,
