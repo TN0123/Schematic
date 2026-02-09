@@ -280,35 +280,31 @@ function DashboardClient({
 
   return (
     <main
-      className="min-h-screen w-full px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background"
+      className="h-screen w-full px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-dark-background overflow-hidden"
       onClick={() => setContextMenu(null)}
     >
       <div
         ref={containerRef}
-        className="mx-auto min-h-screen flex flex-col relative w-full"
+        className="mx-auto h-full flex flex-col relative w-full"
       >
+        {/* Toast notification */}
         {message && (
-          <div className="absolute top-4 right-4 z-50 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider text-gray-700 dark:text-dark-textSecondary px-4 py-2 rounded-lg shadow">
+          <div className="absolute top-4 right-4 z-50 bg-white/90 dark:bg-white/[0.06] backdrop-blur-xl border border-gray-200/60 dark:border-white/[0.08] text-gray-700 dark:text-white/70 px-4 py-2.5 rounded-xl shadow-lg dark:shadow-black/30 text-sm animate-fade-in">
             {message}
           </div>
         )}
 
-        {/* Date/Time section with fixed height to prevent layout shift */}
-        <div
-          className="pt-10 sm:pt-12 lg:pt-16 flex justify-center"
-          style={{
-            // Reserve consistent space for the date/time display
-            minHeight: "calc(120px + 2.5rem)",
-          }}
-        >
+        {/* Date/Time section */}
+        <div className="pt-8 sm:pt-10 lg:pt-14 flex justify-center flex-shrink-0">
           <MemoizedDateTimeDisplay />
         </div>
 
-        {/* Chat section - fills remaining space with smooth transitions */}
-        <div className="flex-1 flex items-start justify-center mt-36">
+        {/* Chat section — takes remaining space, properly contained */}
+        <div className="flex-1 min-h-0 flex items-start justify-center pt-8 sm:pt-12 pb-6 sm:pb-10">
           {userId && <DashboardChat userId={userId} />}
         </div>
 
+        {/* Desktop shortcuts */}
         {shortcuts.map((shortcut) => {
           const Icon = shortcutIcons[shortcut.targetType];
           const shortcutTitle =
@@ -328,7 +324,9 @@ function DashboardClient({
             >
               <button
                 type="button"
-                className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider shadow-sm hover:shadow-md transition cursor-grab active:cursor-grabbing"
+                className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-11 h-11 rounded-xl bg-white/80 dark:bg-white/[0.06] backdrop-blur-sm border border-gray-200/60 dark:border-white/[0.08] shadow-sm hover:shadow-md dark:hover:bg-white/[0.1] hover:border-gray-300 dark:hover:border-white/[0.14] transition-all duration-200 cursor-grab active:cursor-grabbing ${
+                  draggingId === shortcut.id ? "opacity-70 scale-105" : ""
+                }`}
                 onPointerDown={(event) => handlePointerDown(event, shortcut)}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -342,18 +340,19 @@ function DashboardClient({
                     : "Note shortcut"
                 }
               >
-                <Icon className="w-5 h-5 text-gray-700 dark:text-dark-textPrimary" />
+                <Icon className="w-4.5 h-4.5 text-gray-600 dark:text-white/70" />
               </button>
-              <div className="absolute top-7 left-1/2 -translate-x-1/2 text-[11px] text-gray-600 dark:text-dark-textSecondary max-w-[96px] truncate text-center pointer-events-none">
+              <div className="absolute top-7 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 dark:text-white/40 max-w-[96px] truncate text-center pointer-events-none select-none">
                 {shortcutTitle}
               </div>
             </div>
           );
         })}
 
+        {/* Context menu */}
         {contextMenu && (
           <div
-            className="absolute z-50 bg-white dark:bg-dark-secondary border border-gray-200 dark:border-dark-divider rounded-md shadow-lg"
+            className="absolute z-50 bg-white/95 dark:bg-[#1e1e1e] backdrop-blur-xl border border-gray-200/60 dark:border-white/[0.1] rounded-xl shadow-xl dark:shadow-black/40 overflow-hidden"
             style={{
               left: contextMenu.x,
               top: contextMenu.y,
@@ -363,9 +362,9 @@ function DashboardClient({
             <button
               type="button"
               onClick={() => handleDeleteShortcut(contextMenu.id)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-dark-hover w-full"
+              className="flex items-center gap-2 px-3.5 py-2 text-[13px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08] w-full transition-colors duration-150"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               Delete
             </button>
           </div>

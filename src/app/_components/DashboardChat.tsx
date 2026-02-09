@@ -85,6 +85,138 @@ const TOOL_META: Record<
   },
 };
 
+// Tool call chip — extracted outside to avoid re-mount on parent re-renders
+function ToolCallChip({
+  toolCall,
+  index,
+  animate = true,
+}: {
+  toolCall: ToolCallData;
+  index: number;
+  animate?: boolean;
+}) {
+  const meta = TOOL_META[toolCall.name] || {
+    icon: Eye,
+    label: toolCall.name,
+    color: "text-gray-400",
+  };
+  const Icon = meta.icon;
+
+  const content = (
+    <div className="group/chip inline-flex items-center gap-1.5 text-[11px] leading-tight px-2.5 py-1.5 rounded-lg bg-white/[0.04] dark:bg-white/[0.04] border border-white/[0.06] dark:border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.08] dark:hover:bg-white/[0.08] hover:border-white/[0.1] dark:hover:border-white/[0.1] transition-all duration-300 cursor-default">
+      <Icon
+        size={12}
+        className={`${meta.color} flex-shrink-0 opacity-80 group-hover/chip:opacity-100 transition-opacity`}
+      />
+      <span className="text-gray-500 dark:text-white/50 group-hover/chip:text-gray-700 dark:group-hover/chip:text-white/70 transition-colors truncate max-w-[220px]">
+        {toolCall.description}
+      </span>
+    </div>
+  );
+
+  if (!animate) return content;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{
+        duration: 0.3,
+        delay: index * 0.08,
+        ease: [0.23, 1, 0.32, 1],
+      }}
+    >
+      {content}
+    </motion.div>
+  );
+}
+
+// Note link chip — extracted outside to prevent animation replay on parent re-renders
+function NoteChip({
+  note,
+  index,
+}: {
+  note: { id: string; title: string; type?: string };
+  index: number;
+}) {
+  return (
+    <a
+      href={`/bulletin?noteId=${note.id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-500/[0.06] dark:bg-emerald-400/[0.06] border border-emerald-500/[0.1] dark:border-emerald-400/[0.1] hover:bg-emerald-500/[0.12] dark:hover:bg-emerald-400/[0.12] hover:border-emerald-500/[0.2] dark:hover:border-emerald-400/[0.2] transition-all duration-300 group/note"
+    >
+      <BookOpen
+        size={11}
+        className="text-emerald-500 dark:text-emerald-400 opacity-70 group-hover/note:opacity-100 transition-opacity"
+      />
+      <span className="text-emerald-600 dark:text-emerald-300/80 group-hover/note:text-emerald-700 dark:group-hover/note:text-emerald-200 transition-colors">
+        {note.title}
+      </span>
+    </a>
+  );
+}
+
+// Markdown renderer config — stable reference outside component
+const getMarkdownComponents = (isUser: boolean, isError: boolean) => ({
+    p: (props: any) => (
+      <p
+        {...props}
+        className={`mb-2 last:mb-0 leading-relaxed ${
+          isError ? "text-red-700 dark:text-red-300" : ""
+        }`}
+      />
+    ),
+    ul: (props: any) => (
+      <ul {...props} className="mb-2 last:mb-0 pl-4 space-y-0.5" />
+    ),
+    ol: (props: any) => (
+      <ol {...props} className="mb-2 last:mb-0 pl-4 space-y-0.5" />
+    ),
+    li: (props: any) => <li {...props} className="mb-0.5" />,
+    code: (props: any) => (
+      <code
+        {...props}
+        className={`px-1.5 py-0.5 rounded-md text-[12px] font-mono ${
+          isUser
+            ? "bg-white/15 text-white/90"
+            : "bg-gray-200/80 dark:bg-white/[0.08] text-gray-700 dark:text-white/80"
+        }`}
+      />
+    ),
+    pre: (props: any) => (
+      <pre
+        {...props}
+        className={`p-3 rounded-lg text-[12px] overflow-x-auto font-mono ${
+          isUser
+            ? "bg-white/10"
+            : "bg-gray-100 dark:bg-white/[0.04] border border-gray-200/50 dark:border-white/[0.06]"
+        }`}
+      />
+    ),
+    blockquote: (props: any) => (
+      <blockquote
+        {...props}
+        className={`border-l-2 pl-3 italic opacity-80 ${
+          isUser
+            ? "border-white/30"
+            : "border-gray-300 dark:border-white/20"
+        }`}
+      />
+    ),
+    a: (props: any) => (
+      <a
+        {...props}
+        className="underline underline-offset-2 decoration-1 hover:decoration-2 transition-all"
+        target="_blank"
+        rel="noopener noreferrer"
+      />
+    ),
+    strong: (props: any) => (
+      <strong {...props} className="font-semibold" />
+    ),
+});
+
 export default function DashboardChat({
   userId,
   onChatActiveChange,
@@ -290,139 +422,6 @@ export default function DashboardChat({
     setChatMessages((prev) => prev.slice(0, -1));
   };
 
-  // Tool call chip component
-  const ToolCallChip = ({
-    toolCall,
-    index,
-    animate = true,
-  }: {
-    toolCall: ToolCallData;
-    index: number;
-    animate?: boolean;
-  }) => {
-    const meta = TOOL_META[toolCall.name] || {
-      icon: Eye,
-      label: toolCall.name,
-      color: "text-gray-400",
-    };
-    const Icon = meta.icon;
-
-    const content = (
-      <div className="group/chip inline-flex items-center gap-1.5 text-[11px] leading-tight px-2.5 py-1.5 rounded-lg bg-white/[0.04] dark:bg-white/[0.04] border border-white/[0.06] dark:border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.08] dark:hover:bg-white/[0.08] hover:border-white/[0.1] dark:hover:border-white/[0.1] transition-all duration-300 cursor-default">
-        <Icon
-          size={12}
-          className={`${meta.color} flex-shrink-0 opacity-80 group-hover/chip:opacity-100 transition-opacity`}
-        />
-        <span className="text-gray-500 dark:text-white/50 group-hover/chip:text-gray-700 dark:group-hover/chip:text-white/70 transition-colors truncate max-w-[220px]">
-          {toolCall.description}
-        </span>
-      </div>
-    );
-
-    if (!animate) return content;
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 4 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{
-          duration: 0.3,
-          delay: index * 0.08,
-          ease: [0.23, 1, 0.32, 1],
-        }}
-      >
-        {content}
-      </motion.div>
-    );
-  };
-
-  // Note link chip
-  const NoteChip = ({
-    note,
-    index,
-  }: {
-    note: { id: string; title: string; type?: string };
-    index: number;
-  }) => (
-    <motion.a
-      href={`/bulletin?noteId=${note.id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      initial={{ opacity: 0, x: -6 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.06 }}
-      className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-500/[0.06] dark:bg-emerald-400/[0.06] border border-emerald-500/[0.1] dark:border-emerald-400/[0.1] hover:bg-emerald-500/[0.12] dark:hover:bg-emerald-400/[0.12] hover:border-emerald-500/[0.2] dark:hover:border-emerald-400/[0.2] transition-all duration-300 group/note"
-    >
-      <BookOpen
-        size={11}
-        className="text-emerald-500 dark:text-emerald-400 opacity-70 group-hover/note:opacity-100 transition-opacity"
-      />
-      <span className="text-emerald-600 dark:text-emerald-300/80 group-hover/note:text-emerald-700 dark:group-hover/note:text-emerald-200 transition-colors">
-        {note.title}
-      </span>
-    </motion.a>
-  );
-
-  // Markdown renderer config
-  const markdownComponents = (isUser: boolean, isError: boolean) => ({
-    p: (props: any) => (
-      <p
-        {...props}
-        className={`mb-2 last:mb-0 leading-relaxed ${
-          isError ? "text-red-700 dark:text-red-300" : ""
-        }`}
-      />
-    ),
-    ul: (props: any) => (
-      <ul {...props} className="mb-2 last:mb-0 pl-4 space-y-0.5" />
-    ),
-    ol: (props: any) => (
-      <ol {...props} className="mb-2 last:mb-0 pl-4 space-y-0.5" />
-    ),
-    li: (props: any) => <li {...props} className="mb-0.5" />,
-    code: (props: any) => (
-      <code
-        {...props}
-        className={`px-1.5 py-0.5 rounded-md text-[12px] font-mono ${
-          isUser
-            ? "bg-white/15 text-white/90"
-            : "bg-gray-200/80 dark:bg-white/[0.08] text-gray-700 dark:text-white/80"
-        }`}
-      />
-    ),
-    pre: (props: any) => (
-      <pre
-        {...props}
-        className={`p-3 rounded-lg text-[12px] overflow-x-auto font-mono ${
-          isUser
-            ? "bg-white/10"
-            : "bg-gray-100 dark:bg-white/[0.04] border border-gray-200/50 dark:border-white/[0.06]"
-        }`}
-      />
-    ),
-    blockquote: (props: any) => (
-      <blockquote
-        {...props}
-        className={`border-l-2 pl-3 italic opacity-80 ${
-          isUser
-            ? "border-white/30"
-            : "border-gray-300 dark:border-white/20"
-        }`}
-      />
-    ),
-    a: (props: any) => (
-      <a
-        {...props}
-        className="underline underline-offset-2 decoration-1 hover:decoration-2 transition-all"
-        target="_blank"
-        rel="noopener noreferrer"
-      />
-    ),
-    strong: (props: any) => (
-      <strong {...props} className="font-semibold" />
-    ),
-  });
-
   // Chat input component
   const renderChatInput = () => (
     <div className="relative group/input">
@@ -515,7 +514,7 @@ export default function DashboardChat({
                             <div className="text-[13px] sm:text-sm leading-relaxed">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
-                                components={markdownComponents(true, false)}
+                                components={getMarkdownComponents(true, false)}
                               >
                                 {message.content}
                               </ReactMarkdown>
@@ -573,7 +572,7 @@ export default function DashboardChat({
                             <div className="prose dark:prose-invert prose-sm max-w-none prose-p:text-[13px] sm:prose-p:text-sm prose-p:leading-relaxed">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
-                                components={markdownComponents(
+                                components={getMarkdownComponents(
                                   false,
                                   !!message.isError
                                 )}
