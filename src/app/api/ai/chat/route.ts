@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import authOptions from "@/lib/auth";
-import { scheduleChat } from "@/scripts/schedule/chat";
+import { scheduleChat } from "@/scripts/ai/chat";
 
 export async function POST(req: Request) {
   try {

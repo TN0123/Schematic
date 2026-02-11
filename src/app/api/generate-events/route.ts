@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generate_events } from "@/scripts/schedule/generate-events";
+import { generate_events } from "@/scripts/ai/generate-events";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
