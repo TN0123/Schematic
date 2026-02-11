@@ -6,13 +6,19 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const { instructions, history = [], userId, timezone, goalsView } = await req.json();
+    const {
+      instructions,
+      history = [],
+      userId,
+      timezone,
+      goalsView,
+    } = await req.json();
 
     if (!instructions || !userId || !timezone) {
       return new Response(
@@ -23,10 +29,10 @@ export async function POST(req: Request) {
 
     // Ensure the user is only chatting as themselves
     if (userId !== session.user.id) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden" }),
-        { status: 403, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const encoder = new TextEncoder();
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
             userId,
             timezone,
             goalsView,
-            onToolCall,
+            onToolCall
           );
 
           const doneData = JSON.stringify({
@@ -81,9 +87,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error in schedule chat API:", error);
-    return new Response(
-      JSON.stringify({ error: "Failed to get response from AI" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Failed to get response from AI" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

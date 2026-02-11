@@ -302,7 +302,7 @@ export default function DashboardChat({
           : null
       ) as "list" | "text" | "todo" | null;
 
-      const res = await fetch("/api/schedule/chat", {
+      const res = await fetch("/api/ai/chat", {
         method: "POST",
         body: JSON.stringify({
           instructions: currentChatInput,
