@@ -316,10 +316,10 @@ export default function PrivacyPolicy() {
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-gray-600 dark:text-dark-textSecondary" />
               <a
-                href="mailto:support@schematic.now"
+                href="mailto:tanaynaik149@gmail.com"
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
               >
-                support@schematic.now
+                tanaynaik149@gmail.com
               </a>
             </div>
           </div>
@@ -488,10 +488,10 @@ export default function PrivacyPolicy() {
                 <p className="text-gray-700 dark:text-dark-textSecondary leading-relaxed">
                   Questions about these Terms? Contact us at
                   <a
-                    href="mailto:support@schematic.now"
+                    href="mailto:tanaynaik149@gmail.com"
                     className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                   >
-                    support@schematic.now
+                    tanaynaik149@gmail.com
                   </a>
                   .
                 </p>

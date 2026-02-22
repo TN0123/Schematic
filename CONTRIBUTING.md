@@ -316,7 +316,7 @@ When requesting features:
 
 ## Questions?
 
-If you have questions about contributing reach out to support@schematic.now
+If you have questions about contributing reach out to tanaynaik149@gmail.com
 
 Thank you for contributing to Schematic! Your contributions help make this project better for everyone.
 

@@ -309,10 +309,10 @@ export default function About() {
                     Email us at
                   </p>
                   <a
-                    href="mailto:support@schematic.now"
+                    href="mailto:tanaynaik149@gmail.com"
                     className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
                   >
-                    support@schematic.now
+                    tanaynaik149@gmail.com
                   </a>
                 </div>
 

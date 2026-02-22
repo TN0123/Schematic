@@ -1148,10 +1148,10 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-700 dark:text-dark-textSecondary">
               Have questions or issues with the app? Contact us at{" "}
               <a
-                href="mailto:support@schematic.now"
+                href="mailto:tanaynaik149@gmail.com"
                 className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
               >
-                support@schematic.now
+                tanaynaik149@gmail.com
               </a>
             </p>
           </div>
