@@ -15,12 +15,14 @@ import { TransitionLink } from "./utils/TransitionLink";
 import { useSearch } from "./SearchProvider";
 import { useModifierKeyLabel } from "@/components/utils/platform";
 import { Tooltip } from "./utils/Tooltip";
+import { useSunsetBanner } from "./SunsetBanner";
 
 export default function Navigation() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const { openSearch } = useSearch();
   const modKeyLabel = useModifierKeyLabel();
+  const { visible: bannerVisible } = useSunsetBanner();
 
   // Don't show navigation on login page
   if (
@@ -38,7 +40,11 @@ export default function Navigation() {
   ];
 
   return (
-    <nav className="fixed left-0 top-0 h-screen w-16 bg-white shadow-sm border-r border-gray-100 dark:bg-dark-background dark:border-dark-divider flex flex-col items-center py-4 z-50 hidden md:flex">
+    <nav
+      className={`fixed left-0 ${
+        bannerVisible ? "top-10 h-[calc(100vh-2.5rem)]" : "top-0 h-screen"
+      } w-16 bg-white shadow-sm border-r border-gray-100 dark:bg-dark-background dark:border-dark-divider flex flex-col items-center py-4 z-50 hidden md:flex`}
+    >
       <TransitionLink
         href="/"
         className="flex items-center justify-center mb-6"

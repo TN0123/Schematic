@@ -19,6 +19,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import ChangelogModal from "./(components)/ChangelogModal";
+import SunsetBanner, { SunsetBannerProvider } from "@/components/SunsetBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -186,30 +187,33 @@ export default async function RootLayout({
           disableTransitionOnChange={true}
           storageKey="theme"
         >
-          <NextStepProvider>
-            <NextStepWrapper>
-              <AuthProvider>
-                <PostHogProvider>
-                  <SearchProvider>
-                    <WriteSettingsProvider>
-                      <ScheduleSettingsProvider>
-                        <Navigation />
-                        <MobileTabBar />
-                        <MainWrapper>
-                          {children}
-                          {updatesForUser.length > 0 && (
-                            <ChangelogModal updates={updatesForUser} />
-                          )}
-                        </MainWrapper>
-                        <PageTransition />
-                        <GlobalSearch />
-                      </ScheduleSettingsProvider>
-                    </WriteSettingsProvider>
-                  </SearchProvider>
-                </PostHogProvider>
-              </AuthProvider>
-            </NextStepWrapper>
-          </NextStepProvider>
+          <SunsetBannerProvider>
+            <SunsetBanner />
+            <NextStepProvider>
+              <NextStepWrapper>
+                <AuthProvider>
+                  <PostHogProvider>
+                    <SearchProvider>
+                      <WriteSettingsProvider>
+                        <ScheduleSettingsProvider>
+                          <Navigation />
+                          <MobileTabBar />
+                          <MainWrapper>
+                            {children}
+                            {updatesForUser.length > 0 && (
+                              <ChangelogModal updates={updatesForUser} />
+                            )}
+                          </MainWrapper>
+                          <PageTransition />
+                          <GlobalSearch />
+                        </ScheduleSettingsProvider>
+                      </WriteSettingsProvider>
+                    </SearchProvider>
+                  </PostHogProvider>
+                </AuthProvider>
+              </NextStepWrapper>
+            </NextStepProvider>
+          </SunsetBannerProvider>
         </ThemeProvider>
       </body>
     </html>
